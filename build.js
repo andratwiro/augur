@@ -338,7 +338,7 @@ function prependTitleEmoji(html, emoji) {
 // build.js shell/CSS, the index pages, or features like carousel/comments/download.
 // Do NOT bump it for changes inside individual prototypes; their content is
 // versioned by their own modified date, not this number.
-const UI_VERSION = "0.97";
+const UI_VERSION = "0.98";
 
 // One id per build (ms timestamp). Baked into every page's live-reload poller AND
 // into the worker's /__version endpoint, so a fresh deploy = a new id = open tabs
@@ -2054,6 +2054,29 @@ const NAV_CSS = `
       font-size: 17px; line-height: 1; cursor: pointer;
     }
     .gvsearch__clear:hover { background: rgba(16,17,26,0.08); color: #16171a; }
+    /* Global-finder popover (chromeScript renders it under the search field). */
+    .gvsearch-pop {
+      /* Fixed + JS-anchored to the field: the rail clips overflow, and results
+         deserve more width than the rail gives (see grender in chromeScript). */
+      position: fixed; width: min(360px, calc(100vw - 24px)); z-index: 80;
+      background: #fff; border: 1px solid rgba(16,17,26,0.1); border-radius: 12px;
+      box-shadow: 0 16px 40px -12px rgba(16,24,40,0.28), 0 2px 8px rgba(16,24,40,0.08);
+      padding: 5px; max-height: min(420px, 60vh); overflow: auto;
+    }
+    .gvsearch-row {
+      display: flex; align-items: center; gap: 8px; width: 100%; padding: 7px 9px;
+      border: 0; background: none; border-radius: 8px; font: inherit; font-size: 13px;
+      color: #16171a; cursor: pointer; text-align: left;
+    }
+    .gvsearch-row.is-act, .gvsearch-row:hover { background: #eef0fb; }
+    .gvsearch-row__t { flex: 0 1 auto; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 550; }
+    .gvsearch-row__t b { color: #4650c9; font-weight: 700; }
+    .gvsearch-row__g { flex: 1 1 auto; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: #8a9098; font-size: 12px; }
+    .gvsearch-row__y {
+      flex: none; font-size: 10px; font-weight: 650; letter-spacing: 0.03em; text-transform: uppercase;
+      color: #8a9098; background: #f1f2f5; border-radius: 5px; padding: 2px 6px;
+    }
+    .gvsearch-pop__empty { padding: 10px 11px; color: #8a9098; font-size: 12.5px; }
     .gvsearch kbd {
       position: absolute; right: 9px; top: 50%; transform: translateY(-50%);
       min-width: 17px; height: 18px; padding: 0 5px; display: grid; place-items: center;
@@ -2301,7 +2324,7 @@ const NAV_STATE = { opportunities: [], hasPlayground: false, spaces: [], activeS
 // The omni search field — lives in the rail, filters whatever cards are on the right
 // (the shared chrome script wires [data-filter] to the current page's [data-fitem]).
 function railSearch() {
-  return `<div class="gvsearch">${SEARCH_ICON}` +
+  return `<div class="gvsearch" data-search-src="${S("/__search.json")}" data-search-base="${S("/")}">${SEARCH_ICON}` +
     `<input type="text" data-filter placeholder="Search…" aria-label="Search content" autocomplete="off" autocapitalize="off" spellcheck="false" />` +
     `<button type="button" class="gvsearch__clear" data-filter-clear aria-label="Clear search" hidden>&times;</button>` +
     `<kbd data-filter-kbd>/</kbd></div>`;
@@ -2602,6 +2625,112 @@ function chromeScript() {
       if(k === '/' && !typing){ e.preventDefault(); input.focus(); }
     });
     apply();
+
+    // ── Global fuzzy finder ──────────────────────────────────────────────────
+    // The same box also searches the WHOLE space, not just this page's cards:
+    // __search.json (built per space) + created canvases (/__canvases) + KV
+    // renames (/__name, by rename-key), fuzzy-matched, in a popover under the
+    // field. The page-filter above keeps working behind it. Loaded lazily on the
+    // first real query, once per page view.
+    var box = input.closest('.gvsearch');
+    var pop=null, gidx=null, gloadP=null, gact=0, gres=[];
+    function gfetch(url){ return fetch(url,{headers:{'Accept':'application/json'}}).then(function(r){ if(!r.ok) throw 0; return r.json(); }); }
+    function gload(){
+      if(gloadP) return gloadP;
+      var src = box && box.getAttribute('data-search-src');
+      var base = (box && box.getAttribute('data-search-base')) || '/';
+      if(!src){ gloadP = Promise.resolve([]); return gloadP; }
+      gloadP = Promise.all([
+        gfetch(src).catch(function(){ return []; }),
+        gfetch('/__canvases').then(function(d){
+          return Object.keys((d&&d.map)||{}).filter(function(p){ return p.indexOf(base)===0; }).map(function(p){
+            var seg = p.slice(base.length).split('/');
+            return { t:(d.map[p].name||p), y:'Canvas', u:p, g: seg.length>2 ? seg[0] : '' };
+          });
+        }).catch(function(){ return []; }),
+        (function(){ try{ var m=JSON.parse(sessionStorage.getItem('gv_names_map')||'null'); if(m) return Promise.resolve(m); }catch(e){}
+          return gfetch('/__name').then(function(d){ return (d&&d.map)||{}; }).catch(function(){ return {}; }); })()
+      ]).then(function(rs){
+        var names = rs[2]||{};
+        gidx = rs[0].concat(rs[1]).map(function(e){ return (e.k && names[e.k]) ? {t:names[e.k], y:e.y, u:e.u, g:e.g} : e; });
+        return gidx;
+      });
+      return gloadP;
+    }
+    // Subsequence fuzzy score: exact substring ranks first (earlier = better), then
+    // scattered matches favouring word starts + consecutive runs. null = no match.
+    function fz(q, s){
+      if(!q || !s) return null;
+      var lq=q.toLowerCase(), ls=s.toLowerCase(), sub=ls.indexOf(lq), pos=[], i;
+      if(sub>=0){ for(i=0;i<lq.length;i++) pos.push(sub+i);
+        var wb = sub===0 || !/[a-z0-9]/.test(ls.charAt(sub-1));
+        return { s: 200 - sub*2 + (wb?40:0) - Math.floor((ls.length-lq.length)/3), p: pos }; }
+      var qi=0, run=0, sc=0;
+      for(i=0;i<ls.length && qi<lq.length;i++){
+        if(ls.charAt(i)===lq.charAt(qi)){
+          var b=2; if(i===0 || !/[a-z0-9]/.test(ls.charAt(i-1))) b+=8; if(run>0) b+=5;
+          run++; sc+=b; pos.push(i); qi++;
+        } else run=0;
+      }
+      if(qi<lq.length) return null;
+      return { s: sc - Math.floor(ls.length/4), p: pos };
+    }
+    function ghtml(s, pos){
+      var out='', j=0, i;
+      for(i=0;i<s.length;i++){
+        var ch=s.charAt(i).replace(/&/g,'&amp;').replace(/</g,'&lt;');
+        if(j<pos.length && pos[j]===i){ out+='<b>'+ch+'</b>'; j++; } else out+=ch;
+      }
+      return out;
+    }
+    function ghide(){ if(pop) pop.hidden=true; gres=[]; }
+    function grender(q){
+      if(!box) return;
+      if(!pop){
+        pop=document.createElement('div'); pop.className='gvsearch-pop'; pop.hidden=true; box.appendChild(pop);
+        pop.addEventListener('click', function(e){ var b=e.target.closest('[data-gu]'); if(b) location.href=b.getAttribute('data-gu'); });
+        pop.addEventListener('pointerdown', function(e){ e.preventDefault(); }); // keep the input focused
+      }
+      gres=[];
+      (gidx||[]).forEach(function(e){
+        var m = fz(q, e.t);
+        var mg = m ? null : (e.g ? fz(q, String(e.g)) : null);
+        if(m) gres.push({ e:e, s:m.s+40, p:m.p });
+        else if(mg) gres.push({ e:e, s:mg.s, p:[] });
+      });
+      gres.sort(function(a,b){ return b.s-a.s || a.e.t.localeCompare(b.e.t); });
+      gres = gres.slice(0,12); gact=0;
+      var rct = input.getBoundingClientRect();
+      pop.style.left = rct.left + 'px'; pop.style.top = (rct.bottom + 6) + 'px';
+      if(!gres.length){ pop.innerHTML='<div class="gvsearch-pop__empty">No matches in this space</div>'; pop.hidden=false; return; }
+      pop.innerHTML = gres.map(function(r,i){
+        return '<button type="button" class="gvsearch-row'+(i===gact?' is-act':'')+'" data-gu="'+String(r.e.u).replace(/"/g,'&quot;')+'">'+
+          '<span class="gvsearch-row__t">'+ghtml(r.e.t, r.p)+'</span>'+
+          (r.e.g?'<span class="gvsearch-row__g">'+ghtml(String(r.e.g),[])+'</span>':'')+
+          '<span class="gvsearch-row__y">'+ghtml(String(r.e.y),[])+'</span></button>';
+      }).join('');
+      pop.hidden=false;
+    }
+    function gmove(d){
+      if(!pop || pop.hidden || !gres.length) return;
+      gact=(gact+d+gres.length)%gres.length;
+      var rows=pop.querySelectorAll('.gvsearch-row');
+      [].forEach.call(rows, function(r,i){ r.classList.toggle('is-act', i===gact); });
+      if(rows[gact] && rows[gact].scrollIntoView) rows[gact].scrollIntoView({block:'nearest'});
+    }
+    input.addEventListener('input', function(){
+      var q=input.value.trim();
+      if(q.length<2){ ghide(); return; }
+      gload().then(function(){ if(input.value.trim()===q) grender(q); });
+    });
+    input.addEventListener('keydown', function(e){
+      if(e.key==='ArrowDown'){ e.preventDefault(); gmove(1); }
+      else if(e.key==='ArrowUp'){ e.preventDefault(); gmove(-1); }
+      else if(e.key==='Enter'){ if(pop && !pop.hidden && gres[gact]){ e.preventDefault(); location.href=gres[gact].e.u; } }
+      else if(e.key==='Escape'){ ghide(); }
+    });
+    input.addEventListener('focus', function(){ var q=input.value.trim(); if(q.length>=2){ gload().then(function(){ grender(q); }); } });
+    document.addEventListener('pointerdown', function(e){ if(pop && !pop.hidden && box && !box.contains(e.target)) ghide(); }, true);
   }
 
   // ── Mobile rail drawer (hamburger + scrim) ───────────────────────────────
@@ -4748,6 +4877,35 @@ async function buildSpace(space) {
     } catch (e) {
       console.warn(`build: ${space.id} has tracks/ but no readable tracks.json — no music installed`);
     }
+  }
+
+  // ── Space-wide search index → <space>/__search.json ─────────────────────────
+  // Feeds the rail's global fuzzy finder (chromeScript): every navigable thing in
+  // this space — folders, prototypes, playground projects, pages, components, the
+  // gallery indexes — as tiny {t title, y type, u url, g group, k rename-key}
+  // entries. The client merges KV renames (by k) and created canvases at runtime.
+  // Gated like the rail pages themselves (not in PUBLIC_PREFIXES) — the finder is
+  // team chrome, not a public surface.
+  {
+    const idx = [{ t: PROJECTS_LABEL, y: "Index", u: S("/") }];
+    if (playground.length) idx.push({ t: "Playground", y: "Index", u: S("/playground/") });
+    if (pages.length) idx.push({ t: "Pages", y: "Index", u: S("/pages/") });
+    if (components.length) idx.push({ t: "Components", y: "Index", u: S("/components/") });
+    if (base.length) idx.push({ t: "Base", y: "Index", u: S("/base/") });
+    if (patterns.length) idx.push({ t: "Patterns", y: "Index", u: S("/patterns/") });
+    if (DS.prefix) idx.push({ t: "Primitives", y: "Index", u: S("/primitives/") }, { t: "Tokens", y: "Index", u: S("/tokens/") });
+    for (const opp of opportunities) {
+      idx.push({ t: titleCase(opp.name), y: "Folder", u: S(`/${encodeURIComponent(opp.name)}/`) });
+      for (const p of opp.prototypes)
+        idx.push({ t: titleCase(p.name), y: "Prototype", g: titleCase(opp.name), u: S(`/${encodeURIComponent(opp.name)}/${p.href}`), k: `${SPACE_KEY}${opp.name}/${p.name}` });
+    }
+    for (const p of playground)
+      idx.push({ t: titleCase(p.name), y: "Playground", u: S(`/playground/${p.href}`), k: `${SPACE_KEY}playground/${p.name}` });
+    for (const p of pages)
+      idx.push({ t: titleCase(p.name), y: "Page", ...(p.surface ? { g: p.surface } : {}), u: S(`/pages/${p.href}`), k: `${SPACE_KEY}pages/${p.name}` });
+    for (const c of components)
+      idx.push({ t: titleCase(c.name), y: "Component", u: S(`/components/${c.href}`), k: `${SPACE_KEY}components/${c.name}` });
+    await fs.writeFile(path.join(DIST_SPACE, "__search.json"), JSON.stringify(idx), "utf8");
   }
 
   // ── Per-space build log.
