@@ -115,6 +115,31 @@ const BUILD_ENV = {
   ...(DEPLOY_CONFIG_PATH ? { GV_DEPLOY_CONFIG_PATH: DEPLOY_CONFIG_PATH } : {}),
   ...(targetSpace ? { GV_ONLY_SPACE: targetSpace } : {}),
 };
+// Identity-less checkout (the collaborator layout — no deploy shell anywhere):
+// fetch the instance's sanitized contributor profiles so editor chips survive
+// the build. Without this, publishing from a bare clone silently strips every
+// card face site-wide (the chips are matched against identity at build time).
+if (!IDENTITY_PATH) {
+  try {
+    const r = await fetch(`${ORIGIN}/__publish/_instance/profiles`, {
+      headers: { Authorization: `Bearer ${TOKEN}` },
+    });
+    if (r.ok) {
+      const { profiles } = await r.json();
+      const os = await import("node:os");
+      const { writeFile } = await import("node:fs/promises");
+      const f = path.join(os.tmpdir(), `augur-profiles-${process.pid}.json`);
+      await writeFile(f, JSON.stringify(profiles));
+      BUILD_ENV.GV_IDENTITY_PATH = f;
+      log(`contributor profiles fetched (${profiles.length}) — card faces preserved`);
+    } else {
+      log(`profiles unavailable (${r.status}) — publishing without editor faces`);
+    }
+  } catch (e) {
+    log("profiles fetch failed — publishing without editor faces");
+  }
+}
+
 const started = Date.now();
 log(`building ${targetSpace || "all spaces"}…`);
 const code = await new Promise((resolve) => {

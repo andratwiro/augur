@@ -512,7 +512,7 @@ function synthBuildStamp(manifests) {
 // Bearer-token authed (per-space tokens minted in the admin panel, hashed in
 // KV; "*" = every space). PUBLISH_BOOTSTRAP_TOKEN is a local-dev binding for
 // wrangler dev only — never configure it on a deployed instance.
-async function publishAuth(request, env, spaceId) {
+async function publishAuth(request, env, spaceId, anySpace) {
   const m = /^Bearer\s+(.+)$/.exec(request.headers.get("Authorization") || "");
   if (!m) return null;
   const token = m[1].trim();
@@ -527,7 +527,7 @@ async function publishAuth(request, env, spaceId) {
     const map = raw ? JSON.parse(raw) : {};
     const e = map[h];
     if (!e) return null;
-    if (e.space !== "*" && e.space !== spaceId) return null;
+    if (!anySpace && e.space !== "*" && e.space !== spaceId) return null;
     return e;
   } catch (err) { return null; }
 }
@@ -562,6 +562,21 @@ async function publishApi(request, url, env) {
     map[await tokenFor("pub:" + token)] = { space, label: u.email, createdAt: new Date().toISOString() };
     await kv.put(PUBLISH_TOKENS_KEY, JSON.stringify(map));
     return jsonResponse({ token, space });
+  }
+
+  // Sanitized contributor profiles for identity-less builds (any valid publish
+  // token): name/initials/color/avatar URL + email aliases — exactly what the
+  // build needs to keep editor chips on cards, and nothing secret. The avatar
+  // URLs resolve at runtime against the instance's real identity, so a build
+  // from a bare space clone renders the same faces the god-mode build does.
+  if (spaceId === "_instance" && op === "profiles" && request.method === "GET") {
+    if (!(await publishAuth(request, env, spaceId, true))) return jsonResponse({ error: "forbidden" }, 403);
+    const profiles = USERS.map((u) => ({
+      email: u.email, emails: u.emails || [],
+      name: u.name, initials: u.initials || "", color: u.color || "#4f46e5",
+      avatar: avatarUrl(u), role: u.role === "admin" ? "admin" : "user",
+    }));
+    return jsonResponse({ profiles });
   }
 
   const who = await publishAuth(request, env, spaceId);
