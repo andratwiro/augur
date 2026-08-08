@@ -188,7 +188,6 @@ rules that fix that:
 - **Triage + disclose (Rob's standing rule):** descriptions exist so you can judge what's
   worth opening — but before writing conclusions next to tiles you haven't opened, either
   open them or SAY what you skipped. Silent skipping is the failure that created this rule.
-  Decision record: `proposals/canvas-node-descriptions.md`.
 
 ## Architecture — hand-rolled, three layers, native to Augur's vanilla-JS stack
 
@@ -413,8 +412,8 @@ The limits, by design:
 - **Comments overlay:** two guarded hooks in `src/review/comments.js` (`pinXY`/`anchorAt`
   prefer `GVCanvas` world coords); the engine dispatches a window `scroll` on every transform
   so the overlay repositions. Pages without `GVCanvas` are byte-identical.
-- **Instances:** e.g. `<space>/<opportunity>/prototypes/canvas/index.html` — a 12-line loader
-  (`window.GV_CANVAS = {name}` + the two engine tags). Copy that folder to make a new board.
+- **Instances:** e.g. `<space>/<opportunity>/prototypes/<board>/index.html` — a ~20-line loader
+  (`window.GV_CANVAS = {name}` + the two engine tags). Copy an existing board folder to make a new one.
 - **API:** `window.GVCanvas` = board + nodes()/addNode + screenToWorld/worldToScreen/
   onTransform/setTool — what the collaboration skill and the comment overlay drive.
 
@@ -505,8 +504,9 @@ return;`** — `addInitScript` runs in every frame, and an unguarded override le
 iframes, so a canvas-typed prototype embedded in a tile joins the TEST room and haunts
 presence as phantom "Guest" chips (bit #2 — cost an afternoon of zombie-hunting). Also don't
 navigate test tiles to canvas-typed prototypes (`customer-interviews` is one). (Rooms
-self-heal — the doc cache drops when empty — but don't rely on that.) Reference test: the
-mp-proto-e2e script pattern (two contexts, isolated room, mount/interact/mirror assertions).
+self-heal — the doc cache drops when empty — but don't rely on that.) Reference test
+pattern: two browser contexts joined to one ISOLATED room (the clobber above), then
+mount/interact in one and assert the mirror in the other.
 
 ## Session: the shared timer + music (2026-08-05)
 
@@ -686,9 +686,11 @@ Do this **unless prompted otherwise**.
   **Launch it DETACHED, not as a harness-tracked background task** (task-list cleanups kept
   reaping tracked daemons mid-session and Clawd vanished from the board):
   ```sh
-  nohup node scripts/clawd-canvas.mjs daemon <boardPath> <cmdFile> --name '<session name>' \
+  nohup node scripts/clawd-canvas.mjs daemon <boardPath> <cmdFile> \
     > <scratchpad>/clawd-daemon.log 2>&1 & echo $! > <scratchpad>/clawd-daemon.pid; disown
   ```
+  Identity is deterministic — derived from the session's cmd-file path — so do NOT pass
+  `--name` (the daemon refuses it; it's reserved for sibling agents launched with `--sibling`).
   A detached daemon does NOT die with the session — dismiss it explicitly when co-work ends
   (`{"cmd":"quit"}` to the cmd file, or `kill $(cat clawd-daemon.pid)`). Check the pidfile
   before launching (a live one means YOUR previous daemon is still up — reuse or quit it;
@@ -753,24 +755,26 @@ Do this **unless prompted otherwise**.
   components across spaces, with poster thumbs). The Prototype tool searches it.
 - **Canvas-owned prototypes**: `scripts/canvas-screen.mjs` (see the section below) — scaffolds a
   prototype into a canvas subfolder + places its tile on the board.
-- **A canvas instance IS a prototype**: `<space>/ux-ui-audit/prototypes/canvas/index.html` (a
-  ~12-line loader) → lives at `/ux-ui-audit/canvas/`. Make more by copying that folder.
+- **A canvas instance IS a prototype**: `<space>/<opportunity>/prototypes/<board>/index.html` (a
+  ~20-line loader) → lives at `/<opportunity>/<board>/`. Make more by copying an existing board
+  folder (or via the in-app "New canvas" button).
 
 **Dev loop**
-- `npm --prefix augur run offline` (run in the background) → http://localhost:8788/ux-ui-audit/canvas/
+- `npm --prefix augur run offline` (run in the background) → http://localhost:8788/<opportunity>/<board>/
   (sign in with an admin account if the site chrome asks). It watches sibling clones
   + Augur and hot-reloads (~1s). ⚠️ **Offline KV is LIVE prod** — board/overlay writes are real.
 - Edit `src/canvas/*` — the offline watcher now watches `src/canvas` + `src/review`, so it
   hot-reloads (~1s). `/__canvas/*` is served **`no-store`** (see `withAssetCache`), so a **reload**
   gets the fresh engine — no hard-refresh dance, no stale-JS ghosts (that bit twice: new CSS + old
   JS looked like "my fix didn't work").
-- **Ship**: commit + push per repo to `main`. **Augur first** (engine/worker/build/catalog), THEN
-  the space repo (the page, via the auto-bump bridge). Stage ONLY your paths (shared checkout, never
+- **Ship**: commit + push per repo to `main`. **Augur first** (engine/worker/build/catalog — its
+  push auto-deploys via the engine pin bump), THEN the space repo (push saves the page; the page
+  goes LIVE via the space's `augur publish`, not the push). Stage ONLY your paths (shared checkout, never
   `git add -A`); commit trailers per `augur/CLAUDE.md`. Bump `UI_VERSION` only when you touch
   `comments.js` / the build shell (busts the `?v=` on injected overlay scripts).
 - **Playwright IS available** via a sibling space clone's `node_modules/playwright` (+ cached
   chromium) — drive it against offline OR the live URL (the canvas page + `/__canvas/*` + `/__board`
-  + `/__ai/build` are all public). **Always block `POST **/__board`** in tests (`route(...).abort()`
+  are all public). **Always block `POST **/__board`** in tests (`route(...).abort()`
   on POST) so you never pollute the shared live board; the board loads read-only. This is how every
   canvas fix this session was verified before reporting — do the same, don't reason blind.
 
@@ -916,9 +920,11 @@ Do this **unless prompted otherwise**.
   (no `preventDefault`, no pan) or it eats the picker's native scroll and pans the board instead.
 - Live **tile/build iframe**: render at a fixed DEVICE viewport width (`DEVICE_W`) and CSS-scale to
   fit (`fitFrame`), `transform-origin: top left`; clientWidth/Height are layout px (immune to the
-  world transform). "Stop" **freezes** (keeps the iframe, `pointer-events:none`) so device/scroll
-  state survives; cap is total loaded iframes (`MAX_LIVE_TILES`), LRU-evict to poster.
-- The board + `/__ai/build` endpoints are **public by design** (a canvas is a published prototype).
+  world transform). Tiles are **always-live**: iframes mount on viewport approach
+  (IntersectionObserver) under `MOUNT_BUDGET` (16); offscreen tiles beyond the budget quietly
+  return to their poster (LRU by last sight) and remount on sight. `node.live` (the old shared
+  Stop/Live) is ignored.
+- The board endpoints are **public by design** (a canvas is a published prototype).
 - **Interaction model**: empty drag = marquee multi-select; pan = scroll/trackpad or Space-drag /
   hand tool. Don't revert to drag-to-pan. **Exception — touch**: one finger on empty canvas pans,
   two fingers pinch-zoom (phones have no trackpad/marquee need); armed tools still act on one
@@ -967,6 +973,6 @@ Do this **unless prompted otherwise**.
   the deletion for the terminal to reconcile (today: `canvas-screen.mjs rm`); a poster shot for a
   new screen so its tile isn't blank until you go Live.
 - Proper cache-busting for `/__canvas/*.js|css` if we move off `no-store` (today: no-store).
-- Connectors that snap to nodes; in-app "New canvas" button.
+- Connectors that snap to nodes. (The in-app "New canvas" button shipped — see "Created canvases".)
 - **DONE 2026-07-23:** multiplayer (cursors/presence/live ops/co-typing) — see the
   "Multiplayer" section; NOT the old "live-KV rail" idea, a Durable Object room per board.

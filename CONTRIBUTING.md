@@ -24,20 +24,23 @@ The contribution filter, in one table:
 
 If a PR hardcodes a URL, a product name, or any single instance's value into the
 engine, it will be asked to move that value into config. New worker knobs follow
-the existing pattern: a placeholder constant in `src/_worker.js`, injected at
-build from the deploy config, presence-checked in `build.js` (grep for
-`RT_ORIGIN` to see a complete example).
+the runtime-config pattern: `src/_worker.js` ships verbatim (no build-time
+stamping); `build.js` emits the value into `dist/__config/instance.json` from the
+shell's `deploy.config.json`, and the worker reads it in `loadConfig()` (grep
+`src/_worker.js` for `loadConfig` or `rtOrigin` to see a complete example).
 
 ## Dev loop
 
 ```bash
 git clone https://github.com/andratwiro/augur.git && cd augur
-mkdir -p ../spaces/demo && cd ../spaces/demo
+mkdir -p ../demo && cd ../demo     # a space = a SIBLING dir of augur with a space.json at its root
 echo '{ "id": "demo", "name": "Demo", "default": true }' > space.json
 mkdir -p hello/prototypes/hello && echo '<h1>hi</h1>' > hello/prototypes/hello/index.html
-cd ../../augur
-GV_SPACES_ROOT=../spaces node build.js   # full static build → dist/
-npm run offline                          # live preview + real worker, ~1s hot reload
+cd ../augur
+GV_SPACES_ROOT=.. node build.js   # full static build → dist/
+npm run offline                   # live preview + real worker, ~1s hot reload
+                                  # (offline scans augur's sibling dirs for space.json files —
+                                  # keep the demo a direct sibling, not nested deeper)
 ```
 
 ## PR guidelines
