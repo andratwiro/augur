@@ -50,12 +50,13 @@ rebuilt), the `playground/`, and the whitelisted skill assets ship. `research.md
 
 ## Deploys — this repo ships nothing
 
-**Push-to-main deploys, via the shell.** A push here fires
-`.github/workflows/deploy-trigger.yml` (an `engine-updated` dispatch); a space-repo
-push fires its own `deploy-trigger.yml` (`workspace-updated`, naming the space by its
-`space.json` id). The shell moves the matching submodule pin and its `deploy.yml`
-builds + ships (~1 min). Deploy verification is the public **`/_build.json`** stamp:
-`{builtAt, spaces:{<id>:{sha}}}` — compare a space's sha to `git rev-parse HEAD`.
+**Engine pushes auto-deploy; space content publishes directly.** A push here fires
+`.github/workflows/deploy-trigger.yml` (an `engine-updated` dispatch); the shell
+moves the engine pin and its `deploy.yml` ships worker code + engine chrome
+(~1 min). **Space content does NOT ship on push** — spaces publish via
+`augur publish` (seconds, atomic; token from `augur login`). Deploy verification
+is the public **`/_build.json`** stamp: `{builtAt, spaces:{<id>:{sha, dirty?}}}` —
+compare a space's sha to `git rev-parse HEAD`.
 
 **Runtime config (no build-time worker stamping).** `src/_worker.js` ships VERBATIM;
 build.js emits `dist/__config/instance.json` (users from `GV_IDENTITY_PATH`; from
