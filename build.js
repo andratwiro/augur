@@ -2043,9 +2043,9 @@ const NAV_CSS = `
 
     /* Space switcher — active space icon+name+badge with a dropdown of all spaces.
        Server-rendered from the build-time space list; SPACE_JS only toggles the menu.
-       Admin-only: only Rob owns the 2.0 workspace, so the switcher is hidden by default
-       and revealed once /__me confirms an admin (html.gv-admin) — same reveal mechanism
-       as the other admin surfaces. Regular users (Irene, Tali) never see it. */
+       Admin-only: switching spaces is a maintainer concern, so the switcher is hidden by
+       default and revealed once /__me confirms an admin (html.gv-admin) — same reveal
+       mechanism as the other admin surfaces. Regular users never see it. */
     .gvspace { display: none; position: relative; margin: 2px 1px 8px; }
     html.gv-admin .gvspace { display: block; }
     .gvspace__btn {
@@ -3529,7 +3529,7 @@ const PINS_JS = `
   function splitEmoji(s){ s = s || ''; var m; try { m = s.match(EMO); } catch(e){ m = null; } return m ? [m[1], s.slice(m[0].length)] : ['', s]; }
   function esc(s){ return (s||'').replace(/[&<>"]/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
   // Scope the rendered pin list to the CURRENT space. Pins live in one per-user bucket
-  // across spaces (keys are full URL paths, e.g. "/opp/proto/" or "/go-vocal-2/opp/proto/"),
+  // across spaces (keys are full URL paths, e.g. "/opp/proto/" or "/space-2/opp/proto/"),
   // so the rail filters to this space: a non-default space keeps only keys under its base;
   // the default space keeps everything NOT under another space's base. (Storage/prune stay
   // on the full map — pinning is global per user; only the display is per-space.)
@@ -3866,7 +3866,7 @@ const NEWCANVAS_JS = `
       var map = (d && d.map) || {};
       // Ascending by creation time, then each PREPENDED to the grid — so the
       // newest created canvas lands first, where a just-made board is expected
-      // (appending buried it below every prototype; Rob couldn't find his).
+      // (appending buried it below every prototype, so a fresh board got lost).
       var mine = Object.keys(map).filter(function(p){
         return p.indexOf(dir) === 0 && p.length > dir.length && p.slice(dir.length, -1).indexOf('/') === -1;
       }).sort(function(a,b){ return (map[a].t||0) - (map[b].t||0); });
@@ -3926,7 +3926,7 @@ const SPACE_JS = `(function(){
   var create = box.querySelector('[data-space-create]');
   if(create) create.addEventListener('click', function(e){
     e.stopPropagation();
-    alert('Spaces are repos: to add one, create a new GitHub repo templated from go-vocal (space.json + DS assets at its root), mount it in Augur as a submodule at spaces/<id>, and give it the deploy-trigger workflow. Ask Rob.');
+    alert('Spaces are repos: to add one, create a new GitHub repo templated from the default space (space.json + DS assets at its root), mount it in Augur as a submodule at spaces/<id>, and give it the deploy-trigger workflow. Ask the instance maintainer.');
   });
 })();
 `;

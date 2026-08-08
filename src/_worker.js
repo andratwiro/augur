@@ -142,8 +142,8 @@ function isPublicPath(pathname) {
 // is restricted (a local build with no identity gates nothing extra).
 let RESTRICTED_BASES = [];
 
-// Does this path live inside an admin-only space? Matches the base ("/go-vocal-2"),
-// its root ("/go-vocal-2/") and everything beneath it.
+// Does this path live inside an admin-only space? Matches the base ("/space-2"),
+// its root ("/space-2/") and everything beneath it.
 function isRestrictedPath(pathname) {
   return RESTRICTED_BASES.some(
     (b) => pathname === b || pathname.startsWith(b + "/")
@@ -1424,7 +1424,7 @@ async function pinsApi(request, url, env, user) {
   // Pins are per-user (key "pins:<email>"), independent across users; the global
   // "pins" key is only the fallback when nobody is signed in. Note: NO migration
   // from the global map — that seeded EVERY new user from one shared (effectively
-  // Rob's) map, leaking pins across accounts. A new user starts empty.
+  // the first user's) map, leaking pins across accounts. A new user starts empty.
   const key = user ? `${PINS_KEY}:${user.email}` : PINS_KEY;
 
   if (request.method === "GET") {
@@ -2156,10 +2156,10 @@ export default {
     // /__board: the board is the credential. The engine degrades to solo if this fails.
     if (url.pathname === "/__rt") return rtProxy(request, url);
 
-    // Admin-only spaces (the 2.0 workspace): seal the whole base path BEFORE the
-    // public-prototype door, so nothing under it — not even an og.jpg — leaks. Only
-    // an admin (Rob) gets through; a signed-in non-admin (Irene, Tali) is bounced
-    // home; a signed-out visitor gets the login page. Skipped in legacy/open mode
+    // Admin-only spaces: seal the whole base path BEFORE the public-prototype
+    // door, so nothing under it — not even an og.jpg — leaks. Only an admin
+    // gets through; a signed-in non-admin is bounced home; a signed-out
+    // visitor gets the login page. Skipped in legacy/open mode
     // (no users injected), same as the /admin gate.
     if (usersActive && isRestrictedPath(url.pathname)) {
       if (!authed) return htmlResponse(loginPage(url.pathname + url.search, false), 200);
