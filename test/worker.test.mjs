@@ -45,3 +45,73 @@ test("safeEqual compares without short-circuiting on content", () => {
   assert.equal(W.safeEqual("abc", "abcd"), false);
   assert.equal(W.safeEqual(null, ""), true);
 });
+
+// Minimal in-memory KV mirroring the subset the worker uses.
+function memKV(initial = {}) {
+  const store = new Map(Object.entries(initial));
+  return {
+    store,
+    async get(k) { return store.has(k) ? store.get(k) : null; },
+    async put(k, v) { store.set(k, v); },
+    async delete(k) { store.delete(k); },
+  };
+}
+const envWith = (kv, extra = {}) => ({ COMMENTS: kv, ...extra });
+const USER = { email: "a@example.test", name: "A", role: "admin" };
+
+function cookieRequest(value) {
+  return new Request("https://example.test/", { headers: { Cookie: `gv_user=${value}` } });
+}
+
+test("session token is an HMAC when SESSION_SECRET is set", async () => {
+  const kv = memKV({ "users:secrets": JSON.stringify({ "a@example.test": "pbkdf2$1$AAAA$BBBB" }) });
+  const env = envWith(kv, { SESSION_SECRET: "s3cret" });
+  const t = await W.userToken(env, USER);
+  assert.match(t, /^[0-9a-f]{64}$/, "hex HMAC-SHA-256");
+  const same = await W.userToken(env, USER);
+  assert.equal(t, same, "deterministic for the same secret");
+  const other = await W.userToken(envWith(kv, { SESSION_SECRET: "different" }), USER);
+  assert.notEqual(t, other, "keyed by SESSION_SECRET");
+});
+
+test("identify accepts a new-derivation cookie", async () => {
+  const kv = memKV({ "users:secrets": JSON.stringify({ "a@example.test": "pbkdf2$1$AAAA$BBBB" }) });
+  const env = envWith(kv, { SESSION_SECRET: "s3cret" });
+  const t = await W.userToken(env, USER);
+  const got = await W.identify(cookieRequest(`a@example.test.${t}`), env, [USER]);
+  assert.equal(got && got.email, "a@example.test");
+});
+
+test("identify also accepts a legacy-derivation cookie", async () => {
+  // TEMPORARY (migration) — this test is removed in the finish step.
+  const kv = memKV({ "users:secrets": JSON.stringify({ "a@example.test": "pbkdf2$1$AAAA$BBBB" }) });
+  const env = envWith(kv, { SESSION_SECRET: "s3cret" });
+  const legacy = await W.legacyUserToken(env, USER);
+  const got = await W.identify(cookieRequest(`a@example.test.${legacy}`), env, [USER]);
+  assert.equal(got && got.email, "a@example.test", "existing sessions survive the deploy");
+});
+
+test("identify rejects a forged or stale token", async () => {
+  const kv = memKV({ "users:secrets": JSON.stringify({ "a@example.test": "pbkdf2$1$AAAA$BBBB" }) });
+  const env = envWith(kv, { SESSION_SECRET: "s3cret" });
+  assert.equal(await W.identify(cookieRequest("a@example.test.deadbeef"), env, [USER]), null);
+  assert.equal(await W.identify(cookieRequest("nosuchdot"), env, [USER]), null);
+  assert.equal(await W.identify(new Request("https://example.test/"), env, [USER]), null);
+});
+
+test("changing the stored secret invalidates existing cookies", async () => {
+  const kv = memKV({ "users:secrets": JSON.stringify({ "a@example.test": "pbkdf2$1$AAAA$BBBB" }) });
+  const env = envWith(kv, { SESSION_SECRET: "s3cret" });
+  const t = await W.userToken(env, USER);
+  await kv.put("users:secrets", JSON.stringify({ "a@example.test": "pbkdf2$1$CCCC$DDDD" }));
+  assert.equal(await W.identify(cookieRequest(`a@example.test.${t}`), env, [USER]), null);
+});
+
+test("effectiveSecret prefers the KV override over the roster value", async () => {
+  const kv = memKV({ "users:secrets": JSON.stringify({ "a@example.test": "override" }) });
+  const env = envWith(kv);
+  assert.equal(await W.effectiveSecret(env, { email: "a@example.test", pass: "roster" }), "override");
+  assert.equal(await W.effectiveSecret(env, { email: "b@example.test", pass: "roster" }), "roster");
+  assert.equal(await W.effectiveSecret(env, { email: "b@example.test", passHash: "pbkdf2$x", pass: "roster" }), "pbkdf2$x");
+  assert.equal(await W.effectiveSecret(env, { email: "c@example.test" }), "");
+});

@@ -262,18 +262,23 @@ async function loadConfig(env) {
   }
 }
 
+// Legacy token derivation — SHA-256("gv:" + secret). Still ACCEPTED during migration
+// (see identify) and used as the fallback when SESSION_SECRET is unset, but new
+// tokens are always issued by hmacToken().
 async function tokenFor(secret) {
-  const data = new TextEncoder().encode("gv:" + secret);
-  const digest = await crypto.subtle.digest("SHA-256", data);
-  return [...new Uint8Array(digest)]
-    .map((b) => b.toString(16).padStart(2, "0"))
-    .join("");
+  return toHex(await crypto.subtle.digest("SHA-256", encodeUtf8("gv:" + secret)));
+}
+
+async function hmacToken(secret, message) {
+  const key = await crypto.subtle.importKey(
+    "raw", encodeUtf8(secret), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
+  return toHex(await crypto.subtle.sign("HMAC", key, encodeUtf8(message)));
 }
 
 // ---- Identity helpers -------------------------------------------------------
-function userByEmail(email) {
+function userByEmail(email, users = USERS) {
   const e = String(email == null ? "" : email).trim().toLowerCase();
-  return USERS.find((u) => u.email.toLowerCase() === e) || null;
+  return users.find((u) => u.email.toLowerCase() === e) || null;
 }
 
 // Safe-to-expose view of a user — never includes the password.
@@ -300,8 +305,9 @@ function avatarUrl(u) {
   return u.avatar.startsWith("data:") ? "/__avatar/" + avatarKey(u) : u.avatar;
 }
 
-// Effective password = admin-set KV override ?? the seeded default. One kv.get.
-async function effectivePass(env, u) {
+// Effective secret = admin-set KV override ?? the roster value. One kv.get.
+// The value is a pbkdf2 hash string, or — during migration only — a legacy plaintext.
+async function effectiveSecret(env, u) {
   if (!u) return "";
   try {
     const k = kvFor(env);
@@ -309,31 +315,44 @@ async function effectivePass(env, u) {
     const ov = raw ? JSON.parse(raw) : {};
     if (ov && typeof ov[u.email] === "string" && ov[u.email]) return ov[u.email];
   } catch (e) {}
-  return u.pass || "";
+  return u.passHash || u.pass || "";
 }
 
-// Cookie token binds the email to the (effective) password: SHA-256("gv:email:pass").
-// Changing a password invalidates that user's existing cookies (token no longer
-// matches) — a free "log everyone out on password change", which is what we want.
+// Session cookie token: HMAC-SHA-256(SESSION_SECRET, "email:effectiveSecret").
+// SESSION_SECRET is a runtime env var — NEVER baked into the bundle — so a cookie
+// cannot be forged from repo-visible data. Binding to the effective secret means
+// changing or clearing a password invalidates that user's cookies for free.
 async function userToken(env, u) {
-  return tokenFor(u.email + ":" + (await effectivePass(env, u)));
+  const secret = await effectiveSecret(env, u);
+  const sessionSecret = env && env.SESSION_SECRET;
+  if (sessionSecret) return hmacToken(sessionSecret, u.email + ":" + secret);
+  return tokenFor(u.email + ":" + secret);
 }
 
-// Resolve the signed-in user from the gv_user cookie ("<email>.<token>"), verifying
-// the token against that user's effective password. Stateless — no session store.
-async function identify(request, env) {
-  if (!USERS.length) return null;
+// TEMPORARY (migration) — remove in the finish step
+// The pre-HMAC derivation. Accepted by identify() so sessions created before the
+// hashed worker deployed keep working; never issued.
+async function legacyUserToken(env, u) {
+  return tokenFor(u.email + ":" + (await effectiveSecret(env, u)));
+}
+
+// Resolve the signed-in user from the gv_user cookie ("<email>.<token>"). Stateless —
+// no session store. `users` defaults to the injected USERS; tests pass their own list.
+async function identify(request, env, users = USERS) {
+  if (!users.length) return null;
   const cookies = request.headers.get("Cookie") || "";
   const c = cookies.split(/;\s*/).find((x) => x.startsWith(USER_COOKIE + "="));
   if (!c) return null;
   const val = c.slice(USER_COOKIE.length + 1);
   const dot = val.lastIndexOf(".");
   if (dot < 1) return null;
-  const u = userByEmail(val.slice(0, dot));
+  const u = userByEmail(val.slice(0, dot), users);
   if (!u) return null;
   const token = val.slice(dot + 1);
-  const expect = await userToken(env, u);
-  return token.length === expect.length && token === expect ? u : null;
+  if (safeEqual(token, await userToken(env, u))) return u;
+  // TEMPORARY (migration) — remove in the finish step
+  if (safeEqual(token, await legacyUserToken(env, u))) return u;
+  return null;
 }
 
 // Record when a signed-in user was last seen ("last connection" in the admin list).
@@ -604,7 +623,7 @@ async function publishApi(request, url, env) {
     try { body = await request.json(); } catch (e) { return jsonResponse({ error: "bad-json" }, 400); }
     const u = userByEmail(body && body.email);
     const pass = String((body && body.password) || "");
-    const real = u ? await effectivePass(env, u) : "";
+    const real = u ? await effectiveSecret(env, u) : "";
     if (!u || !real || pass.length !== real.length || pass !== real) {
       return jsonResponse({ error: "bad-credentials" }, 403);
     }
@@ -1765,7 +1784,6 @@ async function adminUsersApi(request, url, env, me) {
         email: u.email, name: u.name, role: u.role || "user",
         initials: u.initials || "", color: u.color || "#4f46e5",
         avatar: avatarUrl(u),
-        pass: await effectivePass(env, u),
         lastSeen,
       });
     }
@@ -2071,7 +2089,7 @@ export default {
       if (usersActive) {
         const u = userByEmail(form.get("email"));
         const pass = (form.get("password") || "").toString();
-        const real = u ? await effectivePass(env, u) : "";
+        const real = u ? await effectiveSecret(env, u) : "";
         if (u && real && pass.length === real.length && pass === real) {
           const token = await userToken(env, u);
           if (ctx && ctx.waitUntil) ctx.waitUntil(touchLastSeen(env, u));
@@ -2216,5 +2234,6 @@ export default {
 // __testables — it exists only so test/worker.test.mjs can import them.
 export const __testables = {
   hashPassword, verifyPassword, isPassHash, safeEqual, userByEmail,
+  tokenFor, hmacToken, userToken, legacyUserToken, identify, effectiveSecret,
   PBKDF2_ITERATIONS,
 };
