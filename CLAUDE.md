@@ -163,14 +163,31 @@ next successful login.
   `SHA-256("gv:<email>:")` when there is no secret, so without this guard anyone who
   knows an email could forge a cookie for that account — including a reset admin, which
   hands over the admin API and admin-only spaces. **This is not a migration path and
-  must survive the finish step.** It signs no legitimate user out: `/__auth`,
-  `/__publish/_login/token` and `invitePost` all establish a truthy secret before
-  issuing a cookie.
+  must survive the finish step.** It signs no legitimate user out: the two cookie
+  issuers, `/__auth` and `invitePost`, both establish a truthy secret before issuing
+  one. (`/__publish/_login/token` runs the same credential check but mints a publish
+  token, not a session.)
+- **⚠️ `identify()` resolves the effective secret ONCE and passes it to both token
+  derivations.** Re-resolving inside `userToken`/`legacyUserToken` is not atomic with
+  the guard above: a truthy first read passes the guard while a later read returns `""`,
+  and the derivation then collapses to the publicly computable `tokenFor("<email>:")` —
+  reopening exactly the forgery the guard exists to stop. The `resolved` parameter on
+  both functions is optional; every other caller resolves its own.
 - **⚠️ `effectiveSecret` fails closed on a KV error.** No KV binding at all (offline and
   raw engine builds) falls back to the roster, as it must. But if KV *is* bound and the
-  read or the JSON parse throws, the answer is `""` — never the roster. Restoring a
-  blanket `catch` that falls through would make every tombstone evaporate at once on one
-  transient KV blip and put every leaked roster password back in service.
+  read or the JSON parse throws — or the stored value is not a plain object (an array
+  passes `typeof x === "object"`, hence the explicit `Array.isArray` rejection) — the
+  answer is `""`, never the roster. Restoring a blanket `catch` that falls through would
+  make every tombstone evaporate at once on one transient KV blip and put every leaked
+  roster password back in service.
+  - **⛔ Do NOT unbind the `COMMENTS` KV namespace to recover from a KV outage.** The
+    fail-closed trade is deliberate and it has no in-app escape hatch: while KV is down
+    nobody — admins included — can log in, and there is no recovery path in the product.
+    The one thing a locked-out operator would naturally reach for is unbinding KV, and
+    that does not fail closed: "no binding at all" is the *offline build* case, which
+    falls straight through to the roster and puts **all nine leaked plaintext passwords
+    back in service at once**, site-wide. Wait the outage out, or fix the binding —
+    never remove it.
 - Sessions are HMACs keyed on the runtime `SESSION_SECRET`, bound to the user's effective
   secret, so changing or clearing a password invalidates that user's cookies for free.
   This holds only when `SESSION_SECRET` is actually set on the project — `userToken()`

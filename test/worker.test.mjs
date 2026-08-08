@@ -353,6 +353,163 @@ test("upgrade leaves a tombstone alone even when the roster holds a plaintext", 
   assert.equal(stored["a@example.test"], null, "and not resurrected into a secret");
 });
 
+// ---- upgradeSecretIfLegacy runs a ~100ms PBKDF2 between reading users:secrets and
+// writing it back. Anything that lands in that window is clobbered by the stale
+// in-memory copy of the WHOLE map — which can drop another user's revocation
+// tombstone (their leaked roster password goes live again) or overwrite a reset of
+// the upgrading user with a hash of the password that reset was revoking.
+//
+// The interleaving is simulated deterministically: `onFirstGet` fires once, right
+// after the upgrade's first read of users:secrets resolves — i.e. exactly where the
+// real concurrent write lands, during the hash.
+
+function memKVRacing(initial = {}, { onFirstGet } = {}) {
+  const store = new Map(Object.entries(initial));
+  let gets = 0, puts = 0;
+  const kv = {
+    store,
+    get gets() { return gets; },
+    get puts() { return puts; },
+    async get(k) {
+      const v = store.has(k) ? store.get(k) : null;
+      gets++;
+      if (gets === 1 && onFirstGet) await onFirstGet(kv);
+      return v;
+    },
+    async put(k, v) { puts++; store.set(k, v); },
+    async delete(k) { store.delete(k); },
+  };
+  return kv;
+}
+
+test("upgrade must not clobber ANOTHER user's tombstone written while it hashes", async () => {
+  // Alice logs in with her leaked roster password; mid-PBKDF2 the admin resets Bob.
+  // If Alice's upgrade writes its stale map back, Bob's key is absent again and
+  // effectiveSecret falls through to Bob's leaked roster `pass` — revocation undone.
+  const kv = memKVRacing({}, {
+    async onFirstGet(k) {
+      const raw = await k.store.get("users:secrets");
+      const ov = raw ? JSON.parse(raw) : {};
+      ov["bob@example.test"] = null; // the admin's reset tombstone
+      k.store.set("users:secrets", JSON.stringify(ov));
+    },
+  });
+  const env = envWith(kv);
+  const alice = { email: "alice@example.test", pass: "leaked-seed-2026" };
+  const bob = { email: "bob@example.test", pass: "leaked-seed-2026" };
+
+  await W.upgradeSecretIfLegacy(env, alice, "leaked-seed-2026");
+
+  const stored = JSON.parse(await kv.store.get("users:secrets"));
+  assert.ok(
+    Object.prototype.hasOwnProperty.call(stored, "bob@example.test"),
+    "CRITICAL: Bob's tombstone must survive Alice's concurrent upgrade"
+  );
+  assert.equal(stored["bob@example.test"], null, "and must still be a tombstone");
+  assert.equal(await W.effectiveSecret(env, bob), "", "Bob's leaked password must stay revoked");
+  assert.ok(W.isPassHash(stored["alice@example.test"]), "Alice's own upgrade still landed");
+});
+
+test("upgrade must abandon when the upgrading user is tombstoned while it hashes", async () => {
+  // The admin resets Alice mid-hash. Writing hash(leakedPassword) here reverses the
+  // reset with a well-formed pbkdf2$… value nothing can tell from a real migration.
+  const kv = memKVRacing({}, {
+    async onFirstGet(k) {
+      k.store.set("users:secrets", JSON.stringify({ "alice@example.test": null }));
+    },
+  });
+  const env = envWith(kv);
+  const alice = { email: "alice@example.test", pass: "leaked-seed-2026" };
+
+  await W.upgradeSecretIfLegacy(env, alice, "leaked-seed-2026");
+
+  const stored = JSON.parse(await kv.store.get("users:secrets"));
+  assert.ok(
+    Object.prototype.hasOwnProperty.call(stored, "alice@example.test"),
+    "the tombstone key must still be there"
+  );
+  assert.ok(!stored["alice@example.test"], "CRITICAL: the reset must not be reversed by the upgrade");
+  assert.equal(await W.effectiveSecret(env, alice), "", "and the leaked password stays revoked");
+});
+
+test("upgrade must abandon when a redemption writes a new password while it hashes", async () => {
+  // The user redeems their invite and picks a new password mid-hash. A stale write
+  // here kills the new password and puts the leaked one back in service.
+  const chosen = await W.hashPassword("a properly long password");
+  const kv = memKVRacing({}, {
+    async onFirstGet(k) {
+      k.store.set("users:secrets", JSON.stringify({ "alice@example.test": chosen }));
+    },
+  });
+  const env = envWith(kv);
+  const alice = { email: "alice@example.test", pass: "leaked-seed-2026" };
+
+  await W.upgradeSecretIfLegacy(env, alice, "leaked-seed-2026");
+
+  const stored = JSON.parse(await kv.store.get("users:secrets"));
+  assert.equal(stored["alice@example.test"], chosen, "the freshly chosen password must survive");
+  assert.equal(await W.verifyPassword("leaked-seed-2026", stored["alice@example.test"]), false);
+});
+
+test("upgrade of a plaintext ALREADY in users:secrets still works (re-read is not an early bail)", async () => {
+  // Regression guard on the fix itself: for a legacy entry that IS present in the map,
+  // "the key exists on re-read" is the normal case, not a signal to abandon.
+  const kv = memKV({ "users:secrets": JSON.stringify({ "a@example.test": "augur-legacy-2026" }) });
+  const env = envWith(kv);
+  await W.upgradeSecretIfLegacy(env, { email: "a@example.test" }, "augur-legacy-2026");
+  const stored = JSON.parse(await kv.get("users:secrets"))["a@example.test"];
+  assert.ok(W.isPassHash(stored), "rewritten as a hash");
+  assert.equal(await W.verifyPassword("augur-legacy-2026", stored), true);
+});
+
+// ---- typeof [] === "object", so an array value sails through a bare typeof check,
+// hasOwnProperty then misses every email and EVERY user falls through to the roster
+// password — the exact fail-open the corruption guard exists to prevent.
+
+test("effectiveSecret fails closed when users:secrets is an array", async () => {
+  const env = envWith(memKV({ "users:secrets": JSON.stringify([{ "a@example.test": "x" }]) }));
+  assert.equal(
+    await W.effectiveSecret(env, { email: "a@example.test", pass: "leaked-seed" }), "",
+    "an array is corrupt, not empty — it must not fall through to the roster password"
+  );
+  const env2 = envWith(memKV({ "users:secrets": "[]" }));
+  assert.equal(await W.effectiveSecret(env2, { email: "a@example.test", pass: "leaked-seed" }), "");
+});
+
+test("upgrade writes nothing when users:secrets is an array", async () => {
+  // Assigning onto an array and stringifying silently DROPS the map: the write looks
+  // successful and stores nothing, so asserting on the stored value alone can't see
+  // the bug. Assert that no write is attempted at all.
+  const kv = memKVRacing({ "users:secrets": "[]" });
+  await W.upgradeSecretIfLegacy(envWith(kv), { email: "a@example.test", pass: "leaked-seed-2026" }, "leaked-seed-2026");
+  assert.equal(kv.puts, 0, "a corrupt array must be rejected outright, not written onto");
+  assert.equal(await kv.store.get("users:secrets"), "[]", "corrupt value left untouched, no credential minted");
+});
+
+// ---- identify must bind the secret it GUARDED on to the secret it DERIVES from.
+// Three separate effectiveSecret reads mean a truthy read can pass the guard while a
+// later read returns "" — and tokenFor(email + ":") is publicly computable.
+
+test("identify resolves the effective secret once, so a mid-request change cannot forge a session", async () => {
+  const hash = await W.hashPassword("a properly long password");
+  let n = 0;
+  const kv = {
+    get gets() { return n; },
+    async get(k) {
+      if (k !== "users:secrets") return null;
+      n++;
+      // First read: a live secret (passes the guard). Every later read: a tombstone.
+      return JSON.stringify(n === 1 ? { "a@example.test": hash } : { "a@example.test": null });
+    },
+    async put() {}, async delete() {},
+  };
+  const env = envWith(kv, { SESSION_SECRET: "s3cret" });
+  const forged = await W.tokenFor("a@example.test:"); // the secretless, publicly computable token
+  const got = await W.identify(cookieRequest(`a@example.test.${forged}`), env, [USER]);
+  assert.equal(got, null, "CRITICAL: a forged secretless cookie must never identify a user");
+  assert.equal(kv.gets, 1, "and the secret is read exactly once per identify");
+});
+
 test("mintInvite issues a token that reads back to its email", async () => {
   const kv = memKV(); const env = envWith(kv);
   const t = await W.mintInvite(env, "a@example.test");

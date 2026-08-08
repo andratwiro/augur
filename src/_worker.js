@@ -332,7 +332,11 @@ async function effectiveSecret(env, u) {
     const raw = await kv.get(USER_SECRETS_KEY);
     const parsed = raw ? JSON.parse(raw) : {};
     // A value that isn't a map is corrupt, not empty — same treatment as a bad read.
-    if (!parsed || typeof parsed !== "object") return "";
+    // Array.isArray is NOT redundant: typeof [] === "object", so an array sails
+    // through the typeof check, hasOwnProperty then misses every email and EVERY
+    // user falls through to their roster password at once — the exact fail-open
+    // this guard exists to prevent.
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return "";
     ov = parsed;
   } catch (e) {
     // KV IS bound but the read or the parse failed. FAIL CLOSED. Falling through to
@@ -363,25 +367,64 @@ async function effectiveSecret(env, u) {
 // The one shape that must NOT be upgraded is a key that is present holding a falsy
 // value: that is a revocation tombstone, and minting a hash over it would resurrect
 // an account an admin just reset.
+//
+// ⚠️ ORDERING IS LOAD-BEARING: hash FIRST, then re-read users:secrets immediately
+// before merging and writing. `users:secrets` is ONE shared key holding EVERY user,
+// and PBKDF2 takes ~100ms. Reading the map, hashing, then writing the stale copy back
+// clobbers everything that landed in that window — and the three things that land
+// there are all credential resurrections:
+//   - another user's reset tombstone disappears, so effectiveSecret falls back to
+//     THEIR leaked roster password and the admin list shows them as "accepted";
+//   - a reset of THIS user is reversed by hash(the password being revoked), stored as
+//     a well-formed pbkdf2$… value nothing can distinguish from a real migration;
+//   - a password chosen at invite redemption is overwritten by the leaked one.
+// So: hash, re-read, re-check against the FRESH map, and merge into it — never into
+// the stale copy, or a concurrent entry for a different user is dropped.
+//
+// This NARROWS the window; it does not close it. KV has no compare-and-swap and its
+// reads are eventually consistent across colos, so the re-read can legitimately
+// return a stale map from another colo and the clobber survives. The structural fix
+// is per-user keys (`users:secret:<email>`) instead of one shared map, which removes
+// cross-user clobbering entirely and reduces the same-user case to a last-write-wins
+// on one key. The identical clobber shape also exists between setUserSecret and the
+// reset handler in adminUsersApi (both read-modify-write the whole map); that is
+// pre-existing and out of scope here.
 async function upgradeSecretIfLegacy(env, u, password) {
   try {
     const kv = kvFor(env);
     if (!kv || !u) return;
     const raw = await kv.get(USER_SECRETS_KEY);
     const ov = raw ? JSON.parse(raw) : {};
-    if (!ov || typeof ov !== "object") return;
+    // Array.isArray is NOT redundant: typeof [] === "object", and assigning onto an
+    // array then stringifying SILENTLY DROPS the assignment — a write that reports
+    // success and stores nothing. Reject the corrupt shape outright.
+    if (!ov || typeof ov !== "object" || Array.isArray(ov)) return;
     // Whichever value the login just verified against — mirrors effectiveSecret's
     // precedence, so a tombstone resolves to null/"" and falls out below.
-    const legacy = Object.prototype.hasOwnProperty.call(ov, u.email)
-      ? ov[u.email]
-      : (u.passHash || u.pass || "");
+    const hadKey = Object.prototype.hasOwnProperty.call(ov, u.email);
+    const legacy = hadKey ? ov[u.email] : (u.passHash || u.pass || "");
     if (!legacy || isPassHash(legacy)) return; // tombstoned, already hashed, or nothing to upgrade
     // Only upgrade a plaintext the supplied password actually matches: this can be
     // reached for an absent key, where an unverified write would MINT a credential
     // rather than merely rewrite one.
     if (!(await verifyPassword(password, legacy))) return;
-    ov[u.email] = await hashPassword(password);
-    await kv.put(USER_SECRETS_KEY, JSON.stringify(ov));
+
+    // ---- the slow part, done BEFORE the read we actually write against ----
+    const hash = await hashPassword(password);
+
+    const raw2 = await kv.get(USER_SECRETS_KEY);
+    const fresh = raw2 ? JSON.parse(raw2) : {};
+    if (!fresh || typeof fresh !== "object" || Array.isArray(fresh)) return;
+    // Re-check on the FRESH map. If this user had no key and now has one, someone
+    // wrote while we hashed — a reset tombstone or a redemption's hash — and either
+    // way our value is stale: abandon rather than overwrite it. If the key was already
+    // there, it must still hold the exact plaintext we verified against; anything else
+    // means it changed under us.
+    if (hadKey ? fresh[u.email] !== legacy
+               : Object.prototype.hasOwnProperty.call(fresh, u.email)) return;
+    // Merge into the fresh map, never the stale one.
+    fresh[u.email] = hash;
+    await kv.put(USER_SECRETS_KEY, JSON.stringify(fresh));
   } catch (e) {}
 }
 
@@ -549,8 +592,11 @@ async function invitePost(request, url, env, users = USERS) {
 // SESSION_SECRET is a runtime env var — NEVER baked into the bundle — so a cookie
 // cannot be forged from repo-visible data. Binding to the effective secret means
 // changing or clearing a password invalidates that user's cookies for free.
-async function userToken(env, u) {
-  const secret = await effectiveSecret(env, u);
+// `resolved` is an OPTIONAL pre-resolved effective secret. identify() passes the one
+// value it guarded on so the guard and the derivation cannot disagree; every other
+// caller omits it and this resolves its own, unchanged.
+async function userToken(env, u, resolved) {
+  const secret = resolved === undefined ? await effectiveSecret(env, u) : resolved;
   const sessionSecret = env && env.SESSION_SECRET;
   if (sessionSecret) return hmacToken(sessionSecret, u.email + ":" + secret);
   return tokenFor(u.email + ":" + secret);
@@ -559,8 +605,9 @@ async function userToken(env, u) {
 // TEMPORARY (migration) — remove in the finish step
 // The pre-HMAC derivation. Accepted by identify() so sessions created before the
 // hashed worker deployed keep working; never issued.
-async function legacyUserToken(env, u) {
-  return tokenFor(u.email + ":" + (await effectiveSecret(env, u)));
+async function legacyUserToken(env, u, resolved) {
+  const secret = resolved === undefined ? await effectiveSecret(env, u) : resolved;
+  return tokenFor(u.email + ":" + secret);
 }
 
 // Resolve the signed-in user from the gv_user cookie ("<email>.<token>"). Stateless —
@@ -582,11 +629,19 @@ async function identify(request, env, users = USERS) {
   // path — this must survive the finish step. It signs no legitimate user out: /__auth
   // and /__publish/_login/token both require a truthy secret before issuing a cookie,
   // and invitePost issues its cookie only after writing the hash.
-  if (!(await effectiveSecret(env, u))) return null;
+  //
+  // Resolved ONCE and passed down. Three independent reads (guard, userToken,
+  // legacyUserToken) are not atomic: a truthy first read passes the guard while a
+  // later read returns "" — mid-request reset, or KV's own eventual consistency —
+  // and the derivation then reduces to the publicly computable tokenFor("<email>:"),
+  // accepting a forged cookie the guard was there to stop. Binding the guarded value
+  // to the derived value also cuts 2-3 KV reads per cookie-bearing request to one.
+  const secret = await effectiveSecret(env, u);
+  if (!secret) return null;
   const token = val.slice(dot + 1);
-  if (safeEqual(token, await userToken(env, u))) return u;
+  if (safeEqual(token, await userToken(env, u, secret))) return u;
   // TEMPORARY (migration) — remove in the finish step
-  if (safeEqual(token, await legacyUserToken(env, u))) return u;
+  if (safeEqual(token, await legacyUserToken(env, u, secret))) return u;
   return null;
 }
 
