@@ -659,6 +659,36 @@ async function adminTokensApi(request, env, me) {
   return jsonResponse({ error: "method-not-allowed" }, 405);
 }
 
+// ---- Admin: bundle-store usage ----------------------------------------------
+// Sums the store (5-min isolate cache — a full list is a few subrequests at
+// ~2.5k objects) against the R2 free-tier ceiling so the admin panel can show
+// a fill gauge long before a publish would ever hit the wall.
+const STORE_LIMIT_BYTES = 10 * 1024 * 1024 * 1024; // R2 free tier: 10 GB
+let STORAGE_CACHE = { at: 0, data: null };
+async function adminStorageApi(env, me) {
+  if (!me || me.role !== "admin") return jsonResponse({ error: "forbidden" }, 403);
+  if (!env.BUNDLES) return jsonResponse({ enabled: false });
+  if (STORAGE_CACHE.data && Date.now() - STORAGE_CACHE.at < 5 * 60 * 1000) {
+    return jsonResponse(STORAGE_CACHE.data);
+  }
+  let bytes = 0, objects = 0, cursor;
+  try {
+    do {
+      const page = await env.BUNDLES.list({ cursor, limit: 1000 });
+      for (const o of page.objects) { bytes += o.size; objects++; }
+      cursor = page.truncated ? page.cursor : undefined;
+    } while (cursor);
+  } catch (e) { return jsonResponse({ error: "list-failed" }, 502); }
+  const data = {
+    enabled: true, bytes, objects,
+    limitBytes: STORE_LIMIT_BYTES,
+    pct: Math.round((bytes / STORE_LIMIT_BYTES) * 1000) / 10,
+    at: new Date().toISOString(),
+  };
+  STORAGE_CACHE = { at: Date.now(), data };
+  return jsonResponse(data);
+}
+
 function loginPage(redirect, error) {
   const safeRedirect = String(redirect).replace(/"/g, "&quot;");
   return `<!doctype html>
@@ -1880,6 +1910,9 @@ export default {
 
     // Admin publish-token API — mint/list/revoke per-space publish tokens.
     if (url.pathname === "/__admin/tokens") return adminTokensApi(request, env, me);
+
+    // Admin bundle-store gauge — bytes/objects vs the free-tier ceiling.
+    if (url.pathname === "/__admin/storage") return adminStorageApi(env, me);
 
     // Login form submission.
     if (request.method === "POST" && url.pathname === "/__auth") {

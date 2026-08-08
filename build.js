@@ -4039,7 +4039,35 @@ function renderAdminPage() {
   <header class="folderbar"><h1 class="folderbar__title">Admin</h1><span class="folderbar__rule"></span></header>
   <p class="admin-intro">Internal users and their passwords (admin-only). Editing a password saves immediately and signs that person out — they sign back in with the new one. Names, emails and roles live in <code>src/identity.json</code>.</p>
   <div class="admin-users" data-admin-users><p class="empty">Loading…</p></div>
-  <script>${ADMIN_JS}</script>`;
+  <section class="admin-storage" data-admin-storage hidden style="max-width:700px; margin-top:26px;">
+    <h2 style="font-size:15px; font-weight:600; margin:0 0 10px;">Storage</h2>
+    <div style="padding:13px 14px; border:1px solid rgba(16,17,26,0.09); border-radius:12px; background:#fff;">
+      <div style="display:flex; justify-content:space-between; font-size:13px; color:#5b626e; margin-bottom:8px;">
+        <span data-st-label>Checking…</span><span data-st-pct></span>
+      </div>
+      <div style="height:6px; border-radius:4px; background:rgba(16,17,26,0.07); overflow:hidden;">
+        <div data-st-bar style="height:100%; width:0%; border-radius:4px; background:#2c2150; transition:width .3s ease;"></div>
+      </div>
+      <p data-st-note style="font-size:12px; color:#9aa0ab; margin:8px 0 0;"></p>
+    </div>
+  </section>
+  <script>${ADMIN_JS}</script>
+  <script>(function(){
+    // Bundle-store fill gauge. Hidden entirely on instances without a store.
+    fetch('/__admin/storage').then(function(r){ return r.ok ? r.json() : null; }).then(function(d){
+      if (!d || !d.enabled) return;
+      var el = document.querySelector('[data-admin-storage]');
+      el.hidden = false;
+      var gb = function(n){ return (n / 1073741824).toFixed(2); };
+      el.querySelector('[data-st-label]').textContent = gb(d.bytes) + ' GB of ' + gb(d.limitBytes) + ' GB used, ' + d.objects + ' objects';
+      el.querySelector('[data-st-pct]').textContent = d.pct + '%';
+      var bar = el.querySelector('[data-st-bar]');
+      bar.style.width = Math.max(1, Math.min(100, d.pct)) + '%';
+      if (d.pct >= 80) { bar.style.background = '#b42318'; el.querySelector('[data-st-note]').textContent = 'Close to the free-tier ceiling. Prune old versions or upgrade the plan before publishing large assets.'; }
+      else if (d.pct >= 50) { bar.style.background = '#b45309'; el.querySelector('[data-st-note]').textContent = 'Comfortable, worth a look at what is largest.'; }
+      else { el.querySelector('[data-st-note]').textContent = 'Plenty of room. Publishes reuse identical files, so growth stays slow.'; }
+    }).catch(function(){});
+  })();</script>`;
   return shell({ title: "Admin · Augur", activeTab: "admin", body });
 }
 
