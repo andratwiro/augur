@@ -52,7 +52,8 @@ Two rules that bite:
 
 Join the board's room as a visible agent and stream per-node ops — never a
 full-state `POST /__board` while people are on it. The client:
-`../scripts/clawd-canvas.mjs` (`ClawdCanvas`) — connect, then `moveCursorTo`,
+`../scripts/clawd-canvas.mjs` (`ClawdCanvas`; needs Node 22+ for the global
+WebSocket) — connect, then `moveCursorTo`,
 `pose('thinking'|'sparkles'|…)`, `say()/unsay()`, `focus(id)`,
 `upsert/del/rename`, `dragNode`, `typeNode`, `status()`. Long sessions run the
 daemon (`node clawd-canvas.mjs daemon <boardPath> <cmdFile>` — launch detached;
