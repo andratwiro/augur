@@ -4051,11 +4051,12 @@ function renderAdminPage() {
     .au__act { display: flex; gap: .4rem; align-items: center; }
     .au__link { font: 12px/1.3 ui-monospace, monospace; width: 16rem; padding: .3rem .4rem;
                 border: 1px solid #d4d4d8; border-radius: 6px; }
+    .au__reset, .au__copy { font-size: 12px; padding: .3rem .6rem; border: 1px solid #d4d4d8; border-radius: 6px; background: #fff; cursor: pointer; }
     .au__msg{ font-size:12px; color:#5b626e; min-width:42px; }
     @media (max-width:620px){ .au{ flex-wrap:wrap; } .au__act{ width:100%; } .au__link{ flex:1 1 auto; width:auto; } }
   </style>
   <header class="folderbar"><h1 class="folderbar__title">Admin</h1><span class="folderbar__rule"></span></header>
-  <p class="admin-intro">Internal users and their passwords (admin-only). Editing a password saves immediately and signs that person out — they sign back in with the new one. Names, emails and roles live in <code>src/identity.json</code>.</p>
+  <p class="admin-intro">Lists internal users. Reset kills someone's password immediately and produces a single-use link you send them; you never see or set passwords. Names, emails and roles live in <code>src/identity.json</code>.</p>
   <div class="admin-users" data-admin-users><p class="empty">Loading…</p></div>
   <section class="admin-storage" data-admin-storage hidden style="max-width:700px; margin-top:26px;">
     <h2 style="font-size:15px; font-weight:600; margin:0 0 10px;">Storage</h2>
