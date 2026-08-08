@@ -49,6 +49,8 @@ let BUILDER_CONFIG = null;
 const USER_COOKIE = "gv_user";              // value: "<email>.<token>"
 const USER_SECRETS_KEY = "users:secrets";   // KV {email: password} — admin overrides
 const LASTSEEN_PREFIX = "users:lastseen:";  // KV per-user ISO stamp — admin list column
+const USER_INVITES_KEY = "users:invites";   // KV {token: {email, expires}}
+const INVITE_TTL_MS = 7 * 24 * 60 * 60 * 1000; // links get pasted into chat — expire them
 
 // Build id for the live-reload poller — routing.json carries this build's id; it's
 // the FALLBACK version for any path not in VERSION_MAP (index/shell pages, assets).
@@ -337,6 +339,58 @@ async function upgradeSecretIfLegacy(env, u, password) {
     ov[u.email] = await hashPassword(password);
     await kv.put(USER_SECRETS_KEY, JSON.stringify(ov));
   } catch (e) {}
+}
+
+// ---- Invite / reset tokens ---------------------------------------------------
+// One mechanism serves account setup and password recovery — they differ only in
+// wording. A token is single-use (consumed when a password is set), expires on its
+// own, and minting a new one for a user drops any outstanding token for that user.
+
+async function readInvites(kv) {
+  const raw = kv ? await kv.get(USER_INVITES_KEY) : null;
+  const map = raw ? JSON.parse(raw) : {};
+  return map && typeof map === "object" ? map : {};
+}
+
+// Drop expired entries on every write — the map stays small without a sweeper.
+function pruneInvites(map, nowMs) {
+  const out = {};
+  for (const [tok, rec] of Object.entries(map)) {
+    if (rec && typeof rec.expires === "number" && rec.expires > nowMs) out[tok] = rec;
+  }
+  return out;
+}
+
+async function mintInvite(env, email, nowMs = Date.now()) {
+  const kv = kvFor(env);
+  if (!kv) throw new Error("no-kv-binding");
+  const token = toB64(crypto.getRandomValues(new Uint8Array(32)))
+    .replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+  const map = pruneInvites(await readInvites(kv), nowMs);
+  // Issuing invalidates this user's outstanding links, so there is never more than one.
+  for (const [tok, rec] of Object.entries(map)) if (rec.email === email) delete map[tok];
+  map[token] = { email, expires: nowMs + INVITE_TTL_MS };
+  await kv.put(USER_INVITES_KEY, JSON.stringify(map));
+  return token;
+}
+
+async function readInvite(env, token, nowMs = Date.now()) {
+  if (typeof token !== "string" || !token) return null;
+  const kv = kvFor(env);
+  if (!kv) return null;
+  const rec = (await readInvites(kv))[token];
+  if (!rec || typeof rec.expires !== "number" || rec.expires <= nowMs) return null;
+  return rec.email;
+}
+
+async function consumeInvite(env, token, nowMs = Date.now()) {
+  const email = await readInvite(env, token, nowMs);
+  if (!email) return null;
+  const kv = kvFor(env);
+  const map = pruneInvites(await readInvites(kv), nowMs);
+  delete map[token];
+  await kv.put(USER_INVITES_KEY, JSON.stringify(map));
+  return email;
 }
 
 // Session cookie token: HMAC-SHA-256(SESSION_SECRET, "email:effectiveSecret").
@@ -2261,5 +2315,7 @@ export const __testables = {
   hashPassword, verifyPassword, isPassHash, safeEqual, userByEmail,
   tokenFor, hmacToken, userToken, legacyUserToken, identify, effectiveSecret,
   upgradeSecretIfLegacy,
+  mintInvite, readInvite, consumeInvite,
   PBKDF2_ITERATIONS,
+  INVITE_TTL_MS,
 };

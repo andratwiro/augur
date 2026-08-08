@@ -229,3 +229,48 @@ test("upgradeSecretIfLegacy is a no-op for a tombstoned user", async () => {
   );
   assert.equal(stored["a@example.test"], null, "the tombstone must not be resurrected into a secret");
 });
+
+test("mintInvite issues a token that reads back to its email", async () => {
+  const kv = memKV(); const env = envWith(kv);
+  const t = await W.mintInvite(env, "a@example.test");
+  assert.match(t, /^[A-Za-z0-9_-]{20,}$/, "url-safe, high entropy");
+  assert.equal(await W.readInvite(env, t), "a@example.test");
+});
+
+test("an invite is single-use", async () => {
+  const kv = memKV(); const env = envWith(kv);
+  const t = await W.mintInvite(env, "a@example.test");
+  assert.equal(await W.consumeInvite(env, t), "a@example.test");
+  assert.equal(await W.consumeInvite(env, t), null, "second use fails");
+  assert.equal(await W.readInvite(env, t), null);
+});
+
+test("an invite expires after the TTL", async () => {
+  const kv = memKV(); const env = envWith(kv);
+  const t0 = 1_000_000_000_000;
+  const t = await W.mintInvite(env, "a@example.test", t0);
+  assert.equal(await W.readInvite(env, t, t0 + W.INVITE_TTL_MS - 1), "a@example.test");
+  assert.equal(await W.readInvite(env, t, t0 + W.INVITE_TTL_MS + 1), null, "expired");
+  assert.equal(await W.consumeInvite(env, t, t0 + W.INVITE_TTL_MS + 1), null);
+});
+
+test("minting a new invite invalidates that user's outstanding ones", async () => {
+  const kv = memKV(); const env = envWith(kv);
+  const first = await W.mintInvite(env, "a@example.test");
+  const second = await W.mintInvite(env, "a@example.test");
+  assert.equal(await W.readInvite(env, first), null, "old link is dead");
+  assert.equal(await W.readInvite(env, second), "a@example.test");
+});
+
+test("minting for one user leaves another user's invite alone", async () => {
+  const kv = memKV(); const env = envWith(kv);
+  const a = await W.mintInvite(env, "a@example.test");
+  await W.mintInvite(env, "b@example.test");
+  assert.equal(await W.readInvite(env, a), "a@example.test");
+});
+
+test("unknown tokens read as null", async () => {
+  const kv = memKV(); const env = envWith(kv);
+  assert.equal(await W.readInvite(env, "nope"), null);
+  assert.equal(await W.readInvite(env, ""), null);
+});
