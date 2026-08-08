@@ -159,20 +159,42 @@ Any deployment upgrading from the plaintext scheme must treat every existing pas
 compromised — they were committed to git, so history retains them regardless of any later
 change.
 
-1. Deploy the hashed worker with `SESSION_SECRET` configured. **Set the secret before the
-   deploy lands**, or sessions fall back to a weaker derivation.
-2. Strip `pass` from `identity.json`; the roster keeps only non-secret fields.
-3. Clear `users:secrets` entirely. Every user becomes `pending`, every legacy password
-   stops working at that instant, and every session is invalidated by the HMAC binding.
-4. Issue invite tokens and distribute links to users who need access now. Users who do not
-   need immediate access stay `pending` and are invited on request.
+Migration is **per-user**, not a single cutover, so that an operator can deploy and migrate
+themselves without disturbing anyone else. This requires two temporary compatibility paths,
+both of which are removed together at the end.
 
-Step 3 is a single moment chosen by the operator, rather than a window that closes as
-individual users get round to acting. Anyone left `pending` is locked out — correct, given
-the alternative is leaving a publicly-known password live on an unwatched account.
+**Deploy (invisible to users).**
 
-`scripts/rotate-seeds.mjs` from the `hardening` branch becomes unnecessary: there are no
-seeds to rotate, only hashes to clear.
+1. Set `SESSION_SECRET` on the project **before** the worker deploys.
+2. Deploy the hashed worker with both compatibility paths active:
+   - **Legacy secret** — `verifyPassword` accepts a plaintext value and upgrades it to a
+     hash on successful login. Existing seeds keep working.
+   - **Legacy session** — `identify()` accepts either the old or new cookie derivation,
+     while issuing only the new one. Existing sessions survive the deploy.
+3. Leave `pass` in `identity.json` and leave `users:secrets` populated.
+
+Nobody is signed out and no password stops working. The deploy is a no-op from a user's
+point of view.
+
+**Migrate (per user, operator-paced).** Resetting a user clears their `pass` entry and
+their `users:secrets` hash, and mints an invite token — one action. That user's legacy
+password dies at that moment and their sessions stop verifying. They redeem the link and
+choose their own password.
+
+**Finish (once the last user is migrated).**
+
+1. Confirm no user retains a `pass` field and `users:secrets` contains only `pbkdf2$…`
+   values — no plaintext remains anywhere.
+2. Delete both compatibility paths: the plaintext branch in `verifyPassword` and the legacy
+   derivation branch in `identify()`.
+3. Delete `scripts/rotate-seeds.mjs` — under invite-only there are no seeds to rotate, only
+   hashes to clear.
+4. Deploy. Any session still riding the legacy derivation is invalidated, which is correct:
+   by this point every user has migrated.
+
+The compatibility paths exist only to make step *Migrate* incremental. Leaving them in
+place indefinitely would preserve the ability to authenticate against a plaintext value,
+which is the defect this design exists to remove. Their deletion is not optional cleanup.
 
 ## Testing
 
