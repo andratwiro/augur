@@ -274,3 +274,54 @@ test("unknown tokens read as null", async () => {
   assert.equal(await W.readInvite(env, "nope"), null);
   assert.equal(await W.readInvite(env, ""), null);
 });
+
+// Wraps memKV() and counts get() calls per key, so a regression back to the
+// two-read form (readInvite + readInvites) is caught by a call-count assertion
+// rather than relying on timing/behavior alone.
+function countingKV(initial = {}) {
+  const inner = memKV(initial);
+  const getCounts = new Map();
+  return {
+    store: inner.store,
+    getCounts,
+    async get(k) {
+      getCounts.set(k, (getCounts.get(k) || 0) + 1);
+      return inner.get(k);
+    },
+    async put(k, v) { return inner.put(k, v); },
+    async delete(k) { return inner.delete(k); },
+  };
+}
+
+test("consumeInvite performs exactly one KV get of users:invites", async () => {
+  const kv = countingKV();
+  const env = envWith(kv);
+  const t = await W.mintInvite(env, "a@example.test");
+  kv.getCounts.clear(); // only count gets during consumeInvite itself
+  const email = await W.consumeInvite(env, t);
+  assert.equal(email, "a@example.test");
+  assert.equal(kv.getCounts.get("users:invites"), 1, "consumeInvite must do exactly one get of users:invites");
+});
+
+test("a corrupt invites map degrades to no invites instead of throwing", async () => {
+  const kv = memKV({ "users:invites": "{not json" });
+  const env = envWith(kv);
+  await assert.doesNotReject(async () => {
+    assert.equal(await W.readInvite(env, "anything"), null);
+  });
+  await assert.doesNotReject(async () => {
+    assert.equal(await W.consumeInvite(env, "anything"), null);
+  });
+  let token;
+  await assert.doesNotReject(async () => {
+    token = await W.mintInvite(env, "a@example.test");
+  });
+  assert.equal(await W.readInvite(env, token), "a@example.test", "mintInvite still produces a usable token");
+});
+
+test("an invite is expired exactly at its boundary (nowMs === expires)", async () => {
+  const kv = memKV(); const env = envWith(kv);
+  const t0 = 1_000_000_000_000;
+  const t = await W.mintInvite(env, "a@example.test", t0);
+  assert.equal(await W.readInvite(env, t, t0 + W.INVITE_TTL_MS), null, "expires is exclusive: nowMs === expires reads as expired");
+});

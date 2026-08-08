@@ -347,9 +347,13 @@ async function upgradeSecretIfLegacy(env, u, password) {
 // own, and minting a new one for a user drops any outstanding token for that user.
 
 async function readInvites(kv) {
-  const raw = kv ? await kv.get(USER_INVITES_KEY) : null;
-  const map = raw ? JSON.parse(raw) : {};
-  return map && typeof map === "object" ? map : {};
+  try {
+    const raw = kv ? await kv.get(USER_INVITES_KEY) : null;
+    const map = raw ? JSON.parse(raw) : {};
+    return map && typeof map === "object" ? map : {};
+  } catch (e) {
+    return {};
+  }
 }
 
 // Drop expired entries on every write — the map stays small without a sweeper.
@@ -383,11 +387,23 @@ async function readInvite(env, token, nowMs = Date.now()) {
   return rec.email;
 }
 
+// Single-get consume: resolves and deletes the token from the SAME read of the
+// map, instead of one kv.get to check it (readInvite) and a second to delete it.
+// That two-read shape widened the window for two concurrent redemptions to both
+// pass the check before either write landed, double-consuming one token.
+// KV has no compare-and-swap, so even this narrows the race rather than closing
+// it — two concurrent consumeInvite calls can still both read before either
+// writes. Accepted: an attacker racing a redemption must already hold the token,
+// so double-redemption grants no access they didn't already have; the last write
+// wins and the user ends up with one password, same as a plain double-submit.
 async function consumeInvite(env, token, nowMs = Date.now()) {
-  const email = await readInvite(env, token, nowMs);
-  if (!email) return null;
+  if (typeof token !== "string" || !token) return null;
   const kv = kvFor(env);
+  if (!kv) return null;
   const map = pruneInvites(await readInvites(kv), nowMs);
+  const rec = map[token];
+  if (!rec || typeof rec.expires !== "number" || rec.expires <= nowMs) return null;
+  const email = rec.email;
   delete map[token];
   await kv.put(USER_INVITES_KEY, JSON.stringify(map));
   return email;
