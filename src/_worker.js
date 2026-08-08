@@ -511,38 +511,92 @@ async function setUserSecret(env, email, hash) {
 // the token is valid beyond "this link is no longer valid": no user enumeration.
 function invitePage(token, error) {
   const t = escapeHtml(token || "");
-  const msg = error
-    ? `<p class="err">${escapeHtml(error)}</p>`
-    : "";
+  // Text only — the .error block below supplies the icon and wrapper, matching loginPage.
+  const msg = error ? escapeHtml(error) : "";
   return `<!doctype html>
-<html lang="en"><head><meta charset="utf-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Set your password — Augur</title>
-<style>
-  body { font: 16px/1.5 Inter, system-ui, sans-serif; background: #fafafa; color: #18181b;
-         display: grid; place-items: center; min-height: 100vh; margin: 0; }
-  form { background: #fff; padding: 2rem; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,.08);
-         width: min(24rem, 90vw); }
-  h1 { font-size: 1.25rem; margin: 0 0 .25rem; }
-  p  { margin: 0 0 1.25rem; color: #52525b; font-size: .9rem; }
-  label { display: block; font-size: .85rem; margin-bottom: .35rem; }
-  input { width: 100%; padding: .6rem .7rem; border: 1px solid #d4d4d8; border-radius: 8px;
-          font: inherit; box-sizing: border-box; }
-  button { margin-top: 1rem; width: 100%; padding: .6rem; border: 0; border-radius: 8px;
-           background: #4f46e5; color: #fff; font: inherit; cursor: pointer; }
-  .err { color: #b91c1c; }
-</style></head>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="robots" content="noindex, nofollow" />
+  <title>Set your password — Augur</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" />
+  <style>
+    /* KEEP IN SYNC with loginPage() — same tokens, same card, same mark. A user meets
+       this page and the gate back to back, so any drift between them reads as a
+       phishing page rather than a redesign. */
+    :root {
+      --bg: #fbfbfd; --card: #ffffff; --fg: #16171a; --muted: #5b626e; --faint: #9aa0ab;
+      --line: rgba(16,17,26,0.09); --line-2: rgba(16,17,26,0.15);
+      /* accent = the logo's almost-black (#2C2150), so button + focus match the mark */
+      --accent: #2c2150; --accent-solid: #2c2150; --err: #b42318;
+      color-scheme: light;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; min-height: 100vh; min-height: 100dvh; display: grid; place-items: center; padding: 24px;
+      font: 15px/1.55 "Inter", "Inter Variable", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      letter-spacing: -0.011em; background: var(--bg); color: var(--fg);
+      -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale;
+    }
+    .card {
+      background: var(--card); border: 1px solid var(--line); border-radius: 14px;
+      padding: 30px 30px 28px; max-width: 360px; width: 100%;
+      box-shadow: 0 1px 2px rgba(16,24,40,0.05), 0 10px 28px -22px rgba(16,24,40,0.22);
+    }
+    .logo { display: flex; justify-content: center; margin: 4px 0 24px; }
+    .logo svg { width: 40px; height: 40px; display: block; }
+    h1 { font-size: 17px; font-weight: 600; letter-spacing: -0.015em; margin: 0 0 6px; }
+    .lede { color: var(--muted); font-size: 13.5px; margin: 0 0 20px; }
+    label { display: block; font-size: 13px; font-weight: 500; margin: 0 0 7px; }
+    input[type=password] {
+      width: 100%; font: inherit; font-size: 15px; padding: 8px 13px; border-radius: 9px;
+      border: 1px solid var(--line-2); background: #fff; color: var(--fg);
+      transition: border-color .12s ease;
+    }
+    input[type=password]:hover { border-color: rgba(16,17,26,0.28); }
+    input[type=password]:focus { outline: 2px solid var(--accent); outline-offset: 1px; border-color: transparent; }
+    button {
+      width: 100%; margin-top: 16px; font: inherit; font-weight: 600; font-size: 15px; color: #fff;
+      background: var(--accent-solid); border: 1px solid transparent; border-radius: 9px; padding: 8px;
+      cursor: pointer; transition: background .12s ease;
+    }
+    button:hover { background: #38295e; }
+    button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+    /* Error carries an icon + text, never colour alone (WCAG 1.4.1). */
+    .error {
+      display: ${error ? "flex" : "none"}; align-items: flex-start; gap: 7px;
+      color: var(--err); font-size: 13.5px; font-weight: 500; margin: 0 0 16px;
+    }
+    .error svg { width: 16px; height: 16px; flex: none; margin-top: 1px; }
+    @media (max-width: 420px) { .card { padding: 26px 22px; } }
+    @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+  </style>
+</head>
 <body>
-  <form method="POST" action="/__invite">
+  <main class="card">
+    <div class="logo">
+      <svg viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Augur">
+        <g transform="translate(153.5 153.5) scale(1.115)" fill="#2C2150" fill-rule="evenodd"><path d="M303.668 0.501099C480.9 -9.31876 632.543 126.378 642.396 303.609C652.249 480.839 516.579 632.508 339.35 642.392C162.076 652.279 10.36 516.567 0.504883 339.291C-9.34912 162.015 126.39 10.3241 303.668 0.501099ZM321.31 58.589C313.993 78.2949 309.682 91.0001 300.003 110.42C256.894 196.544 185.761 265.436 98.3008 305.765C84.5568 312.054 73.3451 316.365 59.0391 321.205C166.492 358.562 254.54 437.345 303.567 540.001C306.201 545.441 320.11 580.712 320.888 581.447C329.254 559.649 338.869 536.27 350.55 515.916C397.544 434.024 469.471 370.244 555.57 331.86C563.577 328.29 574.85 323.736 583.145 321.47C472.786 278.754 383.1 203.746 334.938 93.8761C332.878 89.1732 321.885 59.2127 321.31 58.589Z"/></g>
+      </svg>
+    </div>
     <h1>Set your password</h1>
-    <p>Choose a password of at least ${MIN_PASSWORD_LENGTH} characters. Nobody else will know it.</p>
-    ${msg}
-    <input type="hidden" name="token" value="${t}" />
-    <label for="password">New password</label>
-    <input id="password" name="password" type="password" autocomplete="new-password"
-           minlength="${MIN_PASSWORD_LENGTH}" required autofocus />
-    <button type="submit">Set password</button>
-  </form>
+    <p class="lede">At least ${MIN_PASSWORD_LENGTH} characters. Nobody else will know it — not even an admin.</p>
+    <p class="error" role="alert">
+      <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 8v5M12 16.5v.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M10.3 3.9 2.5 18a2 2 0 0 0 1.7 3h15.6a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>
+      <span>${msg}</span>
+    </p>
+    <form method="POST" action="/__invite">
+      <input type="hidden" name="token" value="${t}" />
+      <label for="password">New password</label>
+      <input id="password" name="password" type="password" autocomplete="new-password"
+             minlength="${MIN_PASSWORD_LENGTH}" required autofocus
+             ${error ? 'aria-invalid="true"' : ""} />
+      <button type="submit">Set password</button>
+    </form>
+  </main>
 </body></html>`;
 }
 
