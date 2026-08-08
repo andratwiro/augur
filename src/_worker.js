@@ -1356,8 +1356,8 @@ function applyOp(threads, op) {
 }
 
 // GET/POST /__review/api?path=<page> — read or mutate one page's threads.
-// Reads are open (public prototypes embed the overlay: annotations show always-on,
-// comments show once a viewer presses Shift+C). Writes stay gated — see router.
+// Fully OPEN, reads AND writes (see router): reviewers with only a public
+// prototype link must be able to comment. applyOp clamps/caps every field.
 async function reviewApi(request, url, env) {
   const kv = kvFor(env);
   const path = clamp(url.searchParams.get("path") || "/", 600);
