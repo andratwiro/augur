@@ -6,8 +6,8 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/frontend-skills-reminder.sh\"",
-            "statusMessage": "Checking front-end skill set…"
+            "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/engine-reminder.sh\"",
+            "statusMessage": "Engine repo conventions reminder…"
           }
         ]
       }
