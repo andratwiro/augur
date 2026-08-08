@@ -192,8 +192,11 @@ choose their own password.
    values — no plaintext remains anywhere.
 2. Delete both compatibility paths: the plaintext branch in `verifyPassword` and the legacy
    derivation branch in `identify()`.
-3. Delete `scripts/rotate-seeds.mjs` — under invite-only there are no seeds to rotate, only
-   hashes to clear.
+3. `scripts/rotate-seeds.mjs` does not exist on this branch — there is nothing to delete.
+   It was never ported here: invite-only has no seeds to rotate, only hashes to clear, so
+   the script had no reason to exist in the first place. (It's present on the older
+   `hardening` branch, where seed rotation is still a live concept — don't expect to find
+   it in this history.)
 4. Deploy. Any session still riding the legacy derivation is invalidated, which is correct:
    by this point every user has migrated.
 

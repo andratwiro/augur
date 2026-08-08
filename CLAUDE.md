@@ -149,8 +149,16 @@ initials, colour and role only. Passwords live in KV as PBKDF2 hashes under
 - Admins **cannot set or read passwords.** Reset clears a user's hash and mints a
   single-use invite link, in one action — there is never a live password alongside a
   pending invite.
+- **⚠️ Reset writes a tombstone, never a deletion.** The reset handler sets
+  `ov[u.email] = null` — a key that is *present* holding `null` — rather than deleting
+  it. `effectiveSecret` falls back to the roster's `pass` field only when the key is
+  *absent*; during this migration that roster value is the leaked password being
+  revoked. "Tidying" the `null` into a `delete` reopens that exact fallback.
 - Sessions are HMACs keyed on the runtime `SESSION_SECRET`, bound to the user's effective
   secret, so changing or clearing a password invalidates that user's cookies for free.
+  This holds only when `SESSION_SECRET` is actually set on the project — `userToken()`
+  falls back to an unkeyed SHA-256 when it's absent, so the secret must be configured for
+  sessions to be HMAC-backed at all.
 - Adding or removing a person is still a commit to `identity.json` — the roster is
   injected at build time.
 
