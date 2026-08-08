@@ -188,14 +188,34 @@ test("effectiveSecret: a real hash in the map still wins over the roster", async
 });
 
 test("identify cannot authenticate a user holding a tombstone", async () => {
-  const kv = memKV({ "users:secrets": JSON.stringify({ "a@example.test": "pbkdf2$1$AAAA$BBBB" }) });
+  // Local fixture: a user with a roster password that the buggy code would
+  // incorrectly fall back to if the tombstone check were removed.
+  const LEAKY = { email: "leaky@example.test", name: "Leaky", pass: "leaked-seed-2026" };
+
+  // Start with the user holding a real override secret (so they are genuinely
+  // logged in). When the buggy code runs and the tombstone is present, it should
+  // fall through and leak the roster password — but the correct code must never do that.
+  const kv = memKV({ "users:secrets": JSON.stringify({ "leaky@example.test": "real-override-secret" }) });
   const env = envWith(kv, { SESSION_SECRET: "s3cret" });
-  // Mint a token BEFORE the tombstone is written, while the override is a real secret.
-  const t = await W.userToken(env, USER);
-  // Admin reset: revoke by writing a tombstone over the entry.
-  await kv.put("users:secrets", JSON.stringify({ "a@example.test": null }));
-  const got = await W.identify(cookieRequest(`a@example.test.${t}`), env, [USER]);
+
+  // Mint a valid token BEFORE the tombstone is written. This token is computed
+  // from the real override secret that is currently in KV.
+  const tokenBeforeTombstone = await W.userToken(env, LEAKY);
+
+  // Admin reset: revoke by writing a tombstone (null) over the entry.
+  await kv.put("users:secrets", JSON.stringify({ "leaky@example.test": null }));
+
+  // The old token should no longer authenticate. It was valid when derived from
+  // the real override secret, but now the override is a tombstone (null), so
+  // effectiveSecret returns "", producing a different token hash.
+  const got = await W.identify(cookieRequest(`leaky@example.test.${tokenBeforeTombstone}`), env, [LEAKY]);
   assert.equal(got, null, "a tombstoned user's pre-existing cookie must not authenticate");
+
+  // Explicit regression check: after revocation, effectiveSecret must return ""
+  // and must NOT fall back to the roster password "leaked-seed-2026".
+  const secret = await W.effectiveSecret(env, LEAKY);
+  assert.equal(secret, "", "tombstone must yield empty string");
+  assert.notEqual(secret, "leaked-seed-2026", "must NOT leak the roster password");
 });
 
 test("upgradeSecretIfLegacy is a no-op for a tombstoned user", async () => {
