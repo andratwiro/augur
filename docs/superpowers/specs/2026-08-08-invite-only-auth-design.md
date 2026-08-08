@@ -172,8 +172,14 @@ both of which are removed together at the end.
 
 1. Set `SESSION_SECRET` on the project **before** the worker deploys.
 2. Deploy the hashed worker with both compatibility paths active:
-   - **Legacy secret** — `verifyPassword` accepts a plaintext value and upgrades it to a
-     hash on successful login. Existing seeds keep working.
+   - **Legacy secret** — `verifyPassword` accepts a plaintext value and
+     `upgradeSecretIfLegacy` rewrites it as a hash on successful login. This covers both
+     places a legacy plaintext can live: an old plaintext value in `users:secrets`, and
+     the roster's own `pass` field with no `users:secrets` key at all — which is where
+     every seeded account actually sits. In the second case the upgrade *creates* the
+     `users:secrets` entry, so it only fires for a password that verifies against the
+     roster plaintext. A key that is present but falsy is a revocation tombstone and is
+     never upgraded. Existing seeds keep working, and stop being plaintext on first use.
    - **Legacy session** — `identify()` accepts either the old or new cookie derivation,
      while issuing only the new one. Existing sessions survive the deploy.
 3. Leave `pass` in `identity.json` and leave `users:secrets` populated.
@@ -181,17 +187,23 @@ both of which are removed together at the end.
 Nobody is signed out and no password stops working. The deploy is a no-op from a user's
 point of view.
 
-**Migrate (per user, operator-paced).** Resetting a user clears their `pass` entry and
-their `users:secrets` hash, and mints an invite token — one action. That user's legacy
-password dies at that moment and their sessions stop verifying. They redeem the link and
-choose their own password.
+**Migrate (per user, operator-paced).** Resetting a user overwrites their `users:secrets`
+entry with a tombstone (`null`) and mints an invite token — one action. The tombstone is
+what kills the roster `pass` fallback: reset cannot edit `identity.json` (that is a build
+input), so it revokes by making the key *present and falsy* rather than absent. That
+user's legacy password dies at that moment, their sessions stop verifying, and — because
+`identify()` refuses any user with no effective secret — no cookie can be forged for them
+in the window before they redeem. They redeem the link and choose their own password.
 
 **Finish (once the last user is migrated).**
 
 1. Confirm no user retains a `pass` field and `users:secrets` contains only `pbkdf2$…`
    values — no plaintext remains anywhere.
 2. Delete both compatibility paths: the plaintext branch in `verifyPassword` and the legacy
-   derivation branch in `identify()`.
+   derivation branch in `identify()`. **Keep the no-effective-secret guard in `identify()`**
+   — it is not a compatibility path. `userToken()`'s own no-`SESSION_SECRET` fallback has
+   the same secretless shape, so removing the guard would reopen cookie forgery for every
+   pending or reset user even after both migration paths are gone.
 3. `scripts/rotate-seeds.mjs` does not exist on this branch — there is nothing to delete.
    It was never ported here: invite-only has no seeds to rotate, only hashes to clear, so
    the script had no reason to exist in the first place. (It's present on the older

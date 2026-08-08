@@ -27,12 +27,16 @@ const MAX_AGE = 60 * 60 * 24 * 7; // 7 days
 // ---- Users / identity -------------------------------------------------------
 // Augur is a private internal tool — the only real risk is impersonation, and the
 // real work happens through git commits, so this is a casual identity layer, not
-// auth hardening. USERS is the seed identity + DEFAULT password, filled at runtime
-// from instance.json (loadConfig). Empty in a raw copy → no users → the gate stays
-// open (offline/local builds with no identity configured). Effective password =
-// admin-set KV override (USER_SECRETS_KEY) ?? this default — so passwords are editable
-// at runtime from the admin panel without redeploying. Each entry:
-//   { email, name, pass, initials, color, role? }   role:"admin" → can edit passwords.
+// auth hardening. USERS is the ROSTER — who exists, not what they know — filled at
+// runtime from instance.json (loadConfig). Empty in a raw copy → no users → the gate
+// stays open (offline/local builds with no identity configured). Each entry:
+//   { email, name, initials, color, role?, pass? }
+// role:"admin" gates the admin API and admin-only spaces; admins can NOT set or read
+// passwords, only reset a user (which revokes and mints an invite link). `pass` is a
+// MIGRATION-ONLY leftover: the legacy plaintext for accounts that predate hashing. It
+// is used only when users:secrets has no key for that email, and it is rewritten as a
+// hash on that user's next successful login (upgradeSecretIfLegacy). Credentials live
+// in KV, never here — see effectiveSecret for the exact precedence.
 let USERS = [];
 // Deploy-specific knobs, filled at runtime from instance.json (all empty in a raw
 // engine build): gate-exempt skill-asset path prefixes, MCP-proxy host allowlist
@@ -47,7 +51,12 @@ let MCP_HOST_ALLOWLIST_URL = "";
 let VANITY_REDIRECTS = {};
 let BUILDER_CONFIG = null;
 const USER_COOKIE = "gv_user";              // value: "<email>.<token>"
-const USER_SECRETS_KEY = "users:secrets";   // KV {email: password} — admin overrides
+// KV {email: "pbkdf2$…"} — the credential store, written only by a user redeeming an
+// invite. A key PRESENT holding null/"" is a REVOCATION TOMBSTONE (admin reset): it
+// means "no secret", and must never fall through to the roster's legacy `pass`. Only
+// an ABSENT key falls back. (A plaintext value here is a pre-hashing leftover, upgraded
+// on next login.)
+const USER_SECRETS_KEY = "users:secrets";
 const LASTSEEN_PREFIX = "users:lastseen:";  // KV per-user ISO stamp — admin list column
 const USER_INVITES_KEY = "users:invites";   // KV {token: {email, expires}}
 const INVITE_TTL_MS = 7 * 24 * 60 * 60 * 1000; // links get pasted into chat — expire them
@@ -90,9 +99,9 @@ function isPublicPath(pathname) {
   // curl it and compare sha to git rev-parse HEAD. Public by design; contains nothing
   // but commit SHAs that those collaborators already have.
   if (pathname === "/_build.json") return true;
-  // Invite redemption — reached by users who have no session yet (that is the point).
-  // The token in the query string is the credential; the path itself reveals nothing.
-  if (pathname === "/__invite") return true;
+  // NOTE: /__invite is deliberately NOT listed here. Its route in fetch() intercepts
+  // every request for that path long before isPublicPath is consulted, so an entry
+  // would be unreachable code that reads as a safety net it is not.
   // The dormant review overlay + its avatar asset — both embedded into public
   // prototypes, so both must bypass the gate (else the <img> gets the login page).
   if (pathname === "/__review/comments.js" || pathname === "/__review/aslam.png") return true;
@@ -314,31 +323,63 @@ function avatarUrl(u) {
 // The value is a pbkdf2 hash string, or — during migration only — a legacy plaintext.
 async function effectiveSecret(env, u) {
   if (!u) return "";
+  const kv = kvFor(env);
+  // NO KV BINDING AT ALL — offline and raw engine builds have no KV and legitimately
+  // depend on the roster being the whole story. Not a failure, so not fail-closed.
+  if (!kv) return u.passHash || u.pass || "";
+  let ov;
   try {
-    const k = kvFor(env);
-    const raw = k ? await k.get(USER_SECRETS_KEY) : null;
-    const ov = raw ? JSON.parse(raw) : {};
-    // A key PRESENT in the override map is authoritative even when its value is
-    // falsy: an admin "reset" revokes by writing {email: null}/{email: ""} over
-    // the entry, and that must yield "" (no secret at all) — never fall through
-    // to the roster password, which for a revoked user is exactly the leaked
-    // password the reset exists to invalidate. Only an ABSENT key falls back.
-    if (ov && Object.prototype.hasOwnProperty.call(ov, u.email)) return ov[u.email] || "";
-  } catch (e) {}
+    const raw = await kv.get(USER_SECRETS_KEY);
+    const parsed = raw ? JSON.parse(raw) : {};
+    // A value that isn't a map is corrupt, not empty — same treatment as a bad read.
+    if (!parsed || typeof parsed !== "object") return "";
+    ov = parsed;
+  } catch (e) {
+    // KV IS bound but the read or the parse failed. FAIL CLOSED. Falling through to
+    // the roster here would make every revocation tombstone evaporate simultaneously
+    // on one transient KV blip and put every leaked roster password back in service.
+    // No secret means no login and no session — recoverable; a resurrected credential
+    // is not.
+    return "";
+  }
+  // A key PRESENT in the override map is authoritative even when its value is
+  // falsy: an admin "reset" revokes by writing {email: null}/{email: ""} over
+  // the entry, and that must yield "" (no secret at all) — never fall through
+  // to the roster password, which for a revoked user is exactly the leaked
+  // password the reset exists to invalidate. Only an ABSENT key falls back.
+  if (Object.prototype.hasOwnProperty.call(ov, u.email)) return ov[u.email] || "";
   return u.passHash || u.pass || "";
 }
 
 // TEMPORARY (migration) — remove in the finish step
 // After a successful login against a legacy plaintext secret, rewrite it as a hash so
 // the plaintext stops existing. Fire-and-forget: never break a login.
+//
+// The legacy plaintext lives in one of two places, and BOTH must be upgraded:
+//   - an override entry in users:secrets that predates hashing, or
+//   - the roster's own `pass` field, with NO key in users:secrets at all — which is
+//     where every leaked seed account actually sits. Keying only off a present entry
+//     meant this never fired for the users it was written for.
+// The one shape that must NOT be upgraded is a key that is present holding a falsy
+// value: that is a revocation tombstone, and minting a hash over it would resurrect
+// an account an admin just reset.
 async function upgradeSecretIfLegacy(env, u, password) {
   try {
     const kv = kvFor(env);
     if (!kv || !u) return;
     const raw = await kv.get(USER_SECRETS_KEY);
     const ov = raw ? JSON.parse(raw) : {};
-    const stored = ov[u.email];
-    if (!stored || isPassHash(stored)) return;
+    if (!ov || typeof ov !== "object") return;
+    // Whichever value the login just verified against — mirrors effectiveSecret's
+    // precedence, so a tombstone resolves to null/"" and falls out below.
+    const legacy = Object.prototype.hasOwnProperty.call(ov, u.email)
+      ? ov[u.email]
+      : (u.passHash || u.pass || "");
+    if (!legacy || isPassHash(legacy)) return; // tombstoned, already hashed, or nothing to upgrade
+    // Only upgrade a plaintext the supplied password actually matches: this can be
+    // reached for an absent key, where an unverified write would MINT a credential
+    // rather than merely rewrite one.
+    if (!(await verifyPassword(password, legacy))) return;
     ov[u.email] = await hashPassword(password);
     await kv.put(USER_SECRETS_KEY, JSON.stringify(ov));
   } catch (e) {}
@@ -534,6 +575,14 @@ async function identify(request, env, users = USERS) {
   if (dot < 1) return null;
   const u = userByEmail(val.slice(0, dot), users);
   if (!u) return null;
+  // A user with no effective secret (pending invite, or just reset) can have no valid
+  // session. Without this guard both the legacy derivation and userToken's own
+  // no-SESSION_SECRET fallback reduce to a publicly computable SHA-256("gv:<email>:"),
+  // letting anyone who knows an email forge a cookie for that account. NOT a migration
+  // path — this must survive the finish step. It signs no legitimate user out: /__auth
+  // and /__publish/_login/token both require a truthy secret before issuing a cookie,
+  // and invitePost issues its cookie only after writing the hash.
+  if (!(await effectiveSecret(env, u))) return null;
   const token = val.slice(dot + 1);
   if (safeEqual(token, await userToken(env, u))) return u;
   // TEMPORARY (migration) — remove in the finish step

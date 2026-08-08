@@ -230,6 +230,129 @@ test("upgradeSecretIfLegacy is a no-op for a tombstoned user", async () => {
   assert.equal(stored["a@example.test"], null, "the tombstone must not be resurrected into a secret");
 });
 
+// ---- CRITICAL: a user with NO effective secret must have no valid session.
+// With no secret, both derivations collapse to a publicly computable digest:
+// legacyUserToken (and userToken's own no-SESSION_SECRET fallback) reduce to
+// tokenFor("<email>:") = SHA-256("gv:<email>:") — no secret in it at all. Anyone
+// who knows an email could mint that and be signed in as them, including an admin
+// who has been reset but not yet redeemed.
+
+test("identify refuses a secretless forgery for a tombstoned user", async () => {
+  const LEAKY = { email: "leaky@example.test", name: "Leaky", pass: "leaked-seed-2026" };
+  const kv = memKV({ "users:secrets": JSON.stringify({ "leaky@example.test": null }) });
+  const env = envWith(kv, { SESSION_SECRET: "s3cret" });
+  assert.equal(await W.effectiveSecret(env, LEAKY), "", "precondition: reset left no secret");
+  const forged = await W.tokenFor(LEAKY.email + ":"); // needs no credential whatsoever
+  assert.equal(
+    await W.identify(cookieRequest(`${LEAKY.email}.${forged}`), env, [LEAKY]),
+    null,
+    "a reset user must not be impersonable with a publicly computable digest"
+  );
+});
+
+test("identify refuses a secretless forgery for a never-invited admin", async () => {
+  const PENDING = { email: "pending@example.test", name: "Pending", role: "admin" };
+  const env = envWith(memKV(), { SESSION_SECRET: "s3cret" }); // no users:secrets at all
+  assert.equal(await W.effectiveSecret(env, PENDING), "", "precondition: never invited");
+  const forged = await W.tokenFor(PENDING.email + ":");
+  assert.equal(
+    await W.identify(cookieRequest(`${PENDING.email}.${forged}`), env, [PENDING]),
+    null,
+    "knowing an email must not grant the admin API and admin-only spaces"
+  );
+});
+
+test("identify refuses the secretless forgery with SESSION_SECRET unset too", async () => {
+  // userToken's own fallback has the identical shape and carries no TEMPORARY
+  // marker, so deleting the marked migration paths would NOT close this.
+  const PENDING = { email: "pending@example.test", name: "Pending" };
+  const env = envWith(memKV()); // no SESSION_SECRET
+  const forged = await W.tokenFor(PENDING.email + ":");
+  assert.equal(forged, await W.userToken(env, PENDING), "precondition: userToken's own fallback matches");
+  assert.equal(await W.identify(cookieRequest(`${PENDING.email}.${forged}`), env, [PENDING]), null);
+});
+
+// ---- effectiveSecret must FAIL CLOSED on a KV failure. A blanket catch that falls
+// through to the roster makes every tombstone evaporate at once and puts every leaked
+// roster password back in service on a transient read error.
+
+test("effectiveSecret fails closed when the KV read throws", async () => {
+  const kv = memKV();
+  kv.get = async () => { throw new Error("simulated KV outage"); };
+  const env = envWith(kv);
+  const result = await W.effectiveSecret(env, { email: "a@example.test", pass: "leaked-seed" });
+  assert.equal(result, "", "a read failure must never resurrect a revoked credential");
+  assert.notEqual(result, "leaked-seed", "must NOT fall back to the roster password");
+});
+
+test("effectiveSecret fails closed on a corrupt users:secrets value", async () => {
+  const env = envWith(memKV({ "users:secrets": "{not json" }));
+  const result = await W.effectiveSecret(env, { email: "a@example.test", pass: "leaked-seed" });
+  assert.equal(result, "");
+  assert.notEqual(result, "leaked-seed", "must NOT fall back to the roster password");
+});
+
+test("effectiveSecret fails closed when users:secrets parses to a non-object", async () => {
+  const env = envWith(memKV({ "users:secrets": "42" }));
+  assert.equal(await W.effectiveSecret(env, { email: "a@example.test", pass: "leaked-seed" }), "");
+});
+
+test("effectiveSecret still falls back to the roster with NO KV binding at all", async () => {
+  // Offline and raw engine builds have no KV and legitimately depend on this.
+  assert.equal(await W.effectiveSecret({}, { email: "a@example.test", pass: "roster" }), "roster");
+  assert.equal(await W.effectiveSecret(undefined, { email: "a@example.test", pass: "roster" }), "roster");
+  assert.equal(
+    await W.effectiveSecret({}, { email: "a@example.test", passHash: "pbkdf2$x", pass: "roster" }),
+    "pbkdf2$x"
+  );
+});
+
+// ---- upgradeSecretIfLegacy must fire for the users it was written for: the leaked
+// accounts carry their plaintext in the roster's `pass`, so they have NO key in
+// users:secrets at all and an early return on an absent key never upgrades them.
+
+test("a roster plaintext with no KV entry is upgraded to a hash", async () => {
+  const kv = memKV(); const env = envWith(kv);
+  const u = { email: "a@example.test", pass: "leaked-seed-2026" };
+  assert.equal(await W.effectiveSecret(env, u), "leaked-seed-2026", "precondition: plaintext is live");
+  await W.upgradeSecretIfLegacy(env, u, "leaked-seed-2026");
+  const stored = JSON.parse(await kv.get("users:secrets"))["a@example.test"];
+  assert.ok(W.isPassHash(stored), "written as pbkdf2$…");
+  assert.equal(await W.verifyPassword("leaked-seed-2026", stored), true);
+  const after = await W.effectiveSecret(env, u);
+  assert.equal(after, stored, "effectiveSecret now returns the hash");
+  assert.notEqual(after, "leaked-seed-2026", "and no longer the roster plaintext");
+});
+
+test("upgrade writes nothing when the password does not match the roster plaintext", async () => {
+  const kv = memKV(); const env = envWith(kv);
+  await W.upgradeSecretIfLegacy(env, { email: "a@example.test", pass: "roster" }, "not-the-roster-password");
+  assert.equal(await kv.get("users:secrets"), null, "no entry minted from an unverified password");
+});
+
+test("upgrade writes nothing for a user with no roster plaintext at all", async () => {
+  const kv = memKV(); const env = envWith(kv);
+  await W.upgradeSecretIfLegacy(env, { email: "a@example.test" }, "whatever-password");
+  assert.equal(await kv.get("users:secrets"), null);
+});
+
+test("upgrade writes nothing when the roster value is already a hash", async () => {
+  const kv = memKV(); const env = envWith(kv);
+  const h = await W.hashPassword("pw");
+  await W.upgradeSecretIfLegacy(env, { email: "a@example.test", passHash: h }, "pw");
+  assert.equal(await kv.get("users:secrets"), null, "nothing to upgrade");
+});
+
+test("upgrade leaves a tombstone alone even when the roster holds a plaintext", async () => {
+  // The tombstone is a revocation. Resurrecting it would undo an admin reset.
+  const kv = memKV({ "users:secrets": JSON.stringify({ "a@example.test": null }) });
+  const env = envWith(kv);
+  await W.upgradeSecretIfLegacy(env, { email: "a@example.test", pass: "leaked-seed-2026" }, "leaked-seed-2026");
+  const stored = JSON.parse(await kv.get("users:secrets"));
+  assert.ok(Object.prototype.hasOwnProperty.call(stored, "a@example.test"), "tombstone still present");
+  assert.equal(stored["a@example.test"], null, "and not resurrected into a secret");
+});
+
 test("mintInvite issues a token that reads back to its email", async () => {
   const kv = memKV(); const env = envWith(kv);
   const t = await W.mintInvite(env, "a@example.test");

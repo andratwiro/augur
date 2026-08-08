@@ -142,9 +142,12 @@ comments bleed across screens.
 
 ## Authentication
 
-Invite-only. `identity.json` is a roster with **no credentials** — it carries email, name,
-initials, colour and role only. Passwords live in KV as PBKDF2 hashes under
-`users:secrets`; invite tokens under `users:invites`.
+Invite-only. `identity.json` is a roster of **who exists**, not what they know — email,
+name, initials, colour and role. Passwords live in KV as PBKDF2 hashes under
+`users:secrets`; invite tokens under `users:invites`. *During this migration only*, a
+roster entry may still carry a legacy plaintext `pass`; it is consulted only when
+`users:secrets` has no key for that email, and it is rewritten as a hash on that user's
+next successful login.
 
 - Admins **cannot set or read passwords.** Reset clears a user's hash and mints a
   single-use invite link, in one action — there is never a live password alongside a
@@ -154,6 +157,20 @@ initials, colour and role only. Passwords live in KV as PBKDF2 hashes under
   it. `effectiveSecret` falls back to the roster's `pass` field only when the key is
   *absent*; during this migration that roster value is the leaked password being
   revoked. "Tidying" the `null` into a `delete` reopens that exact fallback.
+- **⚠️ No effective secret ⇒ no session.** `identify()` refuses any user whose
+  `effectiveSecret` is empty (pending invite, or just reset), *before* checking either
+  token derivation. Both derivations degrade to a publicly computable
+  `SHA-256("gv:<email>:")` when there is no secret, so without this guard anyone who
+  knows an email could forge a cookie for that account — including a reset admin, which
+  hands over the admin API and admin-only spaces. **This is not a migration path and
+  must survive the finish step.** It signs no legitimate user out: `/__auth`,
+  `/__publish/_login/token` and `invitePost` all establish a truthy secret before
+  issuing a cookie.
+- **⚠️ `effectiveSecret` fails closed on a KV error.** No KV binding at all (offline and
+  raw engine builds) falls back to the roster, as it must. But if KV *is* bound and the
+  read or the JSON parse throws, the answer is `""` — never the roster. Restoring a
+  blanket `catch` that falls through would make every tombstone evaporate at once on one
+  transient KV blip and put every leaked roster password back in service.
 - Sessions are HMACs keyed on the runtime `SESSION_SECRET`, bound to the user's effective
   secret, so changing or clearing a password invalidates that user's cookies for free.
   This holds only when `SESSION_SECRET` is actually set on the project — `userToken()`
@@ -165,8 +182,10 @@ initials, colour and role only. Passwords live in KV as PBKDF2 hashes under
 **Two migration paths are temporary.** Both are marked
 `// TEMPORARY (migration) — remove in the finish step`:
 
-1. `verifyPassword` accepts a legacy plaintext value and `upgradeSecretIfLegacy` rewrites
-   it as a hash on next login.
+1. `verifyPassword` accepts a legacy plaintext value, and `upgradeSecretIfLegacy` rewrites
+   it as a hash on next login — for a plaintext held in `users:secrets` *and* for one held
+   in the roster's `pass` with no `users:secrets` key (which is where every legacy account
+   actually sits). A present-but-falsy entry is a tombstone and is never upgraded.
 2. `identify` accepts the pre-HMAC session derivation via `legacyUserToken`.
 
 They exist only so migration can proceed user-by-user without a mass lockout. **Leaving
