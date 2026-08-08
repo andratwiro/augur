@@ -1083,9 +1083,15 @@ async function adminUsersApi(request, url, env, me, users = USERS) {
 
     // Clearing the secret and minting the link are ONE action: there is never a state
     // where a known password is still live alongside a pending invite.
+    //
+    // Write an explicit REVOCATION TOMBSTONE (null) — do NOT `delete` the key.
+    // effectiveSecret falls back to the roster's `pass` when a key is ABSENT, and during
+    // this migration that roster value is the leaked password being revoked. Deleting
+    // would make reset fall through to the leaked password while reporting success — a
+    // reset that revokes nothing. A present-but-falsy entry means "revoked" and yields "".
     const raw = await kv.get(USER_SECRETS_KEY);
     const ov = raw ? JSON.parse(raw) : {};
-    delete ov[u.email];
+    ov[u.email] = null;
     await kv.put(USER_SECRETS_KEY, JSON.stringify(ov));
 
     const token = await mintInvite(env, u.email);
