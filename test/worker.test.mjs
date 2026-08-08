@@ -441,3 +441,58 @@ test("invitePage escapes a hostile token so it cannot break out of value=\"...\"
   assert.equal(attrMatch[1].includes('"'), false, "no raw quote breaks out of the value attribute");
   assert.match(attrMatch[1], /&quot;.*&lt;script&gt;.*&amp;/s, "hostile content is HTML-escaped in place");
 });
+
+// ---- Task 6: admin API manages people, not credentials ----------------------
+
+const ADMIN = { email: "admin@example.test", name: "Admin", role: "admin" };
+const PLAIN = { email: "u@example.test", name: "U" };
+
+function adminGet() { return new Request("https://example.test/__admin/users"); }
+function adminPost(body) {
+  return new Request("https://example.test/__admin/users", {
+    method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body),
+  });
+}
+
+test("admin GET never returns a password or hash", async () => {
+  const h = await W.hashPassword("a good long password");
+  const kv = memKV({ "users:secrets": JSON.stringify({ "u@example.test": h }) });
+  const env = envWith(kv);
+  const res = await W.adminUsersApi(adminGet(), new URL("https://example.test/__admin/users"), env, ADMIN, [ADMIN, PLAIN]);
+  const body = await res.json();
+  const serialized = JSON.stringify(body);
+  assert.ok(!serialized.includes("pbkdf2$"), "no hash in the response");
+  assert.ok(!/"pass"/.test(serialized), "no pass field at all");
+  const u = body.users.find((x) => x.email === "u@example.test");
+  assert.equal(u.state, "accepted");
+  assert.equal(body.users.find((x) => x.email === "admin@example.test").state, "pending");
+});
+
+test("admin GET is forbidden to non-admins", async () => {
+  const env = envWith(memKV());
+  const res = await W.adminUsersApi(adminGet(), new URL("https://example.test/__admin/users"), env, PLAIN, [ADMIN, PLAIN]);
+  assert.equal(res.status, 403);
+});
+
+test("reset clears the secret and returns a fresh invite link", async () => {
+  const h = await W.hashPassword("a good long password");
+  const kv = memKV({ "users:secrets": JSON.stringify({ "u@example.test": h }) });
+  const env = envWith(kv);
+  const res = await W.adminUsersApi(adminPost({ op: "reset", email: "u@example.test" }),
+    new URL("https://example.test/__admin/users"), env, ADMIN, [ADMIN, PLAIN]);
+  const body = await res.json();
+  assert.equal(body.ok, true);
+  assert.match(body.url, /^https:\/\/example\.test\/__invite\?t=/);
+  const secrets = JSON.parse(await kv.get("users:secrets"));
+  assert.ok(!secrets["u@example.test"], "old secret cleared — the password dies now");
+  const token = new URL(body.url).searchParams.get("t");
+  assert.equal(await W.readInvite(env, token), "u@example.test");
+});
+
+test("the password-setting endpoint is gone", async () => {
+  const env = envWith(memKV());
+  const res = await W.adminUsersApi(adminPost({ email: "u@example.test", pass: "hunter2hunter2" }),
+    new URL("https://example.test/__admin/users"), env, ADMIN, [ADMIN, PLAIN]);
+  assert.equal(res.status, 400, "no op:reset → rejected; admins cannot set passwords");
+  assert.equal(await env.COMMENTS.get("users:secrets"), null);
+});

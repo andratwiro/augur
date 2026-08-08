@@ -1956,43 +1956,53 @@ function rtProxy(request, url) {
   return fetch(RT_ORIGIN + "/room" + url.search, request);
 }
 
-// ---- Admin: users + passwords (KV-backed overrides) -------------------------
-// Admin-only. GET returns every user with their EFFECTIVE password (override ?? seed)
-// so the admin can read them; POST { email, pass } sets an override in KV. Identity
-// (name/email/role) stays in the committed identity.json — only passwords are mutable
-// here. me is the already-resolved caller; the router guards the route, we re-check.
-async function adminUsersApi(request, url, env, me) {
+// Admin surface: manage PEOPLE, not credentials. There is deliberately no path here
+// that sets, reads or recovers a password — reset re-issues an invite instead.
+async function adminUsersApi(request, url, env, me, users = USERS) {
   if (!me || me.role !== "admin") return jsonResponse({ error: "forbidden" }, 403);
   const kv = kvFor(env);
 
   if (request.method === "GET") {
-    const users = [];
-    for (const u of USERS) {
+    const out = [];
+    for (const u of users) {
       let lastSeen = null;
       try { lastSeen = kv ? await kv.get(LASTSEEN_PREFIX + u.email) : null; } catch (e) {}
-      users.push({
+      const secret = await effectiveSecret(env, u);
+      out.push({
         email: u.email, name: u.name, role: u.role || "user",
         initials: u.initials || "", color: u.color || "#4f46e5",
         avatar: avatarUrl(u),
+        state: secret ? "accepted" : "pending",
         lastSeen,
       });
     }
-    return jsonResponse({ users });
+    return jsonResponse({ users: out });
   }
+
   if (request.method === "POST") {
     let op;
     try { op = await request.json(); } catch (e) { return jsonResponse({ error: "bad-json" }, 400); }
-    const u = userByEmail(op && op.email);
+    if (!op || op.op !== "reset") return jsonResponse({ error: "unknown-op" }, 400);
+    const u = userByEmail(op.email, users);
     if (!u) return jsonResponse({ error: "unknown-user" }, 400);
-    const pass = clamp(op && op.pass, 200);
-    if (!pass) return jsonResponse({ error: "empty-pass" }, 400);
     if (!kv) return jsonResponse({ error: "no-kv-binding" }, 500);
+
+    // Clearing the secret and minting the link are ONE action: there is never a state
+    // where a known password is still live alongside a pending invite.
     const raw = await kv.get(USER_SECRETS_KEY);
     const ov = raw ? JSON.parse(raw) : {};
-    ov[u.email] = pass;
+    // Explicit tombstone, NOT delete: effectiveSecret falls back to the roster's `pass`
+    // when a key is ABSENT from this map, and during this migration that roster
+    // password is the leaked password being revoked. A key present with a null value
+    // is what effectiveSecret treats as "" — no secret at all — so the reset actually
+    // revokes instead of falling straight through to the leaked password.
+    ov[u.email] = null;
     await kv.put(USER_SECRETS_KEY, JSON.stringify(ov));
-    return jsonResponse({ ok: true, email: u.email });
+
+    const token = await mintInvite(env, u.email);
+    return jsonResponse({ ok: true, email: u.email, url: `${url.origin}/__invite?t=${encodeURIComponent(token)}` });
   }
+
   return jsonResponse({ error: "method-not-allowed" }, 405);
 }
 
@@ -2439,4 +2449,5 @@ export const __testables = {
   invitePost, inviteGet, invitePage, setUserSecret, MIN_PASSWORD_LENGTH,
   PBKDF2_ITERATIONS,
   INVITE_TTL_MS,
+  adminUsersApi,
 };
