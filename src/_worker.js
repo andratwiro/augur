@@ -486,16 +486,22 @@ async function invitePost(request, url, env, users = USERS) {
   const consumed = await consumeInvite(env, token);
   if (!consumed) return htmlResponse(invitePage("", "This link is no longer valid. Ask for a new one."), 400);
 
-  await setUserSecret(env, email, await hashPassword(password));
-  const token2 = await userToken(env, u);
-  return new Response(null, {
-    status: 303,
-    headers: {
-      Location: "/",
-      "Set-Cookie": `${USER_COOKIE}=${u.email}.${token2}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=${MAX_AGE}`,
-      "Cache-Control": "no-store",
-    },
-  });
+  // From here on the token is already burned — a thrown error must not escape as
+  // an unhandled exception (dead link, no explanation) but fail cleanly instead.
+  try {
+    await setUserSecret(env, u.email, await hashPassword(password));
+    const token2 = await userToken(env, u);
+    return new Response(null, {
+      status: 303,
+      headers: {
+        Location: "/",
+        "Set-Cookie": `${USER_COOKIE}=${u.email}.${token2}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=${MAX_AGE}`,
+        "Cache-Control": "no-store",
+      },
+    });
+  } catch (e) {
+    return htmlResponse(invitePage("", "Something went wrong setting your password. Ask for a new link."), 500);
+  }
 }
 
 // Session cookie token: HMAC-SHA-256(SESSION_SECRET, "email:effectiveSecret").
@@ -2430,7 +2436,7 @@ export const __testables = {
   tokenFor, hmacToken, userToken, legacyUserToken, identify, effectiveSecret,
   upgradeSecretIfLegacy,
   mintInvite, readInvite, consumeInvite,
-  invitePost, inviteGet, setUserSecret, MIN_PASSWORD_LENGTH,
+  invitePost, inviteGet, invitePage, setUserSecret, MIN_PASSWORD_LENGTH,
   PBKDF2_ITERATIONS,
   INVITE_TTL_MS,
 };

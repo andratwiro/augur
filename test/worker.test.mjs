@@ -373,3 +373,71 @@ test("a token for an unknown roster entry is refused", async () => {
   const res = await W.invitePost(invitePostRequest(t, "a good long password"), new URL("https://example.test/__invite"), env, ROSTER);
   assert.equal(res.status, 400);
 });
+
+// ---- Finding 1: invitePost must key users:secrets by the roster's canonical
+// u.email, not the invite's raw-case email — effectiveSecret's reader does an
+// exact-case hasOwnProperty lookup on u.email, so any case mismatch means the
+// hash lands under a key nothing reads and effectiveSecret falls through to
+// the roster's `pass`, which during this migration is the leaked seed password.
+
+test("invitePost stores the secret under the roster's canonical email, not the invite's raw case", async () => {
+  const kv = memKV(); const env = envWith(kv, { SESSION_SECRET: "s3cret" });
+  const rosterUser = { email: "mixed@example.test", name: "Mixed", pass: "leaked-seed" };
+  const roster = [rosterUser];
+  const t = await W.mintInvite(env, "Mixed@Example.test"); // invite minted with different case
+  const res = await W.invitePost(
+    invitePostRequest(t, "a good long password"),
+    new URL("https://example.test/__invite"),
+    env,
+    roster
+  );
+  assert.equal(res.status, 303);
+
+  const secret = await W.effectiveSecret(env, rosterUser);
+  assert.ok(W.isPassHash(secret), "effectiveSecret must return the pbkdf2 hash the user just set");
+  assert.equal(await W.verifyPassword("a good long password", secret), true);
+  assert.notEqual(secret, "leaked-seed", "must NOT fall through to the leaked roster password");
+});
+
+// ---- Finding 2: a KV failure after consumeInvite must fail cleanly (500),
+// never leak the exception and never leave the user with a burned token and
+// no way to know what happened.
+
+test("a KV failure after the token is consumed fails cleanly instead of throwing", async () => {
+  const kv = memKV(); const env = envWith(kv, { SESSION_SECRET: "s3cret" });
+  const t = await W.mintInvite(env, "a@example.test");
+  const realPut = kv.put.bind(kv);
+  kv.put = async (k, v) => {
+    if (k === "users:secrets") throw new Error("simulated KV outage");
+    return realPut(k, v);
+  };
+  const res = await W.invitePost(invitePostRequest(t, "a good long password"), new URL("https://example.test/__invite"), env, ROSTER);
+  assert.equal(res.status, 500);
+  assert.equal(await W.readInvite(env, t), null, "the token was already consumed and is not restored");
+});
+
+// ---- Finding 3: the most exposed endpoint in the codebase — cookie hardening
+// and HTML-escaping — had no direct test coverage.
+
+test("invitePost success sets a hardened cookie: Path=/, HttpOnly, Secure, SameSite=Lax, <email>.<token> shape", async () => {
+  const kv = memKV(); const env = envWith(kv, { SESSION_SECRET: "s3cret" });
+  const t = await W.mintInvite(env, "a@example.test");
+  const res = await W.invitePost(invitePostRequest(t, "a good long password"), new URL("https://example.test/__invite"), env, ROSTER);
+  const cookie = res.headers.get("Set-Cookie") || "";
+  assert.match(cookie, /Path=\//, "Path=/ present");
+  assert.match(cookie, /HttpOnly/, "HttpOnly present");
+  assert.match(cookie, /Secure/, "Secure present");
+  assert.match(cookie, /SameSite=Lax/, "SameSite=Lax present");
+  const rawValue = cookie.split(";")[0].slice("gv_user=".length);
+  const value = decodeURIComponent(rawValue);
+  assert.match(value, /^a@example\.test\.[0-9a-fA-F]+$/, "<email>.<token> shape");
+});
+
+test("invitePage escapes a hostile token so it cannot break out of value=\"...\"", () => {
+  const hostile = `"><script>alert(1)</script>&`;
+  const html = W.invitePage(hostile, null);
+  const attrMatch = html.match(/name="token" value="([^"]*)"\s*\/>/);
+  assert.ok(attrMatch, "the hidden input still parses as a single well-formed attribute");
+  assert.equal(attrMatch[1].includes('"'), false, "no raw quote breaks out of the value attribute");
+  assert.match(attrMatch[1], /&quot;.*&lt;script&gt;.*&amp;/s, "hostile content is HTML-escaped in place");
+});
