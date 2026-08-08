@@ -496,3 +496,47 @@ test("the password-setting endpoint is gone", async () => {
   assert.equal(res.status, 400, "no op:reset → rejected; admins cannot set passwords");
   assert.equal(await env.COMMENTS.get("users:secrets"), null);
 });
+
+test("reset writes a tombstone, not a deletion, so the password cannot leak via fallback", async () => {
+  // The most critical invariant: when a user with a roster password is reset,
+  // the override map must contain {email: null} (a tombstone), not an absent key.
+  // If a key is absent, effectiveSecret falls back to u.pass — the revoked password.
+  const LEAKY = { email: "leaky@example.test", name: "Leaky", pass: "leaked-seed-2026" };
+  const rosterWithLeaky = [ADMIN, LEAKY];
+
+  // Seed the user with a real hash so they start as "accepted".
+  const hash = await W.hashPassword("leaked-seed-2026");
+  const kv = memKV({ "users:secrets": JSON.stringify({ "leaky@example.test": hash }) });
+  const env = envWith(kv);
+
+  // Verify the user starts in "accepted" state (has a secret).
+  const beforeSecret = await W.effectiveSecret(env, LEAKY);
+  assert.equal(await W.verifyPassword("leaked-seed-2026", beforeSecret), true);
+
+  // Call reset.
+  const res = await W.adminUsersApi(adminPost({ op: "reset", email: "leaky@example.test" }),
+    new URL("https://example.test/__admin/users"), env, ADMIN, rosterWithLeaky);
+  assert.equal(res.status, 200);
+  const body = await res.json();
+  assert.equal(body.ok, true);
+
+  // ---- Regression assertion 1: effectiveSecret must return "" not the password ----
+  const afterSecret = await W.effectiveSecret(env, LEAKY);
+  assert.equal(afterSecret, "", "reset must revoke by yielding empty string");
+  assert.notEqual(afterSecret, "leaked-seed-2026", "CRITICAL: must NOT leak the roster password");
+
+  // ---- Regression assertion 2: the key must exist in the map (tombstone, not deleted) ----
+  const secrets = JSON.parse(await kv.get("users:secrets"));
+  assert.ok(
+    Object.prototype.hasOwnProperty.call(secrets, "leaky@example.test"),
+    "the email key must exist in the secrets map (as a tombstone)"
+  );
+  assert.equal(secrets["leaky@example.test"], null, "the value at that key must be null");
+
+  // ---- Regression assertion 3: follow-up GET reports state as "pending" ----
+  const getRes = await W.adminUsersApi(adminGet(),
+    new URL("https://example.test/__admin/users"), env, ADMIN, rosterWithLeaky);
+  const getBody = await getRes.json();
+  const leakyUser = getBody.users.find((u) => u.email === "leaky@example.test");
+  assert.equal(leakyUser.state, "pending", "after reset, the user must be in pending state");
+});
