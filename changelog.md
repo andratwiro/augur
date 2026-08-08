@@ -16,6 +16,12 @@ The date is the day the update went live. The page works out "Today / 3 days ago
 
 ---
 
+## 2026-08-08 — Invite-only auth
+Passwords are PBKDF2 hashes, sessions are HMACs, and the admin panel issues
+single-use invite links instead of setting passwords. Operators no longer know
+anyone's password. Two temporary compatibility paths remain until every user has
+migrated — see CLAUDE.md.
+
 ## 2026-08-07 — New canvases are shareable right away
 A canvas made with the "＋ New canvas" button now opens for anyone with the link,
 just like a published prototype — no sign-in needed. Before, only signed-in

@@ -139,3 +139,29 @@ comments bleed across screens.
   contributors go through PRs (CONTRIBUTING.md) — fork to PR, not to deploy — and
   Rob's agents hold PRs to the same bar: generic, config-driven, minimal-instance-safe.
 - The canvas layer is documented in `CANVAS.md`; the pet layer in `pitis/README.md`.
+
+## Authentication
+
+Invite-only. `identity.json` is a roster with **no credentials** — it carries email, name,
+initials, colour and role only. Passwords live in KV as PBKDF2 hashes under
+`users:secrets`; invite tokens under `users:invites`.
+
+- Admins **cannot set or read passwords.** Reset clears a user's hash and mints a
+  single-use invite link, in one action — there is never a live password alongside a
+  pending invite.
+- Sessions are HMACs keyed on the runtime `SESSION_SECRET`, bound to the user's effective
+  secret, so changing or clearing a password invalidates that user's cookies for free.
+- Adding or removing a person is still a commit to `identity.json` — the roster is
+  injected at build time.
+
+**Two migration paths are temporary.** Both are marked
+`// TEMPORARY (migration) — remove in the finish step`:
+
+1. `verifyPassword` accepts a legacy plaintext value and `upgradeSecretIfLegacy` rewrites
+   it as a hash on next login.
+2. `identify` accepts the pre-HMAC session derivation via `legacyUserToken`.
+
+They exist only so migration can proceed user-by-user without a mass lockout. **Leaving
+them in place preserves the ability to authenticate against a plaintext value, which is
+the defect this design removes.** Delete both — and their tests — once every user has
+redeemed an invite. See `docs/superpowers/specs/2026-08-08-invite-only-auth-design.md`.
