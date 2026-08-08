@@ -27,7 +27,10 @@ const ADMIN = { email: "admin@smoke.test", name: "Admin", role: "admin" };
 // 6 and 7 would pass identically either way, and the reset-regresses-to-a-leak bug
 // this script exists to catch would sail straight through. Do not remove this field.
 const USER = { email: "user@smoke.test", name: "User", pass: "leaked-seed-2026" };
-const ROSTER = [ADMIN, USER];
+// A fresh entry with no legacy password and no passHash — represents a genuinely new,
+// never-invited person. Asserts that the pending state is actually derivable.
+const FRESH = { email: "fresh@smoke.test", name: "Fresh" };
+const ROSTER = [ADMIN, USER, FRESH];
 const ORIGIN = "https://smoke.test";
 
 const post = (body) => new Request(`${ORIGIN}/__admin/users`, {
@@ -45,11 +48,13 @@ console.log("invite lifecycle:");
 
 // 1. A roster entry with a legacy password reads as accepted — that's the leaked
 // password this whole migration exists to revoke. "reset" (step 2) is what moves
-// them to pending.
+// them to pending. A fresh entry with no password reads as pending — that state
+// derivation must not be broken.
 let res = await W.adminUsersApi(new Request(`${ORIGIN}/__admin/users`), new URL(`${ORIGIN}/__admin/users`), env, ADMIN, ROSTER);
 let body = await res.json();
 assert.equal(body.users.find((u) => u.email === USER.email).state, "accepted");
-ok("legacy roster entry reads as accepted (the leaked password still works)");
+assert.equal(body.users.find((u) => u.email === FRESH.email).state, "pending");
+ok("legacy roster entry reads as accepted, fresh never-invited entry reads as pending");
 
 // 2. Reset mints a link.
 res = await W.adminUsersApi(post({ op: "reset", email: USER.email }), new URL(`${ORIGIN}/__admin/users`), env, ADMIN, ROSTER);
