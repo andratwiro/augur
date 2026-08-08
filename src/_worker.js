@@ -90,6 +90,9 @@ function isPublicPath(pathname) {
   // curl it and compare sha to git rev-parse HEAD. Public by design; contains nothing
   // but commit SHAs that those collaborators already have.
   if (pathname === "/_build.json") return true;
+  // Invite redemption — reached by users who have no session yet (that is the point).
+  // The token in the query string is the credential; the path itself reveals nothing.
+  if (pathname === "/__invite") return true;
   // The dormant review overlay + its avatar asset — both embedded into public
   // prototypes, so both must bypass the gate (else the <img> gets the login page).
   if (pathname === "/__review/comments.js" || pathname === "/__review/aslam.png") return true;
@@ -407,6 +410,92 @@ async function consumeInvite(env, token, nowMs = Date.now()) {
   delete map[token];
   await kv.put(USER_INVITES_KEY, JSON.stringify(map));
   return email;
+}
+
+const MIN_PASSWORD_LENGTH = 10;
+
+async function setUserSecret(env, email, hash) {
+  const kv = kvFor(env);
+  if (!kv) throw new Error("no-kv-binding");
+  const raw = await kv.get(USER_SECRETS_KEY);
+  const ov = raw ? JSON.parse(raw) : {};
+  ov[email] = hash;
+  await kv.put(USER_SECRETS_KEY, JSON.stringify(ov));
+}
+
+// GET /__invite?t=… — the set-password form. Deliberately says nothing about whether
+// the token is valid beyond "this link is no longer valid": no user enumeration.
+function invitePage(token, error) {
+  const t = escapeHtml(token || "");
+  const msg = error
+    ? `<p class="err">${escapeHtml(error)}</p>`
+    : "";
+  return `<!doctype html>
+<html lang="en"><head><meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Set your password — Augur</title>
+<style>
+  body { font: 16px/1.5 Inter, system-ui, sans-serif; background: #fafafa; color: #18181b;
+         display: grid; place-items: center; min-height: 100vh; margin: 0; }
+  form { background: #fff; padding: 2rem; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,.08);
+         width: min(24rem, 90vw); }
+  h1 { font-size: 1.25rem; margin: 0 0 .25rem; }
+  p  { margin: 0 0 1.25rem; color: #52525b; font-size: .9rem; }
+  label { display: block; font-size: .85rem; margin-bottom: .35rem; }
+  input { width: 100%; padding: .6rem .7rem; border: 1px solid #d4d4d8; border-radius: 8px;
+          font: inherit; box-sizing: border-box; }
+  button { margin-top: 1rem; width: 100%; padding: .6rem; border: 0; border-radius: 8px;
+           background: #4f46e5; color: #fff; font: inherit; cursor: pointer; }
+  .err { color: #b91c1c; }
+</style></head>
+<body>
+  <form method="POST" action="/__invite">
+    <h1>Set your password</h1>
+    <p>Choose a password of at least ${MIN_PASSWORD_LENGTH} characters. Nobody else will know it.</p>
+    ${msg}
+    <input type="hidden" name="token" value="${t}" />
+    <label for="password">New password</label>
+    <input id="password" name="password" type="password" autocomplete="new-password"
+           minlength="${MIN_PASSWORD_LENGTH}" required autofocus />
+    <button type="submit">Set password</button>
+  </form>
+</body></html>`;
+}
+
+async function inviteGet(url, env) {
+  const token = url.searchParams.get("t") || "";
+  const email = await readInvite(env, token);
+  if (!email) return htmlResponse(invitePage("", "This link is no longer valid. Ask for a new one."), 400);
+  return htmlResponse(invitePage(token, ""), 200);
+}
+
+async function invitePost(request, url, env, users = USERS) {
+  const form = await request.formData();
+  const token = (form.get("token") || "").toString();
+  const password = (form.get("password") || "").toString();
+
+  // Validate the password BEFORE consuming the token, so a typo doesn't burn the link.
+  const email = await readInvite(env, token);
+  if (!email) return htmlResponse(invitePage("", "This link is no longer valid. Ask for a new one."), 400);
+  if (password.length < MIN_PASSWORD_LENGTH) {
+    return htmlResponse(invitePage(token, `Use at least ${MIN_PASSWORD_LENGTH} characters.`), 400);
+  }
+  const u = userByEmail(email, users);
+  if (!u) return htmlResponse(invitePage("", "This link is no longer valid. Ask for a new one."), 400);
+
+  const consumed = await consumeInvite(env, token);
+  if (!consumed) return htmlResponse(invitePage("", "This link is no longer valid. Ask for a new one."), 400);
+
+  await setUserSecret(env, email, await hashPassword(password));
+  const token2 = await userToken(env, u);
+  return new Response(null, {
+    status: 303,
+    headers: {
+      Location: "/",
+      "Set-Cookie": `${USER_COOKIE}=${u.email}.${token2}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=${MAX_AGE}`,
+      "Cache-Control": "no-store",
+    },
+  });
 }
 
 // Session cookie token: HMAC-SHA-256(SESSION_SECRET, "email:effectiveSecret").
@@ -1406,6 +1495,8 @@ function jsonResponse(obj, status = 200) {
 }
 
 const clamp = (s, n) => String(s == null ? "" : s).slice(0, n);
+const escapeHtml = (s) => String(s == null ? "" : s)
+  .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 
 function sanitizeMsg(m) {
   return {
@@ -2174,6 +2265,13 @@ export default {
     // Admin bundle-store gauge — bytes/objects vs the free-tier ceiling.
     if (url.pathname === "/__admin/storage") return adminStorageApi(env, me);
 
+    // Invite redemption is reachable WITHOUT a session — that is the whole point.
+    if (url.pathname === "/__invite") {
+      if (request.method === "GET") return inviteGet(url, env);
+      if (request.method === "POST") return invitePost(request, url, env);
+      return new Response("Method Not Allowed", { status: 405 });
+    }
+
     // Login form submission.
     if (request.method === "POST" && url.pathname === "/__auth") {
       const form = await request.formData();
@@ -2332,6 +2430,7 @@ export const __testables = {
   tokenFor, hmacToken, userToken, legacyUserToken, identify, effectiveSecret,
   upgradeSecretIfLegacy,
   mintInvite, readInvite, consumeInvite,
+  invitePost, inviteGet, setUserSecret, MIN_PASSWORD_LENGTH,
   PBKDF2_ITERATIONS,
   INVITE_TTL_MS,
 };

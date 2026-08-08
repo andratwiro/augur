@@ -325,3 +325,51 @@ test("an invite is expired exactly at its boundary (nowMs === expires)", async (
   const t = await W.mintInvite(env, "a@example.test", t0);
   assert.equal(await W.readInvite(env, t, t0 + W.INVITE_TTL_MS), null, "expires is exclusive: nowMs === expires reads as expired");
 });
+
+const ROSTER = [{ email: "a@example.test", name: "A" }];
+
+function invitePostRequest(token, password) {
+  const body = new URLSearchParams({ token, password });
+  return new Request("https://example.test/__invite", {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: body.toString(),
+  });
+}
+
+test("redeeming an invite stores a hash and signs the user in", async () => {
+  const kv = memKV(); const env = envWith(kv, { SESSION_SECRET: "s3cret" });
+  const t = await W.mintInvite(env, "a@example.test");
+  const res = await W.invitePost(invitePostRequest(t, "a good long password"), new URL("https://example.test/__invite"), env, ROSTER);
+  assert.equal(res.status, 303);
+  const cookie = res.headers.get("Set-Cookie") || "";
+  assert.match(cookie, /^gv_user=a%40example\.test\.|^gv_user=a@example\.test\./, "session cookie issued");
+  const stored = JSON.parse(await kv.get("users:secrets"))["a@example.test"];
+  assert.ok(W.isPassHash(stored), "stored as a hash, never plaintext");
+  assert.equal(await W.verifyPassword("a good long password", stored), true);
+});
+
+test("an invite cannot be redeemed twice", async () => {
+  const kv = memKV(); const env = envWith(kv, { SESSION_SECRET: "s3cret" });
+  const t = await W.mintInvite(env, "a@example.test");
+  await W.invitePost(invitePostRequest(t, "a good long password"), new URL("https://example.test/__invite"), env, ROSTER);
+  const again = await W.invitePost(invitePostRequest(t, "another long password"), new URL("https://example.test/__invite"), env, ROSTER);
+  assert.equal(again.status, 400);
+  assert.equal(await W.verifyPassword("a good long password", JSON.parse(await kv.get("users:secrets"))["a@example.test"]), true, "first password still stands");
+});
+
+test("a short password is rejected and nothing is stored", async () => {
+  const kv = memKV(); const env = envWith(kv, { SESSION_SECRET: "s3cret" });
+  const t = await W.mintInvite(env, "a@example.test");
+  const res = await W.invitePost(invitePostRequest(t, "short"), new URL("https://example.test/__invite"), env, ROSTER);
+  assert.equal(res.status, 400);
+  assert.equal(await kv.get("users:secrets"), null, "no secret written");
+  assert.equal(await W.readInvite(env, t), "a@example.test", "token survives a failed attempt");
+});
+
+test("a token for an unknown roster entry is refused", async () => {
+  const kv = memKV(); const env = envWith(kv, { SESSION_SECRET: "s3cret" });
+  const t = await W.mintInvite(env, "ghost@example.test");
+  const res = await W.invitePost(invitePostRequest(t, "a good long password"), new URL("https://example.test/__invite"), env, ROSTER);
+  assert.equal(res.status, 400);
+});
