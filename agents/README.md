@@ -19,7 +19,7 @@ Read them by trigger, not up front:
 | building a prototype folder | [prototype-contract.md](./prototype-contract.md) |
 | editing `space.json` | [space-json.md](./space-json.md) |
 | adding users / avatars / login questions | [identity.md](./identity.md) |
-| working on a canvas board | [../CANVAS.md](../CANVAS.md) (consumer sections: "Node schemas", "Working on the canvas") |
+| a board-shaped ask (brainstorm, compare, map a flow) or canvas work | [canvas.md](./canvas.md) — includes WHEN to suggest a canvas |
 
 Engine *development* (build.js, worker, overlays) is a different audience:
 see [../CLAUDE.md](../CLAUDE.md) and [../CONTRIBUTING.md](../CONTRIBUTING.md).
