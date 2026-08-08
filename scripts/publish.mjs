@@ -48,9 +48,16 @@ function readEnvFile(p) {
 }
 const DEPLOY_ENV = readEnvFile(path.join(ROOT, ".env.deploy"));
 
-const ORIGIN = (process.env.AUGUR_ORIGIN || DEPLOY_ENV.AUGUR_ORIGIN || deployConfig(ROOT).siteOrigin || "")
+// Target origin: env, instance file, deploy shell — and for a bare space clone
+// (the collaborator layout, no shell anywhere) the space's own space.json
+// `siteOrigin`: the one public fact a space repo knows about its instance.
+const cwdSpaceOrigin = (() => {
+  try { return JSON.parse(readFileSync(path.join(process.cwd(), "space.json"), "utf8")).siteOrigin || ""; }
+  catch (e) { return ""; }
+})();
+const ORIGIN = (process.env.AUGUR_ORIGIN || DEPLOY_ENV.AUGUR_ORIGIN || deployConfig(ROOT).siteOrigin || cwdSpaceOrigin || "")
   .replace(/\/+$/, "");
-if (!ORIGIN) die("no target origin — set AUGUR_ORIGIN or deploy.config.json siteOrigin.");
+if (!ORIGIN) die("no target origin — set AUGUR_ORIGIN, or add \"siteOrigin\" to space.json.");
 // Token: env/instance file, else the saved `augur login` credential for this origin.
 let TOKEN = process.env.AUGUR_TOKEN || DEPLOY_ENV.AUGUR_TOKEN || "";
 if (!TOKEN) {
