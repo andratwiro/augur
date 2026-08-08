@@ -133,6 +133,19 @@ function repoState(dir) {
   return out;
 }
 
+// Shallow clones collapse git history into one commit, which silently wrecks
+// everything the build derives from it (per-card "Edited" dates, editor
+// avatars). Refuse to publish content built from one — unshallowing is cheap.
+function refuseShallow(dir) {
+  try {
+    const shallow = execFileSync("git", ["-C", dir, "rev-parse", "--is-shallow-repository"],
+      { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }).trim();
+    if (shallow === "true") {
+      die(`${path.basename(dir)} is a SHALLOW clone — edit dates and editor chips would all collapse to the clone moment. Run \`git -C ${dir} fetch --unshallow origin\` first.`);
+    }
+  } catch (e) {}
+}
+
 // ── the digest protocol, per target ──────────────────────────────────────────
 const api = (p) => `${ORIGIN}/__publish/${p}`;
 const auth = { Authorization: `Bearer ${TOKEN}` };
@@ -146,6 +159,7 @@ async function req(url, init = {}) {
 }
 
 async function publishOne(id, sourceDir) {
+  if (id !== "_engine") refuseShallow(sourceDir);
   const manifest = JSON.parse(await readFile(path.join(ROOT, "dist", "__manifests", id + ".json"), "utf8"));
   manifest.source = { ...repoState(sourceDir), actor: process.env.USER || "" };
   const files = manifest.files;
