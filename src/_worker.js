@@ -313,7 +313,12 @@ async function effectiveSecret(env, u) {
     const k = kvFor(env);
     const raw = k ? await k.get(USER_SECRETS_KEY) : null;
     const ov = raw ? JSON.parse(raw) : {};
-    if (ov && typeof ov[u.email] === "string" && ov[u.email]) return ov[u.email];
+    // A key PRESENT in the override map is authoritative even when its value is
+    // falsy: an admin "reset" revokes by writing {email: null}/{email: ""} over
+    // the entry, and that must yield "" (no secret at all) — never fall through
+    // to the roster password, which for a revoked user is exactly the leaked
+    // password the reset exists to invalidate. Only an ABSENT key falls back.
+    if (ov && Object.prototype.hasOwnProperty.call(ov, u.email)) return ov[u.email] || "";
   } catch (e) {}
   return u.passHash || u.pass || "";
 }

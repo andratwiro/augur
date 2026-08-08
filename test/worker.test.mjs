@@ -157,3 +157,55 @@ test("upgrade is a no-op when the stored value is already a hash", async () => {
   await W.upgradeSecretIfLegacy(env, { email: "a@example.test" }, "pw");
   assert.equal(JSON.parse(await kv.get("users:secrets"))["a@example.test"], h, "untouched");
 });
+
+// ---- Revocation tombstone: a PRESENT-but-falsy override entry means "revoked",
+// and must never fall through to the roster password baked into identity.json.
+
+test("effectiveSecret: a revocation tombstone yields '' even with a roster pass", async () => {
+  const kv = memKV({ "users:secrets": JSON.stringify({ "a@example.test": null }) });
+  const env = envWith(kv);
+  const result = await W.effectiveSecret(env, { email: "a@example.test", pass: "leaked-seed" });
+  assert.equal(result, "");
+  assert.notEqual(result, "leaked-seed", "must NOT fall back to the roster password");
+});
+
+test("effectiveSecret: an absent key still falls back to the roster pass", async () => {
+  const kv = memKV({ "users:secrets": JSON.stringify({ "other@example.test": "override" }) });
+  const env = envWith(kv);
+  assert.equal(
+    await W.effectiveSecret(env, { email: "a@example.test", pass: "roster" }),
+    "roster"
+  );
+});
+
+test("effectiveSecret: a real hash in the map still wins over the roster", async () => {
+  const kv = memKV({ "users:secrets": JSON.stringify({ "a@example.test": "pbkdf2$1$AAAA$BBBB" }) });
+  const env = envWith(kv);
+  assert.equal(
+    await W.effectiveSecret(env, { email: "a@example.test", pass: "roster" }),
+    "pbkdf2$1$AAAA$BBBB"
+  );
+});
+
+test("identify cannot authenticate a user holding a tombstone", async () => {
+  const kv = memKV({ "users:secrets": JSON.stringify({ "a@example.test": "pbkdf2$1$AAAA$BBBB" }) });
+  const env = envWith(kv, { SESSION_SECRET: "s3cret" });
+  // Mint a token BEFORE the tombstone is written, while the override is a real secret.
+  const t = await W.userToken(env, USER);
+  // Admin reset: revoke by writing a tombstone over the entry.
+  await kv.put("users:secrets", JSON.stringify({ "a@example.test": null }));
+  const got = await W.identify(cookieRequest(`a@example.test.${t}`), env, [USER]);
+  assert.equal(got, null, "a tombstoned user's pre-existing cookie must not authenticate");
+});
+
+test("upgradeSecretIfLegacy is a no-op for a tombstoned user", async () => {
+  const kv = memKV({ "users:secrets": JSON.stringify({ "a@example.test": null }) });
+  const env = envWith(kv);
+  await W.upgradeSecretIfLegacy(env, { email: "a@example.test" }, "some-password");
+  const stored = JSON.parse(await kv.get("users:secrets"));
+  assert.ok(
+    Object.prototype.hasOwnProperty.call(stored, "a@example.test"),
+    "the tombstone entry must still be present"
+  );
+  assert.equal(stored["a@example.test"], null, "the tombstone must not be resurrected into a secret");
+});
