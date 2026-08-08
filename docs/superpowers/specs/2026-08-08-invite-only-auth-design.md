@@ -128,10 +128,15 @@ invite — that overlap is what lets a known-compromised credential survive a ro
 
 The admin panel manages people:
 
-- **add** — roster entry + invite token
-- **remove** — roster entry, hash, outstanding tokens, last-seen
-- **reset** — clear hash + mint token (re-invite)
+- **invite / reset** — clear hash + mint token (the same action for a new and an existing
+  user; a roster entry with no hash has simply never been redeemed)
 - **view** — lifecycle state and last seen
+
+**Adding and removing people stays a commit.** The roster lives in `identity.json` and is
+injected at build time, so runtime add/remove would mean moving identity into KV — a
+larger change than the rest of this design, and one that buys little at this scale (a
+handful of people per year). Deferred deliberately; the invite flow works identically
+whether the roster entry arrived by commit or otherwise.
 
 The endpoint that sets a password on a user's behalf is **removed**. No administrative
 path can set, read, or recover a password. `role: "admin"` grants user management only.
