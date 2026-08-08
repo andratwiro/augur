@@ -626,9 +626,10 @@ async function identify(request, env, users = USERS) {
   // session. Without this guard both the legacy derivation and userToken's own
   // no-SESSION_SECRET fallback reduce to a publicly computable SHA-256("gv:<email>:"),
   // letting anyone who knows an email forge a cookie for that account. NOT a migration
-  // path — this must survive the finish step. It signs no legitimate user out: /__auth
-  // and /__publish/_login/token both require a truthy secret before issuing a cookie,
-  // and invitePost issues its cookie only after writing the hash.
+  // path — this must survive the finish step. It signs no legitimate user out: the only
+  // two issuers of this cookie are /__auth, which requires a truthy secret, and
+  // invitePost, which issues only after writing the hash. (/__publish/_login/token mints
+  // a publish token, not a session — it never sets a cookie.)
   //
   // Resolved ONCE and passed down. Three independent reads (guard, userToken,
   // legacyUserToken) are not atomic: a truthy first read passes the guard while a
