@@ -1,0 +1,20 @@
+name: check
+
+on: [push, pull_request]
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Doc drift (doc-lint)
+        run: node scripts/doc-lint.mjs
+      - name: Product words in code
+        # The engine is generic — instance-specific values belong in deploy.config.json / space.json, never in code.
+        run: |
+          ! grep -rInE --include='*.js' --include='*.mjs' --include='*.yml' \
+            'go-vocal|govocal|Go Vocal|CitizenLab|citizenlab|Ask Rob|govocal-prototypes|deltastudio' \
+            build.js src scripts templates

@@ -10,7 +10,8 @@ import path from "node:path";
 import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 
-const SKIP_DIRS = new Set(["node_modules", "dist", ".git", "spaces", "govocal-exports"]);
+const SKIP_DIRS = new Set(["node_modules", "dist", ".git", "spaces"]);
+const skipDir = (name) => SKIP_DIRS.has(name) || /-exports$/.test(name); // *-exports: local capture bundles
 const args = process.argv.slice(2);
 const quiet = args.includes("--quiet");
 const repos = [];
@@ -48,7 +49,7 @@ function mdFiles(root) {
   };
   grab(root);
   for (const e of fs.readdirSync(root, { withFileTypes: true }))
-    if (e.isDirectory() && !SKIP_DIRS.has(e.name) && !e.name.startsWith(".")) grab(path.join(root, e.name));
+    if (e.isDirectory() && !skipDir(e.name) && !e.name.startsWith(".")) grab(path.join(root, e.name));
   return out;
 }
 
