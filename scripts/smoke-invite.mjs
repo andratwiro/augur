@@ -21,7 +21,12 @@ function memKV() {
 const kv = memKV();
 const env = { COMMENTS: kv, SESSION_SECRET: "smoke-secret" };
 const ADMIN = { email: "admin@smoke.test", name: "Admin", role: "admin" };
-const USER = { email: "user@smoke.test", name: "User" };
+// pass: "leaked-seed-2026" stands in for the legacy roster password migration is
+// revoking. Without it, effectiveSecret has nothing to fall back to, so a tombstone
+// (ov[email] = null) and an outright `delete ov[email]` both collapse to "" — steps
+// 6 and 7 would pass identically either way, and the reset-regresses-to-a-leak bug
+// this script exists to catch would sail straight through. Do not remove this field.
+const USER = { email: "user@smoke.test", name: "User", pass: "leaked-seed-2026" };
 const ROSTER = [ADMIN, USER];
 const ORIGIN = "https://smoke.test";
 
@@ -38,11 +43,13 @@ const ok = (m) => console.log(`  ${++step}. ${m}`);
 
 console.log("invite lifecycle:");
 
-// 1. A roster entry with no secret is pending.
+// 1. A roster entry with a legacy password reads as accepted — that's the leaked
+// password this whole migration exists to revoke. "reset" (step 2) is what moves
+// them to pending.
 let res = await W.adminUsersApi(new Request(`${ORIGIN}/__admin/users`), new URL(`${ORIGIN}/__admin/users`), env, ADMIN, ROSTER);
 let body = await res.json();
-assert.equal(body.users.find((u) => u.email === USER.email).state, "pending");
-ok("new roster entry reads as pending");
+assert.equal(body.users.find((u) => u.email === USER.email).state, "accepted");
+ok("legacy roster entry reads as accepted (the leaked password still works)");
 
 // 2. Reset mints a link.
 res = await W.adminUsersApi(post({ op: "reset", email: USER.email }), new URL(`${ORIGIN}/__admin/users`), env, ADMIN, ROSTER);
@@ -59,10 +66,12 @@ const stored = JSON.parse(await kv.get("users:secrets"))[USER.email];
 assert.ok(W.isPassHash(stored), "stored as a hash");
 ok("redemption stores a hash and issues a session");
 
-// 4. The link is dead.
+// 4. The link is dead, and the reuse attempt didn't touch the stored secret. A status-only
+// check would miss a future reordering that starts mutating state before the token check.
 res = await W.invitePost(redeem(token, "another long password"), new URL(`${ORIGIN}/__invite`), env, ROSTER);
 assert.equal(res.status, 400);
-ok("the link cannot be reused");
+assert.equal(JSON.parse(await kv.get("users:secrets"))[USER.email], stored);
+ok("the link cannot be reused, and the stored secret is untouched by the attempt");
 
 // 5. The user now reads as accepted.
 res = await W.adminUsersApi(new Request(`${ORIGIN}/__admin/users`), new URL(`${ORIGIN}/__admin/users`), env, ADMIN, ROSTER);
@@ -79,10 +88,21 @@ const identified = await W.identify(
 assert.equal(identified && identified.email, USER.email);
 ok("password verifies and the session identifies the user");
 
-// 7. Reset again: password dies immediately, session stops verifying.
+// 7. Reset again: this must write a TOMBSTONE, not a delete. Both make the session stop
+// verifying, so that check alone can't tell them apart — a regression from
+// `ov[email] = null` to `delete ov[email]` would sail through it, because effectiveSecret
+// only falls back to USER.pass ("leaked-seed-2026") when the key is ABSENT, and a fallback
+// to that leaked roster password is exactly the bug this reset exists to prevent. Assert
+// the raw stored state directly, not just the session outcome.
 await W.adminUsersApi(post({ op: "reset", email: USER.email }), new URL(`${ORIGIN}/__admin/users`), env, ADMIN, ROSTER);
+const secretsMap = JSON.parse(await kv.get("users:secrets"));
+assert.ok(Object.prototype.hasOwnProperty.call(secretsMap, USER.email), "key still present: a tombstone, not a deletion");
+assert.ok(!secretsMap[USER.email], "tombstoned value is falsy");
+const revokedSecret = await W.effectiveSecret(env, USER);
+assert.equal(revokedSecret, "");
+assert.notEqual(revokedSecret, "leaked-seed-2026", "must not fall back to the leaked roster password");
 assert.equal(await W.identify(
   new Request(ORIGIN, { headers: { Cookie: `gv_user=${USER.email}.${sessionToken}` } }), env, ROSTER), null);
-ok("reset revokes the password AND the live session");
+ok("reset writes a tombstone (not a deletion), revokes the password with no fallback, and kills the live session");
 
 console.log("\nall good.");
