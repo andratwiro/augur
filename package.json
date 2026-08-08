@@ -1,6 +1,6 @@
 {
   "name": "augur",
-  "version": "1.0.0",
+  "version": "0.9.0",
   "private": true,
   "license": "MIT",
   "description": "Augur \u2014 build/deploy platform composing spaces (design system + prototypes repos) into a static site with an overlay worker.",
@@ -20,7 +20,7 @@
     "dev": "node build.js && npx --yes serve dist",
     "offline": "node scripts/offline.mjs",
     "deploy": "node scripts/deploy.mjs",
-    "deploy:realtime": "set -a && . ./.env.deploy && set +a && npx wrangler deploy realtime/src/index.js -c \"${REALTIME_CONFIG:?set it in .env.deploy — path to your deploy shell's realtime.wrangler.toml (see realtime/wrangler.example.toml)}\"",
+    "deploy:realtime": "set -a && . ./.env.deploy && set +a && npx wrangler deploy realtime/src/index.js -c \"${REALTIME_CONFIG:?set it in .env.deploy \u2014 path to your deploy shell's realtime.wrangler.toml (see realtime/wrangler.example.toml)}\"",
     "posters": "node scripts/shoot.mjs --stale && node scripts/og.mjs --stale"
   },
   "engines": {

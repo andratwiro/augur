@@ -57,15 +57,23 @@
 //     idle (no commands ~12s, pose plain idle) Clawd CHILLS instead of freezing: fidgets,
 //     strolls near the human's cursor or around the content, the odd happy blip.
 
+import { readFileSync } from 'node:fs';
 import { deployConfig } from './lib/instance.mjs';
 
 // This instance's room server and site — resolved from the shell's deploy.config.json
 // (the same source the built worker's /__rt proxy reads), never hardcoded: the engine is
 // shared, and a baked-in origin would drop an agent into ANOTHER instance's rooms.
+// A bare SPACE clone (no shell) still works: space.json's siteOrigin supplies the site,
+// and with no realtime origin the client goes through the site's own /__rt proxy.
 const DEPLOY = deployConfig();
+const SPACE = (() => {
+  try { return JSON.parse(readFileSync('space.json', 'utf8')); }
+  catch { return {}; }
+})();
 const RT_ORIGIN = String(process.env.CANVAS_RT_ORIGIN || DEPLOY.realtimeOrigin || '')
   .replace(/^http/, 'ws').replace(/\/+$/, '');
-const SITE = process.env.CANVAS_SITE_ORIGIN || process.env.REVIEW_SITE_URL || DEPLOY.siteOrigin || '';
+const SITE = process.env.CANVAS_SITE_ORIGIN || process.env.REVIEW_SITE_URL ||
+  DEPLOY.siteOrigin || SPACE.siteOrigin || '';
 const CLAWD_ORANGE = '#d97757'; // Claude clay — the primary agent's Clawd hue
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -90,8 +98,14 @@ export const colorFor = (name) => {
 export class ClawdCanvas {
   constructor({ boardPath, name = 'Clawd', color, site = SITE, rtOrigin = RT_ORIGIN } = {}) {
     if (!boardPath) throw new Error('boardPath required');
-    if (!site) throw new Error('no site origin — pass {site} or set CANVAS_SITE_ORIGIN (the deployed site origin, e.g. https://<project>.pages.dev)');
-    if (!rtOrigin) throw new Error('no realtime origin — set "realtimeOrigin" in your deploy shell\'s deploy.config.json (see CANVAS.md), or pass {rtOrigin} / CANVAS_RT_ORIGIN');
+    if (!site) throw new Error('no site origin — pass {site}, set CANVAS_SITE_ORIGIN, or run from a space clone whose space.json has "siteOrigin"');
+    // No dedicated realtime origin? Go through the site's own /__rt proxy — it forwards
+    // to the instance's room server, so a bare space clone works with zero config.
+    this._roomPath = '/room';
+    if (!rtOrigin) {
+      rtOrigin = String(site).replace(/^http/, 'ws').replace(/\/+$/, '');
+      this._roomPath = '/__rt';
+    }
     this.boardPath = boardPath;
     this.name = name;
     this.color = color || colorFor(name);
@@ -110,7 +124,7 @@ export class ClawdCanvas {
   }
 
   connect() {
-    const url = `${this.rtOrigin}/room?path=${encodeURIComponent(this.boardPath)}` +
+    const url = `${this.rtOrigin}${this._roomPath}?path=${encodeURIComponent(this.boardPath)}` +
       `&name=${encodeURIComponent(this.name)}&kind=agent&color=${encodeURIComponent(this.color)}`;
     const ws = new WebSocket(url);
     this._ws = ws;

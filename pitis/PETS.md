@@ -130,4 +130,4 @@ true. **Live only · prototypes + `/playground/` only · only while active (Shif
   `senda-1/2.png`, `corgi-sleep.png`, pose reference imagery, the behaviour clip
   + frames, cursor refs (`_cur31*`), plus scratch render harnesses (`_*.html`/`_*.png`).
 - Docs: `README.md` (current state), `research.md` (design research + interaction
-  catalogue), build brief `senda-pruna-agent.md`.
+  catalogue).

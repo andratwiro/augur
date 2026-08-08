@@ -55,3 +55,41 @@ jobs:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           command: pages deploy engine/dist --project-name=your-pages-project --branch=main
+
+      # In R2 bundle mode, the Pages deploy above ships worker CODE + chrome; content
+      # ships exclusively via `augur publish` from the space clones — this job's
+      # space checkouts are pinned and may lag direct publishes, so it must
+      # never touch space content (--engine can't, by construction). Skips
+      # gracefully while AUGUR_TOKEN isn't configured (assets-mode setups).
+      - name: Publish engine chrome to the bundle store
+        env:
+          AUGUR_TOKEN: ${{ secrets.AUGUR_TOKEN }}
+          AUGUR_ORIGIN: https://your-site-origin.example
+          GV_SPACES_ROOT: ${{ github.workspace }}/spaces
+          GV_IDENTITY_PATH: ${{ github.workspace }}/identity.json
+          GV_DEPLOY_CONFIG_PATH: ${{ github.workspace }}/deploy.config.json
+        run: |
+          if [ -z "$AUGUR_TOKEN" ]; then echo "AUGUR_TOKEN not configured — skipping store publish"; exit 0; fi
+          cd engine && node scripts/publish.mjs --engine
+
+      # The realtime (canvas multiplayer) worker deploys separately from Pages; its
+      # instance config lives in THIS repo (realtime.wrangler.toml). Third parties
+      # forget manual redeploys, so: when the engine pin moved AND the move touched
+      # engine realtime code, redeploy it here. Skips gracefully when the shell has
+      # no realtime config, the pin didn't move, or realtime/ is untouched.
+      - name: Redeploy realtime if the engine bump changed it
+        if: ${{ hashFiles('realtime.wrangler.toml') != '' }}
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          set -euo pipefail
+          OLD="$(git rev-parse '${{ github.event.before }}:engine' 2>/dev/null \
+             || git rev-parse 'HEAD^:engine' 2>/dev/null || true)"
+          NEW="$(git rev-parse 'HEAD:engine')"
+          if [ -z "$OLD" ] || [ "$OLD" = "$NEW" ]; then echo "engine pin unmoved — skipping realtime."; exit 0; fi
+          if git -C engine diff --quiet "$OLD" "$NEW" -- realtime/ 2>/dev/null; then
+            echo "engine bump didn't touch realtime/ — skipping."; exit 0
+          fi
+          echo "realtime/ changed in ${OLD:0:12}..${NEW:0:12} — redeploying"
+          npx wrangler deploy -c realtime.wrangler.toml

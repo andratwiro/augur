@@ -1,5 +1,8 @@
 # Commenting UX — compose & thread redesign (build plan)
 
+> **Historical** — the original build plan for the comments overlay, kept as a design record.
+> Current behavior is the code (`src/review/comments.js`); do not treat "what's there today" claims below as current.
+
 Target spec for upgrading the review overlay (`comments.js`) to a modern
 commenting interaction model, captured from a set of annotated reference
 screenshots. This is a **build plan**, not a description of

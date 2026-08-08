@@ -156,8 +156,8 @@ function isPublicPath(pathname) {
 // is restricted (a local build with no identity gates nothing extra).
 let RESTRICTED_BASES = [];
 
-// Does this path live inside an admin-only space? Matches the base ("/go-vocal-2"),
-// its root ("/go-vocal-2/") and everything beneath it.
+// Does this path live inside an admin-only space? Matches the base ("/space-2"),
+// its root ("/space-2/") and everything beneath it.
 function isRestrictedPath(pathname) {
   return RESTRICTED_BASES.some(
     (b) => pathname === b || pathname.startsWith(b + "/")
@@ -228,9 +228,16 @@ async function verifyPassword(password, stored) {
 // defaults, and a transient read failure never wipes a working gate.
 let SPACES = [];
 let INSTANCE_SENTINELS = [];
+// Engine version of the build that produced the live config/chrome (from
+// package.json via build.js) + the release feed the update nudge polls.
+let INSTANCE_ENGINE_VERSION = "";
+let UPDATE_FEED = "";
+const DEFAULT_UPDATE_FEED = "https://api.github.com/repos/andratwiro/augur/releases/latest";
 let cfgAt = 0;
 function applyInstance(inst) {
   USERS = Array.isArray(inst.users) ? inst.users : [];
+  INSTANCE_ENGINE_VERSION = inst.engineVersion || "";
+  UPDATE_FEED = inst.updateFeed || "";
   MCP_HOST_SUFFIXES = inst.mcpHostSuffixes || [];
   MCP_HOST_ALLOWLIST_URL = inst.mcpHostAllowlistUrl || "";
   VANITY_REDIRECTS = inst.vanityRedirects || {};
@@ -799,6 +806,10 @@ const BLOB_MAX_BYTES = 25 * 1024 * 1024;
 // small enough to keep a commit's R2 subrequests inside the free-plan budget.
 const INLINE_MAX_BLOBS = 16;
 const INLINE_MAX_BYTES = 1_000_000;
+// Publish-protocol version, echoed in check responses so a CLI can detect skew
+// against the deployed worker. History: 1 = check/blob/commit; 2 = + inline-blob
+// commits, filesUnchanged/liveSource on check.
+const PUBLISH_PROTOCOL = 2;
 
 let MANIFESTS = { at: 0, spaces: {} };
 async function loadManifests(env, force) {
@@ -919,6 +930,7 @@ async function assetPathExists(env, url) {
 // collaborators' "is my commit live?" check keeps its exact shape.
 function synthBuildStamp(manifests) {
   const spaces = {}, engine = { sha: null };
+  if (INSTANCE_ENGINE_VERSION) engine.version = INSTANCE_ENGINE_VERSION;
   let builtAt = null;
   for (const id in manifests) {
     const m = manifests[id];
@@ -1041,6 +1053,8 @@ async function publishApi(request, url, env) {
       filesUnchanged,
       liveSource: cur && cur.source
         ? { sha: cur.source.sha || null, dirty: !!cur.source.dirty } : null,
+      protocol: PUBLISH_PROTOCOL,
+      engine: INSTANCE_ENGINE_VERSION || null,
     });
   }
 
@@ -1138,6 +1152,45 @@ async function publishApi(request, url, env) {
   }
 
   return jsonResponse({ error: "unknown-op" }, 400);
+}
+
+// ---- Admin: engine version + update nudge -----------------------------------
+// Reports the running engine version and whether the release feed (GitHub
+// releases API by default, `updateFeed` in deploy.config.json to override) holds
+// a newer one. The feed check is KV-cached for 6h — one origin fetch per
+// instance per window, whatever the page-view rate. Admin-cookie gated; updates
+// themselves stay manual (the shell's engine-bump is the release valve).
+function semverBehind(cur, latest) {
+  const a = String(cur).split(".").map((n) => parseInt(n, 10) || 0);
+  const b = String(latest).split(".").map((n) => parseInt(n, 10) || 0);
+  for (let i = 0; i < 3; i++) { const x = a[i] || 0, y = b[i] || 0; if (x !== y) return x < y; }
+  return false;
+}
+async function adminVersionApi(env, me) {
+  if (!me || me.role !== "admin") return jsonResponse({ error: "forbidden" }, 403);
+  const current = INSTANCE_ENGINE_VERSION || null;
+  const kv = kvFor(env);
+  let latest = null, url = "";
+  try {
+    const cached = kv ? JSON.parse((await kv.get("engine:update-check")) || "null") : null;
+    if (cached && Date.now() - cached.at < 6 * 3600 * 1000) {
+      latest = cached.latest; url = cached.url || "";
+    } else {
+      const r = await fetch(UPDATE_FEED || DEFAULT_UPDATE_FEED, {
+        headers: { "user-agent": "augur-update-check", accept: "application/vnd.github+json" },
+      });
+      if (r.ok) {
+        const d = await r.json();
+        latest = String(d.tag_name || d.version || "").replace(/^v/, "") || null;
+        url = d.html_url || "";
+      }
+      // Cache misses too — a feed with no releases yet must not be re-polled
+      // on every admin page view.
+      if (kv) await kv.put("engine:update-check", JSON.stringify({ at: Date.now(), latest, url }));
+    }
+  } catch (e) {}
+  const behind = !!(current && latest && semverBehind(current, latest));
+  return jsonResponse({ current, latest, url, behind });
 }
 
 // ---- Admin: publish tokens (KV-backed) --------------------------------------
@@ -1725,8 +1778,8 @@ function applyOp(threads, op) {
 }
 
 // GET/POST /__review/api?path=<page> — read or mutate one page's threads.
-// Reads are open (public prototypes embed the overlay: annotations show always-on,
-// comments show once a viewer presses Shift+C). Writes stay gated — see router.
+// Fully OPEN, reads AND writes (see router): reviewers with only a public
+// prototype link must be able to comment. applyOp clamps/caps every field.
 async function reviewApi(request, url, env) {
   const kv = kvFor(env);
   const path = clamp(url.searchParams.get("path") || "/", 600);
@@ -1793,7 +1846,7 @@ async function pinsApi(request, url, env, user) {
   // Pins are per-user (key "pins:<email>"), independent across users; the global
   // "pins" key is only the fallback when nobody is signed in. Note: NO migration
   // from the global map — that seeded EVERY new user from one shared (effectively
-  // Rob's) map, leaking pins across accounts. A new user starts empty.
+  // the first user's) map, leaking pins across accounts. A new user starts empty.
   const key = user ? `${PINS_KEY}:${user.email}` : PINS_KEY;
 
   if (request.method === "GET") {
@@ -2440,6 +2493,9 @@ export default {
     // Admin bundle-store gauge — bytes/objects vs the free-tier ceiling.
     if (url.pathname === "/__admin/storage") return adminStorageApi(env, me);
 
+    // Engine version + update-available nudge (the profile chip's fetch).
+    if (url.pathname === "/__admin/version") return adminVersionApi(env, me);
+
     // Invite redemption is reachable WITHOUT a session — that is the whole point.
     if (url.pathname === "/__invite") {
       if (request.method === "GET") return inviteGet(url, env);
@@ -2540,10 +2596,10 @@ export default {
     // /__board: the board is the credential. The engine degrades to solo if this fails.
     if (url.pathname === "/__rt") return rtProxy(request, url);
 
-    // Admin-only spaces (the 2.0 workspace): seal the whole base path BEFORE the
-    // public-prototype door, so nothing under it — not even an og.jpg — leaks. Only
-    // an admin (Rob) gets through; a signed-in non-admin (Irene, Tali) is bounced
-    // home; a signed-out visitor gets the login page. Skipped in legacy/open mode
+    // Admin-only spaces: seal the whole base path BEFORE the public-prototype
+    // door, so nothing under it — not even an og.jpg — leaks. Only an admin
+    // gets through; a signed-in non-admin is bounced home; a signed-out
+    // visitor gets the login page. Skipped in legacy/open mode
     // (no users injected), same as the /admin gate.
     if (usersActive && isRestrictedPath(url.pathname)) {
       if (!authed) return htmlResponse(loginPage(url.pathname + url.search, false), 200);

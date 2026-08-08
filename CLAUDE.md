@@ -16,6 +16,8 @@ augur/
 ├── src/review/         # comment/annotation overlay
 ├── pitis/              # optional cursor-companion build addon (site builds identically without it)
 ├── scripts/            # offline preview, poster shots, og cards, review CLI
+├── agents/             # engine contract docs for SPACE-collaborator agents (publish,
+│                       #   review feedback, prototype contract, space.json, identity)
 ├── realtime/           # canvas multiplayer worker (Durable Objects; deployed separately)
 └── brand/              # the engine's own marks + fonts
 ```
@@ -27,21 +29,13 @@ A **space** is a separate git repo: a self-contained design system + prototypes 
 `./spaces`). The default space builds at the site root; every other space under
 `/<id>/`.
 
-`space.json` contract: `{ id, name, default, badge, adminOnly, projectsLabel,
-methodPages, pendingPages, designSystem, ignore }`.
-- `id` = the `spaces/<id>` mount name + URL prefix (lowercase `[a-z0-9-]`). The repo
-  NAME is a free label — the deploy bridge names spaces from `space.json`, not the repo.
-- `adminOnly: true` seals every URL under the space's base behind the admin login
-  (injected into the worker as `RESTRICTED_BASES`).
-- `projectsLabel`: what the UI calls the space's top-level prototype folders (rail
-  section + landing title). Default "Projects"; a space whose team has its own
-  vocabulary for them (e.g. "Opportunities") overrides it here. Internal code keeps
-  the historical `opportunities` identifiers — only user-facing strings read the label.
-- **The UI skill is auto-detected**: the dir under `<space>/skills/` named
-  `<prefix>-ui` containing `<dirname>.css`. Every canonical asset name derives from the
-  prefix (`<prefix>-tokens.css`, `<prefix>-primitives.css`, …). Override with
-  `designSystem: { "skill": "<dir>" }`.
-- `ignore`: extra top-level dirs the build must never treat as project folders.
+`space.json` contract: **single source = [agents/space-json.md](agents/space-json.md)**
+(all fields incl. `siteOrigin` + `mcpAllowlists`, with semantics). Load-bearing
+highlights: `id` is the only required field (mount name + URL prefix; repo name is a
+free label); `adminOnly: true` seals the space behind the admin login (worker
+`RESTRICTED_BASES`); the UI skill is auto-detected from `skills/<prefix>-ui/` and every
+canonical asset name derives from that prefix (`designSystem.skill` overrides). If you
+change what `discoverSpaces()` parses, update agents/space-json.md in the same commit.
 
 **Publishing is whitelist-driven (critical guardrail).** Only the contents of
 `prototypes/` folders, the gallery tiers (`base/ components/ pages/ patterns/`,
