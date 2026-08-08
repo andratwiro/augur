@@ -19,6 +19,12 @@ review-comments.local.md
 # Wrangler local state
 .wrangler/
 
+# Locally-mounted spaces. `./spaces` is the DEFAULT value of GV_SPACES_ROOT, not a
+# directory this repo owns — spaces are separate repos, mounted by a deploy shell. It
+# only appears here when someone mounts one for local dev, and it must never be
+# committed to the engine. (Also what stops doc-lint flagging the documented default.)
+/spaces
+
 # scratch: image curation workspace (internal)
 .imgwork/
 
