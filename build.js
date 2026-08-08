@@ -3882,9 +3882,10 @@ const SPACE_JS = `(function(){
 `;
 
 // Admin page behaviour: load every user from /__admin/users (admin-only — 403s for
-// anyone else, though the worker also gates the /admin/ route) and render an editable
-// password row per user. Saving POSTs the new password; the worker stores it as a KV
-// override and that user's cookie stops matching, so they re-login with the new one.
+// anyone else, though the worker also gates the /admin/ route) and render one row per
+// person: lifecycle state, last connection, and a Reset button. Reset kills that
+// user's password immediately and returns a single-use invite link to copy — the
+// admin never sees or sets a password.
 const ADMIN_JS = `(function(){
   var host = document.querySelector('[data-admin-users]');
   if(!host) return;
@@ -3904,30 +3905,48 @@ const ADMIN_JS = `(function(){
   function row(u){
     var ini = (u.initials || (u.name||'?').slice(0,2)).toUpperCase();
     var badge = u.role === 'admin' ? ' <span class="au__badge">admin</span>' : '';
-    // account photo when the user has one (same /__avatar URL presence chips use), initials otherwise
     var av = u.avatar
       ? '<span class="au__av" style="background:url(&quot;'+esc(u.avatar)+'&quot;) center/cover, '+esc(u.color||'#4f46e5')+'"></span>'
       : '<span class="au__av" style="background:'+esc(u.color||'#4f46e5')+'">'+esc(ini)+'</span>';
+    var state = u.state === 'accepted'
+      ? '<span class="au__state au__state--ok">active</span>'
+      : '<span class="au__state au__state--pending">pending invite</span>';
     return '<div class="au" data-email="'+esc(u.email)+'">'
       + av
       + '<span class="au__id"><span class="au__name">'+esc(u.name)+badge+'</span><span class="au__email">'+esc(u.email)+'</span></span>'
+      + state
       + '<span class="au__seen'+(u.lastSeen ? '' : ' au__seen--never')+'" title="'+(u.lastSeen ? 'Last connection: '+esc(u.lastSeen) : 'Never signed in')+'">'+esc(ago(u.lastSeen))+'</span>'
-      + '<span class="au__pw"><input type="text" class="au__input" value="'+esc(u.pass)+'" aria-label="Password for '+esc(u.email)+'" autocapitalize="off" autocorrect="off" spellcheck="false" />'
-      + '<button type="button" class="au__save">Save</button><span class="au__msg" aria-live="polite"></span></span>'
+      + '<span class="au__act"><button type="button" class="au__reset">Reset</button>'
+      + '<input type="text" class="au__link" readonly hidden aria-label="Invite link for '+esc(u.email)+'" />'
+      + '<button type="button" class="au__copy" hidden>Copy</button>'
+      + '<span class="au__msg" aria-live="polite"></span></span>'
       + '</div>';
   }
   function wire(){
     var rows = host.querySelectorAll('.au');
     for(var i=0;i<rows.length;i++){ (function(el){
-      var btn = el.querySelector('.au__save'), inp = el.querySelector('.au__input'), msg = el.querySelector('.au__msg');
+      var btn = el.querySelector('.au__reset'), link = el.querySelector('.au__link'),
+          copy = el.querySelector('.au__copy'), msg = el.querySelector('.au__msg');
       btn.addEventListener('click', function(){
-        var pass = inp.value;
-        if(!pass){ msg.textContent = 'empty'; return; }
+        var who = el.getAttribute('data-email');
+        if(!window.confirm('Reset ' + who + '?\\n\\nTheir password stops working immediately. Send them the link that appears.')) return;
         btn.disabled = true; msg.textContent = '…';
-        fetch('/__admin/users',{ method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ email: el.getAttribute('data-email'), pass: pass }) })
+        fetch('/__admin/users',{ method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ op:'reset', email: who }) })
           .then(function(r){ return r.json(); })
-          .then(function(d){ btn.disabled = false; msg.textContent = d && d.ok ? 'saved ✓' : (d && d.error) || 'error'; setTimeout(function(){ msg.textContent = ''; }, 2500); })
+          .then(function(d){
+            btn.disabled = false;
+            if(d && d.ok && d.url){
+              link.value = d.url; link.hidden = false; copy.hidden = false;
+              link.focus(); link.select();
+              msg.textContent = 'send this link';
+            } else { msg.textContent = (d && d.error) || 'error'; }
+          })
           .catch(function(){ btn.disabled = false; msg.textContent = 'error'; });
+      });
+      copy.addEventListener('click', function(){
+        link.select();
+        try { document.execCommand('copy'); msg.textContent = 'copied ✓'; }
+        catch(e){ msg.textContent = 'copy manually'; }
       });
     })(rows[i]); }
   }
@@ -3937,7 +3956,6 @@ const ADMIN_JS = `(function(){
   }).then(function(d){
     if(!d) return;
     if(!d.users){ host.innerHTML = '<p class="empty">Could not load users.</p>'; return; }
-    // Most recent connection first; never-signed-in sink to the bottom (A–Z within ties).
     d.users.sort(function(a,b){
       var ta = a.lastSeen ? Date.parse(a.lastSeen) : 0, tb = b.lastSeen ? Date.parse(b.lastSeen) : 0;
       return (tb - ta) || (a.name || '').localeCompare(b.name || '');
@@ -4027,14 +4045,14 @@ function renderAdminPage() {
     .au__email{ font-size:12.5px; color:#5b626e; }
     .au__seen{ flex:none; font-size:12.5px; color:#5b626e; white-space:nowrap; margin-right:14px; }
     .au__seen--never{ color:#9aa0ab; font-style:italic; }
-    .au__pw{ display:flex; align-items:center; gap:8px; flex:none; }
-    .au__input{ font:inherit; font-size:13px; padding:6px 10px; border:1px solid rgba(16,17,26,0.15); border-radius:8px; width:160px; background:#fff; }
-    .au__input:focus{ outline:2px solid #5e6ad2; outline-offset:1px; border-color:transparent; }
-    .au__save{ font:inherit; font-size:13px; font-weight:600; padding:6px 13px; border-radius:8px; border:1px solid transparent; background:#2c2150; color:#fff; cursor:pointer; }
-    .au__save:hover{ background:#38295e; }
-    .au__save:disabled{ opacity:.5; cursor:default; }
+    .au__state { font-size: .75rem; padding: .15rem .5rem; border-radius: 999px; white-space: nowrap; }
+    .au__state--ok { background: #dcfce7; color: #166534; }
+    .au__state--pending { background: #fef3c7; color: #92400e; }
+    .au__act { display: flex; gap: .4rem; align-items: center; }
+    .au__link { font: 12px/1.3 ui-monospace, monospace; width: 16rem; padding: .3rem .4rem;
+                border: 1px solid #d4d4d8; border-radius: 6px; }
     .au__msg{ font-size:12px; color:#5b626e; min-width:42px; }
-    @media (max-width:620px){ .au{ flex-wrap:wrap; } .au__pw{ width:100%; } .au__input{ flex:1 1 auto; width:auto; } }
+    @media (max-width:620px){ .au{ flex-wrap:wrap; } .au__act{ width:100%; } .au__link{ flex:1 1 auto; width:auto; } }
   </style>
   <header class="folderbar"><h1 class="folderbar__title">Admin</h1><span class="folderbar__rule"></span></header>
   <p class="admin-intro">Internal users and their passwords (admin-only). Editing a password saves immediately and signs that person out — they sign back in with the new one. Names, emails and roles live in <code>src/identity.json</code>.</p>
