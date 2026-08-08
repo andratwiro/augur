@@ -377,6 +377,10 @@ const bundleMode = (env) => !!(env && env.GV_ASSET_SOURCE === "r2" && env.BUNDLE
 
 const PUBLISH_TOKENS_KEY = "publish:tokens"; // KV {sha256("pub:"+token): {space,label,createdAt}}
 const BLOB_MAX_BYTES = 25 * 1024 * 1024;
+// Inline-commit caps: enough for a typical few-file edit in one round trip,
+// small enough to keep a commit's R2 subrequests inside the free-plan budget.
+const INLINE_MAX_BLOBS = 16;
+const INLINE_MAX_BYTES = 1_000_000;
 
 let MANIFESTS = { at: 0, spaces: {} };
 async function loadManifests(env, force) {
@@ -605,7 +609,19 @@ async function publishApi(request, url, env) {
     const missing = [...new Set(Object.values(files).map((f) => f && f.h).filter(Boolean))]
       .filter((h) => !have.has(h));
     const cur = all[spaceId];
-    return jsonResponse({ missing, liveVersion: (cur && cur.version) || 0 });
+    // filesUnchanged + liveSource let the client skip a commit that would change
+    // nothing (same content, same provenance) — a version bump with no meaning.
+    const curFiles = (cur && cur.files) || null;
+    const keys = curFiles ? Object.keys(files) : [];
+    const filesUnchanged = !!curFiles && keys.length === Object.keys(curFiles).length
+      && keys.every((p) => files[p] && curFiles[p] && files[p].h === curFiles[p].h);
+    return jsonResponse({
+      missing,
+      liveVersion: (cur && cur.version) || 0,
+      filesUnchanged,
+      liveSource: cur && cur.source
+        ? { sha: cur.source.sha || null, dirty: !!cur.source.dirty } : null,
+    });
   }
 
   if (op === "blob" && request.method === "PUT") {
@@ -625,6 +641,40 @@ async function publishApi(request, url, env) {
     if (!m || m.id !== spaceId || !m.files || typeof m.files !== "object") {
       return jsonResponse({ error: "bad-manifest" }, 400);
     }
+    // Inline blobs — the one-round-trip fast path: a small commit may carry its
+    // fresh blobs base64-inline instead of PUTting each first. Every inline blob
+    // is sha256-verified in-request, so it is proven by construction and needs
+    // no spot-check subrequest afterwards.
+    const inline = m.blobs && typeof m.blobs === "object" && !Array.isArray(m.blobs) ? m.blobs : null;
+    delete m.blobs; // transport-only — never persisted in the manifest
+    const inlineStored = new Set();
+    if (inline) {
+      const entries = Object.entries(inline);
+      if (entries.length > INLINE_MAX_BLOBS) return jsonResponse({ error: "too-many-inline-blobs" }, 413);
+      let total = 0;
+      const bufs = [];
+      for (const [h, b64] of entries) {
+        if (!/^[0-9a-f]{64}$/.test(h) || typeof b64 !== "string") {
+          return jsonResponse({ error: "bad-inline-blob" }, 400);
+        }
+        let buf;
+        try {
+          const bin = atob(b64);
+          buf = new Uint8Array(bin.length);
+          for (let i = 0; i < bin.length; i++) buf[i] = bin.charCodeAt(i);
+        } catch (e) { return jsonResponse({ error: "bad-inline-blob" }, 400); }
+        total += buf.byteLength;
+        if (!buf.byteLength || buf.byteLength > BLOB_MAX_BYTES || total > INLINE_MAX_BYTES) {
+          return jsonResponse({ error: "bad-size" }, 413);
+        }
+        const digest = [...new Uint8Array(await crypto.subtle.digest("SHA-256", buf))]
+          .map((b) => b.toString(16).padStart(2, "0")).join("");
+        if (digest !== h) return jsonResponse({ error: "hash-mismatch", hash: h }, 400);
+        bufs.push([h, buf]);
+      }
+      await Promise.all(bufs.map(([h, buf]) => env.BUNDLES.put("blobs/" + h, buf)));
+      for (const [h] of bufs) inlineStored.add(h);
+    }
     const curObj = await env.BUNDLES.get(`spaces/${spaceId}/manifest.json`);
     const cur = curObj ? JSON.parse(await curObj.text()) : null;
     // Sentinels (instance-configured paths, e.g. the DS core stylesheet): once
@@ -640,8 +690,10 @@ async function publishApi(request, url, env) {
     // 404 is the loud failure if one ever slips).
     const prev = new Set(cur ? Object.values(cur.files).map((f) => f.h) : []);
     const fresh = [...new Set(Object.values(m.files).map((f) => f && f.h).filter(Boolean))]
-      .filter((h) => !prev.has(h));
-    const sample = fresh.slice(0, 40);
+      .filter((h) => !prev.has(h) && !inlineStored.has(h));
+    // Smaller sample when inline blobs rode along — their PUTs already spent
+    // part of this request's subrequest budget.
+    const sample = fresh.slice(0, inline ? 16 : 40);
     const heads = await Promise.all(sample.map((h) => env.BUNDLES.head("blobs/" + h)));
     const miss = sample.filter((h, i) => !heads[i]);
     if (miss.length) return jsonResponse({ error: "blobs-missing", missing: miss.slice(0, 5) }, 409);

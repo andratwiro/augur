@@ -171,6 +171,26 @@ function refuseShallow(dir) {
   } catch (e) {}
 }
 
+// ── last-committed manifest cache (per origin+space) ─────────────────────────
+// Lets a publish compute its delta locally and ship a small edit as ONE
+// request (commit with blobs inline) instead of check → PUTs → commit. Purely
+// an optimization: a stale/missing cache falls back to the classic protocol.
+const CACHE_DIR = path.join(
+  (await import("node:os")).homedir(), ".config", "augur", "published", new URL(ORIGIN).host);
+function readPubCache(id) {
+  try { return JSON.parse(readFileSync(path.join(CACHE_DIR, id + ".json"), "utf8")); }
+  catch (e) { return null; }
+}
+async function writePubCache(id, data) {
+  try {
+    const { mkdir, writeFile } = await import("node:fs/promises");
+    await mkdir(CACHE_DIR, { recursive: true });
+    await writeFile(path.join(CACHE_DIR, id + ".json"), JSON.stringify(data));
+  } catch (e) {}
+}
+const INLINE_MAX_BLOBS = 16;
+const INLINE_MAX_BYTES = 900_000;
+
 // ── the digest protocol, per target ──────────────────────────────────────────
 const api = (p) => `${ORIGIN}/__publish/${p}`;
 const auth = { Authorization: `Bearer ${TOKEN}` };
@@ -190,6 +210,44 @@ async function publishOne(id, sourceDir) {
   const files = manifest.files;
   const total = Object.keys(files).length;
 
+  // Fast path: with a cache of the last commit, a small delta ships as ONE
+  // request — the commit carries its fresh blobs base64-inline. Any failure
+  // (stale cache, older worker, sentinel) falls through to the classic path.
+  const cached = readPubCache(id);
+  if (!DRY && cached && cached.files) {
+    const had = new Set(Object.values(cached.files).map((f) => f && f.h));
+    const freshHashes = new Map(); // hash → one path that has it
+    for (const [p, f] of Object.entries(files)) {
+      if (f && f.h && !had.has(f.h) && !freshHashes.has(f.h)) freshHashes.set(f.h, p);
+    }
+    const changed = freshHashes.size > 0
+      || Object.keys(files).length !== Object.keys(cached.files).length
+      || Object.entries(files).some(([p, f]) => !cached.files[p] || cached.files[p].h !== f.h)
+      || (cached.source || {}).sha !== manifest.source.sha
+      || !!(cached.source || {}).dirty !== !!manifest.source.dirty;
+    const bytes = [...freshHashes.values()].reduce((n, p) => n + files[p].s, 0);
+    if (changed && freshHashes.size <= INLINE_MAX_BLOBS && bytes <= INLINE_MAX_BYTES) {
+      try {
+        const blobs = {};
+        for (const [h, p] of freshHashes) {
+          blobs[h] = (await readFile(path.join(ROOT, "dist", p.slice(1)))).toString("base64");
+        }
+        // Omit the blobs key when empty: a pre-inline worker would persist it
+        // verbatim into the stored manifest (it only strips what it knows).
+        const res = await (await req(api(`${id}/commit`), {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify(freshHashes.size ? { ...manifest, blobs } : manifest),
+        })).json();
+        log(`${id}: ${total} files, ${freshHashes.size} blobs inline (${(bytes / 1e6).toFixed(1)} MB), v${res.version}${manifest.source.dirty ? " \x1b[33m[dirty]\x1b[0m" : ""}`);
+        await writePubCache(id, { version: res.version, files, source: manifest.source });
+        return res.version;
+      } catch (e) {
+        log(`${id}: fast commit declined (${e.message.slice(0, 80)}) — classic path`);
+      }
+    }
+  }
+
   const check = await (await req(api(`${id}/check`), {
     method: "POST",
     headers: { "content-type": "application/json" },
@@ -203,6 +261,16 @@ async function publishOne(id, sourceDir) {
   const bytes = [...uniq.values()].reduce((n, p) => n + files[p].s, 0);
   log(`${id}: ${total} files, ${uniq.size} blobs to upload (${(bytes / 1e6).toFixed(1)} MB), live v${check.liveVersion}${manifest.source.dirty ? " \x1b[33m[dirty]\x1b[0m" : ""}`);
   if (DRY) return null;
+
+  // True no-op: live already holds these exact files AND this exact provenance
+  // (sha + dirty) — a commit would bump the version without changing anything.
+  if (check.filesUnchanged && check.liveSource
+    && check.liveSource.sha === manifest.source.sha
+    && !!check.liveSource.dirty === !!manifest.source.dirty) {
+    log(`${id}: unchanged — commit skipped (live v${check.liveVersion})`);
+    await writePubCache(id, { version: check.liveVersion, files, source: manifest.source });
+    return check.liveVersion;
+  }
 
   const entries = [...uniq.entries()];
   let done = 0, failed = 0;
@@ -230,19 +298,32 @@ async function publishOne(id, sourceDir) {
     headers: { "content-type": "application/json" },
     body: JSON.stringify(manifest),
   })).json();
+  await writePubCache(id, { version: res.version, files, source: manifest.source });
   return res.version;
 }
 
-const results = [];
+let results = [];
 if (ALL || ENGINE_ONLY) {
-  // Instance config first (identity/knobs), then engine chrome, then spaces.
+  // Config, engine chrome and every space are independent pipelines — run them
+  // concurrently (each is its own check/upload/commit chain against its own
+  // manifest); total time is the slowest chain, not the sum.
+  const jobs = [];
   if (!DRY) {
-    const inst = await readFile(path.join(ROOT, "dist", "__config", "instance.json"), "utf8");
-    await req(api("_instance/config"), { method: "POST", headers: { "content-type": "application/json" }, body: inst });
-    log("instance config pushed");
+    jobs.push([null, (async () => {
+      const inst = await readFile(path.join(ROOT, "dist", "__config", "instance.json"), "utf8");
+      await req(api("_instance/config"), { method: "POST", headers: { "content-type": "application/json" }, body: inst });
+      log("instance config pushed");
+    })()]);
   }
-  results.push(["_engine", await publishOne("_engine", ROOT)]);
-  if (!ENGINE_ONLY) for (const id of Object.keys(byId)) results.push([id, await publishOne(id, byId[id])]);
+  jobs.push(["_engine", publishOne("_engine", ROOT)]);
+  if (!ENGINE_ONLY) for (const id of Object.keys(byId)) jobs.push([id, publishOne(id, byId[id])]);
+  const settled = await Promise.allSettled(jobs.map(([, p]) => p));
+  const failed = settled.filter((s) => s.status === "rejected");
+  for (const f of failed) log(`FAILED: ${f.reason && f.reason.message}`);
+  if (failed.length) die(`${failed.length} target(s) failed — see above.`);
+  results = jobs
+    .map(([id], i) => [id, settled[i].value])
+    .filter(([id]) => id !== null);
 } else {
   results.push([targetSpace, await publishOne(targetSpace, byId[targetSpace])]);
 }
