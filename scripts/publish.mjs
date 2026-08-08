@@ -190,6 +190,11 @@ async function writePubCache(id, data) {
 }
 const INLINE_MAX_BLOBS = 16;
 const INLINE_MAX_BYTES = 900_000;
+// The publish-protocol version this CLI speaks; check responses echo the
+// worker's. Newer worker → nudge the operator to pull; older worker → the
+// fast path's failure fallback already degrades gracefully.
+const CLIENT_PROTOCOL = 2;
+let warnedSkew = false;
 
 // ── the digest protocol, per target ──────────────────────────────────────────
 const api = (p) => `${ORIGIN}/__publish/${p}`;
@@ -253,6 +258,10 @@ async function publishOne(id, sourceDir) {
     headers: { "content-type": "application/json" },
     body: JSON.stringify({ files }),
   })).json();
+  if (!warnedSkew && check.protocol && check.protocol > CLIENT_PROTOCOL) {
+    warnedSkew = true;
+    log(`⚠ the instance speaks publish protocol ${check.protocol} (this clone: ${CLIENT_PROTOCOL}) — \`git pull\` your engine checkout for the faster path.`);
+  }
   const missing = new Set(check.missing || []);
   const toUpload = Object.entries(files).filter(([, f]) => missing.has(f.h));
   // Blobs are content-addressed: many paths can share one hash; upload each once.

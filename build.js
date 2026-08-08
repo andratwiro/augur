@@ -278,6 +278,23 @@ const DEPLOY = existsSync(DEPLOY_CONFIG_PATH) ? JSON.parse(readFileSync(DEPLOY_C
 // absolute URLs). From the deploy config; empty → root-relative page URLs.
 const SITE_ORIGIN = DEPLOY.siteOrigin || "";
 
+// The engine's release version — package.json is the single source (git tags
+// mirror it, 1.0.0 is reserved for the public launch). It rides the runtime
+// config and build stamps; the worker ships verbatim and reads it from config.
+const ENGINE_VERSION = (() => {
+  try { return JSON.parse(readFileSync(path.join(ROOT, "package.json"), "utf8")).version || ""; }
+  catch { return ""; }
+})();
+
+// Shell contract: the interface a deploy shell provides this build (config keys,
+// CI duties). A shell declaring a NEWER contract than this engine knows means the
+// engine pin lags a shell update that expects new behavior — warn loudly, build
+// anyway (the shell's release notes say what changed).
+const SHELL_CONTRACT = 1;
+if ((DEPLOY.shellContract || 0) > SHELL_CONTRACT) {
+  console.error(`⚠ deploy.config.json declares shellContract ${DEPLOY.shellContract}; this engine implements ${SHELL_CONTRACT} — bump the engine pin.`);
+}
+
 function escAttr(s) {
   return String(s).replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
@@ -2015,6 +2032,14 @@ const NAV_CSS = `
     }
     .gvprof__item:hover { background: rgba(16,17,26,0.05); }
     .gvprof__item .gvic { width: 15px; height: 15px; color: #5b626e; }
+    /* Engine version footer (admins only) + the update-available "!" on the chip. */
+    .gvprof__dot { flex: none; width: 15px; height: 15px; border-radius: 50%; display: grid; place-items: center;
+      background: #b45309; color: #fff; font-size: 10px; font-weight: 800; line-height: 1; }
+    .gvprof__ver { display: flex; align-items: center; justify-content: space-between; gap: 8px;
+      margin-top: 4px; padding: 6px 8px 3px; border-top: 1px solid rgba(16,17,26,0.08);
+      font-size: 11px; color: #9aa0ab; }
+    .gvprof__ver a { color: #b45309; font-weight: 600; text-decoration: none; }
+    .gvprof__ver a:hover { text-decoration: underline; }
 
     /* Space switcher — active space icon+name+badge with a dropdown of all spaces.
        Server-rendered from the build-time space list; SPACE_JS only toggles the menu.
@@ -2394,6 +2419,7 @@ function profileChip() {
       <button type="button" class="gvprof__btn" data-prof-toggle aria-haspopup="true" aria-expanded="false" aria-label="Account">
         <span class="gvprof__av" data-prof-av aria-hidden="true"></span>
         <span class="gvprof__name" data-prof-name>…</span>
+        <span class="gvprof__dot" data-prof-dot hidden title="Update available">!</span>
         <svg class="gvprof__cv" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
       </button>
       <div class="gvprof__menu" data-prof-menu role="menu" hidden>
@@ -2403,6 +2429,10 @@ function profileChip() {
         </div>
         <a class="gvprof__item" href="/admin/" role="menuitem" data-prof-admin hidden>${IC_GEAR}<span>Admin settings</span></a>
         <a class="gvprof__item" href="/__logout" role="menuitem" data-prof-signout>${IC_SIGNOUT}<span>Sign out</span></a>
+        <div class="gvprof__ver" data-prof-ver hidden>
+          <span data-prof-vercur></span>
+          <a data-prof-verlink href="#" target="_blank" rel="noopener" hidden></a>
+        </div>
       </div>
     </div>`;
 }
@@ -3721,6 +3751,26 @@ const PROFILE_JS = `(function(){
     // Admin-only surfaces (e.g. the Pitis paw) reveal via html.gv-admin.
     document.documentElement.classList.toggle('gv-admin', !!u.admin);
     box.hidden = false;
+    if(u.admin) version();
+  }
+  // Engine version footer + update nudge — admins only (the worker 403s everyone
+  // else). One cheap fetch per page view; the release-feed check itself is
+  // KV-cached server-side, so this never hits the network feed directly.
+  function version(){
+    fetch('/__admin/version', {headers:{'Accept':'application/json'}})
+      .then(function(r){ return r.ok ? r.json() : null; })
+      .then(function(v){
+        if(!v || !v.current) return;
+        var row = box.querySelector('[data-prof-ver]');
+        var cur = box.querySelector('[data-prof-vercur]');
+        var lnk = box.querySelector('[data-prof-verlink]');
+        if(cur) cur.textContent = 'Augur v' + v.current + (v.current.lastIndexOf('0.', 0) === 0 ? ' beta' : '');
+        if(row) row.hidden = false;
+        if(v.behind){
+          var dot = box.querySelector('[data-prof-dot]'); if(dot) dot.hidden = false;
+          if(lnk){ lnk.textContent = 'v' + v.latest + ' available'; if(v.url) lnk.href = v.url; lnk.hidden = false; }
+        }
+      }).catch(function(){});
   }
   fetch('/__me', {headers:{'Accept':'application/json'}}).then(function(r){ return r.json(); })
     .then(function(d){
@@ -5320,6 +5370,8 @@ async function main() {
   await fs.mkdir(path.join(DIST, "__config"), { recursive: true });
   await fs.writeFile(path.join(DIST, "__config", "instance.json"), JSON.stringify({
     users: IDENTITY,
+    engineVersion: ENGINE_VERSION,
+    updateFeed: DEPLOY.updateFeed || "",
     mcpHostSuffixes: DEPLOY.mcpHostSuffixes || [],
     mcpHostAllowlistUrl: DEPLOY.mcpHostAllowlistUrl || "",
     vanityRedirects: DEPLOY.vanityRedirects || {},
@@ -5373,7 +5425,7 @@ async function main() {
     path.join(DIST, "_build.json"),
     JSON.stringify({
       builtAt: new Date().toISOString(),
-      engine: { sha: engineSha, ...(dirtyMap.engine ? { dirty: true } : {}) },
+      engine: { sha: engineSha, ...(ENGINE_VERSION ? { version: ENGINE_VERSION } : {}), ...(dirtyMap.engine ? { dirty: true } : {}) },
       spaces: stampSpaces,
     }, null, 2),
     "utf8"
@@ -5546,7 +5598,7 @@ async function main() {
       : manifestDefaultId;
     const body = await fs.readFile(path.join(DIST, rel));
     const h = createHash("sha256").update(body).digest("hex");
-    (manifests[owner] ||= { id: owner, files: {} }).files["/" + rel] = { h, ct: ctFor(rel), s: body.length };
+    (manifests[owner] ||= { id: owner, format: 1, files: {} }).files["/" + rel] = { h, ct: ctFor(rel), s: body.length };
   }
   // Attach each space's meta + routing fragment (see spaceRouting above); the
   // engine manifest carries the chrome-derived pieces. djb2 over the space's own

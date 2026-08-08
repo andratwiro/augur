@@ -160,9 +160,16 @@ function isRestrictedPath(pathname) {
 // defaults, and a transient read failure never wipes a working gate.
 let SPACES = [];
 let INSTANCE_SENTINELS = [];
+// Engine version of the build that produced the live config/chrome (from
+// package.json via build.js) + the release feed the update nudge polls.
+let INSTANCE_ENGINE_VERSION = "";
+let UPDATE_FEED = "";
+const DEFAULT_UPDATE_FEED = "https://api.github.com/repos/andratwiro/augur/releases/latest";
 let cfgAt = 0;
 function applyInstance(inst) {
   USERS = Array.isArray(inst.users) ? inst.users : [];
+  INSTANCE_ENGINE_VERSION = inst.engineVersion || "";
+  UPDATE_FEED = inst.updateFeed || "";
   MCP_HOST_SUFFIXES = inst.mcpHostSuffixes || [];
   MCP_HOST_ALLOWLIST_URL = inst.mcpHostAllowlistUrl || "";
   VANITY_REDIRECTS = inst.vanityRedirects || {};
@@ -381,6 +388,10 @@ const BLOB_MAX_BYTES = 25 * 1024 * 1024;
 // small enough to keep a commit's R2 subrequests inside the free-plan budget.
 const INLINE_MAX_BLOBS = 16;
 const INLINE_MAX_BYTES = 1_000_000;
+// Publish-protocol version, echoed in check responses so a CLI can detect skew
+// against the deployed worker. History: 1 = check/blob/commit; 2 = + inline-blob
+// commits, filesUnchanged/liveSource on check.
+const PUBLISH_PROTOCOL = 2;
 
 let MANIFESTS = { at: 0, spaces: {} };
 async function loadManifests(env, force) {
@@ -501,6 +512,7 @@ async function assetPathExists(env, url) {
 // collaborators' "is my commit live?" check keeps its exact shape.
 function synthBuildStamp(manifests) {
   const spaces = {}, engine = { sha: null };
+  if (INSTANCE_ENGINE_VERSION) engine.version = INSTANCE_ENGINE_VERSION;
   let builtAt = null;
   for (const id in manifests) {
     const m = manifests[id];
@@ -621,6 +633,8 @@ async function publishApi(request, url, env) {
       filesUnchanged,
       liveSource: cur && cur.source
         ? { sha: cur.source.sha || null, dirty: !!cur.source.dirty } : null,
+      protocol: PUBLISH_PROTOCOL,
+      engine: INSTANCE_ENGINE_VERSION || null,
     });
   }
 
@@ -718,6 +732,45 @@ async function publishApi(request, url, env) {
   }
 
   return jsonResponse({ error: "unknown-op" }, 400);
+}
+
+// ---- Admin: engine version + update nudge -----------------------------------
+// Reports the running engine version and whether the release feed (GitHub
+// releases API by default, `updateFeed` in deploy.config.json to override) holds
+// a newer one. The feed check is KV-cached for 6h — one origin fetch per
+// instance per window, whatever the page-view rate. Admin-cookie gated; updates
+// themselves stay manual (the shell's engine-bump is the release valve).
+function semverBehind(cur, latest) {
+  const a = String(cur).split(".").map((n) => parseInt(n, 10) || 0);
+  const b = String(latest).split(".").map((n) => parseInt(n, 10) || 0);
+  for (let i = 0; i < 3; i++) { const x = a[i] || 0, y = b[i] || 0; if (x !== y) return x < y; }
+  return false;
+}
+async function adminVersionApi(env, me) {
+  if (!me || me.role !== "admin") return jsonResponse({ error: "forbidden" }, 403);
+  const current = INSTANCE_ENGINE_VERSION || null;
+  const kv = kvFor(env);
+  let latest = null, url = "";
+  try {
+    const cached = kv ? JSON.parse((await kv.get("engine:update-check")) || "null") : null;
+    if (cached && Date.now() - cached.at < 6 * 3600 * 1000) {
+      latest = cached.latest; url = cached.url || "";
+    } else {
+      const r = await fetch(UPDATE_FEED || DEFAULT_UPDATE_FEED, {
+        headers: { "user-agent": "augur-update-check", accept: "application/vnd.github+json" },
+      });
+      if (r.ok) {
+        const d = await r.json();
+        latest = String(d.tag_name || d.version || "").replace(/^v/, "") || null;
+        url = d.html_url || "";
+      }
+      // Cache misses too — a feed with no releases yet must not be re-polled
+      // on every admin page view.
+      if (kv) await kv.put("engine:update-check", JSON.stringify({ at: Date.now(), latest, url }));
+    }
+  } catch (e) {}
+  const behind = !!(current && latest && semverBehind(current, latest));
+  return jsonResponse({ current, latest, url, behind });
 }
 
 // ---- Admin: publish tokens (KV-backed) --------------------------------------
@@ -2008,6 +2061,9 @@ export default {
 
     // Admin bundle-store gauge — bytes/objects vs the free-tier ceiling.
     if (url.pathname === "/__admin/storage") return adminStorageApi(env, me);
+
+    // Engine version + update-available nudge (the profile chip's fetch).
+    if (url.pathname === "/__admin/version") return adminVersionApi(env, me);
 
     // Login form submission.
     if (request.method === "POST" && url.pathname === "/__auth") {

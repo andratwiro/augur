@@ -1,19 +1,23 @@
-name: Bump engine pin (scheduled)
+name: Bump engine pin
 
 # The public engine moves on its own cadence; this instance takes updates on ITS OWN
-# schedule. Weekly (or on demand from the Actions tab) this job reads the engine repo's
-# current main SHA — the engine is public, so no token is needed to read it — moves the
-# engine submodule pin, pushes, and starts deploy.yml.
+# schedule. The pull lives ENTIRELY on this side: the engine repo knows nothing about
+# this shell (no dispatch wiring, no secrets upstream), and the pin doubles as this
+# instance's release valve — upstream can move fast, updates land only when you say so.
+# Roll back any update by reverting the pin commit.
 #
-# The pull lives ENTIRELY on this side: the engine repo knows nothing about this shell
-# (no dispatch wiring, no secrets upstream). That keeps the public engine free of
-# per-instance infrastructure, and the pin doubles as this instance's release valve —
-# upstream can move fast, updates land only when this job runs. Skip a broken upstream
-# by simply not running it; roll back by resetting the pin commit.
+# TRACK picks the update channel:
+#   release (default) — weekly (or on demand) this job finds the engine's latest
+#     GitHub RELEASE, and opens a PR moving the pin to that tag with the release
+#     notes in the body. Review the notes, merge, and deploy.yml ships it.
+#     Nothing lands without a human reading what changed.
+#   main — moves the pin straight to the engine's current main and pushes (no PR).
+#     For development instances that dogfood the bleeding edge.
 #
-# Push + trigger use the workflow's own GITHUB_TOKEN: the push deliberately does NOT
-# retrigger workflows, and deploy.yml is then started explicitly via workflow_dispatch
-# (one of the two event types GITHUB_TOKEN IS allowed to trigger). No PAT needed.
+# Push + trigger use the workflow's own GITHUB_TOKEN. In main mode the push
+# deliberately does NOT retrigger workflows, so deploy.yml is started explicitly.
+# In release mode the PR merge is performed by a human, which triggers deploy.yml
+# through the normal push event.
 #
 # NB GitHub disables cron schedules after ~60 days without repo activity — the manual
 # workflow_dispatch always works.
@@ -23,9 +27,13 @@ on:
     - cron: "17 6 * * 1" # Mondays 06:17 UTC — weekly engine refresh
   workflow_dispatch:
 
+env:
+  TRACK: release
+
 permissions:
-  contents: write # push the pin-bump commit
-  actions: write  # start deploy.yml via workflow_dispatch
+  contents: write      # push the pin-bump commit / branch
+  pull-requests: write # open the release-update PR
+  actions: write       # start deploy.yml via workflow_dispatch (main mode)
 
 jobs:
   bump:
@@ -35,24 +43,46 @@ jobs:
         with:
           submodules: false
 
-      - name: Move the engine pin to the engine's current main
+      - name: Move the engine pin
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
           ENGINE_URL="$(git config -f .gitmodules submodule.engine.url)"
-          NEW_SHA="$(git ls-remote "$ENGINE_URL" refs/heads/main | cut -f1)"
-          if [ -z "$NEW_SHA" ]; then
-            echo "::error::could not resolve the engine's main from $ENGINE_URL"; exit 1
-          fi
+          ENGINE_REPO="$(echo "$ENGINE_URL" | sed -E 's#(git@github.com:|https://github.com/)##; s#\.git$##')"
           CUR_SHA="$(git ls-tree HEAD engine | awk '{print $3}')"
-          if [ "$NEW_SHA" = "$CUR_SHA" ]; then
-            echo "Engine pin already at $NEW_SHA — nothing to do."; exit 0
-          fi
           git config user.name "augur-bot"
           git config user.email "augur-bot@users.noreply.github.com"
+
+          if [ "$TRACK" = "main" ]; then
+            NEW_SHA="$(git ls-remote "$ENGINE_URL" refs/heads/main | cut -f1)"
+            [ -n "$NEW_SHA" ] || { echo "::error::could not resolve the engine's main"; exit 1; }
+            [ "$NEW_SHA" != "$CUR_SHA" ] || { echo "Engine pin already at $NEW_SHA — nothing to do."; exit 0; }
+            git update-index --cacheinfo "160000,$NEW_SHA,engine"
+            git commit -m "Bump engine pin → ${NEW_SHA:0:12}"
+            git push origin HEAD:main
+            echo "Bumped engine pin: ${CUR_SHA:0:12} → ${NEW_SHA:0:12} — starting deploy.yml"
+            gh workflow run deploy.yml --ref main
+            exit 0
+          fi
+
+          # release mode — latest release tag → PR with the release notes.
+          TAG="$(gh api "repos/$ENGINE_REPO/releases/latest" --jq .tag_name 2>/dev/null || true)"
+          [ -n "$TAG" ] || { echo "No releases published on $ENGINE_REPO yet — nothing to do."; exit 0; }
+          NEW_SHA="$(git ls-remote "$ENGINE_URL" "refs/tags/$TAG^{}" | cut -f1)"
+          [ -n "$NEW_SHA" ] || NEW_SHA="$(git ls-remote "$ENGINE_URL" "refs/tags/$TAG" | cut -f1)"
+          [ -n "$NEW_SHA" ] || { echo "::error::could not resolve tag $TAG"; exit 1; }
+          [ "$NEW_SHA" != "$CUR_SHA" ] || { echo "Engine pin already at $TAG — nothing to do."; exit 0; }
+          BRANCH="engine-$TAG"
+          if gh pr list --head "$BRANCH" --state open --json number --jq length | grep -qv '^0$'; then
+            echo "Update PR for $TAG already open — nothing to do."; exit 0
+          fi
+          git checkout -b "$BRANCH"
           git update-index --cacheinfo "160000,$NEW_SHA,engine"
-          git commit -m "Bump engine pin → ${NEW_SHA:0:12}"
-          git push origin HEAD:main
-          echo "Bumped engine pin: ${CUR_SHA:0:12} → ${NEW_SHA:0:12} — starting deploy.yml"
-          gh workflow run deploy.yml --ref main
+          git commit -m "Engine update: $TAG"
+          git push -f origin "$BRANCH"
+          NOTES="$(gh api "repos/$ENGINE_REPO/releases/latest" --jq .body || echo "")"
+          URL="$(gh api "repos/$ENGINE_REPO/releases/latest" --jq .html_url || echo "")"
+          printf 'Engine update to **%s** (`%s`).\n\n%s\n\n---\nRelease: %s\nMerging deploys it. Roll back later by reverting this commit.\n' \
+            "$TAG" "${NEW_SHA:0:12}" "$NOTES" "$URL" > /tmp/pr-body.md
+          gh pr create --title "Engine update: $TAG" --body-file /tmp/pr-body.md --base main --head "$BRANCH"
