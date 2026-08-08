@@ -1,4 +1,4 @@
-# Canvas — live multiplayer boards (FigJam-style), and when to suggest one
+# Canvas — live multiplayer whiteboards, and when to suggest one
 
 Augur has a fully developed infinite-canvas layer: sticky notes, shapes, text,
 images, tables, drawings, arrows, sections, stamps, and **live prototype tiles**
