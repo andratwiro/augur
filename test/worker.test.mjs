@@ -115,3 +115,26 @@ test("effectiveSecret prefers the KV override over the roster value", async () =
   assert.equal(await W.effectiveSecret(env, { email: "b@example.test", passHash: "pbkdf2$x", pass: "roster" }), "pbkdf2$x");
   assert.equal(await W.effectiveSecret(env, { email: "c@example.test" }), "");
 });
+
+test("userToken falls back to the legacy derivation when SESSION_SECRET is unset", async () => {
+  const kv = memKV({ "users:secrets": JSON.stringify({ "a@example.test": "pbkdf2$1$AAAA$BBBB" }) });
+  const env = envWith(kv); // No SESSION_SECRET set
+  const fallback = await W.userToken(env, USER);
+  const legacy = await W.legacyUserToken(env, USER);
+  assert.equal(fallback, legacy, "userToken matches legacyUserToken when SESSION_SECRET is unset");
+  // Verify it's different from when SESSION_SECRET is set
+  const envWithSecret = envWith(kv, { SESSION_SECRET: "s3cret" });
+  const withSecret = await W.userToken(envWithSecret, USER);
+  assert.notEqual(fallback, withSecret, "token differs when SESSION_SECRET is added");
+});
+
+test("a cookie issued before SESSION_SECRET was set still identifies afterwards", async () => {
+  const kv = memKV({ "users:secrets": JSON.stringify({ "a@example.test": "pbkdf2$1$AAAA$BBBB" }) });
+  // Issue a token with no SESSION_SECRET
+  const envNoSecret = envWith(kv);
+  const token = await W.userToken(envNoSecret, USER);
+  // Now try to identify with that cookie against an env that has SESSION_SECRET
+  const envWithSecret = envWith(kv, { SESSION_SECRET: "s3cret" });
+  const got = await W.identify(cookieRequest(`a@example.test.${token}`), envWithSecret, [USER]);
+  assert.equal(got && got.email, "a@example.test", "legacy cookie still identifies after SESSION_SECRET is configured");
+});
