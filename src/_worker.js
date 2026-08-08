@@ -318,6 +318,22 @@ async function effectiveSecret(env, u) {
   return u.passHash || u.pass || "";
 }
 
+// TEMPORARY (migration) — remove in the finish step
+// After a successful login against a legacy plaintext secret, rewrite it as a hash so
+// the plaintext stops existing. Fire-and-forget: never break a login.
+async function upgradeSecretIfLegacy(env, u, password) {
+  try {
+    const kv = kvFor(env);
+    if (!kv || !u) return;
+    const raw = await kv.get(USER_SECRETS_KEY);
+    const ov = raw ? JSON.parse(raw) : {};
+    const stored = ov[u.email];
+    if (!stored || isPassHash(stored)) return;
+    ov[u.email] = await hashPassword(password);
+    await kv.put(USER_SECRETS_KEY, JSON.stringify(ov));
+  } catch (e) {}
+}
+
 // Session cookie token: HMAC-SHA-256(SESSION_SECRET, "email:effectiveSecret").
 // SESSION_SECRET is a runtime env var — NEVER baked into the bundle — so a cookie
 // cannot be forged from repo-visible data. Binding to the effective secret means
@@ -624,9 +640,11 @@ async function publishApi(request, url, env) {
     const u = userByEmail(body && body.email);
     const pass = String((body && body.password) || "");
     const real = u ? await effectiveSecret(env, u) : "";
-    if (!u || !real || pass.length !== real.length || pass !== real) {
+    if (!u || !real || !(await verifyPassword(pass, real))) {
       return jsonResponse({ error: "bad-credentials" }, 403);
     }
+    // TEMPORARY (migration) — remove in the finish step
+    await upgradeSecretIfLegacy(env, u, pass);
     const kv = kvFor(env);
     if (!kv) return jsonResponse({ error: "no-kv-binding" }, 500);
     const space = u.role === "admin" ? "*" : (SPACES.find((s) => s.default) || { id: null }).id;
@@ -2090,9 +2108,11 @@ export default {
         const u = userByEmail(form.get("email"));
         const pass = (form.get("password") || "").toString();
         const real = u ? await effectiveSecret(env, u) : "";
-        if (u && real && pass.length === real.length && pass === real) {
+        if (u && real && (await verifyPassword(pass, real))) {
           const token = await userToken(env, u);
           if (ctx && ctx.waitUntil) ctx.waitUntil(touchLastSeen(env, u));
+          // TEMPORARY (migration) — remove in the finish step
+          if (ctx && ctx.waitUntil) ctx.waitUntil(upgradeSecretIfLegacy(env, u, pass));
           return new Response(null, {
             status: 303,
             headers: {
@@ -2235,5 +2255,6 @@ export default {
 export const __testables = {
   hashPassword, verifyPassword, isPassHash, safeEqual, userByEmail,
   tokenFor, hmacToken, userToken, legacyUserToken, identify, effectiveSecret,
+  upgradeSecretIfLegacy,
   PBKDF2_ITERATIONS,
 };

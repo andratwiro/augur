@@ -138,3 +138,22 @@ test("a cookie issued before SESSION_SECRET was set still identifies afterwards"
   const got = await W.identify(cookieRequest(`a@example.test.${token}`), envWithSecret, [USER]);
   assert.equal(got && got.email, "a@example.test", "legacy cookie still identifies after SESSION_SECRET is configured");
 });
+
+test("a verified legacy plaintext is upgraded to a hash in place", async () => {
+  // TEMPORARY (migration) — this test is removed in the finish step.
+  const kv = memKV({ "users:secrets": JSON.stringify({ "a@example.test": "augur-legacy-2026" }) });
+  const env = envWith(kv);
+  const u = { email: "a@example.test" };
+  await W.upgradeSecretIfLegacy(env, u, "augur-legacy-2026");
+  const stored = JSON.parse(await kv.get("users:secrets"))["a@example.test"];
+  assert.ok(W.isPassHash(stored), "rewritten as pbkdf2$…");
+  assert.equal(await W.verifyPassword("augur-legacy-2026", stored), true);
+});
+
+test("upgrade is a no-op when the stored value is already a hash", async () => {
+  const h = await W.hashPassword("pw");
+  const kv = memKV({ "users:secrets": JSON.stringify({ "a@example.test": h }) });
+  const env = envWith(kv);
+  await W.upgradeSecretIfLegacy(env, { email: "a@example.test" }, "pw");
+  assert.equal(JSON.parse(await kv.get("users:secrets"))["a@example.test"], h, "untouched");
+});
