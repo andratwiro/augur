@@ -1,0 +1,60 @@
+// login.mjs — `augur login`: trade your existing web credentials for a publish
+// token, saved to ~/.config/augur/tokens.json (keyed by origin host). Run once;
+// `augur publish` picks the token up automatically after that.
+//
+//   augur login [--origin https://…]
+//
+// Credentials: AUGUR_EMAIL / AUGUR_PASSWORD env vars, else an interactive
+// prompt (password input is muted). The token is never printed.
+
+import { createInterface } from "node:readline";
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import os from "node:os";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+import { deployConfig } from "./lib/instance.mjs";
+
+const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+const log = (msg) => console.error(`\x1b[32m[login]\x1b[0m ${msg}`);
+const opt = (f) => { const i = process.argv.indexOf(f); return i > 0 ? process.argv[i + 1] : null; };
+
+const ORIGIN = (opt("--origin") || process.env.AUGUR_ORIGIN || deployConfig(ROOT).siteOrigin || "").replace(/\/+$/, "");
+if (!ORIGIN) { log("no origin — pass --origin https://<your instance>"); process.exit(1); }
+
+function ask(question, mute) {
+  return new Promise((resolve) => {
+    const rl = createInterface({ input: process.stdin, output: process.stderr, terminal: true });
+    if (mute) {
+      // Mute the echo after the prompt prints: overwrite the output hook.
+      const write = rl._writeToOutput.bind(rl);
+      rl._writeToOutput = (s) => { if (s.includes(question)) write(s); };
+    }
+    rl.question(question, (answer) => { rl.close(); if (mute) process.stderr.write("\n"); resolve(answer.trim()); });
+  });
+}
+
+const email = process.env.AUGUR_EMAIL || (await ask("Email: "));
+const password = process.env.AUGUR_PASSWORD || (await ask("Password: ", true));
+if (!email || !password) { log("email + password required."); process.exit(1); }
+
+const r = await fetch(`${ORIGIN}/__publish/_login/token`, {
+  method: "POST",
+  headers: { "content-type": "application/json" },
+  body: JSON.stringify({ email, password }),
+});
+if (!r.ok) {
+  const err = await r.text().catch(() => "");
+  log(`login failed (${r.status}): ${err.slice(0, 200)}`);
+  process.exit(1);
+}
+const { token, space } = await r.json();
+
+const dir = path.join(os.homedir(), ".config", "augur");
+mkdirSync(dir, { recursive: true });
+const file = path.join(dir, "tokens.json");
+let all = {};
+try { all = JSON.parse(readFileSync(file, "utf8")); } catch (e) {}
+all[new URL(ORIGIN).host] = { token, space, email, at: new Date().toISOString() };
+writeFileSync(file, JSON.stringify(all, null, 2), { mode: 0o600 });
+log(`signed in as ${email} — publish access: ${space === "*" ? "all spaces" : space}`);
+console.log(`ready — \`augur publish\` will now use this login for ${ORIGIN}`);

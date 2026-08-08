@@ -31,6 +31,10 @@ const flag = (f) => args.includes(f);
 const opt = (f) => { const i = args.indexOf(f); return i >= 0 ? args[i + 1] : null; };
 const DRY = flag("--dry-run");
 const ALL = flag("--all");
+// --engine: shared chrome + instance config ONLY, never space content. The CI
+// path uses this — its space checkouts are pinned and may lag direct publishes,
+// so it must never be able to overwrite newer space content with stale trees.
+const ENGINE_ONLY = flag("--engine");
 
 function readEnvFile(p) {
   const out = {};
@@ -44,11 +48,19 @@ function readEnvFile(p) {
 }
 const DEPLOY_ENV = readEnvFile(path.join(ROOT, ".env.deploy"));
 
-const TOKEN = process.env.AUGUR_TOKEN || DEPLOY_ENV.AUGUR_TOKEN || "";
-if (!TOKEN) die("no publish token — set AUGUR_TOKEN (mint one in the Admin panel).");
 const ORIGIN = (process.env.AUGUR_ORIGIN || DEPLOY_ENV.AUGUR_ORIGIN || deployConfig(ROOT).siteOrigin || "")
   .replace(/\/+$/, "");
 if (!ORIGIN) die("no target origin — set AUGUR_ORIGIN or deploy.config.json siteOrigin.");
+// Token: env/instance file, else the saved `augur login` credential for this origin.
+let TOKEN = process.env.AUGUR_TOKEN || DEPLOY_ENV.AUGUR_TOKEN || "";
+if (!TOKEN) {
+  try {
+    const os = await import("node:os");
+    const saved = JSON.parse(readFileSync(path.join(os.homedir(), ".config", "augur", "tokens.json"), "utf8"));
+    TOKEN = (saved[new URL(ORIGIN).host] || {}).token || "";
+  } catch (e) {}
+}
+if (!TOKEN) die("no publish token — run `augur login` once (uses your web credentials).");
 
 // Space discovery: sibling clones (the god-mode layout) or ./spaces mounts —
 // same filter build.js applies. cwd inference: running inside a space repo
@@ -77,10 +89,10 @@ const idOf = (dir) => {
 const byId = Object.fromEntries(spaceDirs.map((d) => [idOf(d), d]));
 
 let targetSpace = opt("--space");
-if (!targetSpace && !ALL && existsSync(path.join(process.cwd(), "space.json"))) {
+if (!targetSpace && !ALL && !ENGINE_ONLY && existsSync(path.join(process.cwd(), "space.json"))) {
   targetSpace = idOf(process.cwd());
 }
-if (!targetSpace && !ALL) die("name a target: --space <id>, --all, or run from a space repo.");
+if (!targetSpace && !ALL && !ENGINE_ONLY) die("name a target: --space <id>, --all, --engine, or run from a space repo.");
 if (targetSpace && !byId[targetSpace]) die(`unknown space "${targetSpace}" (have: ${Object.keys(byId).join(", ")})`);
 
 // ── build (single space unless --all; engine chrome always emitted) ──────────
@@ -176,7 +188,7 @@ async function publishOne(id, sourceDir) {
 }
 
 const results = [];
-if (ALL) {
+if (ALL || ENGINE_ONLY) {
   // Instance config first (identity/knobs), then engine chrome, then spaces.
   if (!DRY) {
     const inst = await readFile(path.join(ROOT, "dist", "__config", "instance.json"), "utf8");
@@ -184,7 +196,7 @@ if (ALL) {
     log("instance config pushed");
   }
   results.push(["_engine", await publishOne("_engine", ROOT)]);
-  for (const id of Object.keys(byId)) results.push([id, await publishOne(id, byId[id])]);
+  if (!ENGINE_ONLY) for (const id of Object.keys(byId)) results.push([id, await publishOne(id, byId[id])]);
 } else {
   results.push([targetSpace, await publishOne(targetSpace, byId[targetSpace])]);
 }

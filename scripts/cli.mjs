@@ -21,10 +21,11 @@ const map = {
   offline: "offline.mjs",
   deploy: "deploy.mjs",
   publish: "publish.mjs",
+  login: "login.mjs",
   build: path.join("..", "build.js"),
 };
 if (!map[sub]) {
-  console.error("usage: augur <dev|offline|build|deploy|publish> [options]");
+  console.error("usage: augur <dev|offline|build|deploy|publish|login> [options]");
   process.exit(sub ? 1 : 0);
 }
 const child = spawn(process.execPath, [path.join(SCRIPTS, map[sub]), ...rest], { stdio: "inherit" });

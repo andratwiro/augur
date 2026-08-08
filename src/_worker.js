@@ -536,6 +536,34 @@ async function publishApi(request, url, env) {
   if (!env.BUNDLES) return jsonResponse({ error: "bundle-store-not-configured" }, 501);
   const [spaceId, op, arg] = url.pathname.slice("/__publish/".length).split("/");
   if (!spaceId || !op || !/^[a-z0-9_][a-z0-9-]*$/.test(spaceId)) return jsonResponse({ error: "bad-path" }, 400);
+
+  // Self-serve token exchange: trade an existing web login for a publish token
+  // (no admin distribution step — `augur login` calls this once and saves it).
+  // Admins get every space; everyone else gets the default space. Same
+  // credential check as /__auth; the response carries the token exactly once.
+  if (spaceId === "_login" && op === "token" && request.method === "POST") {
+    let body;
+    try { body = await request.json(); } catch (e) { return jsonResponse({ error: "bad-json" }, 400); }
+    const u = userByEmail(body && body.email);
+    const pass = String((body && body.password) || "");
+    const real = u ? await effectivePass(env, u) : "";
+    if (!u || !real || pass.length !== real.length || pass !== real) {
+      return jsonResponse({ error: "bad-credentials" }, 403);
+    }
+    const kv = kvFor(env);
+    if (!kv) return jsonResponse({ error: "no-kv-binding" }, 500);
+    const space = u.role === "admin" ? "*" : (SPACES.find((s) => s.default) || { id: null }).id;
+    if (!space) return jsonResponse({ error: "no-default-space" }, 500);
+    const bytes = new Uint8Array(32);
+    crypto.getRandomValues(bytes);
+    const token = [...bytes].map((b) => b.toString(16).padStart(2, "0")).join("");
+    const raw = await kv.get(PUBLISH_TOKENS_KEY);
+    const map = raw ? JSON.parse(raw) : {};
+    map[await tokenFor("pub:" + token)] = { space, label: u.email, createdAt: new Date().toISOString() };
+    await kv.put(PUBLISH_TOKENS_KEY, JSON.stringify(map));
+    return jsonResponse({ token, space });
+  }
+
   const who = await publishAuth(request, env, spaceId);
   if (!who) return jsonResponse({ error: "forbidden" }, 403);
 
