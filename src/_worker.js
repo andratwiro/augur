@@ -150,6 +150,60 @@ function isRestrictedPath(pathname) {
   );
 }
 
+// ---- Crypto helpers (Web Crypto — available in workers AND node ≥18) ---------
+const encodeUtf8 = (s) => new TextEncoder().encode(s);
+const toHex = (buf) => [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, "0")).join("");
+function toB64(buf) { let s = ""; for (const b of new Uint8Array(buf)) s += String.fromCharCode(b); return btoa(s); }
+function fromB64(s) { const bin = atob(s); const out = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i); return out; }
+
+// Constant-time-ish string compare — never short-circuits on content (length leak
+// is fine; both operands here are fixed-length digests or clamped inputs).
+function safeEqual(a, b) {
+  a = String(a == null ? "" : a); b = String(b == null ? "" : b);
+  if (a.length !== b.length) return false;
+  let diff = 0;
+  for (let i = 0; i < a.length; i++) diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  return diff === 0;
+}
+
+// ---- Password hashing (PBKDF2-SHA-256) ---------------------------------------
+// Stored format — ONE string: "pbkdf2$<iterations>$<saltB64>$<hashB64>".
+const PBKDF2_ITERATIONS = 100000;
+const PASS_HASH_PREFIX = "pbkdf2$";
+
+async function pbkdf2Bits(password, salt, iterations) {
+  const keyMaterial = await crypto.subtle.importKey(
+    "raw", encodeUtf8(password), "PBKDF2", false, ["deriveBits"]);
+  return crypto.subtle.deriveBits(
+    { name: "PBKDF2", hash: "SHA-256", salt, iterations }, keyMaterial, 256);
+}
+
+function isPassHash(s) { return typeof s === "string" && s.startsWith(PASS_HASH_PREFIX); }
+
+async function hashPassword(password, iterations = PBKDF2_ITERATIONS, salt) {
+  if (!salt) salt = crypto.getRandomValues(new Uint8Array(16));
+  const bits = await pbkdf2Bits(password, salt, iterations);
+  return `${PASS_HASH_PREFIX}${iterations}$${toB64(salt)}$${toB64(bits)}`;
+}
+
+// Verify a candidate password against a stored secret.
+async function verifyPassword(password, stored) {
+  if (typeof password !== "string" || !password) return false;
+  if (typeof stored !== "string" || !stored) return false;
+  if (isPassHash(stored)) {
+    const parts = stored.split("$"); // ["pbkdf2", iterations, saltB64, hashB64]
+    if (parts.length !== 4) return false;
+    const iterations = Math.max(1, Math.min(1 << 22, Number(parts[1]) || 0));
+    let salt;
+    try { salt = fromB64(parts[2]); } catch (e) { return false; }
+    let bits;
+    try { bits = await pbkdf2Bits(password, salt, iterations); } catch (e) { return false; }
+    return safeEqual(toB64(bits), parts[3]);
+  }
+  // TEMPORARY (migration) — remove in the finish step
+  return safeEqual(password, stored); // legacy plaintext override
+}
+
 // ---- Runtime config loader --------------------------------------------------
 // Fills every binding above from /__config/{instance,routing}.json — the two
 // documents build.js emits next to the assets. Cached per isolate for ~1.5s: fast
@@ -2156,4 +2210,11 @@ export default {
     // 200 (not 401) so password managers treat it as a normal login page.
     return htmlResponse(loginPage(url.pathname + url.search, false), 200);
   },
+};
+
+// Pure helpers exposed for unit tests. Nothing in the request path references
+// __testables — it exists only so test/worker.test.mjs can import them.
+export const __testables = {
+  hashPassword, verifyPassword, isPassHash, safeEqual, userByEmail,
+  PBKDF2_ITERATIONS,
 };

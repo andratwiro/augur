@@ -9,6 +9,7 @@
     "augur": "scripts/cli.mjs"
   },
   "scripts": {
+    "test": "node --test \"test/*.test.mjs\"",
     "build": "node build.js",
     "shoot": "node scripts/shoot.mjs",
     "shoot:stale": "node scripts/shoot.mjs --stale",
