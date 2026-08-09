@@ -31,10 +31,12 @@ The first publish says it has no token:
 node ../augur/scripts/login.mjs          # or: augur login
 ```
 
-Enter the normal **web email + password** for the site (agents: ask your human
-to run it — never have a password pasted into chat). It saves a publish token to
-`~/.config/augur/` and every later publish just works. A 403 on publish means
-the password changed — run login again.
+Enter the **web email + password** for the site — the password you chose when you
+opened your invite link (the maintainer sends a single-use `/__invite?t=…` link;
+there are no issued passwords). Agents: ask your human to run it — never have a
+password pasted into chat. It saves a publish token to `~/.config/augur/` and
+every later publish just works. A 403 on publish means your password was reset
+(a new invite was issued) — redeem it and run login again.
 
 ## Verifying
 
