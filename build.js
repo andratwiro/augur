@@ -190,8 +190,21 @@ async function loadStatusMap() {
 function reviewTag() {
   // graph.js (the CSS-derived composition graph) loads first so comments.js can read
   // window.__GV_GRAPH for the recursive import-chain overlay. Both deferred → ordered.
-  return '<!--gv-review-start--><script src="/__review/graph.js?v=' + UI_VERSION +
-    '" defer></script><script src="/__review/comments.js?v=' + UI_VERSION +
+  //
+  // The graph lives beside the design system it is derived FROM — <space>/skills/
+  // <ds>/graph.js — not under /__review/. Two reasons, and they agree:
+  //   · /__ paths are engine chrome, and the publish API refuses to let any space
+  //     write one (pathOwnedBySpace). It is right to refuse: /__review/comments.js
+  //     is injected into every prototype in every space, so a space able to write
+  //     there could run code in another space's pages.
+  //   · the graph is not shared. It is one space's design system, parsed. Serving
+  //     the default space's graph to a space with its own DS was always wrong;
+  //     S() makes each space load its own.
+  // No DS means no graph — comments.js already falls back to an empty one.
+  const graph = DS.dirName
+    ? '<script src="' + S("/skills/" + DS.dirName + "/graph.js") + "?v=" + UI_VERSION + '" defer></script>'
+    : "";
+  return '<!--gv-review-start-->' + graph + '<script src="/__review/comments.js?v=' + UI_VERSION +
     '" defer></script><!--gv-review-end-->';
 }
 
@@ -362,7 +375,7 @@ function prependTitleEmoji(html, emoji) {
 // build.js shell/CSS, the index pages, or features like carousel/comments/download.
 // Do NOT bump it for changes inside individual prototypes; their content is
 // versioned by their own modified date, not this number.
-const UI_VERSION = "1.04";
+const UI_VERSION = "1.05";
 
 // One id per build (ms timestamp). Baked into every page's live-reload poller AND
 // into the worker's /__version endpoint, so a fresh deploy = a new id = open tabs
@@ -838,7 +851,16 @@ function byStatusThenRecency(a, b) {
 // its paths are public and un-gated, so a stray `.env` or `*.pem` dropped inside one
 // would be world-readable. This is the single authoritative boundary: publish and
 // deploy both ship dist, so filtering here closes the leak for every ship path.
-const SECRET_FILE_RE = /(^\.env(\.|$)|\.(pem|key|p12|pfx|ppk|keystore|jks)$|(^|[._-])(secret|secrets|credentials?)([._-]|$)|^id_(rsa|dsa|ecdsa|ed25519)$)/i;
+// `\.env$` catches the other naming half (prod.env, local.env) — same file, dot on the
+// other side. The dotfile list is credential stores by definition; none of them has any
+// business in a published folder, and publish ships the WORKING TREE, so a file that was
+// never committed has never met .gitignore either.
+const SECRET_FILE_RE = /(^\.env(\.|$)|\.env$|\.(pem|key|p12|pfx|ppk|keystore|jks)$|(^|[._-])(secret|secrets|credentials?)([._-]|$)|^id_(rsa|dsa|ecdsa|ed25519)$|^\.(npmrc|netrc|pgpass|htpasswd|ssh|aws|gnupg)$)/i;
+
+// Version-control directories. copyDir RECURSES, so a repo checked out inside a shipped
+// folder would publish its whole history — every past commit, every file ever deleted —
+// at a public URL. Never content, under any layout.
+const VCS_DIR_RE = /^\.(git|hg|svn|bzr)$/i;
 
 // Internal-only entries that must NEVER be copied into dist, even from a folder
 // (like playground/) that otherwise ships verbatim. Mirrors the repo guardrail:
@@ -851,6 +873,7 @@ function isInternalOnly(name) {
     name === "context.md" ||
     name === ".DS_Store" ||
     name.endsWith(".zip") ||
+    VCS_DIR_RE.test(name) ||
     SECRET_FILE_RE.test(name)
   );
 }
@@ -4043,7 +4066,11 @@ const ADMIN_JS = `(function(){
   var menu = document.querySelector('[data-menu]');
   var linkbox = document.querySelector('[data-link]');
   var invite = document.querySelector('[data-invite]');
-  var people = [], current = null, sortKey = 'seen', sortDir = -1;
+  var people = [], current = null, sortKey = 'seen', sortDir = -1, myEmail = '';
+  // Who am I — so the row menu can hide "Remove user" on my own row (the API refuses
+  // it with cannot-remove-self; the UI shouldn't offer a dialog that always errors).
+  fetch('/__me',{headers:{'Accept':'application/json'}}).then(function(r){ return r.ok ? r.json() : null; })
+    .then(function(d){ if(d && d.user) myEmail = (d.user.email||'').toLowerCase(); }).catch(function(){});
 
   function esc(s){ return (s||'').replace(/[&<>"]/g,function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
   function ago(iso){
@@ -4126,6 +4153,9 @@ const ADMIN_JS = `(function(){
   function openMenu(tr){
     current = tr.getAttribute('data-email');
     menu.querySelector('[data-menu-who]').textContent = current;
+    // Can't remove yourself (the API refuses it) — hide the option on your own row.
+    var rm = menu.querySelector('[data-menu-remove]');
+    if(rm) rm.style.display = (current && current.toLowerCase() === myEmail) ? 'none' : 'block';
     menu.hidden = false;
     var r = tr.getBoundingClientRect();
     var mh = menu.offsetHeight, mw = menu.offsetWidth;
@@ -4386,7 +4416,7 @@ function renderAdminPage() {
     <input type="email" data-invite-email placeholder="name@example.org" aria-label="Email address" required />
     <input type="text" data-invite-name placeholder="Name (optional)" aria-label="Name" />
     <select data-invite-role aria-label="Role"><option value="user">User</option><option value="admin">Admin</option></select>
-    <button type="submit" class="aubtn aubtn--primary">Send invite</button>
+    <button type="submit" class="aubtn aubtn--primary">Create link</button>
     <button type="button" class="aubtn" data-invite-cancel>Cancel</button>
     <span class="auinvite__msg" data-invite-msg aria-live="polite"></span>
   </form>
@@ -5400,6 +5430,15 @@ async function buildSpace(space) {
         await copyDir(path.join(UI_SKILL, d), path.join(sharedDir, d));
       }
     }
+    // This space's composition graph (window.__GV_GRAPH), parsed from the very
+    // stylesheets sitting next to it. Shipped here rather than under /__review/
+    // because it is space content, not shared chrome — see reviewTag. It rides
+    // the space's own publish, so it can never be stale against its own CSS.
+    await fs.writeFile(
+      path.join(sharedDir, "graph.js"),
+      "window.__GV_GRAPH=" + JSON.stringify(graph) + ";",
+      "utf8"
+    );
   }
 
   // ── Tokens tab → GENERATED from the tokens stylesheet via the composition graph.
@@ -5798,26 +5837,9 @@ async function main() {
   await fs.mkdir(path.join(DIST, "__review"), { recursive: true });
   await fs.copyFile(SRC_REVIEW, path.join(DIST, "__review", "comments.js"));
   await fs.copyFile(SRC_REVIEW_CAT, path.join(DIST, "__review", "aslam.png"));
-  // Composition graph (DERIVED from canonical CSS) → window.__GV_GRAPH, loaded before
-  // comments.js so the overlay can recurse tokens → base → components → patterns.
-  // It is the DEFAULT SPACE's graph, built from that space's design-system CSS, so
-  // the default space OWNS this file (it sits at the root path, which the manifest
-  // walk assigns to the default space, and ENGINE_CHROME deliberately does not
-  // claim it). Written only when a default space was actually built: an engine-only
-  // build must emit nothing space-derived, and a partial GV_ONLY_SPACE build of a
-  // non-default space has no graph to write.
-  //
-  // Known limitation, unchanged by this work: a non-default space with its OWN
-  // design system still loads this default-space graph, because reviewTag() points
-  // at the root path absolutely. Making it per-space means widening the public-path
-  // surface around the gate, so it stays a separate change.
-  if (defaultGraph) {
-    await fs.writeFile(
-      path.join(DIST, "__review", "graph.js"),
-      "window.__GV_GRAPH=" + JSON.stringify(defaultGraph) + ";",
-      "utf8"
-    );
-  }
+  // The composition graph is NOT written here — it belongs to the space whose
+  // design system it was parsed from, and ships inside that space's skills/
+  // folder (see buildSpace, and reviewTag for why /__review/ is the wrong home).
 
   // Canvas engine (shared; canvas prototypes mount it by absolute /__canvas/ path, the same
   // way every prototype embeds /__review/comments.js). Board DATA persists to KV via /__board.

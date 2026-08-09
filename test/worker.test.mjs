@@ -953,3 +953,170 @@ test("peopleApi caps a request at 50 lookups", async () => {
   const res = W.peopleApi(new URL("https://x.test/__people?ids=" + ids), PEOPLE);
   assert.equal(res.status, 400);
 });
+
+// ---- Security hardening pass (2026-08-09) ------------------------------------
+
+test("login throttle trips after LOGIN_MAX_FAILS and blocks further attempts", async () => {
+  const kv = memKV();
+  const env = envWith(kv);
+  const ids = ["rl:login:em:t@example.test", "rl:login:ip:203.0.113.9"];
+  for (let i = 0; i < W.LOGIN_MAX_FAILS; i++) {
+    assert.equal(await W.loginThrottled(env, ids), false, `not throttled at attempt ${i}`);
+    await W.loginFail(env, ids);
+  }
+  assert.equal(await W.loginThrottled(env, ids), true, "throttled once the ceiling is hit");
+  // A different IP is independent — one target being hammered doesn't lock everyone.
+  assert.equal(await W.loginThrottled(env, ["rl:login:ip:198.51.100.1"]), false);
+});
+
+test("login throttle no-ops without a KV binding (offline never locks out)", async () => {
+  assert.equal(await W.loginThrottled({}, ["rl:login:em:x"]), false);
+  await W.loginFail({}, ["rl:login:em:x"]); // must not throw
+});
+
+test("DUMMY_HASH is a valid pbkdf2 string at the current cost, verifiable without a hash pass", async () => {
+  const h = W.DUMMY_HASH; // STATIC, not computed — a lazy compute in the login path did
+  assert.ok(W.isPassHash(h)); // two 600k passes on a cold isolate and blew the CPU budget.
+  assert.ok(h.startsWith("pbkdf2$" + W.PBKDF2_ITERATIONS + "$"), "uses the current cost");
+  // Verifying a wrong password against it returns false without throwing — its only
+  // job is to make the timing of an unknown email match a known one (one derivation).
+  assert.equal(await W.verifyPassword("anything", h), false);
+});
+
+test("revokePublishTokens drops exactly the removed user's tokens", async () => {
+  const kv = memKV({ "publish:tokens": JSON.stringify({
+    h1: { space: "*", label: "gone@example.test", createdAt: "x" },
+    h2: { space: "space-alpha", label: "gone@example.test", createdAt: "y" }, // case-different label handled by lcEmail
+    h3: { space: "space-alpha", label: "keep@example.test", createdAt: "z" },
+  }) });
+  await W.revokePublishTokens(envWith(kv), "GONE@example.test");
+  const map = JSON.parse(await kv.get("publish:tokens"));
+  assert.deepEqual(Object.keys(map), ["h3"], "only the other user's token survives");
+});
+
+test("pathOwnedBySpace: a non-default space owns only its own subtree", () => {
+  const spaces = [{ id: "space-alpha", default: true }, { id: "space-beta" }];
+  assert.equal(W.pathOwnedBySpace("/space-beta/pages/x/", "space-beta", spaces), true);
+  assert.equal(W.pathOwnedBySpace("/departments/x/", "space-beta", spaces), false, "not its base");
+  assert.equal(W.pathOwnedBySpace("/admin/index.html", "space-beta", spaces), false, "engine chrome");
+});
+
+test("pathOwnedBySpace: the default space owns root EXCEPT engine chrome and other bases", () => {
+  const spaces = [{ id: "space-alpha", default: true }, { id: "space-beta" }];
+  assert.equal(W.pathOwnedBySpace("/departments/x/", "space-alpha", spaces), true);
+  assert.equal(W.pathOwnedBySpace("/__canvas/canvas.js", "space-alpha", spaces), false, "engine internals");
+  assert.equal(W.pathOwnedBySpace("/admin/app.js", "space-alpha", spaces), false, "the admin panel");
+  assert.equal(W.pathOwnedBySpace("/space-beta/pages/x/", "space-alpha", spaces), false, "the other space");
+  assert.equal(W.pathOwnedBySpace("relative", "space-alpha", spaces), false, "must be absolute");
+});
+
+test("the redeem page shows the target email read-only, and hides it when unknown", () => {
+  const withEmail = W.invitePage("tok", "", "tali@example.test");
+  assert.match(withEmail, /tali@example\.test/);
+  assert.match(withEmail, /readonly/);
+  const without = W.invitePage("tok", "");
+  assert.ok(!/readonly/.test(without), "no email field when none is passed");
+});
+
+test("the redeem page html-escapes the target email (no attribute breakout)", () => {
+  const page = W.invitePage("tok", "", '"><script>alert(1)</script>@x');
+  assert.ok(!page.includes('"><script>'), "escaped, not injected");
+  assert.match(page, /&quot;&gt;/);
+});
+
+test("synthBuildStamp redacts the publisher email to a display name", () => {
+  // publishedBy is the token label (an email); the public build stamp must not leak it.
+  const manifests = {
+    "space-alpha": { source: { sha: "abc" }, version: 3, publishedAt: "2026-08-09T00:00:00Z", publishedBy: "rob@example.test" },
+  };
+  const stamp = W.synthBuildStamp(manifests);
+  const s = JSON.stringify(stamp);
+  assert.ok(!s.includes("rob@example.test"), "raw email must not appear");
+  // With no roster loaded it falls back to the local-part — still no domain.
+  assert.match(stamp.spaces["space-alpha"].publishedBy, /^rob$/);
+});
+
+// The chrome a space may never write, and the two things a blanket "/__" ban got
+// wrong in both directions. Publishing was blocked outright by the first of these.
+test("the default space owns its own search index at the root", () => {
+  const spaces = [{ id: "alpha", default: true }, { id: "beta" }];
+  assert.equal(W.pathOwnedBySpace("/__search.json", "alpha", spaces), true,
+    "the default space serves at the root, so its search index lands under /__ — refusing it stops it publishing at all");
+  assert.equal(W.pathOwnedBySpace("/beta/__search.json", "beta", spaces), true);
+  assert.equal(W.pathOwnedBySpace("/__search.json", "beta", spaces), false,
+    "…but only its OWN index");
+});
+
+test("a space cannot write chrome that other spaces' pages load absolutely", () => {
+  const spaces = [{ id: "alpha", default: true }, { id: "beta" }];
+  for (const chrome of [
+    "/__review/comments.js", "/__canvas/canvas.js", "/piti.js",
+    "/fonts/inter.woff2", "/admin/index.html", "/augur-mark.png", "/404.html",
+  ]) {
+    assert.equal(W.pathOwnedBySpace(chrome, "alpha", spaces), false, `default space must not own ${chrome}`);
+    assert.equal(W.pathOwnedBySpace(chrome, "beta", spaces), false, `non-default space must not own ${chrome}`);
+  }
+});
+
+test("an unrecognised /__ path stays reserved for the engine", () => {
+  const spaces = [{ id: "alpha", default: true }];
+  assert.equal(W.pathOwnedBySpace("/__something-new.json", "alpha", spaces), false);
+});
+
+test("the composition graph is space content, published with its design system", () => {
+  const spaces = [{ id: "alpha", default: true }, { id: "beta" }];
+  assert.equal(W.pathOwnedBySpace("/skills/acme-ui/graph.js", "alpha", spaces), true);
+  assert.equal(W.pathOwnedBySpace("/beta/skills/acme-ui/graph.js", "beta", spaces), true);
+  assert.equal(W.pathOwnedBySpace("/__review/graph.js", "alpha", spaces), false,
+    "the old home was shared chrome — that is why it moved");
+});
+
+// ── Hardening pass 2026-08-09 ────────────────────────────────────────────────
+// Three guards added after an adversarial re-audit. Each one closes a hole that
+// looked closed: the ownership rule that accepted the root, the throttle that
+// doubled as a lockout button, and the picker catalogue that doubled as a site index.
+
+test("a public prefix may not be the bare root (that opens the whole site)", () => {
+  const spaces = [{ id: "alpha", default: true }, { id: "beta" }];
+  // The hole: "/" IS owned by the default space, so the ownership rule alone passed it,
+  // and isPublicPath matches by startsWith — every gated path becomes public.
+  assert.equal(W.pathOwnedBySpace("/", "alpha", spaces), true, "still owned — that was the trap");
+  assert.equal(W.isPublishablePublicPrefix("/", "alpha", spaces), false, "but never publishable");
+  assert.equal(W.isPublishablePublicPrefix("", "alpha", spaces), false);
+  // Real subtrees still publish, with or without the trailing slash.
+  assert.equal(W.isPublishablePublicPrefix("/departments/x/", "alpha", spaces), true);
+  assert.equal(W.isPublishablePublicPrefix("/departments/x", "alpha", spaces), true);
+  // And the ownership rule still applies on top of it.
+  assert.equal(W.isPublishablePublicPrefix("/beta/x/", "alpha", spaces), false, "another space's subtree");
+  assert.equal(W.isPublishablePublicPrefix("/__canvas/", "alpha", spaces), false, "engine chrome");
+});
+
+test("the login throttle blocks a source but never locks an account out", async () => {
+  const kv = memKV();
+  const env = envWith(kv);
+  const ids = ["rl:login:em:t@example.test", "rl:login:ip:203.0.113.9"];
+  for (let i = 0; i < W.LOGIN_MAX_FAILS; i++) await W.loginFail(env, ids);
+  // The IP that did the hammering is hard-blocked.
+  assert.equal(await W.loginThrottled(env, ids), true);
+  // But the EMAIL alone only slows — otherwise ten guesses at a known address would bar
+  // that person from every IP for fifteen minutes, renewably. Anyone could do it to anyone.
+  const fromCleanIp = ["rl:login:em:t@example.test", "rl:login:ip:198.51.100.1"];
+  assert.equal(await W.loginThrottled(env, fromCleanIp), false, "the real user can still reach the gate");
+  assert.equal(await W.loginSlowed(env, fromCleanIp), true, "but they are braked");
+});
+
+test("the canvas catalogue is not a site index for a signed-out caller", async () => {
+  W.applyDerivedRouting({
+    alpha: {
+      id: "alpha", format: 1, files: {}, space: { id: "alpha", default: true },
+      routing: { canvasCatalog: [{ url: "/departments/secret-thing/", title: "secret-thing" }] },
+    },
+  });
+  // Signed in: the picker needs the full inventory.
+  assert.equal((await W.canvasAggregate("catalog", true).json()).length, 1);
+  // Signed out: the board they were sent still renders, but they get no directory of
+  // every URL on the site. Empty array, not a 401 — the client's fetch must still parse.
+  const anon = W.canvasAggregate("catalog", false);
+  assert.equal(anon.status, 200);
+  assert.deepEqual(await anon.json(), []);
+});

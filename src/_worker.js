@@ -192,7 +192,9 @@ function safeEqual(a, b) {
 
 // ---- Password hashing (PBKDF2-SHA-256) ---------------------------------------
 // Stored format — ONE string: "pbkdf2$<iterations>$<saltB64>$<hashB64>".
-const PBKDF2_ITERATIONS = 100000;
+// OWASP's current floor for PBKDF2-HMAC-SHA256. Old 100k hashes keep verifying (the
+// count is stored in each hash string) and upgrade to this on the next password set.
+const PBKDF2_ITERATIONS = 600000;
 const PASS_HASH_PREFIX = "pbkdf2$";
 
 async function pbkdf2Bits(password, salt, iterations) {
@@ -254,7 +256,13 @@ function applyInstance(inst) {
   BUILDER_CONFIG = inst.builder || null;
   RT_ORIGIN = inst.rtOrigin || "";
   INSTANCE_SENTINELS = Array.isArray(inst.sentinels) ? inst.sentinels : [];
+  CONFIG_LOADED = true; // an instance document was actually applied this isolate
 }
+// Has a real instance config ever loaded in THIS isolate? A cold isolate whose first
+// config read fails would otherwise leave USERS empty and default the gate to "open"
+// (the raw/offline case). This flag lets the gate tell "genuinely no identity" (raw
+// build) from "config not loaded yet" (deployment, must fail closed). See the gate.
+let CONFIG_LOADED = false;
 async function loadConfig(env) {
   if (!env || Date.now() - cfgAt < 1500) return;
   cfgAt = Date.now(); // stamp first — a failed load retries next tick, never stampedes
@@ -421,6 +429,90 @@ async function revokeInvitesFor(env, email) {
   if (hit) await kv.put(USER_INVITES_KEY, JSON.stringify(map));
 }
 
+// Publish tokens minted by `augur login` are labelled with the user's email and never
+// expire. Removing or resetting a user must drop theirs, or a departed teammate keeps
+// write access to the live content store. Best-effort (a KV blip just leaves the token).
+async function revokePublishTokens(env, email) {
+  const kv = kvFor(env);
+  if (!kv) return;
+  try {
+    const raw = await kv.get(PUBLISH_TOKENS_KEY);
+    if (!raw) return;
+    const map = JSON.parse(raw);
+    let hit = false;
+    for (const h in map) {
+      if (map[h] && lcEmail(map[h].label) === lcEmail(email)) { delete map[h]; hit = true; }
+    }
+    if (hit) await kv.put(PUBLISH_TOKENS_KEY, JSON.stringify(map));
+  } catch (e) {}
+}
+
+// ---- Login throttle ---------------------------------------------------------
+// Best-effort brute-force + enumeration brake on the two credential endpoints
+// (/__auth and /__publish/_login/token). KV has no atomic increment, so this is a
+// soft counter, not a hard lock — enough to turn an online dictionary run into a
+// non-starter and to blunt the timing/enumeration oracle's throughput. Keyed on both
+// the email and the caller IP so neither a single target nor a single source runs free.
+const LOGIN_WINDOW_MS = 15 * 60 * 1000;
+const LOGIN_MAX_FAILS = 10;
+// How long an attempt against a hammered EMAIL is held before it is answered. A brake,
+// not a lockout — see loginSlowed.
+const LOGIN_SLOW_MS = 1500;
+const RL_IP_PREFIX = "rl:login:ip:";
+const RL_EM_PREFIX = "rl:login:em:";
+function loginRlIds(request, email) {
+  const ip = (request.headers.get("CF-Connecting-IP") || "").trim();
+  const ids = [];
+  if (email) ids.push(RL_EM_PREFIX + lcEmail(email));
+  if (ip) ids.push(RL_IP_PREFIX + ip);
+  return ids;
+}
+async function overCeiling(env, ids) {
+  const kv = kvFor(env);
+  if (!kv || !ids.length) return false;
+  const now = Date.now();
+  for (const id of ids) {
+    try {
+      const rec = JSON.parse((await kv.get(id)) || "null");
+      if (rec && rec.until > now && rec.n >= LOGIN_MAX_FAILS) return true;
+    } catch (e) {}
+  }
+  return false;
+}
+// HARD BLOCK, on the IP counter only: one source hammering the gate is never legitimate.
+async function loginThrottled(env, ids) {
+  return overCeiling(env, ids.filter((id) => id.startsWith(RL_IP_PREFIX)));
+}
+// SLOW DOWN, on the email counter. Hard-blocking this one handed ANYONE an
+// account-lockout button: ten wrong guesses at a known address barred that person from
+// every IP for fifteen minutes, renewably — and the gate already tells a stranger which
+// addresses exist (the reset notice). A delay still turns a distributed dictionary run
+// against one address into a non-starter, on top of the 600k-iteration derivation every
+// attempt already pays, without letting an attacker deny a teammate their own account.
+async function loginSlowed(env, ids) {
+  return overCeiling(env, ids.filter((id) => id.startsWith(RL_EM_PREFIX)));
+}
+async function loginFail(env, ids) {
+  const kv = kvFor(env);
+  if (!kv || !ids.length) return;
+  const now = Date.now();
+  await Promise.all(ids.map(async (id) => {
+    try {
+      const rec = JSON.parse((await kv.get(id)) || "null");
+      const n = (rec && rec.until > now ? rec.n : 0) + 1;
+      await kv.put(id, JSON.stringify({ n, until: now + LOGIN_WINDOW_MS }),
+        { expirationTtl: Math.ceil(LOGIN_WINDOW_MS / 1000) + 60 });
+    } catch (e) {}
+  }));
+}
+// A fixed, valid pbkdf2 string verified when NO user matches, so an unknown email pays
+// the same single PBKDF2 pass as a real one — closing the timing oracle that enumerated
+// the roster. STATIC (not computed per isolate): a lazy hashPassword() here meant a cold
+// isolate did the dummy hash AND the verify — two 600k passes in one request — which
+// blew the Worker CPU budget and 500'd every unknown-email login. Its bytes are
+// meaningless; only that verifyPassword runs one derivation against it matters.
+const DUMMY_HASH = "pbkdf2$600000$ZSsoSbowI9EqBlzWVNJWnw==$Vzy7tcEJCHBca9+RbqwO6QYtbc+9WmcLmiKi2hfb5JU=";
+
 // ---- Identity helpers -------------------------------------------------------
 function userByEmail(email, users = USERS) {
   const e = String(email == null ? "" : email).trim().toLowerCase();
@@ -563,7 +655,10 @@ async function mintInvite(env, email, nowMs = Date.now()) {
     .replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
   const map = pruneInvites(await readInvites(kv), nowMs);
   // Issuing invalidates this user's outstanding links, so there is never more than one.
-  for (const [tok, rec] of Object.entries(map)) if (rec.email === email) delete map[tok];
+  // Case-insensitive, like every other email match — an exact compare let a reset (which
+  // mints under the roster's canonical case) miss an invite minted under the lowercased
+  // address, leaving two live links for one person.
+  for (const [tok, rec] of Object.entries(map)) if (rec && lcEmail(rec.email) === lcEmail(email)) delete map[tok];
   map[token] = { email, expires: nowMs + INVITE_TTL_MS };
   await kv.put(USER_INVITES_KEY, JSON.stringify(map));
   return token;
@@ -617,8 +712,9 @@ async function setUserSecret(env, email, hash) {
 
 // GET /__invite?t=… — the set-password form. Deliberately says nothing about whether
 // the token is valid beyond "this link is no longer valid": no user enumeration.
-function invitePage(token, error) {
+function invitePage(token, error, email) {
   const t = escapeHtml(token || "");
+  const em = escapeHtml(email || "");
   // Text only — the .error block below supplies the icon and wrapper, matching loginPage.
   const msg = error ? escapeHtml(error) : "";
   return `<!doctype html>
@@ -703,6 +799,11 @@ function invitePage(token, error) {
     </p>
     <form method="POST" action="/__invite">
       <input type="hidden" name="token" value="${t}" />
+      ${em ? `<label for="acct-email">You are setting the password for</label>
+      <input id="acct-email" type="email" value="${em}" readonly aria-readonly="true" tabindex="-1"
+             style="width:100%; font:inherit; font-size:15px; padding:8px 13px; border-radius:9px;
+                    border:1px solid var(--line-2); margin-bottom:16px; background:#f4f4f6;
+                    color:#5b626e; cursor:default;" />` : ""}
       <label for="password">New password</label>
       <input id="password" name="password" type="password" autocomplete="new-password"
              minlength="${MIN_PASSWORD_LENGTH}" required autofocus
@@ -743,7 +844,9 @@ async function inviteGet(url, env) {
   const token = url.searchParams.get("t") || "";
   const email = await readInvite(env, token);
   if (!email) return htmlResponse(invitePage("", "This link is no longer valid. Ask for a new one."), 400);
-  return htmlResponse(invitePage(token, ""), 200);
+  // Show WHOSE account this link sets — a wrong recipient sees an address that isn't
+  // theirs and stops, and no one can quietly claim a different identity (it's read-only).
+  return htmlResponse(invitePage(token, "", email), 200);
 }
 
 async function invitePost(request, url, env, users = USERS) {
@@ -755,7 +858,7 @@ async function invitePost(request, url, env, users = USERS) {
   const email = await readInvite(env, token);
   if (!email) return htmlResponse(invitePage("", "This link is no longer valid. Ask for a new one."), 400);
   if (password.length < MIN_PASSWORD_LENGTH) {
-    return htmlResponse(invitePage(token, `Use at least ${MIN_PASSWORD_LENGTH} characters.`), 400);
+    return htmlResponse(invitePage(token, `Use at least ${MIN_PASSWORD_LENGTH} characters.`, email), 400);
   }
   const u = userByEmail(email, users);
   if (!u) return htmlResponse(invitePage("", "This link is no longer valid. Ask for a new one."), 400);
@@ -962,18 +1065,24 @@ function applyDerivedRouting(manifests) {
     const m = manifests[id];
     if (id === "_engine") { loaderExtras = (m.routing && m.routing.canvasLoaderExtras) || ""; continue; }
     const r = m.routing || {};
+    const sp = m.space || { id };
+    const spRestricted = sp.adminOnly && !sp.default;
     prefixes.push(...(r.publicPrefixes || []));
     Object.assign(vmap, r.versionMap || {});
     // Each space's slice of the two aggregates, concatenated in the same sorted-id
     // order every time so the merge is stable. A space that has never published
-    // simply contributes nothing, rather than erasing the others.
-    catalog.push(...(r.canvasCatalog || []));
-    tracks.push(...(r.canvasTracks || []));
+    // simply contributes nothing, rather than erasing the others. Admin-only spaces
+    // contribute NOTHING to the public catalog — /__canvas/catalog.json is served
+    // before the gate, so a listed entry would leak that space's whole inventory
+    // (titles, descriptions, exact URLs) to anonymous callers.
+    if (!spRestricted) {
+      catalog.push(...(r.canvasCatalog || []));
+      tracks.push(...(r.canvasTracks || []));
+    }
     for (const h of r.mcpAllowlist || []) mcp.add(h);
     if (r.publicSkillPrefixes) skillPrefixes = r.publicSkillPrefixes;
-    const sp = m.space || { id };
     spacesList.push(sp);
-    if (sp.adminOnly && !sp.default) restricted.push("/" + id);
+    if (spRestricted) restricted.push("/" + id);
     sigs.push(`${id}:${r.shellSig || m.version || 0}`);
   }
   let h = 5381;
@@ -992,9 +1101,60 @@ function applyDerivedRouting(manifests) {
   SPACES = spacesList.sort((a, b) => (b.default === true) - (a.default === true) || String(a.id).localeCompare(String(b.id)));
 }
 
+// Does a path (or routing prefix) belong to `spaceId`, given the live space list? This
+// is the fix that keeps a publish token to its own space: engine internals (/__*, the
+// admin panel) belong to NO space; a non-default space owns only its /<id>/ subtree; the
+// default space owns the root EXCEPT any other space's base. Pure + exported for tests.
+// The shared chrome a space may never write. Every one of these is loaded by
+// absolute URL from pages in EVERY space, so a space able to write one could run
+// code in another space's prototypes — which is what this guard is for.
+// Mirrors ENGINE_CHROME in build.js; keep the two in step.
+const ENGINE_CHROME_PATHS = [
+  "/fonts/", "/pitis/", "/__review/", "/__canvas/", "/admin", "/changelog",
+  "/piti.js", "/404.html", "/manifest.webmanifest",
+  "/augur-eye.svg", "/augur-icon-192.png", "/augur-icon-512.png", "/augur-mark.png",
+];
+const isEngineChrome = (key) => ENGINE_CHROME_PATHS.some((p) =>
+  p.endsWith("/") ? key.startsWith(p) : key === p || key.startsWith(p + "/"));
+
+// A publisher-declared PUBLIC PREFIX — a path the gate will open to anonymous visitors.
+// Held to the same ownership rule as a file, normalizing a trailing slash so "/x" and
+// "/x/" both check as "/x/", plus one extra rule the file rule cannot express: "/" is
+// genuinely owned by the default space, but isPublicPath matches by startsWith, so a
+// root prefix opens EVERY gated path on the site. A prefix must name a real subtree.
+function isPublishablePublicPrefix(p, spaceId, spaces) {
+  const norm = String(p == null ? "" : p).replace(/\/?$/, "/");
+  return norm !== "/" && pathOwnedBySpace(norm, spaceId, spaces);
+}
+
+function pathOwnedBySpace(key, spaceId, spaces) {
+  if (typeof key !== "string" || !key.startsWith("/")) return false;
+  if (isEngineChrome(key)) return false;
+  // Everything else under /__ stays reserved for the engine. The one exception is
+  // a space's own search index: the default space serves its at the root, so it
+  // lands on /__search.json — and a blanket /__ ban refused it, which stopped the
+  // default space publishing at all. (That ban was also too loose in the other
+  // direction: /piti.js and /fonts/* are injected into every prototype and it let
+  // those through. The chrome list above closes both ends.)
+  if (key.startsWith("/__") && !/^\/__search\.json$/.test(key)) return false;
+  const isDefault = (spaces.find((s) => s.default) || {}).id === spaceId;
+  if (!isDefault) return key === "/" + spaceId || key.startsWith("/" + spaceId + "/");
+  for (const s of spaces) {
+    if (s.default) continue;
+    if (key === "/" + s.id || key.startsWith("/" + s.id + "/")) return false;
+  }
+  return true;
+}
+
 // Path → manifest entry. Manifest keys are the built files' real (decoded) paths.
+// DETERMINISTIC resolution: spaces first (sorted), _engine last, so a path can never
+// resolve to a different owner depending on which manifest read completed first. Commit
+// now forbids cross-space path collisions, so at most one space owns any given path;
+// the _engine-last order keeps engine chrome (/admin, /__…) resolving to _engine.
 function lookupBundleFile(manifests, pathname) {
-  for (const id in manifests) {
+  const ids = Object.keys(manifests)
+    .sort((a, b) => (a === "_engine") - (b === "_engine") || a.localeCompare(b));
+  for (const id of ids) {
     const f = manifests[id].files && manifests[id].files[pathname];
     if (f) return f;
   }
@@ -1080,10 +1240,18 @@ function synthBuildStamp(manifests) {
   const spaces = {}, engine = { sha: null };
   if (INSTANCE_ENGINE_VERSION) engine.version = INSTANCE_ENGINE_VERSION;
   let builtAt = null;
+  // /_build.json is served BEFORE the gate, so publishedBy must not leak the raw email
+  // the publish token is labelled with. Map it to the roster display name when known,
+  // else the local-part — enough to say who published, without publishing addresses.
+  const byName = (label) => {
+    if (!label) return "";
+    const u = userByEmail(label);
+    return u ? u.name : String(label).split("@")[0];
+  };
   const provenance = (m) => ({
     ...(m.version ? { version: m.version } : {}),
     ...(m.publishedAt ? { publishedAt: m.publishedAt } : {}),
-    ...(m.publishedBy ? { publishedBy: m.publishedBy } : {}),
+    ...(m.publishedBy ? { publishedBy: byName(m.publishedBy) } : {}),
   });
   for (const id in manifests) {
     const m = manifests[id];
@@ -1119,6 +1287,16 @@ async function publishAuth(request, env, spaceId, anySpace) {
     const map = raw ? JSON.parse(raw) : {};
     const e = map[h];
     if (!e) return null;
+    // A star-scope token is admin-equivalent — it pushes instance config, i.e. the user
+    // list itself. `augur login` labels the token it mints with the holder's email, so if
+    // that address is still on the roster but is no longer an admin, the token has
+    // outlived the role that justified it. (Reset and remove revoke tokens outright; a
+    // demotion is the one transition that left one live.) Labels an admin typed by hand
+    // — "ci", "godmode" — match no roster user and are unaffected.
+    if (e.space === "*" && e.label) {
+      const u = userByEmail(e.label);
+      if (u && u.role !== "admin") return null;
+    }
     if (!anySpace && e.space !== "*" && e.space !== spaceId) return null;
     return e;
   } catch (err) { return null; }
@@ -1136,16 +1314,29 @@ async function publishApi(request, url, env) {
   if (spaceId === "_login" && op === "token" && request.method === "POST") {
     let body;
     try { body = await request.json(); } catch (e) { return jsonResponse({ error: "bad-json" }, 400); }
-    const u = userByEmail(body && body.email);
+    const email = body && body.email;
+    const rlIds = loginRlIds(request, email);
+    if (await loginThrottled(env, rlIds)) {
+      return jsonResponse({ error: "rate-limited", message: "Too many attempts. Wait a few minutes." }, 429);
+    }
+    if (await loginSlowed(env, rlIds)) await new Promise((r) => setTimeout(r, LOGIN_SLOW_MS));
+    const u = userByEmail(email);
     const pass = String((body && body.password) || "");
-    const real = u ? await effectiveSecret(env, u) : "";
+    // Resolve through effectiveSecret even when no user matched (a throwaway address),
+    // so an unknown email pays the SAME users:secrets KV read as a known one — without
+    // this the KV read is a residual timing oracle after the dummy-hash equalizes PBKDF2.
+    const real = await effectiveSecret(env, u || { email: "\x00nouser" });
+    // Always run PBKDF2 (real or dummy) so an unknown email can't be told apart by timing.
+    const ok = await verifyPassword(pass, real || DUMMY_HASH);
     // Same distinction the web gate makes: a roster user with no secret was reset, and
     // telling them "bad credentials" sends them looking for a typo in a password that
     // no longer exists. `augur login` surfaces `message` when present.
     if (u && !real) {
+      await loginFail(env, rlIds);
       return jsonResponse({ error: "password-reset", message: RESET_NOTICE }, 403);
     }
-    if (!u || !(await verifyPassword(pass, real))) {
+    if (!u || !ok) {
+      await loginFail(env, rlIds);
       return jsonResponse({ error: "bad-credentials" }, 403);
     }
     const kv = kvFor(env);
@@ -1169,11 +1360,14 @@ async function publishApi(request, url, env) {
   // from a bare space clone renders the same faces the god-mode build does.
   if (spaceId === "_instance" && op === "profiles" && request.method === "GET") {
     if (!(await publishAuth(request, env, spaceId, true))) return jsonResponse({ error: "forbidden" }, 403);
+    // No `role` here: any valid publish token (including a non-admin default-space one)
+    // can read this, and it only needs the fields that render editor faces — leaking
+    // who the admins are is gratuitous.
     const profiles = USERS.map((u) => ({
       id: personId(u.email),
       email: u.email, emails: u.emails || [],
       name: u.name, initials: u.initials || "", color: u.color || "#4f46e5",
-      avatar: avatarUrl(u), role: u.role === "admin" ? "admin" : "user",
+      avatar: avatarUrl(u),
     }));
     return jsonResponse({ profiles });
   }
@@ -1295,6 +1489,73 @@ async function publishApi(request, url, env) {
     try { m = await request.json(); } catch (e) { return jsonResponse({ error: "bad-json" }, 400); }
     if (!m || m.id !== spaceId || !m.files || typeof m.files !== "object") {
       return jsonResponse({ error: "bad-manifest" }, 400);
+    }
+    const liveManifests = await loadManifests(env, true);
+    // ── Untrusted-token guard — the fix that keeps a space token to its own space. Any
+    // signed-in user can mint a default-space token (`augur login`), so without this a
+    // user could commit a manifest that claims /admin/* or /__canvas/canvas.js (engine
+    // chrome) or another space's paths, and shadow them — then run script as the next
+    // admin who loads that asset. STAR-scope tokens ("*") are admin/CI-only and already
+    // all-powerful (they push instance config, i.e. the user list), so they are exempt —
+    // that is also how the trusted `_engine` chrome publish writes /admin, /404.html, etc.
+    if (who.space !== "*") {
+      const commitIsDefault = spaceId === ((SPACES.find((s) => s.default) || {}).id || null);
+      const ownsPath = (k) => pathOwnedBySpace(k, spaceId, SPACES);
+      for (const k in m.files) {
+        if (!ownsPath(k)) return jsonResponse({ error: "path-not-owned", path: k }, 403);
+        // Belt-and-suspenders: never overwrite a path another LIVE space (incl _engine)
+        // already serves, whatever the base rules above would allow.
+        for (const otherId in liveManifests) {
+          if (otherId === spaceId) continue;
+          if (liveManifests[otherId].files && liveManifests[otherId].files[k]) {
+            return jsonResponse({ error: "path-conflict", path: k, owner: otherId }, 409);
+          }
+        }
+      }
+      // Routing fragment — derived site routing trusts this verbatim (public prefixes,
+      // the admin-only seal, the MCP allowlist), so a rogue fragment could open the whole
+      // site or un-seal a restricted space. Validate every field this space may assert.
+      const rf = m.routing;
+      if (rf && typeof rf === "object") {
+        for (const p of rf.publicPrefixes || []) {
+          // See isPublishablePublicPrefix: ownership, AND never the bare root. "/" passing
+          // the ownership rule was the hole — the default space really does own the root,
+          // and a root prefix opens every gated path on the site to anonymous visitors,
+          // from the token any signed-in user mints with `augur login`.
+          if (!isPublishablePublicPrefix(p, spaceId, SPACES)) {
+            return jsonResponse({ error: "bad-routing-prefix", path: p }, 400);
+          }
+        }
+        for (const k in rf.versionMap || {}) {
+          if (!ownsPath(k)) return jsonResponse({ error: "bad-routing-version", path: k }, 400);
+        }
+        // Public skill assets are a default-space concept only, and live under /skills/.
+        if (rf.publicSkillPrefixes) {
+          if (!commitIsDefault) return jsonResponse({ error: "skill-prefixes-not-default" }, 403);
+          for (const p of rf.publicSkillPrefixes) {
+            if (typeof p !== "string" || !p.startsWith("/skills/")) {
+              return jsonResponse({ error: "bad-skill-prefix", path: p }, 400);
+            }
+          }
+        }
+        // NOTE: a space's declared MCP hosts (rf.mcpAllowlist) are NOT constrained here.
+        // A space legitimately declares its clients' own domains (the planner names
+        // hundreds, on their own TLDs — not under any instance suffix), and that IS the
+        // feature. The proxy's real controls live in mcpProxy: only a DECLARED host is
+        // reachable, redirects aren't followed, IP-literal targets are rejected, and only
+        // four fixed MCP paths pass with a sanitized response. Constraining which hosts a
+        // space may declare added little over those and broke clients on their own domains.
+      }
+      // adminOnly/default are NOT self-asserted from a non-star manifest — a token scoped
+      // to an admin-only space must not publish itself public (or claim default). Preserve
+      // the trusted prior value; trust-on-first-publish only when there is no prior.
+      const prior = liveManifests[spaceId] && liveManifests[spaceId].space;
+      const declared = m.space && typeof m.space === "object" ? m.space : { id: spaceId };
+      m.space = {
+        ...declared, id: spaceId,
+        adminOnly: prior ? !!prior.adminOnly : !!declared.adminOnly,
+        default: prior ? !!prior.default : !!declared.default,
+      };
     }
     // Inline blobs — the one-round-trip fast path: a small commit may carry its
     // fresh blobs base64-inline instead of PUTting each first. Every inline blob
@@ -1878,8 +2139,11 @@ async function mcpProxy(request, url) {
   const host = slash === -1 ? rest : rest.slice(0, slash);
   const path = slash === -1 ? "/" : rest.slice(slash);
   // The pattern is lowercase-only, so it also rejects any case-variant spelling of
-  // an allowed host before the comparisons below.
+  // an allowed host before the comparisons below. A host must be a real domain name:
+  // reject bare IPv4 literals and dotless names so the allowlist can't be pointed at
+  // a private/loopback address (belt-and-suspenders with the suffix rule).
   if (!/^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$/.test(host)
+      || /^\d+\.\d+\.\d+\.\d+$/.test(host) || !host.includes(".")
       || !(await mcpHostAllowed(host)))
     return jsonResponse({ error: "host not allowed" }, 403);
   if (!MCP_PROXY_PATHS.has(path)) return jsonResponse({ error: "path not allowed" }, 403);
@@ -1894,7 +2158,14 @@ async function mcpProxy(request, url) {
     method: request.method,
     headers,
     body: request.method === "POST" ? await request.arrayBuffer() : undefined,
+    // Do NOT follow redirects: an allowed host could 302 to an arbitrary host/path
+    // (re-issuing the forwarded Authorization header) and escape both the allowlist
+    // and the path restriction. A 3xx is treated as a failure, not chased.
+    redirect: "manual",
   });
+  if (upstream.status >= 300 && upstream.status < 400) {
+    return jsonResponse({ error: "upstream redirect refused" }, 502);
+  }
   // The response is rebuilt, and the upstream content type is NOT trusted. An
   // allowed host is still a third party, and /__mcp/<host>/<path> is reachable by
   // plain navigation — echoing its `text/html` would hand it script execution on
@@ -1920,19 +2191,18 @@ async function mcpProxy(request, url) {
 // The Project Builder prototype drops a doc → this route reads its extracted
 // text and returns a plain-language summary + structured drafting signals
 // (archetype / method flags / tags), so the builder suggests a genuinely
-// better-shaped project instead of keyword-guessing. Gated behind the login.
-// Two backends, in order of preference (see aiSummarize):
+// better-shaped project instead of keyword-guessing. PUBLIC and OPEN — the
+// prototype ships to /playground/ and is shown to logged-out viewers.
+//
+// BRING YOUR OWN KEY. The engine holds NO Anthropic key of its own, so a public
+// instance never spends the operator's account. Two backends, in order:
 //   1. AI_CLI_URL  — a local `claude -p` bridge (offline mode; the maintainer's
-//      Claude login, NO API tokens). This is the normal path.
-//   2. ANTHROPIC_API_KEY — the Anthropic Messages API (pay-as-you-go); a
-//      dormant fallback for a deployed site that opts in by setting the key.
-// Neither configured → 503, and the prototype falls back to its heuristic.
-// The API-path model is a single constant. Opus 4.8 for the customer demo:
-// richest read of a complex doc (sharpest summary, most reliable archetype/flags,
-// least over-flagging) — its few extra seconds are covered by the client's narrated
-// "thinking" stepper, which makes the analysis read as considered. ~a few cents per
-// doc; trivial at demo volume. Drop to claude-sonnet-4-6 / claude-haiku-4-5 for
-// faster/cheaper output if a call warrants it.
+//      own Claude login, NO API tokens). The normal path for local work.
+//   2. an `x-anthropic-key` header the CALLER supplies (their own agent/key,
+//      their own spend). This is what makes the open endpoint usable on the
+//      deployed site.
+// Neither present → 503 (ai_byo_required), and the prototype falls back to its
+// local heuristic. The model is a single constant; whoever supplies the key pays.
 
 const AI_MODEL = "claude-opus-4-8";
 
@@ -1952,8 +2222,7 @@ async function aiSummarize(request, env) {
 
   // Preferred path: a local CLI bridge (offline mode wires AI_CLI_URL to a
   // 127.0.0.1 server that shells out to `claude -p` — the maintainer's Claude
-  // login, NO API tokens). The API-key path below is a dormant fallback for a
-  // deployed site that has ANTHROPIC_API_KEY set; absent both → 503 → heuristic.
+  // login, NO API tokens). Absent, the caller must bring their own key below.
   if (env.AI_CLI_URL) {
     try {
       const r = await fetch(env.AI_CLI_URL.replace(/\/+$/, "") + "/summarize", {
@@ -1969,8 +2238,11 @@ async function aiSummarize(request, env) {
     }
   }
 
-  const key = env.ANTHROPIC_API_KEY;
-  if (!key) return jsonResponse({ error: "ai_not_configured" }, 503);
+  // Bring-your-own key: the Anthropic key comes from the CALLER (their own agent/
+  // prototype), never from an engine env var — a public instance spends nobody's
+  // account but the caller's. No key → not configured → the prototype's heuristic.
+  const key = (request.headers.get("x-anthropic-key") || "").trim();
+  if (!key) return jsonResponse({ error: "ai_byo_required", message: "Connect your own AI key." }, 503);
 
   let upstream;
   try {
@@ -2112,7 +2384,7 @@ function applyOp(threads, op, me) {
 // GET/POST /__review/api?path=<page> — read or mutate one page's threads.
 // Fully OPEN, reads AND writes (see router): reviewers with only a public
 // prototype link must be able to comment. applyOp clamps/caps every field.
-async function reviewApi(request, url, env) {
+async function reviewApi(request, url, env, authed) {
   const kv = kvFor(env);
   const path = clamp(url.searchParams.get("path") || "/", 600);
   if (!kv) return jsonResponse({ threads: [], warning: "no-kv-binding" });
@@ -2125,6 +2397,13 @@ async function reviewApi(request, url, env) {
   if (request.method === "POST") {
     let op;
     try { op = await request.json(); } catch (e) { return jsonResponse({ error: "bad-json" }, 400); }
+    // Adding/replying stays open (public reviewers carry no login), but DESTRUCTIVE ops
+    // — deleting a thread or a message — require a signed-in user in identity mode.
+    // Otherwise anyone who learns a page URL can wipe its whole review history. `authed`
+    // is undefined for callers that don't pass it (raw/open builds) → treated as open.
+    if (authed === false && op && (op.op === "delete" || op.op === "delmsg")) {
+      return jsonResponse({ error: "unauthorized" }, 401);
+    }
     // Resolve the caller's session so authorship is stamped from the cookie, not the
     // body. Reads/writes stay open (public reviewers carry no login) — this only fixes
     // WHO a message is attributed to, so a forged trusted name can't slip in.
@@ -2392,18 +2671,29 @@ let CANVAS_LOADER_EXTRAS = "";
 let CANVAS_CATALOG = [];
 let CANVAS_TRACKS = [];
 
-// Serve one of the aggregates. Public, matching what the files were: canvas boards
-// are shareable links that render without a login, and their insert picker and
-// music list have to load for an anonymous viewer too (isPublicPath already opens
-// /__canvas/*.json). Never cached at the edge — a publish changes it immediately.
-function canvasAggregate(which) {
-  return jsonResponse(which === "tracks" ? CANVAS_TRACKS : CANVAS_CATALOG);
+// Serve one of the aggregates. Reachable without a login, matching what the files were:
+// canvas boards are shareable links that render for a signed-out viewer, so their insert
+// picker and music player must load too. Never cached at the edge — a publish changes it
+// immediately.
+//
+// The CATALOG, though, is the site's whole inventory: the title, group and exact URL of
+// every prototype, page and component that ships. Served openly it is a directory —
+// it turns "you need the link" into "here is every link", which is the difference
+// between a shared prototype and a browsable index of the team's work. A signed-out
+// viewer needs the BOARD they were sent to render, not the catalogue of everything else
+// that exists, so they get an empty picker. Empty array rather than a 401 so the canvas
+// client's fetch still parses and the board renders normally.
+function canvasAggregate(which, authed = true) {
+  if (which === "tracks") return jsonResponse(CANVAS_TRACKS);
+  return jsonResponse(authed ? CANVAS_CATALOG : []);
 }
 
 // The same loader a repo canvas folder carries — the page just names the board and
 // mounts the shared /__canvas/ engine; contents persist to /__board keyed by URL.
 function canvasLoaderPage(name) {
-  const title = String(name).replace(/&/g, "&amp;").replace(/</g, "&lt;");
+  // Full escape — the value lands in a "-quoted attribute (content="…(${title})"), so a
+  // bare " would break out and inject further meta attributes on this PUBLIC page.
+  const title = escapeHtml(name);
   const boot = JSON.stringify({ name: String(name) }).replace(/</g, "\\u003c");
   return `<!DOCTYPE html>
 <html lang="en">
@@ -2534,10 +2824,17 @@ async function assetApi(request, url, env) {
 // config's `realtimeOrigin`; without one, boards run solo (the client's socket-down
 // fallback: it persists via /__board to this instance's own KV).
 let RT_ORIGIN = "";
-function rtProxy(request, url) {
+function rtProxy(request, url, env) {
   if (!RT_ORIGIN) return jsonResponse({ error: "realtime-not-configured" }, 501);
   if (request.headers.get("Upgrade") !== "websocket") return jsonResponse({ error: "expected-websocket" }, 426);
-  return fetch(RT_ORIGIN + "/room" + url.search, request);
+  // Re-wrap so a header can be added; the Upgrade header and the socket handling ride
+  // along. The secret proves the request came through this worker, which is where the
+  // admin-only-space seal is enforced (see the isRestrictedPath check on ?path= above).
+  // Unset = send nothing, and a realtime worker without the secret accepts as before.
+  const req = new Request(RT_ORIGIN + "/room" + url.search, request);
+  const secret = env && env.RT_SHARED_SECRET;
+  if (secret) req.headers.set("X-Augur-RT", secret);
+  return fetch(req);
 }
 
 // Admin surface: manage PEOPLE, not credentials. There is deliberately no path here
@@ -2585,6 +2882,7 @@ async function adminUsersApi(request, url, env, me, users = USERS, configUsers =
       // Clearing the secret and minting the link are ONE action: there is never a state
       // where a known password is still live alongside a pending invite.
       await revokeSecret(env, u.email);
+      await revokePublishTokens(env, u.email); // a reset password must not leave a live publish token
       const token = await mintInvite(env, u.email);
       return jsonResponse({ ok: true, email: u.email, url: link(token) });
     }
@@ -2634,6 +2932,7 @@ async function adminUsersApi(request, url, env, me, users = USERS, configUsers =
       // tombstone up by u.email exactly, so a case-folded key would miss it and fall
       // through to the config roster's legacy `pass`.
       await revokeSecret(env, u.email);     // kills their session too (cookies bind to it)
+      await revokePublishTokens(env, email); // and any publish token they minted via `augur login`
       await revokeInvitesFor(env, email);   // an outstanding link must not let them back in
       try { await kv.delete(LASTSEEN_PREFIX + u.email); } catch (e) {}
       commitRoster(roster);
@@ -2807,15 +3106,6 @@ export default {
       return jsonResponse(synthBuildStamp(await loadManifests(env)));
     }
 
-    // The canvas insert-picker catalog and the session-music list: merged from every
-    // space's routing fragment rather than served as files, because they are the only
-    // two site-wide aggregates and no single publisher can own one (see
-    // canvasAggregate). Public, exactly as the files were — a shared canvas board
-    // renders for a signed-out viewer, so its picker and player must load too. Placed
-    // here, before the gate, for the same reason /_build.json is.
-    if (url.pathname === "/__canvas/catalog.json") return canvasAggregate("catalog");
-    if (url.pathname === "/__canvas/tracks.json") return canvasAggregate("tracks");
-
     // Vanity domains (from the deploy config): a host CNAME'd to this
     // Pages project + added as a custom domain runs this worker. DNS can't target
     // a path, so land each such host's root on its configured page. Scoped to the
@@ -2868,15 +3158,31 @@ export default {
       const token = await tokenFor(expected);
       const cookies = request.headers.get("Cookie") || "";
       authed = cookies.split(/;\s*/).some((c) => c === `${COOKIE}=${token}`);
-    } else authed = true;
+    } else {
+      // No users AND no shared password. Genuinely open ONLY when this instance has no
+      // config source at all (offline / raw engine build). A real deployment — BUNDLES
+      // or ASSETS bound — that has not yet loaded its config must FAIL CLOSED: a cold
+      // isolate whose first config read failed would otherwise serve the whole gated
+      // site open until the next 1.5s tick. Once config loads (even with an empty user
+      // list, an intentionally-open instance), CONFIG_LOADED flips and this opens.
+      const expectsConfig = !!(env && (env.BUNDLES || env.ASSETS));
+      authed = expectsConfig ? CONFIG_LOADED : true;
+    }
 
-    // AI document summarizer — PUBLIC (not gated). The Project Builder prototype
-    // that calls this ships to /playground/ and is publicly reachable (customer
-    // demos, shared links — the viewer is never logged in), so gating this behind
-    // the login left the doc-upload flow 401ing for everyone but a signed-in admin.
-    // It spends Anthropic tokens, but the handler is self-limiting: POST-only, input
-    // capped at 60k chars, output bounded by the schema. 503 when unconfigured →
-    // the prototype falls back to its local heuristic.
+    // The canvas insert-picker catalog and the session-music list: merged from every
+    // space's routing fragment rather than served as files, because they are the only two
+    // site-wide aggregates and no single publisher can own one (see canvasAggregate).
+    // Both answer without a login, so a shared board renders for a signed-out viewer —
+    // but the catalog is served EMPTY to one, because the full list is a directory of
+    // every URL on the site. Dispatched here, just after `authed` resolves and before any
+    // gate enforces anything, so it stays reachable to everyone either way.
+    if (url.pathname === "/__canvas/catalog.json") return canvasAggregate("catalog", authed);
+    if (url.pathname === "/__canvas/tracks.json") return canvasAggregate("tracks");
+
+    // AI document summarizer — PUBLIC and OPEN (the Project Builder ships to
+    // /playground/ and its viewers are never logged in). The engine holds no
+    // Anthropic key: the caller brings their own (x-anthropic-key), or a local
+    // CLI bridge serves offline. No backend → 503 → the prototype's heuristic.
     if (url.pathname === "/__ai/summarize") {
       return aiSummarize(request, env);
     }
@@ -2953,12 +3259,27 @@ export default {
     if (request.method === "POST" && url.pathname === "/__auth") {
       const form = await request.formData();
       const requested = (form.get("redirect") || "/").toString();
-      const redirect = requested.startsWith("/") ? requested : "/"; // avoid open redirect
+      // Reject scheme-relative ("//host") and backslash ("/\\host") targets too — both
+      // start with "/" but navigate off-origin. A freshly-authenticated user landing on
+      // an attacker page is prime credential-harvest bait.
+      const redirect = /^\/($|[^/\\])/.test(requested) ? requested : "/";
       if (usersActive) {
-        const u = userByEmail(form.get("email"));
+        const email = form.get("email");
+        const rlIds = loginRlIds(request, email);
+        if (await loginThrottled(env, rlIds)) {
+          return htmlResponse(loginPage(redirect, "Too many attempts. Wait a few minutes and try again."), 429);
+        }
+        if (await loginSlowed(env, rlIds)) await new Promise((r) => setTimeout(r, LOGIN_SLOW_MS));
+        const u = userByEmail(email);
         const pass = (form.get("password") || "").toString();
-        const real = u ? await effectiveSecret(env, u) : "";
-        if (u && real && (await verifyPassword(pass, real))) {
+        // Resolve through effectiveSecret even when no user matched (a throwaway address),
+    // so an unknown email pays the SAME users:secrets KV read as a known one — without
+    // this the KV read is a residual timing oracle after the dummy-hash equalizes PBKDF2.
+    const real = await effectiveSecret(env, u || { email: "\x00nouser" });
+        // Always run PBKDF2 — against the real hash or a dummy — so an unknown email
+        // costs the same as a known one (no timing enumeration).
+        const ok = await verifyPassword(pass, real || DUMMY_HASH);
+        if (u && real && ok) {
           const token = await userToken(env, u);
           if (ctx && ctx.waitUntil) ctx.waitUntil(touchLastSeen(env, u));
           return new Response(null, {
@@ -2970,6 +3291,8 @@ export default {
             },
           });
         }
+        // Failed attempt — count it against the email + IP.
+        await loginFail(env, rlIds);
         // A roster user with NO effective secret has been reset (or never redeemed an
         // invite) — their password does not exist, so "incorrect password" sends them
         // hunting for a typo that isn't there. Say what actually happened. This does
@@ -2994,10 +3317,22 @@ export default {
       return htmlResponse(loginPage(redirect, true), 401);
     }
 
+    // These three data APIs key off a caller-supplied ?path=, and they are dispatched
+    // BEFORE the admin-only-space gate below — so without this an anonymous caller could
+    // read or overwrite a restricted space's boards/threads by naming its path directly.
+    // Seal any path inside an admin-only space to admins (identity mode only).
+    const dataPath = clamp(url.searchParams.get("path"), 600);
+    if (usersActive && dataPath && isRestrictedPath(dataPath)
+        && (url.pathname === "/__review/api" || url.pathname === "/__board" || url.pathname === "/__rt")
+        && (!me || me.role !== "admin")) {
+      return jsonResponse({ error: "forbidden" }, 403);
+    }
+
     // Comments: fully OPEN (reads and writes) so devs who only have the public
     // prototype link — no login — can leave feedback that syncs to KV. Obscure
     // share links, not public discovery; applyOp already clamps/caps every field.
-    if (url.pathname === "/__review/api") return reviewApi(request, url, env);
+    // Destructive ops (delete a thread/message) require a signed-in user (see reviewApi).
+    if (url.pathname === "/__review/api") return reviewApi(request, url, env, authed);
 
     // Overlay APIs — gated by the same rule as the site (open in legacy no-gate mode
     // so raw/local builds keep working). Pins are scoped to the signed-in user.
@@ -3039,12 +3374,17 @@ export default {
     // login, exactly like /__review/api. Writes are full-state but size-capped in boardApi.
     if (url.pathname === "/__board") return boardApi(request, url, env);
     // Board images live OUTSIDE the doc (content-hashed, immutable) — same public model as
-    // /__board: the hash is the credential. See assetApi.
-    if (url.pathname.startsWith("/__asset")) return assetApi(request, url, env);
+    // /__board: the hash is the credential. Reads stay public (a public board renders its
+    // images for anyone); UPLOADS require a signed-in user in identity mode, so the KV
+    // image store can't be filled by anonymous callers.
+    if (url.pathname.startsWith("/__asset")) {
+      if (request.method === "POST" && usersActive && !authed) return jsonResponse({ error: "unauthorized" }, 401);
+      return assetApi(request, url, env);
+    }
     // Canvas multiplayer: same-origin WebSocket proxied to the augur-realtime worker (one
     // BoardRoom Durable Object per board path — cursors/presence/live ops). Public like
     // /__board: the board is the credential. The engine degrades to solo if this fails.
-    if (url.pathname === "/__rt") return rtProxy(request, url);
+    if (url.pathname === "/__rt") return rtProxy(request, url, env);
 
     // Admin-only spaces: seal the whole base path BEFORE the public-prototype
     // door, so nothing under it — not even an og.jpg — leaks. Only an admin
@@ -3054,6 +3394,22 @@ export default {
     if (usersActive && isRestrictedPath(url.pathname)) {
       if (!authed) return htmlResponse(loginPage(url.pathname + url.search, false), 200);
       if (!me || me.role !== "admin") return Response.redirect(new URL("/", url).toString(), 303);
+    }
+
+    // Admin pages (/admin/…): require an admin user. A signed-out visitor gets the
+    // login page; a signed-in non-admin is bounced home.
+    //
+    // Checked BEFORE the public-prototype door below, for the same reason the
+    // admin-only-space seal is: PUBLIC_PREFIXES is publisher-supplied data, and a door
+    // that opens on it must never be able to open the admin panel. The prefixes are
+    // validated at commit, but ordering makes that a second line of defence rather than
+    // the only one.
+    if (url.pathname === "/admin" || url.pathname.startsWith("/admin/")) {
+      if (!authed) return htmlResponse(loginPage(url.pathname + url.search, false), 200);
+      if (usersActive && (!me || me.role !== "admin")) return Response.redirect(new URL("/", url).toString(), 303);
+      const asset = await assetFetch(env, request);
+      if (asset.status === 404) return notFoundResponse();
+      return withAssetCache(withLiveReload(asset, url), url);
     }
 
     // Published prototypes are public — never gated, regardless of the cookie.
@@ -3066,16 +3422,6 @@ export default {
       const out = new Response(res.body, res);
       out.headers.set("X-Robots-Tag", "noindex, nofollow, noarchive");
       return out;
-    }
-
-    // Admin pages (/admin/…): require an admin user. A signed-out visitor gets the
-    // login page; a signed-in non-admin is bounced home.
-    if (url.pathname === "/admin" || url.pathname.startsWith("/admin/")) {
-      if (!authed) return htmlResponse(loginPage(url.pathname + url.search, false), 200);
-      if (usersActive && (!me || me.role !== "admin")) return Response.redirect(new URL("/", url).toString(), 303);
-      const asset = await assetFetch(env, request);
-      if (asset.status === 404) return notFoundResponse();
-      return withAssetCache(withLiveReload(asset, url), url);
     }
 
     // Past the gate (or nothing gates the site) → serve. A 404 gets one more chance
@@ -3121,4 +3467,6 @@ export const __testables = {
   isEmailish, nameFromEmail, initialsFor,
   applyDerivedRouting, canvasAggregate, synthBuildStamp,
   deleteUrlPrefix, removeFromStore,
+  revokePublishTokens, loginThrottled, loginSlowed, loginFail, DUMMY_HASH,
+  pathOwnedBySpace, isPublishablePublicPrefix, LOGIN_MAX_FAILS,
 };

@@ -55,10 +55,10 @@ const LIVE_KV_BINDINGS = LIVE_KV ? [
   "--binding", `GV_KV_NS=${DEPLOY_ENV.GV_KV_NS}`,
 ] : [];
 // AI backend for the /__ai/summarize route (Project Builder doc summariser).
-// Preferred: a local `claude -p` bridge — uses the maintainer's Claude login,
-// NO API tokens (see startAiBridge below). If the CLI isn't on PATH, fall back
-// to an ANTHROPIC_API_KEY from .env.deploy (pay-as-you-go). Neither → the route
-// 503s and the prototype uses its local heuristic.
+// A local `claude -p` bridge — uses the maintainer's Claude login, NO API tokens
+// (see startAiBridge below). The worker itself holds no Anthropic key; if the CLI
+// isn't on PATH the route 503s and the prototype uses its local heuristic. (A
+// deployed caller can still bring its own key via the x-anthropic-key header.)
 function hasCli(bin) {
   const exts = process.platform === "win32" ? [".cmd", ".exe", ""] : [""];
   return (process.env.PATH || "").split(path.delimiter).some((dir) =>
@@ -71,7 +71,7 @@ const AI_PORT = process.env.OFFLINE_AI_PORT || String(Number(PORT) + 2);
 const AI_CLI_MODEL = process.env.OFFLINE_AI_MODEL || "claude-haiku-4-5";
 const AI_BINDINGS = CLI_OK
   ? ["--binding", `AI_CLI_URL=http://127.0.0.1:${AI_PORT}`]
-  : (DEPLOY_ENV.ANTHROPIC_API_KEY ? ["--binding", `ANTHROPIC_API_KEY=${DEPLOY_ENV.ANTHROPIC_API_KEY}`] : []);
+  : [];
 
 // ── AI bridge: POST /summarize {text} → `claude -p` → structured JSON ─────────
 // Runs headless Claude Code in a scratch cwd (so the repo's own MCP/skills don't
@@ -221,8 +221,7 @@ log(LIVE_KV
   ? "KV: \x1b[1mLIVE\x1b[0m\x1b[35m — comments/pins/status/renames read & write PRODUCTION KV (prototypes stay local)"
   : "KV: local (.env.deploy with Cloudflare creds absent → safe local sandbox)");
 if (CLI_OK) startAiBridge();
-else if (DEPLOY_ENV.ANTHROPIC_API_KEY) log("AI: Anthropic API key (pay-as-you-go) — `claude` CLI not found on PATH");
-else log("AI: off (no `claude` CLI, no ANTHROPIC_API_KEY) → Project Builder uses its local heuristic");
+else log("AI: off (no `claude` CLI on PATH) → Project Builder uses its local heuristic");
 const wrangler = spawn(
   "npx",
   ["--yes", "wrangler", "pages", "dev", "dist",

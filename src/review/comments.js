@@ -840,14 +840,14 @@
       if (r.width < 8 || r.height < 8) return; // hidden / collapsed
       var h = healthOf(it.el, it.family, it.rank);
       var box = document.createElement("div");
-      box.className = "linkbox l-" + it.layer + " h-" + h.state;
+      box.className = "linkbox l-" + slugClass(it.layer) + " h-" + slugClass(h.state);
       if (state.drill >= 2) drawSpacing(box, it.el); // append shades first → badge stays on top
       var badge = document.createElement("button");
       badge.type = "button";
-      badge.className = "linkbadge l-" + it.layer + " h-" + h.state;
+      badge.className = "linkbadge l-" + slugClass(it.layer) + " h-" + slugClass(h.state);
       badge.title = it.layer + " · " + it.info.label + " · " + h.detail + " — open the import chain";
-      badge.innerHTML = LINKICON + '<span class="lyr">' + it.layer + '</span> ' + escHtml(it.info.label) +
-        '<span class="hb ' + h.state + '">' + h.state + '</span>';
+      badge.innerHTML = LINKICON + '<span class="lyr">' + escHtml(it.layer) + '</span> ' + escHtml(it.info.label) +
+        '<span class="hb ' + slugClass(h.state) + '">' + escHtml(h.state) + '</span>';
       (function (fam, el) {
         badge.addEventListener("click", function (e) { e.preventDefault(); e.stopPropagation(); openChain(fam, el); });
       })(it.family, it.el);
@@ -924,9 +924,18 @@
     drawGaps(box, el, cs, rect);
   }
 
+  // Escapes for BOTH text and attribute positions. Quotes matter: several templates below
+  // drop these values inside class="…" / title="…" / style="…", where a bare " breaks out
+  // and adds attributes. In a text position &quot; renders as " so nothing changes visually.
   function escHtml(s) {
-    return String(s == null ? "" : s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    return String(s == null ? "" : s)
+      .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;").replace(/'/g, "&#39;");
   }
+  // A CSS class fragment is a controlled vocabulary (base / component / pattern), and it
+  // is built from graph.js, which is space-published content. Anything else is dropped
+  // rather than escaped: a class name is not a place to render arbitrary text.
+  function slugClass(s) { return /^[a-z0-9-]+$/.test(String(s)) ? String(s) : ""; }
   // Library page URL for a family/layer (base/, components/, patterns/).
   function libUrl(info) { return info.url || null; }
 
@@ -979,7 +988,7 @@
     chainEl.textContent = "";
     // header
     var h = document.createElement("div"); h.className = "chainp__h";
-    h.innerHTML = '<span class="ttl"><span class="nm"></span><span class="chip l-' + layer + '">' + layer + '</span></span>' +
+    h.innerHTML = '<span class="ttl"><span class="nm"></span><span class="chip l-' + slugClass(layer) + '">' + escHtml(layer) + '</span></span>' +
       '<button class="chainp__x" title="Close">&times;</button>';
     h.querySelector(".nm").textContent = info.label || family;
     h.querySelector(".chainp__x").addEventListener("click", closeChain);
