@@ -1294,9 +1294,21 @@
       // (top padding is symmetric, there's no left/right split for it).
       var padLead = 15;
       var cardLeft = useLeft ? r.left - (pw - padLead - 28) : r.left - padLead;
-      previewEl.style.left = Math.max(m2, Math.min(cardLeft, vw - pw - m2)) + "px";
-      previewEl.style.top = Math.max(m2, Math.min(r.top + r.height / 2 - 27, vh - ph - m2)) + "px";
-      if (btn) btn.classList.add("under");
+      var cardTop = r.top + r.height / 2 - 27;
+      var clampedLeft = Math.max(m2, Math.min(cardLeft, vw - pw - m2));
+      var clampedTop = Math.max(m2, Math.min(cardTop, vh - ph - m2));
+      previewEl.style.left = clampedLeft + "px";
+      previewEl.style.top = clampedTop + "px";
+      // A viewport-clamped card can't land its avatar exactly on the pin's centre,
+      // so hiding the pin here would fake the morph and produce the very jump this
+      // feature exists to prevent. Only hand off to the card (hide the pin) when
+      // clamping left both axes within a 1px rounding tolerance of the desired
+      // avatar-aligned position; otherwise the pin stays visible beside the card,
+      // same as for an anonymous comment with no avatar.
+      var tol = 1;
+      if (Math.abs(clampedLeft - cardLeft) <= tol && Math.abs(clampedTop - cardTop) <= tol) {
+        if (btn) btn.classList.add("under");
+      }
     }
   }
   function hidePreview() {
