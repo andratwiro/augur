@@ -48,7 +48,13 @@ const r = await fetch(`${ORIGIN}/__publish/_login/token`, {
 });
 if (!r.ok) {
   const err = await r.text().catch(() => "");
-  log(`login failed (${r.status}): ${err.slice(0, 200)}`);
+  // The server distinguishes "wrong password" from "this account was reset". Surface the
+  // second as prose — otherwise a reset user reads `bad-credentials` and goes hunting for
+  // a typo in a password that no longer exists.
+  let parsed = null;
+  try { parsed = JSON.parse(err); } catch {}
+  if (parsed && parsed.message) log(parsed.message);
+  else log(`login failed (${r.status}): ${err.slice(0, 200)}`);
   process.exit(1);
 }
 const { token, space } = await r.json();

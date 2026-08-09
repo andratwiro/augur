@@ -505,6 +505,10 @@ async function consumeInvite(env, token, nowMs = Date.now()) {
 
 const MIN_PASSWORD_LENGTH = 10;
 
+// Shown when a roster user has no effective secret — reset, or never redeemed. Kept as
+// one string so the web gate and the CLI say the same thing.
+const RESET_NOTICE = "This account was reset. Ask for a new invite link — your old password no longer exists.";
+
 async function setUserSecret(env, email, hash) {
   const kv = kvFor(env);
   if (!kv) throw new Error("no-kv-binding");
@@ -1012,7 +1016,13 @@ async function publishApi(request, url, env) {
     const u = userByEmail(body && body.email);
     const pass = String((body && body.password) || "");
     const real = u ? await effectiveSecret(env, u) : "";
-    if (!u || !real || !(await verifyPassword(pass, real))) {
+    // Same distinction the web gate makes: a roster user with no secret was reset, and
+    // telling them "bad credentials" sends them looking for a typo in a password that
+    // no longer exists. `augur login` surfaces `message` when present.
+    if (u && !real) {
+      return jsonResponse({ error: "password-reset", message: RESET_NOTICE }, 403);
+    }
+    if (!u || !(await verifyPassword(pass, real))) {
       return jsonResponse({ error: "bad-credentials" }, 403);
     }
     // TEMPORARY (migration) — remove in the finish step
@@ -1374,7 +1384,7 @@ function loginPage(redirect, error) {
       <button type="submit">Enter</button>
       <p class="error" id="pw-err" role="alert">
         <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 8v5M12 16.5v.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M10.3 3.9 2.5 18a2 2 0 0 0 1.7 3h15.6a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>
-        <span>Incorrect email or password. Try again.</span>
+        <span>${typeof error === "string" ? escapeHtml(error) : "Incorrect email or password. Try again."}</span>
       </p>
     </form>
   </main>
@@ -2577,7 +2587,13 @@ export default {
             },
           });
         }
-        return htmlResponse(loginPage(redirect, true), 401);
+        // A roster user with NO effective secret has been reset (or never redeemed an
+        // invite) — their password does not exist, so "incorrect password" sends them
+        // hunting for a typo that isn't there. Say what actually happened. This does
+        // reveal that a given address is on the roster and currently has no password;
+        // for a team this size that is a worthwhile trade against nine people
+        // re-checking a password manager for a credential we deleted.
+        return htmlResponse(loginPage(redirect, u && !real ? RESET_NOTICE : true), 401);
       }
       // Legacy shared-password mode (no identity injected).
       const pass = (form.get("password") || "").toString();
@@ -2713,6 +2729,7 @@ export const __testables = {
   upgradeSecretIfLegacy,
   mintInvite, readInvite, consumeInvite,
   invitePost, inviteGet, invitePage, setUserSecret, MIN_PASSWORD_LENGTH,
+  loginPage, RESET_NOTICE,
   PBKDF2_ITERATIONS,
   INVITE_TTL_MS,
   adminUsersApi,

@@ -820,3 +820,24 @@ test("reset writes a tombstone, not a deletion, so the password cannot leak via 
   const leakyUser = getBody.users.find((u) => u.email === "leaky@example.test");
   assert.equal(leakyUser.state, "pending", "after reset, the user must be in pending state");
 });
+
+// ---- reset-vs-wrong-password messaging -----------------------------------------
+
+test("the gate distinguishes a reset account from a wrong password", async () => {
+  const RESET = { email: "reset@example.test", name: "Reset", pass: "old-leaked-pass" };
+  const kv = memKV({ "users:secrets": JSON.stringify({ "reset@example.test": null }) });
+  const env = envWith(kv);
+  // Tombstoned => no effective secret => the page must say so, not "incorrect password".
+  assert.equal(await W.effectiveSecret(env, RESET), "");
+  const page = W.loginPage("/", W.RESET_NOTICE);
+  assert.match(page, /This account was reset/);
+  assert.ok(!/Incorrect email or password/.test(page), "the generic message is replaced, not appended");
+  // An unknown email must still get the generic message — no enumeration of non-users.
+  assert.match(W.loginPage("/", true), /Incorrect email or password/);
+});
+
+test("the reset notice is html-escaped into the page", () => {
+  const page = W.loginPage("/", '<script>alert(1)</script>');
+  assert.ok(!page.includes("<script>alert(1)</script>"), "escaped, not injected");
+  assert.match(page, /&lt;script&gt;/);
+});
