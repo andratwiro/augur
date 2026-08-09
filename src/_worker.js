@@ -36,6 +36,10 @@ const MAX_AGE = 60 * 60 * 24 * 7; // 7 days
 // fallback consulted only when users:secrets has no key for that email — kept for the
 // legacy shared-password mode and test fixtures, not populated in the live roster.
 // Credentials live in KV, never here — see effectiveSecret for the exact precedence.
+// CONFIG_USERS is what instance.json named; USERS is that list with the KV roster
+// overlay applied (people the admin panel invited or removed since). Everything that
+// resolves a person reads USERS.
+let CONFIG_USERS = [];
 let USERS = [];
 // Deploy-specific knobs, filled at runtime from instance.json (all empty in a raw
 // engine build): gate-exempt skill-asset path prefixes, MCP-proxy host allowlist
@@ -58,6 +62,13 @@ const USER_COOKIE = "gv_user";              // value: "<email>.<token>"
 const USER_SECRETS_KEY = "users:secrets";
 const LASTSEEN_PREFIX = "users:lastseen:";  // KV per-user ISO stamp — admin list column
 const USER_INVITES_KEY = "users:invites";   // KV {token: {email, expires}}
+// KV {add: {email: {email,name,role,initials,color,addedAt}}, remove: [email…]} — the
+// runtime layer over the config roster, written only by the admin panel's invite/remove
+// actions. It exists so adding or dropping a teammate is a click, not a config commit;
+// the config file stays the source of truth for everyone it names (a config entry wins
+// over an add of the same address). A removal of a CONFIG user is recorded in `remove`;
+// removing an invited one just drops its `add` entry. See mergeRoster.
+const USER_ROSTER_KEY = "users:roster";
 const INVITE_TTL_MS = 7 * 24 * 60 * 60 * 1000; // links get pasted into chat — expire them
 
 // Build id for the live-reload poller — routing.json carries this build's id; it's
@@ -233,7 +244,8 @@ let UPDATE_FEED = "";
 const DEFAULT_UPDATE_FEED = "https://api.github.com/repos/andratwiro/augur/releases/latest";
 let cfgAt = 0;
 function applyInstance(inst) {
-  USERS = Array.isArray(inst.users) ? inst.users : [];
+  CONFIG_USERS = Array.isArray(inst.users) ? inst.users : [];
+  USERS = CONFIG_USERS; // applyRoster() overlays the KV additions/removals next
   INSTANCE_ENGINE_VERSION = inst.engineVersion || "";
   UPDATE_FEED = inst.updateFeed || "";
   MCP_HOST_SUFFIXES = inst.mcpHostSuffixes || [];
@@ -257,6 +269,7 @@ async function loadConfig(env) {
       if (instObj) applyInstance(JSON.parse(await instObj.text()));
       applyDerivedRouting(manifests);
     } catch (e) {}
+    await applyRoster(env);
     return;
   }
   if (!env.ASSETS) return;
@@ -279,6 +292,7 @@ async function loadConfig(env) {
     mcpStaticHosts = new Set(MCP_HOST_ALLOWLIST);
     SPACES = Array.isArray(routing.spaces) ? routing.spaces : [];
   }
+  await applyRoster(env);
 }
 
 // Legacy token derivation — SHA-256("gv:" + secret). Still ACCEPTED during migration
@@ -292,6 +306,103 @@ async function hmacToken(secret, message) {
   const key = await crypto.subtle.importKey(
     "raw", encodeUtf8(secret), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
   return toHex(await crypto.subtle.sign("HMAC", key, encodeUtf8(message)));
+}
+
+// ---- Runtime roster overlay -------------------------------------------------
+// The config roster names who the deploy shell knows about; this layer records who the
+// admin panel has invited or removed since, so neither takes a commit + redeploy.
+//
+// ⚠️ The overlay is a CONVENIENCE, never the security boundary. A KV read that fails
+// leaves USERS as the config list, which would resurrect a removed CONFIG user in the
+// list — so `remove` ALSO writes the users:secrets tombstone that reset writes. That
+// tombstone fails closed on a KV error (see effectiveSecret) and identify() refuses any
+// user without an effective secret, so a removed person cannot sign in even if this
+// overlay is momentarily unreadable. Never "simplify" removal down to the list alone.
+const lcEmail = (e) => String(e == null ? "" : e).trim().toLowerCase();
+// A FRESH object every time, never a shared constant: the write ops mutate what this
+// returns before putting it back, so handing out one shared empty would let the first
+// invite scribble on every later read.
+const emptyRoster = () => ({ add: {}, remove: [] });
+
+async function readRoster(env) {
+  const kv = kvFor(env);
+  if (!kv) return emptyRoster();
+  try {
+    const doc = JSON.parse((await kv.get(USER_ROSTER_KEY)) || "null");
+    if (!doc || typeof doc !== "object" || Array.isArray(doc)) return emptyRoster();
+    const add = doc.add && typeof doc.add === "object" && !Array.isArray(doc.add) ? doc.add : {};
+    const remove = Array.isArray(doc.remove) ? doc.remove : [];
+    return { add, remove };
+  } catch (e) { return emptyRoster(); }
+}
+
+// Config first, overlay second: an address the config names can never be shadowed by an
+// `add` entry (the file wins on name, role and avatar), and `remove` hides it from both.
+function mergeRoster(configUsers, roster) {
+  const gone = new Set((roster.remove || []).map(lcEmail));
+  const out = (configUsers || []).filter((u) => !gone.has(lcEmail(u.email)));
+  const seen = new Set(out.map((u) => lcEmail(u.email)));
+  for (const rec of Object.values(roster.add || {})) {
+    const e = lcEmail(rec && rec.email);
+    if (!e || gone.has(e) || seen.has(e)) continue;
+    seen.add(e);
+    out.push(rec);
+  }
+  return out;
+}
+
+async function applyRoster(env) {
+  try { USERS = mergeRoster(CONFIG_USERS, await readRoster(env)); }
+  catch (e) { USERS = CONFIG_USERS; }
+}
+
+// An admin can invite, but not flood: the overlay is one KV document, read on every
+// config refresh. Config rosters are unaffected by this ceiling.
+const ROSTER_ADD_MAX = 500;
+const isEmailish = (e) => typeof e === "string" && e.length <= 254 && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e);
+// "ada.lovelace@example.org" → "Ada Lovelace". Only a default; the admin can type one.
+function nameFromEmail(email) {
+  return String(email).split("@")[0].split(/[._-]+/).filter(Boolean)
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(" ") || String(email);
+}
+function initialsFor(name) {
+  const parts = String(name).trim().split(/\s+/).filter(Boolean);
+  if (!parts.length) return "?";
+  return (parts.length === 1 ? parts[0].slice(0, 2) : parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+}
+// Stable per address, so an invitee's chip colour never changes under them.
+const ROSTER_COLORS = ["#4f46e5", "#0e7490", "#b45309", "#be123c", "#15803d", "#7c3aed", "#0369a1", "#a21caf"];
+function colorFor(email) {
+  let h = 0;
+  const s = lcEmail(email);
+  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0;
+  return ROSTER_COLORS[h % ROSTER_COLORS.length];
+}
+
+// Revoke a credential: write the TOMBSTONE, never delete the key. effectiveSecret falls
+// back to the config roster's legacy `pass` only when the key is ABSENT, so deleting
+// here would put an old password back in service. A present-but-null entry reads as
+// "no secret", which identify() refuses — that is what ends the session.
+async function revokeSecret(env, email) {
+  const kv = kvFor(env);
+  if (!kv) throw new Error("no-kv-binding");
+  const raw = await kv.get(USER_SECRETS_KEY);
+  const ov = raw ? JSON.parse(raw) : {};
+  ov[email] = null;
+  await kv.put(USER_SECRETS_KEY, JSON.stringify(ov));
+}
+
+// Drop every outstanding invite for one address (mintInvite does this for the address it
+// is issuing; removal needs it without minting anything).
+async function revokeInvitesFor(env, email) {
+  const kv = kvFor(env);
+  if (!kv) return;
+  const map = await readInvites(kv);
+  let hit = false;
+  for (const [tok, rec] of Object.entries(map)) {
+    if (rec && lcEmail(rec.email) === lcEmail(email)) { delete map[tok]; hit = true; }
+  }
+  if (hit) await kv.put(USER_INVITES_KEY, JSON.stringify(map));
 }
 
 // ---- Identity helpers -------------------------------------------------------
@@ -2144,9 +2255,18 @@ function rtProxy(request, url) {
 
 // Admin surface: manage PEOPLE, not credentials. There is deliberately no path here
 // that sets, reads or recovers a password — reset re-issues an invite instead.
-async function adminUsersApi(request, url, env, me, users = USERS) {
+async function adminUsersApi(request, url, env, me, users = USERS, configUsers = CONFIG_USERS) {
   if (!me || me.role !== "admin") return jsonResponse({ error: "forbidden" }, 403);
   const kv = kvFor(env);
+  // A roster write lands in THIS isolate immediately (so the list the admin is looking
+  // at is right) and everywhere else on the next config tick, which cfgAt=0 brings
+  // forward to the next request. Only the live list is touched — a caller that injected
+  // its own roster (tests) gets its list back untouched.
+  const commitRoster = (roster) => {
+    const next = mergeRoster(configUsers, roster);
+    if (users === USERS) USERS = next;
+    cfgAt = 0;
+  };
 
   if (request.method === "GET") {
     const out = [];
@@ -2168,25 +2288,72 @@ async function adminUsersApi(request, url, env, me, users = USERS) {
   if (request.method === "POST") {
     let op;
     try { op = await request.json(); } catch (e) { return jsonResponse({ error: "bad-json" }, 400); }
-    if (!op || op.op !== "reset") return jsonResponse({ error: "unknown-op" }, 400);
-    const u = userByEmail(op.email, users);
-    if (!u) return jsonResponse({ error: "unknown-user" }, 400);
+    const kind = op && op.op;
     if (!kv) return jsonResponse({ error: "no-kv-binding" }, 500);
+    const link = (token) => `${url.origin}/__invite?t=${encodeURIComponent(token)}`;
 
-    // Clearing the secret and minting the link are ONE action: there is never a state
-    // where a known password is still live alongside a pending invite.
-    const raw = await kv.get(USER_SECRETS_KEY);
-    const ov = raw ? JSON.parse(raw) : {};
-    // Explicit tombstone, NOT delete: effectiveSecret falls back to the roster's `pass`
-    // when a key is ABSENT from this map, and during this migration that roster
-    // password is the leaked password being revoked. A key present with a null value
-    // is what effectiveSecret treats as "" — no secret at all — so the reset actually
-    // revokes instead of falling straight through to the leaked password.
-    ov[u.email] = null;
-    await kv.put(USER_SECRETS_KEY, JSON.stringify(ov));
+    if (kind === "reset") {
+      const u = userByEmail(op.email, users);
+      if (!u) return jsonResponse({ error: "unknown-user" }, 400);
+      // Clearing the secret and minting the link are ONE action: there is never a state
+      // where a known password is still live alongside a pending invite.
+      await revokeSecret(env, u.email);
+      const token = await mintInvite(env, u.email);
+      return jsonResponse({ ok: true, email: u.email, url: link(token) });
+    }
 
-    const token = await mintInvite(env, u.email);
-    return jsonResponse({ ok: true, email: u.email, url: `${url.origin}/__invite?t=${encodeURIComponent(token)}` });
+    // Invite = put the address on the roster overlay AND mint its link, in one action.
+    if (kind === "invite") {
+      const email = lcEmail(op.email);
+      if (!isEmailish(email)) return jsonResponse({ error: "bad-email" }, 400);
+      if (userByEmail(email, users)) return jsonResponse({ error: "already-a-user" }, 409);
+      const role = op.role === "admin" ? "admin" : "user";
+      const name = clamp(op.name, 80).trim() || nameFromEmail(email);
+      const roster = await readRoster(env);
+      if (Object.keys(roster.add).length >= ROSTER_ADD_MAX) {
+        return jsonResponse({ error: "roster-full" }, 409);
+      }
+      roster.remove = roster.remove.filter((e) => lcEmail(e) !== email); // re-inviting undoes a removal
+      roster.add[email] = {
+        email, name, role,
+        initials: initialsFor(name), color: colorFor(email),
+        addedAt: new Date().toISOString(), addedBy: me.email,
+      };
+      await kv.put(USER_ROSTER_KEY, JSON.stringify(roster));
+      // A stale hash under this address (a previous member of the same name) would make
+      // the new invitee "accepted" on arrival, holding someone else's old password.
+      await revokeSecret(env, email);
+      const token = await mintInvite(env, email);
+      commitRoster(roster);
+      return jsonResponse({ ok: true, email, url: link(token) });
+    }
+
+    // Remove = drop from the overlay AND revoke the credential (see the roster notes:
+    // the tombstone, not the list, is what actually keeps them out).
+    if (kind === "remove") {
+      const u = userByEmail(op.email, users);
+      if (!u) return jsonResponse({ error: "unknown-user" }, 400);
+      const email = lcEmail(u.email);
+      if (email === lcEmail(me.email)) return jsonResponse({ error: "cannot-remove-self" }, 400);
+      const roster = await readRoster(env);
+      delete roster.add[email];
+      // Only a CONFIG user needs a tombstone in the list — dropping the add entry is
+      // enough for an invited one, and an unbounded remove list would grow forever.
+      if (userByEmail(email, configUsers) && !roster.remove.some((e) => lcEmail(e) === email)) {
+        roster.remove.push(email);
+      }
+      await kv.put(USER_ROSTER_KEY, JSON.stringify(roster));
+      // The CANONICAL address, not the lowercased key: effectiveSecret looks the
+      // tombstone up by u.email exactly, so a case-folded key would miss it and fall
+      // through to the config roster's legacy `pass`.
+      await revokeSecret(env, u.email);     // kills their session too (cookies bind to it)
+      await revokeInvitesFor(env, email);   // an outstanding link must not let them back in
+      try { await kv.delete(LASTSEEN_PREFIX + u.email); } catch (e) {}
+      commitRoster(roster);
+      return jsonResponse({ ok: true, email });
+    }
+
+    return jsonResponse({ error: "unknown-op" }, 400);
   }
 
   return jsonResponse({ error: "method-not-allowed" }, 405);
@@ -2643,4 +2810,6 @@ export const __testables = {
   PBKDF2_ITERATIONS,
   INVITE_TTL_MS,
   adminUsersApi,
+  mergeRoster, readRoster, revokeSecret, revokeInvitesFor,
+  isEmailish, nameFromEmail, initialsFor,
 };

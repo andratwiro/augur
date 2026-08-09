@@ -16,6 +16,12 @@ The date is the day the update went live. The page works out "Today / 3 days ago
 
 ---
 
+## 2026-08-09 — Invite and remove people from the Admin page
+The user list is now a table: who they are, whether they're an admin, and when
+they were last here (most recent first). "Invite" at the top right adds an email
+and gives you a single-use link to send them. Click anyone to reset their
+password or remove them.
+
 ## 2026-08-08 — Invite-only auth
 Passwords are PBKDF2 hashes, sessions are HMACs, and the admin panel issues
 single-use invite links instead of setting passwords. Operators no longer know

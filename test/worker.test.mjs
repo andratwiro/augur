@@ -612,3 +612,133 @@ test("the reset notice is html-escaped into the page", () => {
   assert.ok(!page.includes("<script>alert(1)</script>"), "escaped, not injected");
   assert.match(page, /&lt;script&gt;/);
 });
+
+// ---- Runtime roster overlay: invite + remove without a config commit ---------
+// The overlay is a convenience layer; the SECURITY boundary for a removal is the
+// users:secrets tombstone (which fails closed), not the list. These tests pin both.
+
+const ADMIN_URL = new URL("https://example.test/__admin/users");
+const callAdmin = (req, env, users, config = []) =>
+  W.adminUsersApi(req, ADMIN_URL, env, ADMIN, users, config);
+
+test("mergeRoster: config wins over an add of the same address", () => {
+  const config = [{ email: "a@example.test", name: "Config A", role: "admin" }];
+  const merged = W.mergeRoster(config, { add: { "a@example.test": { email: "a@example.test", name: "Overlay A" } }, remove: [] });
+  assert.equal(merged.length, 1);
+  assert.equal(merged[0].name, "Config A");
+});
+
+test("mergeRoster: remove hides a config user and an invited one alike", () => {
+  const config = [{ email: "a@example.test", name: "A" }];
+  const roster = { add: { "b@example.test": { email: "b@example.test", name: "B" } }, remove: ["a@example.test", "b@example.test"] };
+  assert.deepEqual(W.mergeRoster(config, roster), []);
+});
+
+test("mergeRoster: matching is case-insensitive in both directions", () => {
+  const config = [{ email: "Mixed@Example.test", name: "M" }];
+  assert.deepEqual(W.mergeRoster(config, { add: {}, remove: ["mixed@example.test"] }), []);
+  const added = W.mergeRoster([], { add: { x: { email: "New@Example.test", name: "N" } }, remove: ["new@example.test"] });
+  assert.deepEqual(added, []);
+});
+
+test("readRoster degrades to an empty overlay on junk, never throws", async () => {
+  for (const junk of ["not json", "[]", "null", '"a string"', "42"]) {
+    const env = envWith(memKV({ "users:roster": junk }));
+    assert.deepEqual(await W.readRoster(env), { add: {}, remove: [] });
+  }
+});
+
+test("invite adds the address to the overlay and returns its single-use link", async () => {
+  const kv = memKV();
+  const env = envWith(kv);
+  const res = await callAdmin(adminPost({ op: "invite", email: "New.Person@Example.test" }), env, [ADMIN], [ADMIN]);
+  const body = await res.json();
+  assert.equal(body.ok, true);
+  assert.equal(body.email, "new.person@example.test", "stored lowercased");
+  const roster = JSON.parse(await kv.get("users:roster"));
+  assert.equal(roster.add["new.person@example.test"].name, "New Person", "name derived from the address");
+  assert.equal(roster.add["new.person@example.test"].role, "user", "no silent admin escalation");
+  const token = new URL(body.url).searchParams.get("t");
+  assert.equal(await W.readInvite(env, token), "new.person@example.test");
+});
+
+test("invite refuses a malformed address and an existing user", async () => {
+  const env = envWith(memKV());
+  assert.equal((await callAdmin(adminPost({ op: "invite", email: "nope" }), env, [ADMIN], [ADMIN])).status, 400);
+  assert.equal((await callAdmin(adminPost({ op: "invite", email: ADMIN.email }), env, [ADMIN], [ADMIN])).status, 409);
+  assert.equal(await env.COMMENTS.get("users:roster"), null, "nothing written on a rejected invite");
+});
+
+test("inviting an address that carries a stale hash revokes it first", async () => {
+  // Otherwise the new person arrives "accepted", holding the previous owner's password.
+  const hash = await W.hashPassword("the old occupant's password");
+  const kv = memKV({ "users:secrets": JSON.stringify({ "reused@example.test": hash }) });
+  const env = envWith(kv);
+  await callAdmin(adminPost({ op: "invite", email: "reused@example.test" }), env, [ADMIN], [ADMIN]);
+  const secrets = JSON.parse(await kv.get("users:secrets"));
+  assert.ok(Object.prototype.hasOwnProperty.call(secrets, "reused@example.test"), "tombstone present, not deleted");
+  assert.equal(secrets["reused@example.test"], null);
+  assert.equal(await W.effectiveSecret(env, { email: "reused@example.test" }), "");
+});
+
+test("remove drops a config user via the list AND tombstones their credential", async () => {
+  const VICTIM = { email: "gone@example.test", name: "Gone", pass: "legacy-roster-password" };
+  const hash = await W.hashPassword("legacy-roster-password");
+  const kv = memKV({ "users:secrets": JSON.stringify({ "gone@example.test": hash }) });
+  const env = envWith(kv);
+  const res = await callAdmin(adminPost({ op: "remove", email: "gone@example.test" }),
+    env, [ADMIN, VICTIM], [ADMIN, VICTIM]);
+  assert.equal((await res.json()).ok, true);
+  const roster = JSON.parse(await kv.get("users:roster"));
+  assert.deepEqual(roster.remove, ["gone@example.test"]);
+  assert.deepEqual(W.mergeRoster([ADMIN, VICTIM], roster).map((u) => u.email), [ADMIN.email]);
+  // The list is only half of it: even reading the roster as empty, the tombstone holds.
+  assert.equal(await W.effectiveSecret(env, VICTIM), "", "must not fall back to the roster pass");
+  assert.equal(await W.identify(cookieRequest("gone@example.test." + (await W.tokenFor("gone@example.test:legacy-roster-password"))), env, [ADMIN, VICTIM]), null);
+});
+
+test("removing an invited user drops the add entry instead of growing the remove list", async () => {
+  const kv = memKV();
+  const env = envWith(kv);
+  await callAdmin(adminPost({ op: "invite", email: "temp@example.test" }), env, [ADMIN], [ADMIN]);
+  const invited = W.mergeRoster([ADMIN], JSON.parse(await kv.get("users:roster")));
+  await callAdmin(adminPost({ op: "remove", email: "temp@example.test" }), env, invited, [ADMIN]);
+  const roster = JSON.parse(await kv.get("users:roster"));
+  assert.deepEqual(roster.add, {});
+  assert.deepEqual(roster.remove, [], "no tombstone needed for someone the config never named");
+});
+
+test("remove revokes an outstanding invite link", async () => {
+  const kv = memKV();
+  const env = envWith(kv);
+  const invited = await (await callAdmin(adminPost({ op: "invite", email: "half@example.test" }), env, [ADMIN], [ADMIN])).json();
+  const token = new URL(invited.url).searchParams.get("t");
+  assert.equal(await W.readInvite(env, token), "half@example.test");
+  const list = W.mergeRoster([ADMIN], JSON.parse(await kv.get("users:roster")));
+  await callAdmin(adminPost({ op: "remove", email: "half@example.test" }), env, list, [ADMIN]);
+  assert.equal(await W.readInvite(env, token), null, "the link they already hold stops working");
+});
+
+test("an admin cannot remove themselves", async () => {
+  const env = envWith(memKV());
+  const res = await callAdmin(adminPost({ op: "remove", email: ADMIN.email }), env, [ADMIN], [ADMIN]);
+  assert.equal(res.status, 400);
+  assert.equal((await res.json()).error, "cannot-remove-self");
+});
+
+test("re-inviting a removed address lifts the removal", async () => {
+  const VICTIM = { email: "back@example.test", name: "Back" };
+  const kv = memKV();
+  const env = envWith(kv);
+  await callAdmin(adminPost({ op: "remove", email: VICTIM.email }), env, [ADMIN, VICTIM], [ADMIN, VICTIM]);
+  assert.deepEqual(JSON.parse(await kv.get("users:roster")).remove, [VICTIM.email]);
+  await callAdmin(adminPost({ op: "invite", email: VICTIM.email }), env, [ADMIN], [ADMIN, VICTIM]);
+  assert.deepEqual(JSON.parse(await kv.get("users:roster")).remove, []);
+});
+
+test("an unknown op still changes nothing", async () => {
+  const env = envWith(memKV());
+  const res = await callAdmin(adminPost({ op: "promote", email: "u@example.test" }), env, [ADMIN], [ADMIN]);
+  assert.equal(res.status, 400);
+  assert.equal(await env.COMMENTS.get("users:roster"), null);
+});

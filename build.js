@@ -355,7 +355,7 @@ function prependTitleEmoji(html, emoji) {
 // build.js shell/CSS, the index pages, or features like carousel/comments/download.
 // Do NOT bump it for changes inside individual prototypes; their content is
 // versioned by their own modified date, not this number.
-const UI_VERSION = "1.03";
+const UI_VERSION = "1.04";
 
 // One id per build (ms timestamp). Baked into every page's live-reload poller AND
 // into the worker's /__version endpoint, so a fresh deploy = a new id = open tabs
@@ -3981,88 +3981,198 @@ const SPACE_JS = `(function(){
 })();
 `;
 
-// Admin page behaviour: load every user from /__admin/users (admin-only — 403s for
-// anyone else, though the worker also gates the /admin/ route) and render one row per
-// person: lifecycle state, last connection, and a Reset button. Reset kills that
-// user's password immediately and returns a single-use invite link to copy — the
-// admin never sees or sets a password.
+// Admin page behaviour: a people table (name + email, role, last active) fed by
+// /__admin/users — admin-only; the worker 403s everyone else and gates /admin/ itself.
+// Three actions, all through the same API: INVITE an address (puts it on the runtime
+// roster and mints its single-use link), RESET someone (revokes their password, mints a
+// fresh link), REMOVE someone. No path here sets or reveals a password — every
+// credential action ends in a link the admin copies and sends.
 const ADMIN_JS = `(function(){
   var host = document.querySelector('[data-admin-users]');
   if(!host) return;
+  var menu = document.querySelector('[data-menu]');
+  var linkbox = document.querySelector('[data-link]');
+  var invite = document.querySelector('[data-invite]');
+  var people = [], current = null, sortKey = 'seen', sortDir = -1;
+
   function esc(s){ return (s||'').replace(/[&<>"]/g,function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
   function ago(iso){
-    if(!iso) return 'never';
-    var t = Date.parse(iso); if(isNaN(t)) return 'never';
+    if(!iso) return 'Never';
+    var t = Date.parse(iso); if(isNaN(t)) return 'Never';
     var s = (Date.now() - t) / 1000;
-    if(s < 90) return 'just now';
+    if(s < 90) return 'Just now';
     if(s < 3600) return Math.floor(s/60) + ' min ago';
     if(s < 86400) return Math.floor(s/3600) + ' h ago';
     var d = Math.floor(s/86400);
-    if(d === 1) return 'yesterday';
+    if(d === 1) return 'Yesterday';
     if(d < 30) return d + ' days ago';
     return new Date(t).toLocaleDateString();
   }
-  function row(u){
+
+  // The invite/reset link is the whole point of both flows, so it gets its own strip
+  // above the table rather than a cell that scrolls out of view.
+  function showLink(who, url){
+    linkbox.querySelector('[data-link-who]').textContent = who;
+    var input = linkbox.querySelector('[data-link-url]');
+    input.value = url; linkbox.hidden = false;
+    linkbox.querySelector('[data-link-msg]').textContent = '';
+    input.focus(); input.select();
+  }
+
+  function rowHtml(u){
     var ini = (u.initials || (u.name||'?').slice(0,2)).toUpperCase();
-    var badge = u.role === 'admin' ? ' <span class="au__badge">admin</span>' : '';
     var av = u.avatar
       ? '<span class="au__av" style="background:url(&quot;'+esc(u.avatar)+'&quot;) center/cover, '+esc(u.color||'#4f46e5')+'"></span>'
       : '<span class="au__av" style="background:'+esc(u.color||'#4f46e5')+'">'+esc(ini)+'</span>';
-    var state = u.state === 'accepted'
-      ? '<span class="au__state au__state--ok">active</span>'
-      : '<span class="au__state au__state--pending">pending invite</span>';
-    return '<div class="au" data-email="'+esc(u.email)+'">'
-      + av
-      + '<span class="au__id"><span class="au__name">'+esc(u.name)+badge+'</span><span class="au__email">'+esc(u.email)+'</span></span>'
-      + state
-      + '<span class="au__seen'+(u.lastSeen ? '' : ' au__seen--never')+'" title="'+(u.lastSeen ? 'Last connection: '+esc(u.lastSeen) : 'Never signed in')+'">'+esc(ago(u.lastSeen))+'</span>'
-      + '<span class="au__act"><button type="button" class="au__reset">Reset</button>'
-      + '<input type="text" class="au__link" readonly hidden aria-label="Invite link for '+esc(u.email)+'" />'
-      + '<button type="button" class="au__copy" hidden>Copy</button>'
-      + '<span class="au__msg" aria-live="polite"></span></span>'
-      + '</div>';
+    var seen = u.state === 'accepted'
+      ? '<span class="au__seen'+(u.lastSeen ? '' : ' au__seen--never')+'">'+esc(ago(u.lastSeen))+'</span>'
+      : '<span class="au__chip">Invite pending</span>';
+    return '<tr class="au" data-email="'+esc(u.email)+'" tabindex="0">'
+      + '<td class="au__who">'+av+'<span class="au__id">'
+      +   '<span class="au__name">'+esc(u.name)+'</span>'
+      +   '<span class="au__email">'+esc(u.email)+'</span></span></td>'
+      + '<td class="au__role'+(u.role === 'admin' ? ' is-admin' : '')+'">'+(u.role === 'admin' ? 'Admin' : 'User')+'</td>'
+      + '<td class="au__last">'+seen+'</td>'
+      + '<td class="au__go" aria-hidden="true">&rsaquo;</td>'
+      + '</tr>';
   }
-  function wire(){
-    var rows = host.querySelectorAll('.au');
-    for(var i=0;i<rows.length;i++){ (function(el){
-      var btn = el.querySelector('.au__reset'), link = el.querySelector('.au__link'),
-          copy = el.querySelector('.au__copy'), msg = el.querySelector('.au__msg');
-      btn.addEventListener('click', function(){
-        var who = el.getAttribute('data-email');
-        if(!window.confirm('Reset ' + who + '?\\n\\nTheir password stops working immediately. Send them the link that appears.')) return;
-        btn.disabled = true; msg.textContent = '…';
-        fetch('/__admin/users',{ method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ op:'reset', email: who }) })
-          .then(function(r){ return r.json(); })
-          .then(function(d){
-            btn.disabled = false;
-            if(d && d.ok && d.url){
-              link.value = d.url; link.hidden = false; copy.hidden = false;
-              link.focus(); link.select();
-              msg.textContent = 'send this link';
-            } else { msg.textContent = (d && d.error) || 'error'; }
-          })
-          .catch(function(){ btn.disabled = false; msg.textContent = 'error'; });
-      });
-      copy.addEventListener('click', function(){
-        link.select();
-        try { document.execCommand('copy'); msg.textContent = 'copied ✓'; }
-        catch(e){ msg.textContent = 'copy manually'; }
-      });
-    })(rows[i]); }
-  }
-  fetch('/__admin/users',{headers:{'Accept':'application/json'}}).then(function(r){
-    if(r.status === 403){ host.innerHTML = '<p class="empty">Admins only.</p>'; return null; }
-    return r.json();
-  }).then(function(d){
-    if(!d) return;
-    if(!d.users){ host.innerHTML = '<p class="empty">Could not load users.</p>'; return; }
-    d.users.sort(function(a,b){
-      var ta = a.lastSeen ? Date.parse(a.lastSeen) : 0, tb = b.lastSeen ? Date.parse(b.lastSeen) : 0;
-      return (tb - ta) || (a.name || '').localeCompare(b.name || '');
+
+  function render(){
+    var d = sortDir;
+    people.sort(function(a,b){
+      var r;
+      if(sortKey === 'name') r = (a.name||'').localeCompare(b.name||'');
+      else if(sortKey === 'role') r = (a.role||'').localeCompare(b.role||'');
+      else r = (a.lastSeen ? Date.parse(a.lastSeen) : 0) - (b.lastSeen ? Date.parse(b.lastSeen) : 0);
+      return (r * d) || (a.name||'').localeCompare(b.name||'');
     });
-    host.innerHTML = d.users.map(row).join('');
-    wire();
-  }).catch(function(){ host.innerHTML = '<p class="empty">Could not load users.</p>'; });
+    host.innerHTML = people.map(rowHtml).join('');
+    var ths = document.querySelectorAll('[data-sort]');
+    for(var i=0;i<ths.length;i++){
+      var k = ths[i].getAttribute('data-sort');
+      ths[i].setAttribute('aria-sort', k === sortKey ? (d < 0 ? 'descending' : 'ascending') : 'none');
+    }
+  }
+
+  function load(){
+    return fetch('/__admin/users',{headers:{'Accept':'application/json'}}).then(function(r){
+      if(r.status === 403){ host.innerHTML = '<tr><td colspan="4" class="empty">Admins only.</td></tr>'; return null; }
+      return r.json();
+    }).then(function(d){
+      if(!d) return;
+      if(!d.users){ host.innerHTML = '<tr><td colspan="4" class="empty">Could not load users.</td></tr>'; return; }
+      people = d.users;
+      render();
+    }).catch(function(){ host.innerHTML = '<tr><td colspan="4" class="empty">Could not load users.</td></tr>'; });
+  }
+
+  function post(body){
+    return fetch('/__admin/users',{ method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) })
+      .then(function(r){ return r.json(); });
+  }
+
+  // ── Row menu — reset / remove, anchored to the row you clicked ──────────────
+  function closeMenu(){ if(menu){ menu.hidden = true; } current = null; }
+  function openMenu(tr){
+    current = tr.getAttribute('data-email');
+    menu.querySelector('[data-menu-who]').textContent = current;
+    menu.hidden = false;
+    var r = tr.getBoundingClientRect();
+    var mh = menu.offsetHeight, mw = menu.offsetWidth;
+    menu.style.left = Math.max(10, r.right - mw) + 'px';
+    menu.style.top = Math.max(10, Math.min(window.innerHeight - mh - 10, r.bottom - 4)) + 'px';
+  }
+  host.addEventListener('click', function(e){
+    var tr = e.target.closest ? e.target.closest('tr.au') : null;
+    if(tr) openMenu(tr);
+  });
+  host.addEventListener('keydown', function(e){
+    if(e.key !== 'Enter' && e.key !== ' ') return;
+    var tr = e.target.closest ? e.target.closest('tr.au') : null;
+    if(tr){ e.preventDefault(); openMenu(tr); }
+  });
+  document.addEventListener('click', function(e){
+    if(menu && !menu.hidden && !menu.contains(e.target) && !(e.target.closest && e.target.closest('tr.au'))) closeMenu();
+  });
+  document.addEventListener('keydown', function(e){ if(e.key === 'Escape'){ closeMenu(); if(invite) invite.hidden = true; } });
+
+  if(menu){
+    menu.querySelector('[data-menu-reset]').addEventListener('click', function(){
+      var who = current;
+      if(!who) return;
+      closeMenu();
+      if(!window.confirm('Reset ' + who + '?\\n\\nTheir password stops working immediately. Send them the link that appears.')) return;
+      post({ op:'reset', email: who }).then(function(d){
+        if(d && d.ok && d.url){ showLink(who, d.url); load(); }
+        else window.alert('Could not reset: ' + ((d && d.error) || 'error'));
+      }).catch(function(){ window.alert('Could not reset.'); });
+    });
+    menu.querySelector('[data-menu-remove]').addEventListener('click', function(){
+      var who = current;
+      if(!who) return;
+      closeMenu();
+      if(!window.confirm('Remove ' + who + '?\\n\\nThey lose access immediately and any invite link they hold stops working.')) return;
+      post({ op:'remove', email: who }).then(function(d){
+        if(d && d.ok) load();
+        else window.alert('Could not remove: ' + ((d && d.error) || 'error'));
+      }).catch(function(){ window.alert('Could not remove.'); });
+    });
+  }
+
+  // ── Invite ─────────────────────────────────────────────────────────────────
+  var openBtn = document.querySelector('[data-invite-open]');
+  if(openBtn && invite){
+    openBtn.addEventListener('click', function(){
+      invite.hidden = !invite.hidden;
+      if(!invite.hidden) invite.querySelector('[data-invite-email]').focus();
+    });
+    invite.querySelector('[data-invite-cancel]').addEventListener('click', function(){ invite.hidden = true; });
+    invite.addEventListener('submit', function(e){
+      e.preventDefault();
+      var email = invite.querySelector('[data-invite-email]').value.trim();
+      var name = invite.querySelector('[data-invite-name]').value.trim();
+      var role = invite.querySelector('[data-invite-role]').value;
+      var msg = invite.querySelector('[data-invite-msg]');
+      if(!email) return;
+      msg.textContent = '…';
+      post({ op:'invite', email: email, name: name, role: role }).then(function(d){
+        if(d && d.ok && d.url){
+          msg.textContent = '';
+          invite.reset(); invite.hidden = true;
+          showLink(d.email, d.url);
+          load();
+        } else {
+          msg.textContent = d && d.error === 'already-a-user' ? 'already on the list'
+            : d && d.error === 'bad-email' ? 'not a valid address'
+            : (d && d.error) || 'error';
+        }
+      }).catch(function(){ msg.textContent = 'error'; });
+    });
+  }
+
+  // ── Copy the link ──────────────────────────────────────────────────────────
+  if(linkbox){
+    linkbox.querySelector('[data-link-copy]').addEventListener('click', function(){
+      var input = linkbox.querySelector('[data-link-url]');
+      input.select();
+      try { document.execCommand('copy'); linkbox.querySelector('[data-link-msg]').textContent = 'copied'; }
+      catch(e){ linkbox.querySelector('[data-link-msg]').textContent = 'copy it manually'; }
+    });
+    linkbox.querySelector('[data-link-close]').addEventListener('click', function(){ linkbox.hidden = true; });
+  }
+
+  // Sortable headers — last active, newest first, is the default view.
+  var ths = document.querySelectorAll('[data-sort]');
+  for(var i=0;i<ths.length;i++){ (function(th){
+    th.addEventListener('click', function(){
+      var k = th.getAttribute('data-sort');
+      if(k === sortKey) sortDir = -sortDir;
+      else { sortKey = k; sortDir = k === 'name' ? 1 : -1; }
+      render();
+    });
+  })(ths[i]); }
+
+  load();
 })();
 `;
 
@@ -4135,27 +4245,112 @@ function renderNotFoundPage() {
 
 function renderAdminPage() {
   const body = `<style>
-    .admin-users{ display:flex; flex-direction:column; gap:8px; max-width:700px; }
-    .au{ display:flex; align-items:center; gap:12px; padding:11px 14px; border:1px solid rgba(16,17,26,0.09); border-radius:12px; background:#fff; }
-    .au__av{ flex:none; width:34px; height:34px; border-radius:50%; display:grid; place-items:center; color:#fff; font-weight:700; font-size:12px; text-transform:uppercase; }
-    .au__id{ display:flex; flex-direction:column; min-width:0; flex:1 1 auto; }
-    .au__name{ font-weight:600; font-size:14px; display:flex; align-items:center; gap:7px; }
-    .au__badge{ font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.04em; color:#4f46e5; background:rgba(79,70,229,.1); padding:1px 6px; border-radius:5px; }
+    /* People table — name + email, role, last active (the default sort, newest first).
+       Row click opens the per-person menu; everything credential-related ends in a link. */
+    .folderbar{ max-width:820px; } /* so the Invite button lands on the table's right edge */
+    .autbl{ width:100%; max-width:820px; border-collapse:collapse; }
+    .autbl th{ text-align:left; padding:0 12px 9px; font-size:12px; font-weight:600; color:#5b626e;
+               border-bottom:1px solid rgba(16,17,26,0.10); cursor:pointer; user-select:none; white-space:nowrap; }
+    .autbl th:hover{ color:#16171a; }
+    .autbl th::after{ content:''; display:inline-block; width:11px; margin-left:5px; color:#9aa0ab; }
+    .autbl th[aria-sort=ascending]::after{ content:'\\2191'; }
+    .autbl th[aria-sort=descending]::after{ content:'\\2193'; }
+    .autbl td{ padding:11px 12px; border-bottom:1px solid rgba(16,17,26,0.07); vertical-align:middle; }
+    .autbl td.empty{ color:#5b626e; font-size:13.5px; padding:18px 12px; }
+    tr.au{ cursor:pointer; }
+    tr.au:hover td, tr.au:focus-visible td{ background:rgba(16,17,26,0.028); }
+    tr.au:focus-visible{ outline:2px solid #5e6ad2; outline-offset:-2px; }
+    .au__who{ display:flex; align-items:center; gap:11px; }
+    .au__av{ flex:none; width:32px; height:32px; border-radius:50%; display:grid; place-items:center;
+             color:#fff; font-weight:700; font-size:11.5px; text-transform:uppercase; }
+    .au__id{ display:flex; flex-direction:column; min-width:0; }
+    .au__name{ font-weight:600; font-size:14px; color:#16171a; }
     .au__email{ font-size:12.5px; color:#5b626e; }
-    .au__seen{ flex:none; font-size:12.5px; color:#5b626e; white-space:nowrap; margin-right:14px; }
-    .au__seen--never{ color:#9aa0ab; font-style:italic; }
-    .au__state { font-size: .75rem; padding: .15rem .5rem; border-radius: 999px; white-space: nowrap; }
-    .au__state--ok { background: #dcfce7; color: #166534; }
-    .au__state--pending { background: #fef3c7; color: #92400e; }
-    .au__act { display: flex; gap: .4rem; align-items: center; }
-    .au__link { font: 12px/1.3 ui-monospace, monospace; width: 16rem; padding: .3rem .4rem;
-                border: 1px solid #d4d4d8; border-radius: 6px; }
-    .au__reset, .au__copy { font-size: 12px; padding: .3rem .6rem; border: 1px solid #d4d4d8; border-radius: 6px; background: #fff; cursor: pointer; }
-    .au__msg{ font-size:12px; color:#5b626e; min-width:42px; }
-    @media (max-width:620px){ .au{ flex-wrap:wrap; } .au__act{ width:100%; } .au__link{ flex:1 1 auto; width:auto; } }
+    .au__role{ font-size:13.5px; color:#5b626e; white-space:nowrap; }
+    .au__role.is-admin{ color:#4f46e5; font-weight:600; }
+    .au__last{ white-space:nowrap; }
+    .au__seen{ font-size:13.5px; color:#5b626e; }
+    .au__seen--never{ color:#9aa0ab; }
+    .au__chip{ font-size:12px; padding:2px 8px; border-radius:999px; background:#fef3c7; color:#92400e; white-space:nowrap; }
+    .au__go{ width:24px; text-align:right; color:#9aa0ab; font-size:17px; }
+
+    /* Buttons shared by the header action, the invite form and the link strip. */
+    .aubtn{ font:inherit; font-size:13px; font-weight:500; padding:6px 12px; border-radius:8px;
+            border:1px solid rgba(16,17,26,0.14); background:#fff; color:#16171a; cursor:pointer; white-space:nowrap; }
+    .aubtn:hover{ background:rgba(16,17,26,0.04); }
+    .aubtn--primary{ background:#2c2150; border-color:#2c2150; color:#fff; font-weight:600; }
+    .aubtn--primary:hover{ background:#38295e; }
+
+    .auinvite{ display:flex; flex-wrap:wrap; align-items:center; gap:8px; max-width:820px; margin:0 0 16px;
+               padding:12px; border:1px solid rgba(16,17,26,0.10); border-radius:12px; background:#fff; }
+    .auinvite[hidden]{ display:none; }
+    .auinvite input, .auinvite select{ font:inherit; font-size:13px; padding:7px 10px; border-radius:8px;
+                                       border:1px solid rgba(16,17,26,0.16); background:#fff; color:#16171a; }
+    .auinvite input[type=email]{ flex:2 1 220px; }
+    .auinvite input[type=text]{ flex:1 1 150px; }
+    .auinvite__msg{ font-size:12px; color:#b45309; }
+
+    .aulink{ display:flex; align-items:center; gap:9px; flex-wrap:wrap; max-width:820px; margin:0 0 16px;
+             padding:12px; border:1px solid rgba(79,70,229,0.28); border-radius:12px; background:rgba(79,70,229,0.05); }
+    .aulink[hidden]{ display:none; }
+    .aulink__hd{ flex:1 1 100%; margin:0; font-size:13px; color:#2c2f36; }
+    .aulink__hd b{ font-weight:600; }
+    .aulink input{ flex:1 1 320px; font:12px/1.4 ui-monospace, SFMono-Regular, Menlo, monospace;
+                   padding:7px 9px; border-radius:8px; border:1px solid rgba(16,17,26,0.16); background:#fff; }
+    .aulink__msg{ font-size:12px; color:#5b626e; min-width:44px; }
+
+    /* Row menu — fixed so it can never be clipped by the table's own overflow. */
+    .aumenu{ position:fixed; z-index:60; min-width:190px; padding:5px; border-radius:10px; background:#fff;
+             border:1px solid rgba(16,17,26,0.12); box-shadow:0 1px 2px rgba(16,24,40,0.05), 0 12px 30px -16px rgba(16,24,40,0.30); }
+    .aumenu[hidden]{ display:none; }
+    .aumenu__hd{ margin:0; padding:5px 9px 7px; font-size:11.5px; color:#9aa0ab;
+                 overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:240px; }
+    .aumenu button{ display:block; width:100%; padding:7px 9px; border:0; border-radius:7px; background:none;
+                    font:inherit; font-size:13px; color:#16171a; text-align:left; cursor:pointer; }
+    .aumenu button:hover{ background:rgba(16,17,26,0.05); }
+    .aumenu button.is-danger{ color:#b42318; }
+    .aumenu button.is-danger:hover{ background:rgba(180,35,24,0.07); }
+
+    @media (max-width:640px){ .autbl .au__role{ display:none; } .autbl th[data-sort=role]{ display:none; } }
   </style>
-  <header class="folderbar"><h1 class="folderbar__title">Admin</h1><span class="folderbar__rule"></span></header>
-  <div class="admin-users" data-admin-users><p class="empty">Loading…</p></div>
+  <header class="folderbar">
+    <h1 class="folderbar__title">Admin</h1>
+    <span class="folderbar__rule"></span>
+    <button type="button" class="aubtn aubtn--primary" data-invite-open>Invite</button>
+  </header>
+
+  <form class="auinvite" data-invite hidden>
+    <input type="email" data-invite-email placeholder="name@example.org" aria-label="Email address" required />
+    <input type="text" data-invite-name placeholder="Name (optional)" aria-label="Name" />
+    <select data-invite-role aria-label="Role"><option value="user">User</option><option value="admin">Admin</option></select>
+    <button type="submit" class="aubtn aubtn--primary">Send invite</button>
+    <button type="button" class="aubtn" data-invite-cancel>Cancel</button>
+    <span class="auinvite__msg" data-invite-msg aria-live="polite"></span>
+  </form>
+
+  <div class="aulink" data-link hidden>
+    <p class="aulink__hd">Single-use link for <b data-link-who></b> — send it to them yourself.</p>
+    <input type="text" data-link-url readonly aria-label="Invite link" />
+    <button type="button" class="aubtn" data-link-copy>Copy</button>
+    <button type="button" class="aubtn" data-link-close>Done</button>
+    <span class="aulink__msg" data-link-msg aria-live="polite"></span>
+  </div>
+
+  <table class="autbl">
+    <thead><tr>
+      <th data-sort="name" aria-sort="none">Name</th>
+      <th data-sort="role" aria-sort="none">Role</th>
+      <th data-sort="seen" aria-sort="descending">Last active</th>
+      <th aria-hidden="true"></th>
+    </tr></thead>
+    <tbody data-admin-users><tr><td colspan="4" class="empty">Loading…</td></tr></tbody>
+  </table>
+
+  <div class="aumenu" data-menu hidden role="menu">
+    <p class="aumenu__hd" data-menu-who></p>
+    <button type="button" role="menuitem" data-menu-reset>Reset password</button>
+    <button type="button" role="menuitem" class="is-danger" data-menu-remove>Remove user</button>
+  </div>
   <script>${ADMIN_JS}</script>`;
   return shell({ title: "Admin · Augur", activeTab: "admin", body });
 }

@@ -184,8 +184,17 @@ name, initials, colour and role. Passwords live in KV as PBKDF2 hashes under
   This holds only when `SESSION_SECRET` is actually set on the project — `userToken()`
   falls back to an unkeyed SHA-256 when it's absent, so the secret must be configured for
   sessions to be HMAC-backed at all.
-- Adding or removing a person is still a commit to `identity.json` — the roster is
-  injected at build time.
+- **The roster has two layers.** `identity.json` (injected at build time) names who the
+  deploy shell knows about; KV `users:roster` (`{add:{…}, remove:[…]}`) records who the
+  admin panel has invited or removed since, so onboarding a teammate is a click rather
+  than a commit + redeploy. `mergeRoster` applies the overlay: the config file wins over
+  an `add` of the same address, and `remove` hides an address from both. A person the
+  config names is still best removed from the file eventually — the overlay entry is a
+  live decision, not a record.
+- **⚠️ The overlay is a convenience; the tombstone is the security boundary.** A failed
+  KV read leaves the roster as the config list, which would put a removed CONFIG user
+  back in it — so removal ALSO writes the `users:secrets` tombstone, and that read fails
+  closed. Never reduce removal to the list alone.
 
 See `docs/superpowers/specs/2026-08-08-invite-only-auth-design.md` for the original
 design record.

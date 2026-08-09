@@ -24,6 +24,13 @@ once the instance config is redeployed/published (build re-emits
 }
 ```
 
+- **The panel can add and remove people without a commit.** The Admin page lists
+  everyone as a table (name + email, role, last active) with an **Invite** action
+  and, on clicking a row, **Reset password** / **Remove user**. Invite and remove
+  write a runtime overlay in KV (`users:roster`) on top of the file: an address the
+  file names always wins over an overlay entry of the same address, and a removal
+  hides it from both. So `identity.json` stays the durable record — edit it when a
+  change should outlive the instance — while day-to-day onboarding is a click.
 - **Credentials are invite-set, never issued.** `identity.json` is the ROSTER —
   who exists, not what they know. A new user is added with NO password; the admin
   panel's **Reset / invite** action mints a single-use link (`/__invite?t=…`,
