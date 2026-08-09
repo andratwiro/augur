@@ -64,15 +64,23 @@ if (have.size) log(`${have.size} blobs already present — downloading only what
 // it, and is fetched through that one. A star-scoped token works either way.
 const wanted = new Map();
 const spaces = [];
+const skipped = [];
 
 for (const id of ids) {
   let live;
   try {
     live = await (await req(`${id}/manifest`)).json();
   } catch (e) {
-    // A space in the stamp with no manifest is a genuine inconsistency; a space
-    // named with --space that doesn't exist is a typo. Either way, say so and stop
-    // rather than writing a quietly incomplete backup.
+    // A space-scoped publish token can only read its own space, and backing up
+    // just your own space is a legitimate thing to do — so a 403 skips loudly
+    // instead of aborting. Everything else (a space in the stamp with no
+    // manifest, a typo in --space) is a real inconsistency: stop, rather than
+    // write a quietly incomplete copy.
+    if (/→ 403/.test(e.message)) {
+      log(`\x1b[33m⚠ ${id}: this token cannot read it — SKIPPED, not in this copy\x1b[0m`);
+      skipped.push({ id, reason: "forbidden" });
+      continue;
+    }
     die(`${id}: could not read its manifest — ${e.message}`);
   }
   await writeFile(path.join(OUT, "manifests", `${id}.json`), JSON.stringify(live), "utf8");
@@ -124,8 +132,13 @@ await writeFile(path.join(OUT, "export.json"), JSON.stringify({
   exportedAt: new Date().toISOString(),
   history: HISTORY,
   spaces,
+  // What this copy does NOT contain, recorded so a restore from it is never a
+  // surprise. Engine chrome landing here is benign — it rebuilds from the engine
+  // repo with one deploy — but it should still be stated, not inferred.
+  skipped,
   blobs: wanted.size,
 }, null, 2), "utf8");
 
 log(`done in ${((Date.now() - started) / 1000).toFixed(1)}s`);
-console.log(`${OUT}  ${spaces.length} space(s), ${wanted.size} blobs`);
+if (skipped.length) log(`\x1b[33m${skipped.length} target(s) skipped: ${skipped.map((s) => s.id).join(", ")}\x1b[0m`);
+console.log(`${OUT}  ${spaces.length} space(s), ${wanted.size} blobs${skipped.length ? `, ${skipped.length} skipped` : ""}`);

@@ -1310,9 +1310,25 @@ async function publishApi(request, url, env) {
     if (!v || v < 1) return jsonResponse({ error: "bad-version" }, 400);
     const prev = await env.BUNDLES.get(`spaces/${spaceId}/versions/${v}.json`);
     if (!prev) return jsonResponse({ error: "unknown-version" }, 404);
-    await env.BUNDLES.put(`spaces/${spaceId}/manifest.json`, await prev.text());
+    // History is append-only: a rollback republishes the old CONTENT under a NEW
+    // version number rather than repointing at the old one. Reusing the number
+    // looked tidier and was a trap — the next publish would compute
+    // cur.version + 1 and overwrite an existing versions/<n>.json, quietly
+    // destroying a point in the history that recovery depends on. It also means
+    // a rollback is itself visible in the history, and undone by another one.
+    const restored = JSON.parse(await prev.text());
+    const curObj = await env.BUNDLES.get(`spaces/${spaceId}/manifest.json`);
+    const cur = curObj ? JSON.parse(await curObj.text()) : null;
+    const version = ((cur && cur.version) || 0) + 1;
+    const out = {
+      ...restored, version,
+      publishedAt: new Date().toISOString(),
+      publishedBy: `rollback to v${v} by ${who.label || "unknown"}`,
+    };
+    await env.BUNDLES.put(`spaces/${spaceId}/versions/${version}.json`, JSON.stringify(out));
+    await env.BUNDLES.put(`spaces/${spaceId}/manifest.json`, JSON.stringify(out));
     MANIFESTS.at = 0; cfgAt = 0;
-    return jsonResponse({ ok: true, version: v });
+    return jsonResponse({ ok: true, version, restoredFrom: v });
   }
 
   return jsonResponse({ error: "unknown-op" }, 400);
