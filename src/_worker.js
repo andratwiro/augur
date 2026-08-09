@@ -384,6 +384,17 @@ function colorFor(email) {
   return ROSTER_COLORS[h % ROSTER_COLORS.length];
 }
 
+// A stable, one-way id for a person, used to attribute comments to a face without
+// putting an address in KV or on the wire. Deliberately NOT avatarKey(): that hashes
+// email + photo length so a changed photo yields a fresh immutable URL, which would
+// orphan every past comment. This is a display-resolution key, never a credential.
+function personId(email) {
+  const s = lcEmail(email);
+  let h = 5381;
+  for (let i = 0; i < s.length; i++) h = (h * 33 + s.charCodeAt(i)) >>> 0;
+  return h.toString(36);
+}
+
 // Revoke a credential: write the TOMBSTONE, never delete the key. effectiveSecret falls
 // back to the config roster's legacy `pass` only when the key is ABSENT, so deleting
 // here would put an old password back in service. A present-but-null entry reads as
@@ -419,6 +430,7 @@ function userByEmail(email, users = USERS) {
 // Safe-to-expose view of a user — never includes the password.
 function publicUser(u) {
   return u ? {
+    id: personId(u.email),
     email: u.email, name: u.name,
     initials: u.initials || "", color: u.color || "#4f46e5",
     avatar: avatarUrl(u), admin: u.role === "admin",
@@ -1985,6 +1997,9 @@ function sanitizeMsg(m, me) {
   return {
     author,
     verified,
+    // Stamped from the session like `author` above — a `by` in the request body is
+    // discarded with the rest of the caller's object.
+    by: me ? personId(me.email) : null,
     body: clamp(m && m.body, 4000),
     at: clamp(m && m.at, 40) || new Date().toISOString(),
   };
@@ -3035,6 +3050,7 @@ export default {
 // __testables — it exists only so test/worker.test.mjs can import them.
 export const __testables = {
   hashPassword, verifyPassword, isPassHash, safeEqual, userByEmail,
+  personId, avatarKey, publicUser, stampAuthor, sanitizeMsg, applyOp,
   tokenFor, hmacToken, userToken, identify, effectiveSecret,
   mintInvite, readInvite, consumeInvite,
   invitePost, inviteGet, invitePage, setUserSecret, MIN_PASSWORD_LENGTH,

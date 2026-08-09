@@ -858,3 +858,37 @@ test("deleting something that isn't there changes nothing (no empty version bump
   assert.equal(res.removed, 0);
   assert.equal(JSON.parse(env.BUNDLES.store.get("spaces/alpha/manifest.json")).version, 4);
 });
+
+test("personId is stable per address and independent of the photo", () => {
+  const a = W.personId("rob@example.test");
+  assert.equal(a, W.personId("  ROB@Example.Test  "), "case- and space-insensitive");
+  assert.match(a, /^[a-z0-9]+$/, "base36");
+  assert.notEqual(a, W.personId("ana@example.test"));
+  // avatarKey hashes email + photo length; personId must not, or a new photo
+  // would orphan every past comment.
+  const u1 = { email: "rob@example.test", avatar: "data:image/png;base64,AAAA" };
+  const u2 = { email: "rob@example.test", avatar: "data:image/png;base64,AAAAAAAA" };
+  assert.notEqual(W.avatarKey(u1), W.avatarKey(u2), "avatarKey changes with the photo");
+  assert.equal(W.personId(u1.email), W.personId(u2.email), "personId does not");
+});
+
+test("sanitizeMsg stamps `by` from the session, never from the request body", () => {
+  const me = { email: "rob@example.test", name: "Rob" };
+  const signed = W.sanitizeMsg({ author: "Someone Else", body: "hi", by: "forged" }, me);
+  assert.equal(signed.author, "Rob");
+  assert.equal(signed.verified, true);
+  assert.equal(signed.by, W.personId("rob@example.test"));
+
+  const anon = W.sanitizeMsg({ author: "Marta", body: "hi", by: "forged", verified: true }, null);
+  assert.equal(anon.author, "Marta");
+  assert.equal(anon.verified, false);
+  assert.equal(anon.by, null, "an unauthenticated write can never carry an identity");
+});
+
+test("publicUser exposes the person id but never a password", () => {
+  const u = { email: "rob@example.test", name: "Rob", pass: "secret", role: "admin" };
+  const p = W.publicUser(u);
+  assert.equal(p.id, W.personId("rob@example.test"));
+  assert.equal(p.pass, undefined);
+  assert.equal(W.publicUser(null), null);
+});
