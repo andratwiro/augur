@@ -51,7 +51,7 @@ export function css() {
   return `
     /* Pitis is an admin-only toy: hidden by default, revealed only when the profile
        script marks the page as admin (html.gv-admin — set by PROFILE_JS from /__me).
-       Default-hidden (not JS-hidden) so Irene/Tali never see a flash of the paw. */
+       Default-hidden (not JS-hidden) so users never see a flash of the paw. */
     .piti-paw { display: none; }
     html.gv-admin .piti-paw {
       position: fixed; right: 14px; bottom: 12px; z-index: 50;

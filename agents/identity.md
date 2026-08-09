@@ -2,7 +2,10 @@
 
 The engine has per-user accounts (login by email + password). The engine repo
 itself carries **no users** — `src/identity.json` is an empty placeholder; the
-live list lives in the instance's deploy shell as `identity.json`.
+live list lives in the instance's deploy shell repo as `identity.json` (NOT in
+this engine repo). Editing it is a config change: it only reaches the live site
+once the instance config is redeployed/published (build re-emits
+`dist/__config/instance.json` from it), never on a bare file save.
 
 ## The user record
 
@@ -34,5 +37,7 @@ live list lives in the instance's deploy shell as `identity.json`.
 ## Optional AI endpoint
 
 `/__ai/summarize` is a public worker endpoint that summarizes an uploaded
-document when the instance sets an `ANTHROPIC_API_KEY` worker env var; without
-the key it degrades to a 503 and features that use it hide themselves.
+document. It needs two pieces of instance config: the builder prompts + output
+schema (from the deploy config) and an `ANTHROPIC_API_KEY` worker env var.
+Missing the builder config → **501**; missing the key → **503**. In either case
+features that use it hide themselves and fall back to their heuristic.

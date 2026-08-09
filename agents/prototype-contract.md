@@ -2,9 +2,11 @@
 
 A prototype is a folder of **self-contained static HTML/JS** under
 `<opportunity>/prototypes/<name>/` with `index.html` as the entry. No build
-step: it must work opened directly (`file://`). Only the contents of
-`prototypes/` folders are ever published — `research.md`, `context.md`,
-anything outside stays internal by the build's whitelist.
+step: it must work opened directly (`file://`). The contents of `prototypes/`
+folders are published — `research.md`, `context.md`, anything else outside a
+published folder stays internal by the build's whitelist. **`playground/` also
+ships** (verbatim, to the public `/playground/`), so nothing private belongs
+there either.
 
 Beyond that, the engine reads a few things *from* your prototype. None are
 required, but each one improves how the site presents and reviews it:
@@ -36,17 +38,16 @@ a bad folder name after the fact; rename the display instead.
 ## Status chips
 
 An optional dev-status chip per prototype comes from `prototype-status.json`
-at the space root (see its `_comment` for the format); statuses are also
-cycled by clicking the chip on the live site (stored in KV, overlaying the
-committed baseline).
+at the space root (see its `_comment` for the format; values are `in-progress`,
+`dev-ready`, `reviewed`, `ignore`); statuses are also cycled by clicking the
+chip on the live site (stored in KV, overlaying the committed baseline).
 
 ## Posters and link cards
 
-Gallery cards prefer a `preview.webp` poster in the prototype folder, and link
-shares use an `og.jpg` if present; without them the card falls back to a live
-iframe (fine, just slower) and links get no image. The engine ships helper
-scripts maintainers run to shoot these (`scripts/shoot.mjs`, `scripts/og.mjs`)
-— an agent only needs to know the files are welcome, not required.
+A `preview.webp` (gallery card) and `og.jpg` (link share) in the prototype
+folder are welcome but not required — without them the card falls back to a live
+iframe and links get no image; maintainers shoot them with `scripts/shoot.mjs` /
+`scripts/og.mjs`.
 
 ## Comments overlay assets
 

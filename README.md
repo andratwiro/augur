@@ -77,16 +77,12 @@ the `AUGUR_DISPATCH_TOKEN` secret, so pushes bump the pin instead.
 
 ## Modifying the engine
 
-Instances **pin** this engine and take updates by moving the pin (the shell's
-`engine-bump.yml`). Don't fork-and-patch it inside an instance, and don't carry
-engine edits in a shell or space repo — a patched instance stops taking
-upstream fixes cleanly, and every instance loses the fix you kept local.
-
-If the engine is missing something, **send it here — PRs are welcome** (see
-[CONTRIBUTING.md](./CONTRIBUTING.md)): fork to PR, not to deploy. Your instance
-then takes the fix by pin bump, like every other. Instance-specific behavior
-belongs in the shell's `deploy.config.json`; space-specific behavior in
-`space.json`.
+Instances **pin** this engine and take fixes by pin bump — never fork-and-patch an
+instance. If the engine is missing something, **send it here — PRs are welcome**
+(see [CONTRIBUTING.md](./CONTRIBUTING.md)): fork to PR, not to deploy; your instance
+takes the fix by its next pin bump. Instance-specific behavior belongs in the shell's
+`deploy.config.json`, space-specific behavior in `space.json`. Full rationale:
+[CLAUDE.md](./CLAUDE.md).
 
 ## License
 

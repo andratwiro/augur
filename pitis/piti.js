@@ -38,7 +38,7 @@
 
 
   /* ---- MASTIFF paths (TRACED — layered potrace from a local-only reference image,
-     a clean flat-tone illustration of Rob's Spanish mastiff "Senda" curled
+     a clean flat-tone illustration of the maintainer's dog (a Spanish mastiff) curled
      asleep). Shared potrace frame 3024x2136, transform MTT below. Three traced layers
      (silhouette / dark-brown mask+ears / chunky outline) plus positioned salmon-blush
      overlays. Fixed "Senda" look (ignores the recolour palette). The grass oval in the
@@ -79,7 +79,7 @@
     { name: "Iris",     fur: "#C39AE0", dark: "#A87BCC", belly: "#EBDDF6", cheek: "#E07BC4" }, // purple
     { name: "Bubblegum",fur: "#E797D2", dark: "#D070B8", belly: "#F8E0F1", cheek: "#E0588F" }, // magenta
     { name: "Pebble",   fur: "#B7B7B7", dark: "#999999", belly: "#E2E2E2", cheek: "#EE9CBE" }, // gray
-    // Ginger-&-white bicolor, modelled on Rob's cat: white fur + ginger patches,
+    // Ginger-&-white bicolor, modelled on the maintainer's cat: white fur + ginger patches,
     // tabby ticks on the orange, pink nose. swatch shows the two tones.
     { name: "Ginger & white", fur: "#F7F2EA", dark: "#E3DCCF", belly: "#FFFFFF", cheek: "#EFA59B",
       pattern: "bicolor", patch: "#E89A4E", patchDark: "#CB7A2C", noseFill: "#E98DA1",
@@ -92,7 +92,7 @@
     { name: "Pruna", fur: "#A2805A", dark: "#48331C", belly: "#FCFBF7", cheek: "#EFA6AF",
       pattern: "tabby", stripe: "#48331C", noseFill: "#C97F88",
       swatch: "linear-gradient(135deg,#A2805A 0 30%,#48331C 36% 50%,#A2805A 56% 72%,#FCFBF7 80% 100%)" },
-    // Fawn Spanish-mastiff look, modelled on Rob's dog Senda — hues sampled off the
+    // Fawn Spanish-mastiff look, modelled on the maintainer's dog — hues sampled off the
     // local-only reference image: fawn body, dark-brown mask+ears, salmon blush, the
     // chunky near-black line. A fixed mastiff-only colour (the mastiff ignores the
     // recolour palette and always uses this). The traced layers read fur/mask/cheek/ear:
@@ -183,13 +183,13 @@
       '<ellipse cx="602" cy="432" rx="62" ry="38" fill="' + c.cheek + '" opacity=".5"/>'
     );
   }
-  // Bicolor (ginger-&-white) markings modelled on Rob's cat: white base fur with
+  // Bicolor (ginger-&-white) markings modelled on the maintainer's cat: white base fur with
   // ginger patches over the head-cap+ears, the back/saddle, and the tail; subtle
   // tabby ticks on the orange; faint blush. Ellipses bleed past the silhouette so
   // the clip trims them flush to the outline (no white rim along the back).
   function bicolorMarks(c) {
     return (
-      // mostly WHITE body with discrete ginger patches (Aslam is white-dominant):
+      // mostly WHITE body with discrete ginger patches (white-dominant):
       '<ellipse cx="470" cy="150" rx="205" ry="170" fill="' + c.patch + '"/>' +     // ginger head cap + ears (white muzzle/chin below)
       '<ellipse cx="452" cy="250" rx="46" ry="118" fill="' + (c.belly || "#fff") + '"/>' + // white forehead blaze splitting the cap
       '<ellipse cx="770" cy="300" rx="165" ry="150" fill="' + c.patch + '"/>' +     // shoulder patch

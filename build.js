@@ -826,6 +826,13 @@ function byStatusThenRecency(a, b) {
   return ra - rb || byRecency(a, b);
 }
 
+// Secret-shaped filenames that must NEVER reach dist — env files, private keys, and
+// credential dumps. A shipped folder (prototypes/, playground/) serves verbatim and
+// its paths are public and un-gated, so a stray `.env` or `*.pem` dropped inside one
+// would be world-readable. This is the single authoritative boundary: publish and
+// deploy both ship dist, so filtering here closes the leak for every ship path.
+const SECRET_FILE_RE = /(^\.env(\.|$)|\.(pem|key|p12|pfx|ppk|keystore|jks)$|(^|[._-])(secret|secrets|credentials?)([._-]|$)|^id_(rsa|dsa|ecdsa|ed25519)$)/i;
+
 // Internal-only entries that must NEVER be copied into dist, even from a folder
 // (like playground/) that otherwise ships verbatim. Mirrors the repo guardrail:
 // research/context material stays on the machine, never deployed.
@@ -836,7 +843,8 @@ function isInternalOnly(name) {
     name === "research.md" ||
     name === "context.md" ||
     name === ".DS_Store" ||
-    name.endsWith(".zip")
+    name.endsWith(".zip") ||
+    SECRET_FILE_RE.test(name)
   );
 }
 
@@ -2536,7 +2544,7 @@ const HELP_THEMES = [
 ];
 
 // The Help drawer — a right-side slide-in panel opened from the rail footer (data-help-open).
-// Two tracks: Reviewing (stakeholders giving feedback) + Building (driving Claude). Present
+// Two tracks: Reviewing (stakeholders giving feedback) + Building (driving an agent). Present
 // on every page via appChrome(); chromeScript() wires open/close + track switching.
 function helpDrawer() {
   const themeRows = HELP_THEMES.map(
@@ -2589,7 +2597,7 @@ function helpDrawer() {
           </ul>
 
           <h4>Replies appear</h4>
-          <ul><li>Claude may answer or resolve your comment in-thread. That is the comment loop (see Building).</li></ul>
+          <ul><li>An agent may answer or resolve your comment in-thread. That is the comment loop (see Building).</li></ul>
         </section>
 
         <section class="gvhelp__track" data-help-track="build" role="tabpanel" hidden>
@@ -2625,7 +2633,7 @@ function helpDrawer() {
           <h4>Comment loop <span class="gvhelp__tag">godmode</span></h4>
           <ul>
             <li><code>npm run review --open</code> lists open threads.</li>
-            <li>Claude fixes, replies, resolves in-thread. Put it on <code>/loop</code> to keep watching.</li>
+            <li>The agent fixes, replies, resolves in-thread. Put it on <code>/loop</code> to keep watching.</li>
             <li>Not automated. You steer it.</li>
           </ul>
 

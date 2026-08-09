@@ -4,7 +4,7 @@
 only: `build.js`, the overlay worker (`src/_worker.js`), the comment/canvas layers, and
 the platform scripts. It carries **no secrets, no user list, no product content** — a
 raw clone builds an empty, open-gated site. Everything deployment-specific lives in a
-separate private **deploy shell** repo (here: `augur-deploy`), which pins this engine
+separate private **deploy shell** repo (name yours anything), which pins this engine
 plus one repo per space and holds `identity.json`, `deploy.config.json`, the CI
 workflows and every secret.
 
@@ -86,8 +86,9 @@ removes it live). Unset → the route answers 501 and the "Delete forever" menu 
 reports deletion unconfigured. The local
 deploy scripts read `.env.deploy` for the rest (`PAGES_PROJECT`, `REALTIME_CONFIG`, the
 Cloudflare creds) — see `.env.deploy.example`. **No account id, project, worker name or
-shell repo name is hardcoded anywhere in this repo; scripts resolve the instance through
-`scripts/lib/instance.mjs` or fail loudly.**
+shell repo name is hardcoded in this repo's code or scripts — they resolve the instance
+through `scripts/lib/instance.mjs` or fail loudly (docs name example repos
+illustratively).**
 
 ## Offline mode (local live preview)
 
@@ -101,7 +102,7 @@ offline worker reads/writes the PRODUCTION KV** (comments/pins/statuses are live
 everyone); rename `.env.deploy` for a local-only sandbox (logs `KV: local`). Only one
 offline server needs to run regardless of how many agents edit.
 
-## Worker gate rules (bit twice — don't get bit again)
+## Worker gate rules (list public overlay assets in `isPublicPath()`)
 
 Any file the overlay loads from a public page (e.g. `/__review/*`, images embedded in
 public prototypes) **must be listed in `isPublicPath()`** in `src/_worker.js`, or the
@@ -124,14 +125,12 @@ comments bleed across screens.
   repos, not here. Edit spaces in their own clones — the `spaces/` mounts in a deploy
   shell are read-only build mirrors.
 - **The engine is a pinned dependency of every instance — never fork-and-patch it.**
-  Don't edit engine code from inside a shell checkout (the `engine/` mount there is a
-  read-only build mirror), don't vendor build.js or worker snippets into a space or
-  shell, don't keep an instance on a private engine fork. Engine gaps get fixed HERE
-  on `main` (generic, zero product words), then every instance takes them by pin bump
-  — GoVocal automatically, others via their shell's `engine-bump.yml`. Instance values
-  live in the shell's `deploy.config.json`; space values in `space.json`. Outside
-  contributors go through PRs (CONTRIBUTING.md) — fork to PR, not to deploy — and
-  Rob's agents hold PRs to the same bar: generic, config-driven, minimal-instance-safe.
+  Engine gaps get fixed HERE on `main` (generic, zero product words); every instance
+  takes them by pin bump (the reference instance automatically, others via their
+  shell's `engine-bump.yml`). Instance values live in the shell's `deploy.config.json`,
+  space values in `space.json`. Outside contributors go through PRs (CONTRIBUTING.md) —
+  fork to PR, not to deploy; maintainer review holds PRs to the same bar: generic,
+  config-driven, minimal-instance-safe.
 - The canvas layer is documented in `CANVAS.md`; the pet layer in `pitis/README.md`.
 
 ## Authentication

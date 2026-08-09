@@ -12,9 +12,24 @@ jobs:
           node-version: 20
       - name: Doc drift (doc-lint)
         run: node scripts/doc-lint.mjs
-      - name: Product words in code
-        # The engine is generic — instance-specific values belong in deploy.config.json / space.json, never in code.
+      - name: No instance/product words in the engine
+        # The engine is generic — instance-specific values belong in deploy.config.json /
+        # space.json, never in engine code, scripts, docs, or shipped chrome. Scan the
+        # WHOLE repo (case-insensitive) minus vendored/build output and this file (which
+        # necessarily names the words). Correct exit handling: grep 0 = found (fail),
+        # 1 = clean (pass), >=2 = error such as a renamed path (fail, never a silent pass).
+        # NOTE: person/pet-name detection is a deliberate follow-up — it can't go green
+        # until the in-flight canvas.js hardening lands and the Senda/Aslam palette+avatar
+        # identifiers are renamed across their asset refs.
         run: |
-          ! grep -rInE --include='*.js' --include='*.mjs' --include='*.yml' \
-            'go-vocal|govocal|Go Vocal|CitizenLab|citizenlab|Ask Rob|govocal-prototypes|deltastudio' \
-            build.js src scripts templates
+          set +e
+          grep -rInEi \
+            --exclude-dir=.git --exclude-dir=node_modules --exclude-dir=dist \
+            --exclude=check.yml \
+            'go[.-]?vocal|citizenlab|deltastudio|delta-designs|demogouda|\bgouda\b|wervik|westmere|@govocal|epic\.govocal' \
+            .
+          rc=$?
+          set -e
+          if [ "$rc" -eq 0 ]; then echo "::error::instance/product word found in the engine (matches above)"; exit 1; fi
+          if [ "$rc" -ge 2 ]; then echo "::error::product-word scan failed to run (grep rc=$rc)"; exit 1; fi
+          echo "clean — no instance/product words"

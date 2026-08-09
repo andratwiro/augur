@@ -1747,16 +1747,32 @@ const clamp = (s, n) => String(s == null ? "" : s).slice(0, n);
 const escapeHtml = (s) => String(s == null ? "" : s)
   .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 
-function sanitizeMsg(m) {
+// Authorship is stamped server-side, never trusted from the client. A caller with a
+// valid session cookie (me) is authoritative: their real name is used and verified=true.
+// An anonymous caller keeps their pseudonym but verified=false, and may NOT wear a
+// registered user's name (blocks impersonating a teammate — or a named agent identity).
+// So a forged `author:"<trusted name>"` from an un-authed POST can never look verified.
+function stampAuthor(rawAuthor, me) {
+  if (me) return { author: me.name, verified: true };
+  const a = clamp(rawAuthor, 80) || "Anonymous";
+  const collides = USERS.some((u) => u.name && u.name === a);
+  return { author: collides ? "Anonymous" : a, verified: false };
+}
+
+function sanitizeMsg(m, me) {
+  const { author, verified } = stampAuthor(m && m.author, me);
   return {
-    author: clamp(m && m.author, 80) || "Anonymous",
+    author,
+    verified,
     body: clamp(m && m.body, 4000),
     at: clamp(m && m.at, 40) || new Date().toISOString(),
   };
 }
 
-// Apply a single review op to a thread array; returns the new array.
-function applyOp(threads, op) {
+// Apply a single review op to a thread array; returns the new array. `me` is the
+// server-resolved signed-in user (or null) — passed to sanitizeMsg so authorship of
+// every added/replied message is stamped from the session, not the request body.
+function applyOp(threads, op, me) {
   if (!op || typeof op !== "object") return threads;
   if (op.op === "add" && op.thread) {
     const t = op.thread;
@@ -1773,7 +1789,7 @@ function applyOp(threads, op) {
         screen: clamp(t.screen, 200) || null,
         resolved: false,
         annotation: !!t.annotation,
-        messages: (Array.isArray(t.messages) ? t.messages : []).slice(0, 1).map(sanitizeMsg),
+        messages: (Array.isArray(t.messages) ? t.messages : []).slice(0, 1).map((m) => sanitizeMsg(m, me)),
       });
       if (threads.length > 500) threads = threads.slice(-500);
     }
@@ -1786,7 +1802,7 @@ function applyOp(threads, op) {
     }
   } else if (op.op === "reply" && op.message) {
     const t = threads.find((x) => x.id === op.id);
-    if (t) t.messages = (t.messages || []).concat([sanitizeMsg(op.message)]).slice(0, 200);
+    if (t) t.messages = (t.messages || []).concat([sanitizeMsg(op.message, me)]).slice(0, 200);
   } else if (op.op === "resolve") {
     const t = threads.find((x) => x.id === op.id);
     if (t) t.resolved = !!op.resolved;
@@ -1824,9 +1840,13 @@ async function reviewApi(request, url, env) {
   if (request.method === "POST") {
     let op;
     try { op = await request.json(); } catch (e) { return jsonResponse({ error: "bad-json" }, 400); }
+    // Resolve the caller's session so authorship is stamped from the cookie, not the
+    // body. Reads/writes stay open (public reviewers carry no login) — this only fixes
+    // WHO a message is attributed to, so a forged trusted name can't slip in.
+    const me = await identify(request, env);
     const raw = await kv.get(key);
     let threads = raw ? JSON.parse(raw) : [];
-    threads = applyOp(threads, op);
+    threads = applyOp(threads, op, me);
     await kv.put(key, JSON.stringify(threads));
     return jsonResponse({ threads });
   }

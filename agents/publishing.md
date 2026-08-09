@@ -14,7 +14,8 @@ node ../augur/scripts/publish.mjs        # or: augur publish
 - Infers the space from the working directory; `--space <id>` / `--all` /
   `--dry-run` / `--engine` (maintainers: chrome + worker) are available.
 - Builds the space, uploads **only what changed** (content-addressed), and flips
-  the live site atomically — typically a few seconds.
+  the live site atomically — typically a few seconds. A deployed site
+  self-refreshes to the new version; no need to tell a reviewer to hard-refresh.
 - It ships the **working tree** (uncommitted work included). Such publishes are
   flagged `"dirty": true` in the public `/_build.json` stamp, so nothing is
   hidden.

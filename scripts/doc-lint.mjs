@@ -10,7 +10,15 @@ import path from "node:path";
 import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 
-const SKIP_DIRS = new Set(["node_modules", "dist", ".git", "spaces"]);
+// The canary guards the AGENT-CONTEXT layer (root docs, skills/<x>-ui/, agents/) — not
+// scratch, archives, extracted research, or source-embedded build notes, which carry
+// their own noisy cross-refs and would swamp the signal. Recursion reaches the two-deep
+// context docs (skills/<x>-ui/SKILL.md) while these trees stay out.
+const SKIP_DIRS = new Set([
+  "node_modules", "dist", ".git", "spaces",
+  "playground", "docs", "references", "research", "context",
+  "src", "tracks", "toolkit", "img", "webapp-testing", "_extracted", "_archive",
+]);
 const skipDir = (name) => SKIP_DIRS.has(name) || /-exports$/.test(name); // *-exports: local capture bundles
 const args = process.argv.slice(2);
 const quiet = args.includes("--quiet");
@@ -41,15 +49,20 @@ function headingsOf(file) {
   return out;
 }
 
+// Recurse the whole tree (skipping SKIP_DIRS, dotdirs, *-exports): the most-read docs
+// live two levels down (e.g. skills/<x>-ui/SKILL.md) and a one-level scan never saw them.
 function mdFiles(root) {
   const out = [];
-  const grab = (dir) => {
-    for (const e of fs.readdirSync(dir, { withFileTypes: true }))
-      if (e.isFile() && e.name.endsWith(".md")) out.push(path.join(dir, e.name));
+  const walk = (dir) => {
+    for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
+      if (e.isDirectory()) {
+        if (!skipDir(e.name) && !e.name.startsWith(".")) walk(path.join(dir, e.name));
+      } else if (e.isFile() && e.name.endsWith(".md")) {
+        out.push(path.join(dir, e.name));
+      }
+    }
   };
-  grab(root);
-  for (const e of fs.readdirSync(root, { withFileTypes: true }))
-    if (e.isDirectory() && !skipDir(e.name) && !e.name.startsWith(".")) grab(path.join(root, e.name));
+  walk(root);
   return out;
 }
 
@@ -57,7 +70,10 @@ function mdFiles(root) {
 // has a slash, no placeholder/URL/flag/code characters, path-ish charset only.
 function checkablePath(s) {
   if (/[<>*{}()$"'`=,;!?]|\s/.test(s)) return false;            // placeholders, code, prose
-  if (/^(https?:|#|--|\/|\.\.)/.test(s)) return false;          // URLs, anchors, flags, site routes, out-of-repo
+  if (/^(https?:|#|--|\/)/.test(s)) return false;               // URLs, anchors, flags, site routes
+  // NB: `../` refs ARE checked — a space kernel points at `../augur/agents/*.md` (the
+  // engine sibling, present locally and cloned next to the checkout in CI), so a renamed
+  // engine doc must fail here. resolves() joins them against the .md's own dir.
   if (!s.includes("/")) return false;                           // bare names: not checkable in general
   if (/[:@]/.test(s)) return false;                             // scoped pkgs, remotes, key:value
   return /^[\w.-]+(\/[\w.-]+)+\/?$/.test(s);

@@ -19,7 +19,7 @@
 //
 // `gc` is the browser half of the remove coupling: deleting a tile IN THE CANVAS UI can't
 // delete the folder (no git in the browser), so the folder lingers as an orphan. gc notices
-// orphans and deletes their folders after a ONE-HOUR grace window (Rob's rule, to cover a
+// orphans and deletes their folders after a ONE-HOUR grace window (to cover a
 // ⌘Z that brings the tile back) anchored at the first gc run that saw the orphan. Run it
 // whenever you start working a canvas; state lives in godmode/.canvas-gc.json (local only).
 //

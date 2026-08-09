@@ -16,7 +16,7 @@
 //   await c.connect()
 //   await c.moveCursorTo(x, y); c.focus(nodeId); c.upsert(node); await c.save()
 //
-// The co-working PROTOCOL (Rob's rule, 2026-07-23): show activity on the canvas FIRST,
+// The co-working PROTOCOL (design decision): show activity on the canvas FIRST,
 // then do the work. On any ask: walk to the relevant spot + pose('thinking') + say(...)
 // before reasoning; before building an artifact: stub() a placeholder where it will land
 // + pose('sparkles'); emotions as punctuation (happy = done, sunglasses = shipped live,

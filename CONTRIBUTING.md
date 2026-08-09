@@ -1,15 +1,10 @@
 # Contributing to Augur
 
 PRs are welcome — and they're the *intended* way to change the engine, even for
-people running their own instance. Augur's whole update model depends on it:
-
-- **Instances pin this engine** and take updates by moving the pin (see
-  [templates/](./templates/)). A patched local copy or a long-lived private fork
-  strands your instance off that update train — and keeps your fix from every
-  other instance.
-- So: **fork to PR, not to deploy.** A fork is the vehicle for sending a change
-  here; your instance keeps deploying from the public engine and picks your fix
-  up with its next pin bump, like everyone else.
+people running their own instance. Instances pin this engine and take engine fixes
+by pin bump, so **fork to PR, not to deploy** — never fork-and-patch a local copy
+(that strands your instance off the update train and keeps your fix from everyone
+else). See [templates/](./templates/) for the pin mechanics.
 
 ## What belongs where
 
@@ -32,7 +27,7 @@ shell's `deploy.config.json`, and the worker reads it in `loadConfig()` (grep
 ## Dev loop
 
 ```bash
-git clone https://github.com/andratwiro/augur.git && cd augur
+git clone https://github.com/<your-org>/augur.git && cd augur
 mkdir -p ../demo && cd ../demo     # a space = a SIBLING dir of augur with a space.json at its root
 echo '{ "id": "demo", "name": "Demo", "default": true }' > space.json
 mkdir -p hello/prototypes/hello && echo '<h1>hi</h1>' > hello/prototypes/hello/index.html

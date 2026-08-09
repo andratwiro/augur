@@ -11,11 +11,17 @@ name: Trigger live deploy
 # named in this file, so a fork with the variable unset simply skips the job.
 # Auth: AUGUR_DISPATCH_TOKEN — a fine-grained PAT with Contents read & write on that
 # shell repo. Until it exists, this job fails harmlessly and nothing ships.
+#
+# GATED ON `check`: this fires only after the `check` workflow SUCCEEDS on main, so a
+# push that fails product-word / doc-lint never ships. `workflow_dispatch` stays as a
+# manual override (skips the gate deliberately). The SHA/actor come from the checked
+# run for the gated path, from the current ref for a manual re-trigger.
 
 on:
-  push:
-    branches: [main]
-  workflow_dispatch: # allow manual re-trigger from the Actions tab
+  workflow_run:
+    workflows: [check]
+    types: [completed]
+  workflow_dispatch: # manual override — re-trigger from the Actions tab, bypasses the gate
 
 permissions:
   contents: read
@@ -23,15 +29,26 @@ permissions:
 jobs:
   notify-shell:
     runs-on: ubuntu-latest
-    if: vars.SHELL_REPO != '' # no shell configured (e.g. a fork) → nothing to notify
+    # Fire when: a shell is configured AND either this is a manual dispatch, or `check`
+    # passed on main. A failed/cancelled check, or a check on a non-main branch (PRs),
+    # never deploys.
+    if: >-
+      vars.SHELL_REPO != '' &&
+      (github.event_name == 'workflow_dispatch' ||
+       (github.event.workflow_run.conclusion == 'success' &&
+        github.event.workflow_run.head_branch == 'main'))
     steps:
       - name: Ask the deploy shell to bump the engine pin and deploy
         env:
           GH_TOKEN: ${{ secrets.AUGUR_DISPATCH_TOKEN }}
           SHELL_REPO: ${{ vars.SHELL_REPO }}
+          # workflow_run carries the checked commit's SHA; a manual dispatch has none, so
+          # fall back to the ref this workflow ran on.
+          SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
+          ACTOR: ${{ github.event.workflow_run.actor.login || github.actor }}
         run: |
           gh api -X POST "/repos/$SHELL_REPO/dispatches" \
             -f event_type=engine-updated \
-            -f "client_payload[sha]=${{ github.sha }}" \
-            -f "client_payload[actor]=${{ github.actor }}"
-          echo "Dispatched engine-updated for ${{ github.sha }} → $SHELL_REPO"
+            -f "client_payload[sha]=$SHA" \
+            -f "client_payload[actor]=$ACTOR"
+          echo "Dispatched engine-updated for $SHA → $SHELL_REPO"
