@@ -851,7 +851,16 @@ function byStatusThenRecency(a, b) {
 // its paths are public and un-gated, so a stray `.env` or `*.pem` dropped inside one
 // would be world-readable. This is the single authoritative boundary: publish and
 // deploy both ship dist, so filtering here closes the leak for every ship path.
-const SECRET_FILE_RE = /(^\.env(\.|$)|\.(pem|key|p12|pfx|ppk|keystore|jks)$|(^|[._-])(secret|secrets|credentials?)([._-]|$)|^id_(rsa|dsa|ecdsa|ed25519)$)/i;
+// `\.env$` catches the other naming half (prod.env, local.env) — same file, dot on the
+// other side. The dotfile list is credential stores by definition; none of them has any
+// business in a published folder, and publish ships the WORKING TREE, so a file that was
+// never committed has never met .gitignore either.
+const SECRET_FILE_RE = /(^\.env(\.|$)|\.env$|\.(pem|key|p12|pfx|ppk|keystore|jks)$|(^|[._-])(secret|secrets|credentials?)([._-]|$)|^id_(rsa|dsa|ecdsa|ed25519)$|^\.(npmrc|netrc|pgpass|htpasswd|ssh|aws|gnupg)$)/i;
+
+// Version-control directories. copyDir RECURSES, so a repo checked out inside a shipped
+// folder would publish its whole history — every past commit, every file ever deleted —
+// at a public URL. Never content, under any layout.
+const VCS_DIR_RE = /^\.(git|hg|svn|bzr)$/i;
 
 // Internal-only entries that must NEVER be copied into dist, even from a folder
 // (like playground/) that otherwise ships verbatim. Mirrors the repo guardrail:
@@ -864,6 +873,7 @@ function isInternalOnly(name) {
     name === "context.md" ||
     name === ".DS_Store" ||
     name.endsWith(".zip") ||
+    VCS_DIR_RE.test(name) ||
     SECRET_FILE_RE.test(name)
   );
 }
