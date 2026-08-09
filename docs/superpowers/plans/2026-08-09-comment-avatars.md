@@ -89,7 +89,7 @@ test("publicUser exposes the person id but never a password", () => {
 
 - [ ] **Step 2: Run the tests to verify they fail**
 
-Run: `cd ~/Documents/delta-designs/augur && npm test`
+Run: `npm test` (from the repo root)
 Expected: FAIL — `W.personId is not a function` (and `W.sanitizeMsg`, `W.avatarKey`, `W.publicUser` undefined).
 
 - [ ] **Step 3: Add `personId`**
@@ -808,8 +808,8 @@ git commit -m "COMMENTING-UX: the no-avatars decision is superseded"
 ## Deploy note
 
 Do **not** push as part of implementation. Pushing this engine repo fires
-`deploy-trigger.yml`, which dispatches to the govocal shell only (`SHELL_REPO`) — so a
-push ships these changes to *that* instance immediately, while `augur.deltastudio.io`
-picks them up on its weekly Monday 06:17 UTC engine-bump cron or a manual
-`workflow_dispatch`. Leave the push, and the choice of which instance gets it first, to
-Rob.
+`deploy-trigger.yml`, which dispatches to exactly one deploy shell — the one named by
+the `SHELL_REPO` repository variable — so a push ships these changes to *that* instance
+immediately. Every other instance bumps the engine pin on its own schedule (a weekly
+cron) or on a manual `workflow_dispatch`. Leave the push, and the choice of which
+instance gets it first, to the repo owner.
