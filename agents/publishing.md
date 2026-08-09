@@ -3,6 +3,11 @@
 **Push ≠ deploy.** `git push` saves and shares your work; it does not change the
 live site. The habit: **finish → publish → push.**
 
+This is the only path. The site's CI builds engine chrome and worker code with no
+space on disk at all, so there is no rebuild, redeploy, or pin bump that can put
+your work live — and equally, none that can silently overwrite it. If the live
+site doesn't show your change, the answer is always the same: it wasn't published.
+
 ## The command
 
 From the space repo's root (the engine clone must sit next to it):
@@ -41,16 +46,30 @@ every later publish just works. A 403 on publish means your password was reset
 ## Verifying
 
 The publish command prints the live URL and new version on success — exit code
-is truth, there is no CI tab. Public stamp:
+is truth, there is no CI tab.
 
 ```
-curl https://<your-site>/_build.json
+augur status
 ```
 
-compare your space's `sha` to `git rev-parse HEAD` (plus `dirty` if you shipped
-uncommitted work). Bundle-store publishes flip atomically; **engine** deploys
-(Pages) can serve mixed old/new assets for a couple of minutes after a ship —
-poll until consecutive responses agree before declaring a chrome bug.
+is the whole check: for every space it puts what the store is serving next to what
+your clone has and what `origin/main` has, and tells you which one is behind. Exit
+code 1 means something is out of step, so it works in a script too.
+
+The underlying data is the public stamp, if you want it raw:
+
+```
+curl 'https://<your-site>/_build.json?t=1'
+```
+
+Compare your space's `sha` to `git rev-parse HEAD`; `version` is the store's
+publish counter, and `dirty: true` means that publish came from an uncommitted
+working tree. Cache-bust it — the CDN serves this stale for a minute or two, and a
+stale read is how you "confirm" the state you just replaced.
+
+Bundle-store publishes flip atomically; **engine** deploys (Pages) can serve mixed
+old/new assets for a couple of minutes after a ship — poll until consecutive
+responses agree before declaring a chrome bug.
 
 ## Local preview (no publish involved)
 

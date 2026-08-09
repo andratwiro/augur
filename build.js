@@ -47,6 +47,13 @@ const ROOT = path.dirname(fileURLToPath(import.meta.url));
 const SPACES_ROOT = process.env.GV_SPACES_ROOT
   ? path.resolve(ROOT, process.env.GV_SPACES_ROOT)
   : path.join(ROOT, "spaces");
+// GV_ENGINE_ONLY=1 builds the shared chrome and nothing else: space discovery is
+// skipped entirely, so no space needs to be on disk. This is what a deploy shell's
+// CI runs. It is the structural half of "the store is the only source of space
+// content" — a build that never sees a space cannot emit one, so the CI path is
+// incapable of overwriting a direct publish, however stale its checkout. The
+// manifest writer asserts the result really is chrome-only (see ENGINE_CHROME).
+const ENGINE_ONLY = process.env.GV_ENGINE_ONLY === "1";
 const DIST = path.join(ROOT, "dist");
 const SRC_WORKER = path.join(ROOT, "src", "_worker.js");
 
@@ -3987,6 +3994,49 @@ const SPACE_JS = `(function(){
 // roster and mints its single-use link), RESET someone (revokes their password, mints a
 // fresh link), REMOVE someone. No path here sets or reveals a password — every
 // credential action ends in a link the admin copies and sends.
+// Live-content table on /admin/ — reads the public build stamp and renders what the
+// store is actually serving. Its reason for existing is the `dirty` flag: a publish
+// from an uncommitted working tree serves bytes that exist in no repository, and
+// until now that was invisible unless someone thought to curl /_build.json. One
+// instance sat dirty for hours with nobody aware. Cache-busted because the CDN
+// serves the stamp stale for a minute or two after a publish.
+const LIVE_CONTENT_JS = `(function(){
+  var body = document.querySelector('[data-live-content]');
+  if(!body) return;
+  function esc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+  function ago(iso){
+    if(!iso) return '';
+    var t = Date.parse(iso); if(isNaN(t)) return '';
+    var s = Math.max(0, (Date.now()-t)/1000);
+    if(s < 90) return 'just now';
+    if(s < 5400) return Math.round(s/60)+' min ago';
+    if(s < 172800) return Math.round(s/3600)+' h ago';
+    return Math.round(s/86400)+' days ago';
+  }
+  function row(id, d){
+    var dirty = d && d.dirty
+      ? '<span class="aulive__dirty" title="Published from an uncommitted working tree — these exact bytes are in no repository">working tree</span>' : '';
+    var sha = d && d.sha ? '<span class="aulive__sha">'+esc(String(d.sha).slice(0,12))+'</span>' : '<span class="aulive__sha">—</span>';
+    return '<tr>'+
+      '<td><span class="aulive__id">'+esc(id)+'</span></td>'+
+      '<td><span class="aulive__v">'+(d && d.version ? 'v'+esc(d.version) : '—')+'</span></td>'+
+      '<td><span class="aulive__when">'+esc(ago(d && d.publishedAt))+'</span>'+
+        (d && d.publishedBy ? '<br><span class="aulive__by">'+esc(d.publishedBy)+'</span>' : '')+'</td>'+
+      '<td>'+sha+dirty+'</td>'+
+    '</tr>';
+  }
+  fetch('/_build.json?t='+Date.now(), {headers:{'Accept':'application/json'}})
+    .then(function(r){ return r.ok ? r.json() : null; })
+    .then(function(d){
+      if(!d){ body.innerHTML = '<tr><td colspan="4" class="empty">Build stamp unavailable.</td></tr>'; return; }
+      var out = '', spaces = d.spaces || {};
+      Object.keys(spaces).sort().forEach(function(id){ out += row(id, spaces[id]); });
+      out += row('engine chrome', d.engine || {});
+      body.innerHTML = out || '<tr><td colspan="4" class="empty">Nothing published yet.</td></tr>';
+    })
+    .catch(function(){ body.innerHTML = '<tr><td colspan="4" class="empty">Build stamp unavailable.</td></tr>'; });
+})();`;
+
 const ADMIN_JS = `(function(){
   var host = document.querySelector('[data-admin-users]');
   if(!host) return;
@@ -4312,6 +4362,19 @@ function renderAdminPage() {
     .aumenu button.is-danger:hover{ background:rgba(180,35,24,0.07); }
 
     @media (max-width:640px){ .autbl .au__role{ display:none; } .autbl th[data-sort=role]{ display:none; } }
+
+    /* Live content — the published state of each space. Same table language as the
+       people list; the only loud thing is the working-tree chip, which is the one
+       state that can't be reproduced from any repository. */
+    .aulive__bar{ margin-top:40px; }
+    .aulive__hint{ max-width:820px; margin:0 0 16px; font-size:13.5px; line-height:1.55; color:#5b626e; }
+    .aulive__id{ font-weight:600; font-size:14px; color:#16171a; }
+    .aulive__v{ font:12.5px/1.4 ui-monospace, SFMono-Regular, Menlo, monospace; color:#5b626e; }
+    .aulive__when{ font-size:13.5px; color:#16171a; white-space:nowrap; }
+    .aulive__by{ font-size:12.5px; color:#5b626e; }
+    .aulive__sha{ font:12.5px/1.4 ui-monospace, SFMono-Regular, Menlo, monospace; color:#5b626e; }
+    .aulive__dirty{ display:inline-block; margin-left:8px; font-size:12px; padding:2px 8px; border-radius:999px;
+                    background:#fee2e2; color:#b42318; font-weight:600; white-space:nowrap; }
   </style>
   <header class="folderbar">
     <h1 class="folderbar__title">Admin</h1>
@@ -4351,7 +4414,22 @@ function renderAdminPage() {
     <button type="button" role="menuitem" data-menu-reset>Reset password</button>
     <button type="button" role="menuitem" class="is-danger" data-menu-remove>Remove user</button>
   </div>
-  <script>${ADMIN_JS}</script>`;
+
+  <header class="folderbar aulive__bar">
+    <h2 class="folderbar__title">Live content</h2>
+    <span class="folderbar__rule"></span>
+  </header>
+  <p class="aulive__hint">What the site is serving right now, per space. Content
+    reaches production only by publishing — a redeploy ships chrome and worker code,
+    never this — so this table is the whole answer to “is my work live?”.</p>
+  <table class="autbl">
+    <thead><tr>
+      <th>Space</th><th>Version</th><th>Published</th><th>Built from</th>
+    </tr></thead>
+    <tbody data-live-content><tr><td colspan="4" class="empty">Loading…</td></tr></tbody>
+  </table>
+  <script>${ADMIN_JS}</script>
+  <script>${LIVE_CONTENT_JS}</script>`;
   return shell({ title: "Admin · Augur", activeTab: "admin", body });
 }
 
@@ -5101,6 +5179,11 @@ function renderChangelogPage(entries) {
 // The DEFAULT space (space.json default:true, else the first) builds at the root URLs;
 // the rest under /<id>/. Returns default-first.
 async function discoverSpaces() {
+  // Engine-only: there is deliberately nothing to discover. Returning early (rather
+  // than tolerating an empty spaces dir) means the mode is explicit — an empty
+  // GV_SPACES_ROOT still fails loudly, because that is a broken checkout, not an
+  // intent.
+  if (ENGINE_ONLY) return [];
   // GV_SPACES_ROOT may point DIRECTLY at one space (a dir carrying space.json at
   // its root) — the standalone `augur dev` case: a lone space clone with no
   // sibling layout. It builds as the default space of a one-space site.
@@ -5175,6 +5258,8 @@ async function discoverSpaces() {
 // Every canonical asset name derives from the prefix (<prefix>-tokens.css, …), so
 // the engine hardcodes no product-specific names.
 function detectUiSkill(space) {
+  // No space at all (an engine-only build has no default space): no design system.
+  if (!space || !space.root) return { dirName: null, prefix: null };
   const declared = space && space.designSystem && space.designSystem.skill;
   const skillsDir = path.join(space.root, "skills");
   const candidates = declared ? [declared]
@@ -5216,6 +5301,12 @@ function setSpaceContext(space) {
 async function buildSpace(space) {
   setSpaceContext(space);
   await fs.mkdir(DIST_SPACE, { recursive: true });
+  // Reset the canvas accumulators per space: each pass collects only ITS OWN
+  // entries, which ride out in this space's routing fragment. (They used to
+  // accumulate across every space into one shared file — which meant whoever
+  // wrote that file last decided what the other spaces contributed.)
+  CANVAS_CATALOG = [];
+  CANVAS_TRACKS = [];
 
   // Scan every source (each also copies its folders into dist).
   const opportunities = await scan();
@@ -5439,7 +5530,13 @@ async function buildSpace(space) {
     `${playground.length ? `, ${plural(playground.length, "playground project")}` : ""}.`
   );
 
-  return { opportunities, base, components, patterns, pages, playground, graph };
+  return {
+    opportunities, base, components, patterns, pages, playground, graph,
+    // This space's slice of the two site-wide canvas aggregates. Returned rather
+    // than left in the module globals because each slice must reach that space's
+    // OWN routing fragment — the worker merges them at serve time.
+    canvasCatalog: CANVAS_CATALOG, canvasTracks: CANVAS_TRACKS,
+  };
 }
 
 async function main() {
@@ -5479,7 +5576,10 @@ async function main() {
     if (ONLY_SPACE && space.id !== ONLY_SPACE) continue;
     const r = await buildSpace(space); // sets BASE + DIST_SPACE for this space
     if (space.default) defaultGraph = r.graph;
-    const sr = (spaceRouting[space.id] = { publicPrefixes: [], versionMap: {}, sigParts: [] });
+    const sr = (spaceRouting[space.id] = {
+      publicPrefixes: [], versionMap: {}, sigParts: [],
+      canvasCatalog: r.canvasCatalog, canvasTracks: r.canvasTracks,
+    });
 
     // Published, link-shareable paths (prototypes + playground), prefixed with this
     // space's BASE so the gate opens them and they stay isolated per space. Galleries
@@ -5635,6 +5735,12 @@ async function main() {
     publicSkillPrefixes: gateExempt,
     restrictedBases,
     mcpAllowlist: [...mcpSpaceHosts].sort(),
+    // Assets mode's copy of the two canvas aggregates, merged here across every
+    // space this build saw. (Bundle mode ignores routing.json entirely and merges
+    // the same per-space fragments off the live manifests instead — one worker
+    // code path, two ways of reaching the same fragments.)
+    canvasCatalog: Object.values(spaceRouting).flatMap((sr) => sr.canvasCatalog || []),
+    canvasTracks: Object.values(spaceRouting).flatMap((sr) => sr.canvasTracks || []),
     canvasLoaderExtras: addonHtml(reviewTag()),
     defaultSpace: (NAV_STATE.spaces.find((s) => s.default) || {}).id || null,
     spaces: NAV_STATE.spaces,
@@ -5688,17 +5794,30 @@ async function main() {
   await fs.writeFile(path.join(DIST, "404.html"), renderNotFoundPage(), "utf8");
 
   // Review overlay assets (shared; injected into prototypes via absolute /__review/
-  // paths). The composition graph is the DEFAULT space's — prototypes live there.
+  // paths). comments.js + the cat are the engine's own.
   await fs.mkdir(path.join(DIST, "__review"), { recursive: true });
   await fs.copyFile(SRC_REVIEW, path.join(DIST, "__review", "comments.js"));
   await fs.copyFile(SRC_REVIEW_CAT, path.join(DIST, "__review", "aslam.png"));
   // Composition graph (DERIVED from canonical CSS) → window.__GV_GRAPH, loaded before
   // comments.js so the overlay can recurse tokens → base → components → patterns.
-  await fs.writeFile(
-    path.join(DIST, "__review", "graph.js"),
-    "window.__GV_GRAPH=" + JSON.stringify(defaultGraph || { tokens: {} }) + ";",
-    "utf8"
-  );
+  // It is the DEFAULT SPACE's graph, built from that space's design-system CSS, so
+  // the default space OWNS this file (it sits at the root path, which the manifest
+  // walk assigns to the default space, and ENGINE_CHROME deliberately does not
+  // claim it). Written only when a default space was actually built: an engine-only
+  // build must emit nothing space-derived, and a partial GV_ONLY_SPACE build of a
+  // non-default space has no graph to write.
+  //
+  // Known limitation, unchanged by this work: a non-default space with its OWN
+  // design system still loads this default-space graph, because reviewTag() points
+  // at the root path absolutely. Making it per-space means widening the public-path
+  // surface around the gate, so it stays a separate change.
+  if (defaultGraph) {
+    await fs.writeFile(
+      path.join(DIST, "__review", "graph.js"),
+      "window.__GV_GRAPH=" + JSON.stringify(defaultGraph) + ";",
+      "utf8"
+    );
+  }
 
   // Canvas engine (shared; canvas prototypes mount it by absolute /__canvas/ path, the same
   // way every prototype embeds /__review/comments.js). Board DATA persists to KV via /__board.
@@ -5710,10 +5829,15 @@ async function main() {
   // seven-segment display font for the session clock (SIL OFL — its license ships beside it)
   await fs.copyFile(SRC_CANVAS_7SEG, path.join(DIST, "__canvas", "DSEG7Classic-Bold.woff2"));
   await fs.copyFile(SRC_CANVAS_7SEG_LICENSE, path.join(DIST, "__canvas", "DSEG-LICENSE.txt"));
-  await fs.writeFile(path.join(DIST, "__canvas", "catalog.json"), JSON.stringify(CANVAS_CATALOG), "utf8");
-  // Always written, even empty: the canvas fetches it unconditionally, and a 404 on every
-  // board load is a worse signal than an honest [].
-  await fs.writeFile(path.join(DIST, "__canvas", "tracks.json"), JSON.stringify(CANVAS_TRACKS), "utf8");
+  // catalog.json + tracks.json are NOT written here. They are the two site-wide
+  // aggregates — every embeddable thing, and every track, across ALL spaces — and
+  // a single file can only be produced by a build that saw every space. Direct
+  // publish never does: one space publishes at a time. Written as files they made
+  // each publish silently blank the other spaces' contributions, and made CI's
+  // engine ship rewrite them from pinned checkouts. So each space carries its own
+  // slice in its routing fragment and the worker merges the live fragments to
+  // serve /__canvas/{catalog,tracks}.json (canvasAggregate in src/_worker.js) —
+  // in bundle mode from the manifests, in assets mode from routing.json.
 
   // Self-hosted fonts → /fonts/ (served immutable + public by the worker). Replaces
   // the render-blocking Google Fonts link; one variable woff2 covers every weight.
@@ -5747,13 +5871,19 @@ async function main() {
   // Spaces own their branding: comes from the DEFAULT space's repo root
   // (space-icon.png); falls back to the engine mark. Referenced root-absolute,
   // served on gated rail pages to authed users.
+  // Because its bytes come from a space, the DEFAULT SPACE owns it — it is not in
+  // ENGINE_CHROME, so the root-path rule assigns it there, and it ships when that
+  // space publishes. Emitted only when a default space was built: an engine-only
+  // build has no space branding to ship (and must stay chrome-pure).
   {
     const defaultSpace = spaces.find((s) => s.default);
-    for (const src of [
-      defaultSpace && path.join(defaultSpace.root, "space-icon.png"),
-      path.join(ROOT, "augur-mark.png"),
-    ].filter(Boolean)) {
-      if (await exists(src)) { await fs.copyFile(src, path.join(DIST, "space-icon.png")); break; }
+    if (defaultSpace) {
+      for (const src of [
+        path.join(defaultSpace.root, "space-icon.png"),
+        path.join(ROOT, "augur-mark.png"),
+      ]) {
+        if (await exists(src)) { await fs.copyFile(src, path.join(DIST, "space-icon.png")); break; }
+      }
     }
   }
   // Augur eye mark (transparent indigo disc + sparkle cutout) → /augur-eye.svg, the
@@ -5802,14 +5932,33 @@ async function main() {
   // h = sha256 of the body. The diffable unit for the direct-publish path: a
   // publish uploads only the blobs the store doesn't hold, then commits the
   // manifest (an atomic pointer flip). Ownership: files under a non-default
-  // space's base belong to that space; the shared chrome (fixed prefix list —
-  // emitted by the engine, not by any space) publishes as the pseudo-space
-  // "_engine"; the default space owns the rest of the root. Excluded entirely:
+  // space's base belong to that space; the shared chrome (fixed list — emitted by
+  // the engine, not by any space) publishes as the pseudo-space "_engine"; the
+  // default space owns the rest of the root. Excluded entirely:
   // _worker.js (deployed code, not content), _build.json + __config/ (derived
   // per build/publish), __manifests/ (this very output).
+  //
+  // ENGINE_CHROME is a list of exact files (and whole-directory prefixes ending
+  // "/") whose bytes derive from the ENGINE REPO ALONE. Two directories that look
+  // like chrome deliberately are NOT listed wholesale, because they mix sources:
+  //   __review/  — comments.js + aslam.png are the engine's, but graph.js is the
+  //                DEFAULT SPACE's composition graph, derived from its design
+  //                system's CSS. It stays at the root path (the overlay loads it
+  //                absolutely) and is owned by that space.
+  //   __canvas/  — the canvas engine is the engine's; catalog.json + tracks.json
+  //                were cross-space AGGREGATES and are no longer files at all
+  //                (the worker synthesizes them from the live routing fragments).
+  // Likewise space-icon.png comes from the default space's repo root.
+  // Getting this wrong is not cosmetic: CI publishes _engine from checkouts that
+  // may lag a direct publish, so anything space-derived listed here would be
+  // silently overwritten with stale content on every shell push. The engine-only
+  // build asserts this list is exhaustive — see the purity check below.
   const ENGINE_CHROME = [
-    "fonts/", "__review/", "__canvas/", "admin/", "changelog/", "pitis/",
-    "piti.js", "404.html", "manifest.webmanifest", "space-icon.png",
+    "fonts/", "admin/", "changelog/", "pitis/",
+    "__review/comments.js", "__review/aslam.png",
+    "__canvas/canvas.js", "__canvas/canvas.css", "__canvas/capture.js",
+    "__canvas/DSEG7Classic-Bold.woff2", "__canvas/DSEG-LICENSE.txt",
+    "piti.js", "404.html", "manifest.webmanifest",
     "augur-eye.svg", "augur-icon-192.png", "augur-icon-512.png", "augur-mark.png",
   ];
   const MANIFEST_MIME = {
@@ -5849,6 +5998,23 @@ async function main() {
     const h = createHash("sha256").update(body).digest("hex");
     (manifests[owner] ||= { id: owner, format: 1, files: {} }).files["/" + rel] = { h, ct: ctFor(rel), s: body.length };
   }
+  // Chrome purity. An engine-only build has no space on disk, so EVERY file it
+  // emitted must be engine chrome. If one isn't, ENGINE_CHROME has gone stale
+  // against what the build emits — some new artifact is space-derived (or newly
+  // engine-derived) and nobody updated the list. Failing here is the point: this
+  // is the check that makes "`--engine` cannot ship space content" true by
+  // construction rather than by comment, and it fires in CI on every deploy.
+  if (ENGINE_ONLY) {
+    const strays = Object.keys(manifests).filter((id) => id !== "_engine");
+    if (strays.length) {
+      const examples = strays.flatMap((id) => Object.keys(manifests[id].files)).slice(0, 10);
+      throw new Error(
+        `[manifests] engine-only build emitted ${examples.length >= 10 ? "10+" : examples.length} non-chrome file(s): ` +
+        `${examples.join(", ")}. Either they belong to a space (emit them inside buildSpace) ` +
+        `or they are new engine chrome (add them to ENGINE_CHROME).`
+      );
+    }
+  }
   // Attach each space's meta + routing fragment (see spaceRouting above); the
   // engine manifest carries the chrome-derived pieces. djb2 over the space's own
   // structural signature gives the per-space shell-reload token the publish
@@ -5866,11 +6032,19 @@ async function main() {
     }
     m.space = NAV_STATE.spaces.find((s) => s.id === id) || { id };
     const sr = spaceRouting[id];
+    // canvasCatalog/canvasTracks ride in the fragment rather than shipping as
+    // files: they are the space's OWN slice of two site-wide aggregates, and a
+    // file can only be written by whoever holds the whole picture — which no
+    // single publisher does. The worker merges the live fragments and serves
+    // /__canvas/{catalog,tracks}.json from them (see canvasAggregate there), so
+    // publishing one space can never blank another's entries.
     if (sr) m.routing = {
       publicPrefixes: sr.publicPrefixes,
       versionMap: sr.versionMap,
       shellSig: sigOf(sr.sigParts),
       mcpAllowlist: [...(sr.mcpHosts || [])].sort(),
+      canvasCatalog: sr.canvasCatalog || [],
+      canvasTracks: sr.canvasTracks || [],
       ...(m.space.default ? { publicSkillPrefixes: gateExempt } : {}),
     };
   }

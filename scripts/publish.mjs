@@ -32,8 +32,16 @@ const opt = (f) => { const i = args.indexOf(f); return i >= 0 ? args[i + 1] : nu
 const DRY = flag("--dry-run");
 const ALL = flag("--all");
 // --engine: shared chrome + instance config ONLY, never space content. The CI
-// path uses this — its space checkouts are pinned and may lag direct publishes,
-// so it must never be able to overwrite newer space content with stale trees.
+// path uses this — its checkout may lag direct publishes, so it must never be
+// able to overwrite newer space content with a stale tree.
+//
+// "Never" is enforced twice over. This flag only ever commits the _engine
+// manifest, AND it runs the build with GV_ENGINE_ONLY=1, which skips space
+// discovery entirely — so a space sitting in the workspace is not merely ignored,
+// it is never read, and the build asserts it emitted nothing but chrome. Until
+// that assertion existed, four files that LOOKED like chrome (the composition
+// graph, the space icon, and the two canvas aggregates) were in fact derived from
+// space content, and every CI run quietly republished them from its pinned tree.
 const ENGINE_ONLY = flag("--engine");
 
 function readEnvFile(p) {
@@ -114,6 +122,7 @@ const BUILD_ENV = {
   ...(IDENTITY_PATH ? { GV_IDENTITY_PATH: IDENTITY_PATH } : {}),
   ...(DEPLOY_CONFIG_PATH ? { GV_DEPLOY_CONFIG_PATH: DEPLOY_CONFIG_PATH } : {}),
   ...(targetSpace ? { GV_ONLY_SPACE: targetSpace } : {}),
+  ...(ENGINE_ONLY ? { GV_ENGINE_ONLY: "1" } : {}),
 };
 // Identity-less checkout (the collaborator layout — no deploy shell anywhere):
 // fetch the instance's sanitized contributor profiles so editor chips survive

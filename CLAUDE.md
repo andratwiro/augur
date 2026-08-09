@@ -47,10 +47,33 @@ rebuilt), the `playground/`, and the whitelisted skill assets ship. `research.md
 **Engine pushes auto-deploy; space content publishes directly.** A push here fires
 `.github/workflows/deploy-trigger.yml` (an `engine-updated` dispatch); the shell
 moves the engine pin and its `deploy.yml` ships worker code + engine chrome
-(~1 min). **Space content does NOT ship on push** — spaces publish via
-`augur publish` (seconds, atomic; token from `augur login`). Deploy verification
-is the public **`/_build.json`** stamp: `{builtAt, spaces:{<id>:{sha, dirty?}}}` —
-compare a space's sha to `git rev-parse HEAD`.
+(~1 min). **Space content does NOT ship on push, and cannot** — spaces publish via
+`augur publish` (seconds, atomic; token from `augur login`).
+
+**One source of content, structurally.** A shell builds with `GV_ENGINE_ONLY=1`:
+space discovery is skipped, no space is on disk, and the manifest writer THROWS if
+the build emitted anything that isn't engine chrome (`ENGINE_CHROME` in `build.js`).
+So a redeploy cannot overwrite a publish however stale its checkout — not by
+convention, by construction. Shells therefore mount no space submodules at all;
+they keep a `spaces` roster in `deploy.config.json` for repo-side automation.
+Four files used to break this rule while looking like chrome — the composition
+graph, the space icon, and the two canvas aggregates — and CI republished them
+from pinned trees on every push. The first two now belong to the default space;
+the aggregates are no longer files (see below).
+
+Deploy verification is the public **`/_build.json`** stamp:
+`{builtAt, engine:{…}, spaces:{<id>:{sha, dirty?, version, publishedAt, publishedBy}}}`.
+It means one thing — the last thing published. `augur status` puts it next to your
+clones and `origin/main`; the admin panel renders the same table. **`dirty` is the
+one to watch**: a publish from an uncommitted tree serves bytes held in no
+repository, so it is the only state that cannot be reproduced from git.
+
+**Cross-space aggregates are synthesized, never shipped.** `/__canvas/catalog.json`
+(the insert picker) and `/__canvas/tracks.json` span every space, so no single
+publisher can write them — one space publishing would blank the others. Each space
+carries its slice in its routing fragment and the worker merges them
+(`canvasAggregate`). Adding a site-wide aggregate means adding a fragment field,
+never a file.
 
 **Runtime config (no build-time worker stamping).** `src/_worker.js` ships VERBATIM;
 build.js emits `dist/__config/instance.json` (users from `GV_IDENTITY_PATH`; from
@@ -66,18 +89,33 @@ chrome): `{files: {path → {sha256, mime, size}}}` + the space's routing fragme
 binding, the worker serves those manifests from content-addressed R2 blobs and takes
 publishes over `/__publish/<space>/{check,blob,commit,rollback}` (per-space bearer
 tokens, minted at `/__admin/tokens`; instance config pushed via
-`/__publish/_instance/config`). Routing then derives from the LIVE manifests —
-`routing.json` is a Pages-mode artifact only. Without the flag/binding, serving is
-Pages `ASSETS`, byte-identical to the pre-bundle behavior.
+`/__publish/_instance/config`). Reads mirror the writes for backup —
+`GET /__publish/<space>/{manifest,versions,version/<n>,blob/<h>}`, same bearer auth.
+Routing then derives from the LIVE manifests — `routing.json` is a Pages-mode
+artifact only. Without the flag/binding, serving is Pages `ASSETS`, byte-identical
+to the pre-bundle behavior.
+
+**Durability.** The store is the only copy of live content, and R2 has no
+point-in-time restore. In-store: manifest versions are never pruned and blobs are
+never garbage-collected, so `rollback` reaches any past publish. Off-Cloudflare:
+`augur export --out <dir> [--history]` walks the read endpoints with a publish
+token (no account credentials) into an incremental, content-addressed directory;
+`augur restore <dir>` puts it back as a normal publish, preserving `source`
+provenance and refusing to bury newer live content without `--force`. Walkthrough:
+`docs/2026-08-09-bundle-store-recovery.md`.
 
 **Local commands** (`augur <cmd>` via the bin entry, or `node scripts/<cmd>.mjs`):
 `augur dev` (standalone shell — single space folder, dev identity fallback) ·
 `npm run offline` (god-mode multi-space) · `npm run deploy` (build + direct upload;
 `--check`, `--preview`) · `augur publish [--space <id>|--all] [--dry-run]`
-(incremental per-space publish; `AUGUR_TOKEN` + `AUGUR_ORIGIN`).
+(incremental per-space publish; `AUGUR_TOKEN` + `AUGUR_ORIGIN`) · `augur status`
+(live vs clones vs `origin/main`; exit 1 on drift) · `augur export --out <dir>` /
+`augur restore <dir>` (store backup).
 
-Env reference: `GV_SPACES_ROOT` (spaces location) · `GV_IDENTITY_PATH` (user list) ·
-`GV_DEPLOY_CONFIG_PATH` (deploy config) · `OFFLINE_PORT` (offline preview).
+Env reference: `GV_SPACES_ROOT` (spaces location) · `GV_ENGINE_ONLY` (=1: chrome
+only, no space discovery — what a shell's CI runs) · `GV_ONLY_SPACE` (build one
+space) · `GV_IDENTITY_PATH` (user list) · `GV_DEPLOY_CONFIG_PATH` (deploy config) ·
+`OFFLINE_PORT` (offline preview).
 Runtime worker env (per-instance Cloudflare project settings, not build-time):
 `DELETE_DISPATCH_URL` + `DELETE_DISPATCH_TOKEN` — the webhook the admin-only
 `/__delete` route forwards to (a `prototype-delete` repository_dispatch on the deploy

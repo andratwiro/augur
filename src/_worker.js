@@ -288,6 +288,11 @@ async function loadConfig(env) {
     PUBLIC_SKILL_PREFIXES = routing.publicSkillPrefixes || [];
     RESTRICTED_BASES = routing.restrictedBases || [];
     CANVAS_LOADER_EXTRAS = routing.canvasLoaderExtras || "";
+    // Assets mode gets the same two aggregates pre-merged by the build that shipped
+    // them (there is only ever one whole-site build in this mode, so the file is
+    // authoritative). Same globals, same serving route as bundle mode.
+    CANVAS_CATALOG = routing.canvasCatalog || [];
+    CANVAS_TRACKS = routing.canvasTracks || [];
     MCP_HOST_ALLOWLIST = routing.mcpAllowlist || [];
     mcpStaticHosts = new Set(MCP_HOST_ALLOWLIST);
     SPACES = Array.isArray(routing.spaces) ? routing.spaces : [];
@@ -895,6 +900,7 @@ async function loadManifests(env, force) {
 function applyDerivedRouting(manifests) {
   const vmap = {}, prefixes = [], restricted = [], mcp = new Set(), spacesList = [];
   const sigs = [];
+  const catalog = [], tracks = [];
   let skillPrefixes = [], loaderExtras = "";
   for (const id of Object.keys(manifests).sort()) {
     const m = manifests[id];
@@ -902,6 +908,11 @@ function applyDerivedRouting(manifests) {
     const r = m.routing || {};
     prefixes.push(...(r.publicPrefixes || []));
     Object.assign(vmap, r.versionMap || {});
+    // Each space's slice of the two aggregates, concatenated in the same sorted-id
+    // order every time so the merge is stable. A space that has never published
+    // simply contributes nothing, rather than erasing the others.
+    catalog.push(...(r.canvasCatalog || []));
+    tracks.push(...(r.canvasTracks || []));
     for (const h of r.mcpAllowlist || []) mcp.add(h);
     if (r.publicSkillPrefixes) skillPrefixes = r.publicSkillPrefixes;
     const sp = m.space || { id };
@@ -918,6 +929,8 @@ function applyDerivedRouting(manifests) {
   PUBLIC_SKILL_PREFIXES = skillPrefixes;
   RESTRICTED_BASES = restricted;
   CANVAS_LOADER_EXTRAS = loaderExtras;
+  CANVAS_CATALOG = catalog;
+  CANVAS_TRACKS = tracks;
   MCP_HOST_ALLOWLIST = [...mcp].sort();
   mcpStaticHosts = new Set(MCP_HOST_ALLOWLIST);
   SPACES = spacesList.sort((a, b) => (b.default === true) - (a.default === true) || String(a.id).localeCompare(String(b.id)));
@@ -987,18 +1000,46 @@ async function assetPathExists(env, url) {
   return !r.miss;
 }
 
-// The /_build.json contract, synthesized from the manifests in bundle mode so
-// collaborators' "is my commit live?" check keeps its exact shape.
+// The /_build.json contract, synthesized from the manifests.
+//
+// In bundle mode this is the ONE answer to "what is live?", and it means exactly
+// one thing: the last thing PUBLISHED. Nothing else can change what a visitor sees
+// — a CI rebuild ships chrome and worker code, never space content — so there is no
+// second number to reconcile it against. Per space:
+//   sha / dirty   the space repo commit it was built from, and whether the working
+//                 tree was dirty at publish time (see below)
+//   version       the store's monotonic publish counter, and the argument to a
+//                 rollback
+//   publishedAt   when that publish committed
+//   publishedBy   the label on the publish token that committed it
+// `dirty` is the one that matters and the one nobody was looking at: a publish from
+// an uncommitted tree serves bytes that exist in NO repository, so it is both the
+// only unreproducible state and invisible unless something surfaces it. It is
+// surfaced in three places now — here, the admin panel's Live content table, and
+// the deploy canary once it outlives its grace window.
+//
+// Shape is additive: `builtAt`, `engine.sha` and `spaces.<id>.sha`/`dirty` keep
+// their exact previous meaning, so existing checks keep working.
 function synthBuildStamp(manifests) {
   const spaces = {}, engine = { sha: null };
   if (INSTANCE_ENGINE_VERSION) engine.version = INSTANCE_ENGINE_VERSION;
   let builtAt = null;
+  const provenance = (m) => ({
+    ...(m.version ? { version: m.version } : {}),
+    ...(m.publishedAt ? { publishedAt: m.publishedAt } : {}),
+    ...(m.publishedBy ? { publishedBy: m.publishedBy } : {}),
+  });
   for (const id in manifests) {
     const m = manifests[id];
     if (m.publishedAt && (!builtAt || m.publishedAt > builtAt)) builtAt = m.publishedAt;
     const src = m.source || {};
-    if (id === "_engine") { engine.sha = src.sha || null; if (src.dirty) engine.dirty = true; continue; }
-    spaces[id] = { sha: src.sha || null, ...(src.dirty ? { dirty: true } : {}) };
+    if (id === "_engine") {
+      engine.sha = src.sha || null;
+      if (src.dirty) engine.dirty = true;
+      Object.assign(engine, provenance(m));
+      continue;
+    }
+    spaces[id] = { sha: src.sha || null, ...(src.dirty ? { dirty: true } : {}), ...provenance(m) };
   }
   return { builtAt: builtAt || new Date().toISOString(), engine, spaces };
 }
@@ -1123,6 +1164,64 @@ async function publishApi(request, url, env) {
     });
   }
 
+  // ── Read side: what `augur export` walks ───────────────────────────────────
+  // The store is the only copy of live content, and a publish from a dirty tree
+  // exists in no repository at all — so an off-Cloudflare copy has to be takeable
+  // without Cloudflare account credentials. These three reads are the whole
+  // backup surface, and they are deliberately the mirror image of the writes
+  // beside them: same bearer auth, same paths, same space scoping.
+  //
+  // Read is strictly weaker than the write these tokens already carry (a token
+  // that can overwrite every byte a visitor sees can hardly be trusted less with
+  // reading them), so this grants no privilege that wasn't already granted.
+  if (op === "manifest" && request.method === "GET") {
+    const obj = await env.BUNDLES.get(`spaces/${spaceId}/manifest.json`);
+    if (!obj) return jsonResponse({ error: "unknown-space" }, 404);
+    return new Response(obj.body, {
+      headers: { "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store" },
+    });
+  }
+
+  // Version list, newest first. Manifest history is never pruned and blobs are
+  // never garbage-collected, so this doubles as the rollback menu.
+  if (op === "versions" && request.method === "GET") {
+    const versions = [];
+    let cursor;
+    try {
+      do {
+        const page = await env.BUNDLES.list({ prefix: `spaces/${spaceId}/versions/`, cursor, limit: 1000 });
+        for (const o of page.objects) {
+          const n = parseInt(o.key.slice(o.key.lastIndexOf("/") + 1), 10);
+          if (n) versions.push(n);
+        }
+        cursor = page.truncated ? page.cursor : undefined;
+      } while (cursor);
+    } catch (e) { return jsonResponse({ error: "list-failed" }, 502); }
+    return jsonResponse({ versions: versions.sort((a, b) => b - a) });
+  }
+
+  // One historical manifest, by version. (The live pointer is `manifest` above.)
+  if (op === "version" && request.method === "GET") {
+    const v = parseInt(arg, 10);
+    if (!v || v < 1) return jsonResponse({ error: "bad-version" }, 400);
+    const obj = await env.BUNDLES.get(`spaces/${spaceId}/versions/${v}.json`);
+    if (!obj) return jsonResponse({ error: "unknown-version" }, 404);
+    return new Response(obj.body, {
+      headers: { "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store" },
+    });
+  }
+
+  // Blob bytes by hash. Content-addressed and immutable, so this is safe to cache
+  // hard — an export of thousands of blobs is the main consumer.
+  if (op === "blob" && request.method === "GET") {
+    if (!/^[0-9a-f]{64}$/.test(arg || "")) return jsonResponse({ error: "bad-hash" }, 400);
+    const obj = await env.BUNDLES.get("blobs/" + arg);
+    if (!obj) return jsonResponse({ error: "unknown-blob" }, 404);
+    return new Response(obj.body, {
+      headers: { "Content-Type": "application/octet-stream", "Cache-Control": "no-store" },
+    });
+  }
+
   if (op === "blob" && request.method === "PUT") {
     if (!/^[0-9a-f]{64}$/.test(arg || "")) return jsonResponse({ error: "bad-hash" }, 400);
     const buf = await request.arrayBuffer();
@@ -1217,6 +1316,78 @@ async function publishApi(request, url, env) {
   }
 
   return jsonResponse({ error: "unknown-op" }, 400);
+}
+
+// Remove every file under a URL prefix from a space's live manifest, committed as
+// a normal new version (so `rollback` undoes it like any other publish).
+//
+// This exists because "Delete forever" used to be a lie in bundle mode. It fires a
+// repo dispatch that deletes the folder in the space repo and relied on the
+// FOLLOWING REDEPLOY to drop it from the site — but redeploys stopped serving space
+// content, so the prototype kept rendering from the store until someone happened to
+// republish that space. The button reported success and the thing stayed up.
+//
+// Note what is deliberately NOT changed: `source.sha`. Live content now differs
+// from that commit's tree, which is exactly the "pushed but not published" state
+// the deploy canary already watches for — it will ask for a republish, and the
+// republish reconciles the two. Inventing a second flag for it would just be
+// another number to reconcile.
+async function removeFromStore(env, spaceId, urlPrefix, by) {
+  if (!env.BUNDLES) return { skipped: "no-store" };
+  const obj = await env.BUNDLES.get(`spaces/${spaceId}/manifest.json`);
+  if (!obj) return { skipped: "unknown-space" };
+  const cur = JSON.parse(await obj.text());
+  const files = {};
+  let removed = 0;
+  for (const [p, f] of Object.entries(cur.files || {})) {
+    if (p.startsWith(urlPrefix)) { removed++; continue; }
+    files[p] = f;
+  }
+  if (!removed) return { removed: 0 };
+  // Same guard a publish gets: a delete may never take out an instance sentinel.
+  for (const s of INSTANCE_SENTINELS) {
+    if (cur.files[s] && !files[s]) return { error: "sentinel-missing", path: s };
+  }
+  // Drop the dead path from the routing fragment too, or the gate keeps advertising
+  // a public prefix that now resolves to nothing.
+  const routing = { ...(cur.routing || {}) };
+  if (Array.isArray(routing.publicPrefixes)) {
+    routing.publicPrefixes = routing.publicPrefixes.filter((u) => !u.startsWith(urlPrefix));
+  }
+  if (routing.versionMap) {
+    routing.versionMap = Object.fromEntries(
+      Object.entries(routing.versionMap).filter(([u]) => !u.startsWith(urlPrefix)));
+  }
+  if (Array.isArray(routing.canvasCatalog)) {
+    routing.canvasCatalog = routing.canvasCatalog.filter(
+      (e) => !String((e && e.url) || "").startsWith(urlPrefix));
+  }
+  const version = (cur.version || 0) + 1;
+  const out = {
+    ...cur, files, routing, version,
+    publishedAt: new Date().toISOString(),
+    publishedBy: `delete by ${by || "admin"}`,
+  };
+  await env.BUNDLES.put(`spaces/${spaceId}/versions/${version}.json`, JSON.stringify(out));
+  await env.BUNDLES.put(`spaces/${spaceId}/manifest.json`, JSON.stringify(out));
+  MANIFESTS.at = 0; cfgAt = 0;
+  return { removed, version };
+}
+
+// Repo path → live URL prefix. The two shapes DELETE_PATH_RE allows are
+// "<folder>/prototypes/<name>" and "playground/<name>"; the served URLs drop the
+// "prototypes/" segment ("/<folder>/<name>/") and carry the space's base for every
+// space but the default.
+function deleteUrlPrefix(space, repoPath) {
+  const parts = repoPath.split("/");
+  const tail = parts[0] === "playground"
+    ? `/playground/${encodeURIComponent(parts[1])}/`
+    : `/${encodeURIComponent(parts[0])}/${encodeURIComponent(parts[2])}/`;
+  // An unknown space must NOT fall back to the root form: that would aim the
+  // deletion at the default space's URLs instead. No space, no prefix.
+  const meta = SPACES.find((s) => s.id === space);
+  if (!meta) return null;
+  return meta.default ? tail : `/${space}${tail}`;
 }
 
 // ---- Admin: engine version + update nudge -----------------------------------
@@ -2038,7 +2209,24 @@ async function deleteApi(request, env, me) {
     }),
   });
   if (!r.ok && r.status !== 204) return jsonResponse({ error: "dispatch-failed", status: r.status }, 502);
-  return jsonResponse({ ok: true }, 202);
+  // The repo deletion is in flight. Now take it off the live site, which in bundle
+  // mode ONLY the store can do — the redeploy this used to rely on no longer ships
+  // space content. Dispatch first, because that half is the durable record; if this
+  // half fails we say so rather than reporting a clean success.
+  let store = null;
+  if (bundleMode(env)) {
+    const prefix = deleteUrlPrefix(space, path);
+    if (!prefix) return jsonResponse({ error: "unknown-space", space }, 400);
+    try {
+      store = await removeFromStore(env, space, prefix, me ? me.email : "");
+    } catch (e) {
+      store = { error: "store-write-failed" };
+    }
+    if (store && store.error) {
+      return jsonResponse({ error: "removed-from-repo-but-not-live", store }, 502);
+    }
+  }
+  return jsonResponse({ ok: true, ...(store ? { store } : {}) }, 202);
 }
 
 // ---- Created canvases (KV-backed, single key) -------------------------------
@@ -2112,6 +2300,25 @@ async function canvasesApi(request, url, env, me) {
 // canvas page mounts the engine but loses the overlay stack that real prototype
 // files get injected at build.
 let CANVAS_LOADER_EXTRAS = "";
+
+// The two site-wide canvas aggregates — every embeddable thing across all spaces
+// (the insert picker's catalog) and every track any space installs. They are
+// SYNTHESIZED here, never shipped as files, because no single publisher ever holds
+// the whole picture: content publishes one space at a time, so a space that wrote
+// the whole file would blank every other space's entries. Each space contributes
+// its own slice in its routing fragment; these hold the merge. Both modes feed
+// them: bundle mode from the live manifests (applyDerivedRouting), assets mode
+// from routing.json (loadConfig).
+let CANVAS_CATALOG = [];
+let CANVAS_TRACKS = [];
+
+// Serve one of the aggregates. Public, matching what the files were: canvas boards
+// are shareable links that render without a login, and their insert picker and
+// music list have to load for an anonymous viewer too (isPublicPath already opens
+// /__canvas/*.json). Never cached at the edge — a publish changes it immediately.
+function canvasAggregate(which) {
+  return jsonResponse(which === "tracks" ? CANVAS_TRACKS : CANVAS_CATALOG);
+}
 
 // The same loader a repo canvas folder carries — the page just names the board and
 // mounts the shared /__canvas/ engine; contents persist to /__board keyed by URL.
@@ -2520,6 +2727,15 @@ export default {
       return jsonResponse(synthBuildStamp(await loadManifests(env)));
     }
 
+    // The canvas insert-picker catalog and the session-music list: merged from every
+    // space's routing fragment rather than served as files, because they are the only
+    // two site-wide aggregates and no single publisher can own one (see
+    // canvasAggregate). Public, exactly as the files were — a shared canvas board
+    // renders for a signed-out viewer, so its picker and player must load too. Placed
+    // here, before the gate, for the same reason /_build.json is.
+    if (url.pathname === "/__canvas/catalog.json") return canvasAggregate("catalog");
+    if (url.pathname === "/__canvas/tracks.json") return canvasAggregate("tracks");
+
     // Vanity domains (from the deploy config): a host CNAME'd to this
     // Pages project + added as a custom domain runs this worker. DNS can't target
     // a path, so land each such host's root on its configured page. Scoped to the
@@ -2812,4 +3028,6 @@ export const __testables = {
   adminUsersApi,
   mergeRoster, readRoster, revokeSecret, revokeInvitesFor,
   isEmailish, nameFromEmail, initialsFor,
+  applyDerivedRouting, canvasAggregate, synthBuildStamp,
+  deleteUrlPrefix, removeFromStore,
 };

@@ -742,3 +742,119 @@ test("an unknown op still changes nothing", async () => {
   assert.equal(res.status, 400);
   assert.equal(await env.COMMENTS.get("users:roster"), null);
 });
+
+// ---- Content ownership: the store is the only source of space content --------
+// These cover the invariant the publish-only cutover rests on. The bug they
+// prevent is subtle: an artifact that LOOKS like shared chrome but is derived
+// from a space gets republished by CI from a pinned checkout, silently reverting
+// whatever the space published directly. Four files were in that state.
+
+// A space's manifest as the store holds it: content plus the routing fragment the
+// worker merges to derive site-wide state.
+const manifestOf = (id, { def = false, catalog = [], tracks = [], ...rest } = {}) => ({
+  id, format: 1, files: {},
+  space: { id, default: def },
+  routing: { publicPrefixes: [], versionMap: {}, canvasCatalog: catalog, canvasTracks: tracks },
+  ...rest,
+});
+
+test("canvas catalog merges every space's slice, not just the last publisher's", async () => {
+  W.applyDerivedRouting({
+    _engine: { id: "_engine", routing: { canvasLoaderExtras: "<!--x-->" } },
+    alpha: manifestOf("alpha", { def: true, catalog: [{ url: "/a/", title: "A" }], tracks: [{ id: "t1" }] }),
+    beta: manifestOf("beta", { catalog: [{ url: "/beta/b/", title: "B" }] }),
+  });
+  const merged = await W.canvasAggregate("catalog").json();
+  assert.deepEqual(merged.map((e) => e.url), ["/a/", "/beta/b/"],
+    "both spaces contribute — publishing one must not blank the other");
+  assert.deepEqual((await W.canvasAggregate("tracks").json()).map((t) => t.id), ["t1"]);
+});
+
+test("a space that has never published contributes nothing rather than erasing others", async () => {
+  W.applyDerivedRouting({
+    alpha: manifestOf("alpha", { def: true, catalog: [{ url: "/a/" }] }),
+    beta: { id: "beta", format: 1, files: {}, space: { id: "beta" } }, // no routing at all
+  });
+  assert.deepEqual((await W.canvasAggregate("catalog").json()).map((e) => e.url), ["/a/"]);
+});
+
+test("the build stamp reports publish provenance, and flags a working-tree publish", () => {
+  const stamp = W.synthBuildStamp({
+    _engine: { id: "_engine", version: 27, publishedAt: "2026-08-09T08:00:00.000Z", source: { sha: "e".repeat(40) } },
+    alpha: {
+      id: "alpha", version: 15, publishedAt: "2026-08-09T07:00:00.000Z", publishedBy: "rob",
+      source: { sha: "a".repeat(40), dirty: true },
+    },
+  });
+  assert.equal(stamp.spaces.alpha.version, 15);
+  assert.equal(stamp.spaces.alpha.publishedBy, "rob");
+  assert.equal(stamp.spaces.alpha.dirty, true, "a dirty publish must never be silent");
+  assert.equal(stamp.engine.version, 27);
+  assert.equal(stamp.builtAt, "2026-08-09T08:00:00.000Z", "newest publish across the store");
+});
+
+test("a clean publish carries no dirty flag at all (absent, not false)", () => {
+  const stamp = W.synthBuildStamp({ alpha: { id: "alpha", version: 2, source: { sha: "a".repeat(40) } } });
+  assert.equal("dirty" in stamp.spaces.alpha, false);
+});
+
+// ---- Delete forever actually deletes ----------------------------------------
+
+test("repo path → live URL prefix, per space base", () => {
+  W.applyDerivedRouting({
+    alpha: manifestOf("alpha", { def: true }),
+    beta: manifestOf("beta"),
+  });
+  assert.equal(W.deleteUrlPrefix("alpha", "onboarding/prototypes/signup"), "/onboarding/signup/",
+    "the default space serves at the root and drops the prototypes/ segment");
+  assert.equal(W.deleteUrlPrefix("beta", "onboarding/prototypes/signup"), "/beta/onboarding/signup/");
+  assert.equal(W.deleteUrlPrefix("alpha", "playground/sketch"), "/playground/sketch/");
+  assert.equal(W.deleteUrlPrefix("nope", "playground/sketch"), null,
+    "an unknown space must not fall back to the root form and aim at the default space");
+});
+
+// Minimal in-memory R2 mirroring the subset removeFromStore uses.
+function memR2(initial = {}) {
+  const store = new Map(Object.entries(initial));
+  return {
+    store,
+    async get(k) { return store.has(k) ? { text: async () => store.get(k) } : null; },
+    async put(k, v) { store.set(k, typeof v === "string" ? v : JSON.stringify(v)); },
+  };
+}
+
+test("deleting a prototype removes its files and its routing entries, as a new version", async () => {
+  const live = {
+    id: "alpha", version: 4, files: {
+      "/index.html": { h: "1" },
+      "/onboarding/signup/index.html": { h: "2" },
+      "/onboarding/signup/preview.webp": { h: "3" },
+      "/onboarding/login/index.html": { h: "4" },
+    },
+    routing: {
+      publicPrefixes: ["/onboarding/signup/", "/onboarding/login/"],
+      versionMap: { "/onboarding/signup/": "1", "/onboarding/login/": "2" },
+      canvasCatalog: [{ url: "/onboarding/signup/" }, { url: "/onboarding/login/" }],
+    },
+  };
+  const env = { BUNDLES: memR2({ "spaces/alpha/manifest.json": JSON.stringify(live) }) };
+  const res = await W.removeFromStore(env, "alpha", "/onboarding/signup/", "admin@example.test");
+  assert.equal(res.removed, 2);
+  assert.equal(res.version, 5);
+
+  const after = JSON.parse(env.BUNDLES.store.get("spaces/alpha/manifest.json"));
+  assert.deepEqual(Object.keys(after.files), ["/index.html", "/onboarding/login/index.html"]);
+  assert.deepEqual(after.routing.publicPrefixes, ["/onboarding/login/"],
+    "the gate must stop advertising a path that now resolves to nothing");
+  assert.deepEqual(Object.keys(after.routing.versionMap), ["/onboarding/login/"]);
+  assert.deepEqual(after.routing.canvasCatalog, [{ url: "/onboarding/login/" }]);
+  assert.ok(env.BUNDLES.store.has("spaces/alpha/versions/5.json"), "rollback must be able to undo it");
+});
+
+test("deleting something that isn't there changes nothing (no empty version bump)", async () => {
+  const live = { id: "alpha", version: 4, files: { "/index.html": { h: "1" } } };
+  const env = { BUNDLES: memR2({ "spaces/alpha/manifest.json": JSON.stringify(live) }) };
+  const res = await W.removeFromStore(env, "alpha", "/gone/", "admin@example.test");
+  assert.equal(res.removed, 0);
+  assert.equal(JSON.parse(env.BUNDLES.store.get("spaces/alpha/manifest.json")).version, 4);
+});
