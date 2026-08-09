@@ -3057,14 +3057,29 @@
   }
 
   // + insert menu (image upload · prototype tile)
+  var plusProtoRow = null;
   function buildPlusMenu() {
     plusMenu = el("div", { id: "gvc-plusmenu", class: "hidden" });
     [["Image", I_IMAGE, function () { pickImage(centerWorld()); }], ["Prototype", I_PROTO, function () { openPicker(); }]].forEach(function (it) {
       var row = el("div", { class: "row", html: lucideIcon(it[1]) + "<span>" + it[0] + "</span>" });
       row.addEventListener("click", function () { plusMenu.classList.add("hidden"); it[2](); });
+      if (it[0] === "Prototype") plusProtoRow = row;
       plusMenu.appendChild(row);
     });
     ui.appendChild(plusMenu);
+  }
+
+  // The insert picker lists every prototype, page and component on the site — it is the
+  // site's inventory, and the worker now serves it EMPTY to a signed-out caller so a
+  // shared board can't be used to enumerate everything else that exists. Given that, the
+  // two ways in would only ever open an empty grid for a signed-out viewer, so take them
+  // away instead of showing an empty drawer. Called once from mpBoot's /__me, which runs
+  // on every board; until it answers the buttons stay as they are, so a signed-in user
+  // never sees them flicker and a failed /__me degrades to today's behaviour.
+  function setInsertPickerAvailable(on) {
+    if (barEls && barEls.widgets) barEls.widgets.style.display = on ? "" : "none";
+    if (plusProtoRow) plusProtoRow.style.display = on ? "" : "none";
+    if (!on && picker) picker.classList.add("hidden");
   }
 
   function pop(id) { var h = nodeEls[id]; if (!h) return; h.classList.add("gvc-pop"); setTimeout(function () { h.classList.remove("gvc-pop"); }, 240); }
@@ -5122,6 +5137,10 @@
       .then(function (d) {
         var nm = (d && d.user && d.user.name) || "";
         var av = d && d.user && d.user.avatar;
+        // Signed out on an instance that HAS accounts → no insert picker (see
+        // setInsertPickerAvailable). accounts:false is an instance with no user list at
+        // all, where every visitor is the operator, so the picker stays.
+        setInsertPickerAvailable(!d || !d.accounts || !!(d && d.user));
         // same-origin paths only — this string rides the join URL to every peer
         mpAvatar = typeof av === "string" && av.charAt(0) === "/" && av.length < 300 ? av : null;
         if (nm) { mpName = nm; ME = nm; }
