@@ -3,12 +3,18 @@
 **One command, every time:**
 
 ```
-augur ship            # commit + publish + push, then print the live URL
-augur ship -m "…"     # with your own commit message
+node ../augur/scripts/ship.mjs            # commit + publish + push, then print the live URL
+node ../augur/scripts/ship.mjs -m "…"     # with your own commit message
 ```
 
-Agents: this is the default. Finish a change, run it, and hand the human the URL
-it prints — the live site, not localhost, not a `file://` path. Everyone works
+`augur ship` is the same thing, and only works if someone ran `npm link` in the
+engine clone on this machine. The `node …` form always works — prefer it in
+instructions, or an agent following them hits "command not found" and improvises.
+
+Agents: this is the default, and it runs every time you finish a piece of work —
+not once at the end of a session. Hand the human the URL it prints: the live
+site, never localhost, never a `file://` path. A local path shows them something
+nobody else can see. Everyone works
 against the same live URL, so what you show is what everyone else sees.
 
 It does three things that used to be three separate decisions, each silently
