@@ -109,8 +109,19 @@ not happen. `colorFor` and `avatarKey` already make the same trade.
 
 - **Answers only what is asked for.** The endpoint takes `ids` (and, for the
   back-compatibility path below, `names`). There is no "list everyone" mode, so a public
-  prototype URL cannot be used to enumerate the team. Ids are one-way hashes, so they
-  cannot be guessed from an address either.
+  prototype URL cannot be used to enumerate the team.
+- **⚠️ It is, however, a membership oracle, and that is accepted.** `personId` is an
+  unsalted hash of the address, so anyone can compute the id for a *guessed* email
+  offline and ask this endpoint whether it exists — 50 guesses per request, from any
+  public prototype URL, unrated-limited. A hit confirms that address has an account and
+  returns that person's name and photo. `names` is the same oracle keyed on display name.
+  No address is ever returned, and a commenter's name and face are already visible in the
+  public comment they wrote, so what leaks is (a) confirmation that a guessed address is
+  a member and (b) the name and photo of colleagues who have not commented on that page.
+  At a roster of this size that is judged acceptable. Closing it would mean salting the
+  hash with a **dedicated, never-rotated** secret — not `SESSION_SECRET`, because
+  rotating that would silently orphan the `by` on every existing comment and drop every
+  face back to initials.
 - **Ungated**, for the same reason `/__avatar/` is (`_worker.js:115–117`): the overlay is
   embedded in public prototypes, and a gated fetch would return the login page. It
   reveals nothing new — the author's name is already rendered in the public comment, and
