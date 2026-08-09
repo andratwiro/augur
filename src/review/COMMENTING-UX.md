@@ -203,8 +203,11 @@ opens the full thread (§6).
 > name + grey relative time per message, the accent-coloured `@mention` and
 > name token in body text, and the rounded grey **"Reply"** pill with an inner
 > circular send arrow on its trailing edge. Match it pixel-faithfully, then map the
-> header icons to our semantics below. **No avatars** (we have no users) — drop the
-> avatar circles; the author is just the bold name. **White only** — no dark-mode
+> header icons to our semantics below. ~~**No avatars** (we have no users) — drop the
+> avatar circles; the author is just the bold name.~~ **Superseded 2026-08-09** by
+> `docs/superpowers/specs/2026-08-09-comment-avatars-design.md`: a signed-in author
+> renders as their photo or initials; an anonymous one keeps the bold name and a
+> numbered pin. **White only** — no dark-mode
 > variant.
 
 **Target.** The full thread card. Header: **"Comment"** title on the left; on the
@@ -263,9 +266,11 @@ comment, then promote it via the cat icon in the open-thread header (§6).
 
 These aren't visible in the image but the build can't proceed cleanly without them:
 
-1. **Avatars / identity — DECIDED: none.** No users, no avatars. Drop every avatar
-   circle from the reference; author is the bold name string only (`LS_NAME`,
-   comments.js:200). Pins stay numbered (and the cat for annotations) as today.
+1. **Avatars / identity — ~~DECIDED: none~~ SUPERSEDED 2026-08-09.** There are users
+   now (invite-only accounts, an admin people table, per-person photo/initials/colour),
+   so comments carry a `by` id stamped from the session and resolve to a face via
+   `/__people`. See `docs/superpowers/specs/2026-08-09-comment-avatars-design.md`.
+   Anonymous comments keep the numbered pin.
 2. **Theme — DECIDED: white only.** Remove the `prefers-color-scheme: dark` block
    (comments.js:282–292). Go all-white for compose/thread chrome.
 4. **@mention directory.** Where does the autocomplete list come from? There's no
