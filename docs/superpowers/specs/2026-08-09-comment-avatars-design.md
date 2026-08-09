@@ -134,6 +134,7 @@ Per message, in order:
 | `by` resolves in the people map, profile has an avatar | the photo |
 | `by` resolves, no avatar on the profile | initials chip in `profile.color` |
 | no `by`, but `verified: true` and `author` matches a fetched profile name | that profile (back-compat for comments written before this change) |
+| `verified: true` but nothing resolves — roster unreachable, or it has not answered yet | initials derived from the stored `author`, colour hashed from the same string |
 | anything else | today's numbered blue pin — unchanged |
 
 The third row is why no migration is needed. `stampAuthor` guarantees a `verified`
@@ -156,6 +157,13 @@ nothing renders as a broken image, and the pin never disappears.
 
 `by` must round-trip through both `mutate`/`apiCall` and `applyLocal` — the KV-or-
 localStorage invariant from COMMENTING-UX.
+
+The localStorage path stores the client's own message object verbatim (`comments.js:98`),
+where no server is involved to stamp anything. So the overlay attaches `by` and
+`verified: true` from its own `/__me` result when composing, and your face appears on an
+offline comment too. This is not a forgery vector: `sanitizeMsg` builds a fresh object
+from `me` and the body, so a client-sent `by` or `verified` never reaches KV. For that,
+`/__me` returns the signed-in person's own `id` alongside their profile.
 
 ### The three states
 
