@@ -301,7 +301,8 @@
     '.pin.resolved{background:#16a34a;}' +
     /* a pin that knows who wrote it: the face fills the teardrop, keeping the notch */
     '.pin.who{width:28px;height:28px;background:#fff;padding:0;overflow:hidden;}' +
-    '.pin.who .av{width:100%;height:100%;border-radius:50% 50% 50% 2px;}' +
+    /* width/height come from avatarEl's inline style; only the teardrop notch is ours */
+    '.pin.who .av{border-radius:50% 50% 50% 2px;}' +
     /* resolved keeps its green as a ring, not a fill — a filled disc would hide the face */
     '.pin.who.resolved{background:#fff;border-color:#16a34a;}' +
     '.pin.active{outline:3px solid rgba(37,99,235,0.4);}' +
@@ -673,7 +674,9 @@
         var who = authorOf(t);
         if (who) {
           b.classList.add("who");
-          b.appendChild(avatarEl(who, 28));
+          // 24, not 28: .pin.who is a 28px border-box with a 2px border, so its
+          // padding box — what overflow:hidden clips to — is 24px square.
+          b.appendChild(avatarEl(who, 24));
           b.title = who.name;
         } else {
           b.textContent = String(nums[t.id] || "");
