@@ -940,3 +940,38 @@ test("synthBuildStamp redacts the publisher email to a display name", () => {
   // With no roster loaded it falls back to the local-part — still no domain.
   assert.match(stamp.spaces["space-alpha"].publishedBy, /^rob$/);
 });
+
+// The chrome a space may never write, and the two things a blanket "/__" ban got
+// wrong in both directions. Publishing was blocked outright by the first of these.
+test("the default space owns its own search index at the root", () => {
+  const spaces = [{ id: "alpha", default: true }, { id: "beta" }];
+  assert.equal(W.pathOwnedBySpace("/__search.json", "alpha", spaces), true,
+    "the default space serves at the root, so its search index lands under /__ — refusing it stops it publishing at all");
+  assert.equal(W.pathOwnedBySpace("/beta/__search.json", "beta", spaces), true);
+  assert.equal(W.pathOwnedBySpace("/__search.json", "beta", spaces), false,
+    "…but only its OWN index");
+});
+
+test("a space cannot write chrome that other spaces' pages load absolutely", () => {
+  const spaces = [{ id: "alpha", default: true }, { id: "beta" }];
+  for (const chrome of [
+    "/__review/comments.js", "/__canvas/canvas.js", "/piti.js",
+    "/fonts/inter.woff2", "/admin/index.html", "/augur-mark.png", "/404.html",
+  ]) {
+    assert.equal(W.pathOwnedBySpace(chrome, "alpha", spaces), false, `default space must not own ${chrome}`);
+    assert.equal(W.pathOwnedBySpace(chrome, "beta", spaces), false, `non-default space must not own ${chrome}`);
+  }
+});
+
+test("an unrecognised /__ path stays reserved for the engine", () => {
+  const spaces = [{ id: "alpha", default: true }];
+  assert.equal(W.pathOwnedBySpace("/__something-new.json", "alpha", spaces), false);
+});
+
+test("the composition graph is space content, published with its design system", () => {
+  const spaces = [{ id: "alpha", default: true }, { id: "beta" }];
+  assert.equal(W.pathOwnedBySpace("/skills/acme-ui/graph.js", "alpha", spaces), true);
+  assert.equal(W.pathOwnedBySpace("/beta/skills/acme-ui/graph.js", "beta", spaces), true);
+  assert.equal(W.pathOwnedBySpace("/__review/graph.js", "alpha", spaces), false,
+    "the old home was shared chrome — that is why it moved");
+});

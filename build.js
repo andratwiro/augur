@@ -190,8 +190,21 @@ async function loadStatusMap() {
 function reviewTag() {
   // graph.js (the CSS-derived composition graph) loads first so comments.js can read
   // window.__GV_GRAPH for the recursive import-chain overlay. Both deferred → ordered.
-  return '<!--gv-review-start--><script src="/__review/graph.js?v=' + UI_VERSION +
-    '" defer></script><script src="/__review/comments.js?v=' + UI_VERSION +
+  //
+  // The graph lives beside the design system it is derived FROM — <space>/skills/
+  // <ds>/graph.js — not under /__review/. Two reasons, and they agree:
+  //   · /__ paths are engine chrome, and the publish API refuses to let any space
+  //     write one (pathOwnedBySpace). It is right to refuse: /__review/comments.js
+  //     is injected into every prototype in every space, so a space able to write
+  //     there could run code in another space's pages.
+  //   · the graph is not shared. It is one space's design system, parsed. Serving
+  //     the default space's graph to a space with its own DS was always wrong;
+  //     S() makes each space load its own.
+  // No DS means no graph — comments.js already falls back to an empty one.
+  const graph = DS.dirName
+    ? '<script src="' + S("/skills/" + DS.dirName + "/graph.js") + "?v=" + UI_VERSION + '" defer></script>'
+    : "";
+  return '<!--gv-review-start-->' + graph + '<script src="/__review/comments.js?v=' + UI_VERSION +
     '" defer></script><!--gv-review-end-->';
 }
 
@@ -5407,6 +5420,15 @@ async function buildSpace(space) {
         await copyDir(path.join(UI_SKILL, d), path.join(sharedDir, d));
       }
     }
+    // This space's composition graph (window.__GV_GRAPH), parsed from the very
+    // stylesheets sitting next to it. Shipped here rather than under /__review/
+    // because it is space content, not shared chrome — see reviewTag. It rides
+    // the space's own publish, so it can never be stale against its own CSS.
+    await fs.writeFile(
+      path.join(sharedDir, "graph.js"),
+      "window.__GV_GRAPH=" + JSON.stringify(graph) + ";",
+      "utf8"
+    );
   }
 
   // ── Tokens tab → GENERATED from the tokens stylesheet via the composition graph.
@@ -5805,26 +5827,9 @@ async function main() {
   await fs.mkdir(path.join(DIST, "__review"), { recursive: true });
   await fs.copyFile(SRC_REVIEW, path.join(DIST, "__review", "comments.js"));
   await fs.copyFile(SRC_REVIEW_CAT, path.join(DIST, "__review", "aslam.png"));
-  // Composition graph (DERIVED from canonical CSS) → window.__GV_GRAPH, loaded before
-  // comments.js so the overlay can recurse tokens → base → components → patterns.
-  // It is the DEFAULT SPACE's graph, built from that space's design-system CSS, so
-  // the default space OWNS this file (it sits at the root path, which the manifest
-  // walk assigns to the default space, and ENGINE_CHROME deliberately does not
-  // claim it). Written only when a default space was actually built: an engine-only
-  // build must emit nothing space-derived, and a partial GV_ONLY_SPACE build of a
-  // non-default space has no graph to write.
-  //
-  // Known limitation, unchanged by this work: a non-default space with its OWN
-  // design system still loads this default-space graph, because reviewTag() points
-  // at the root path absolutely. Making it per-space means widening the public-path
-  // surface around the gate, so it stays a separate change.
-  if (defaultGraph) {
-    await fs.writeFile(
-      path.join(DIST, "__review", "graph.js"),
-      "window.__GV_GRAPH=" + JSON.stringify(defaultGraph) + ";",
-      "utf8"
-    );
-  }
+  // The composition graph is NOT written here — it belongs to the space whose
+  // design system it was parsed from, and ships inside that space's skills/
+  // folder (see buildSpace, and reviewTag for why /__review/ is the wrong home).
 
   // Canvas engine (shared; canvas prototypes mount it by absolute /__canvas/ path, the same
   // way every prototype embeds /__review/comments.js). Board DATA persists to KV via /__board.

@@ -1032,9 +1032,28 @@ function applyDerivedRouting(manifests) {
 // is the fix that keeps a publish token to its own space: engine internals (/__*, the
 // admin panel) belong to NO space; a non-default space owns only its /<id>/ subtree; the
 // default space owns the root EXCEPT any other space's base. Pure + exported for tests.
+// The shared chrome a space may never write. Every one of these is loaded by
+// absolute URL from pages in EVERY space, so a space able to write one could run
+// code in another space's prototypes — which is what this guard is for.
+// Mirrors ENGINE_CHROME in build.js; keep the two in step.
+const ENGINE_CHROME_PATHS = [
+  "/fonts/", "/pitis/", "/__review/", "/__canvas/", "/admin", "/changelog",
+  "/piti.js", "/404.html", "/manifest.webmanifest",
+  "/augur-eye.svg", "/augur-icon-192.png", "/augur-icon-512.png", "/augur-mark.png",
+];
+const isEngineChrome = (key) => ENGINE_CHROME_PATHS.some((p) =>
+  p.endsWith("/") ? key.startsWith(p) : key === p || key.startsWith(p + "/"));
+
 function pathOwnedBySpace(key, spaceId, spaces) {
   if (typeof key !== "string" || !key.startsWith("/")) return false;
-  if (key.startsWith("/__") || key === "/admin" || key.startsWith("/admin/")) return false;
+  if (isEngineChrome(key)) return false;
+  // Everything else under /__ stays reserved for the engine. The one exception is
+  // a space's own search index: the default space serves its at the root, so it
+  // lands on /__search.json — and a blanket /__ ban refused it, which stopped the
+  // default space publishing at all. (That ban was also too loose in the other
+  // direction: /piti.js and /fonts/* are injected into every prototype and it let
+  // those through. The chrome list above closes both ends.)
+  if (key.startsWith("/__") && !/^\/__search\.json$/.test(key)) return false;
   const isDefault = (spaces.find((s) => s.default) || {}).id === spaceId;
   if (!isDefault) return key === "/" + spaceId || key.startsWith("/" + spaceId + "/");
   for (const s of spaces) {
