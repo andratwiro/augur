@@ -36,3 +36,6 @@ research.md
 # Piti research imagery — downloaded third-party reference assets,
 # kept on-machine only. build.js also excludes pitis/reference/ from dist.
 pitis/reference/
+
+# superpowers scratch (SDD progress ledger, task briefs, review packages)
+.superpowers/
