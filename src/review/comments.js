@@ -84,6 +84,7 @@
     }
     render();
     tryOpenPending();
+    loadPeople();
   }
   async function mutate(op) {
     try {
@@ -94,6 +95,7 @@
       applyLocal(op); saveLocal();
     }
     render();
+    loadPeople();
   }
   function applyLocal(op) {
     var t;
@@ -215,15 +217,63 @@
   function nowIso() { return new Date().toISOString(); }
   function getName() { try { return localStorage.getItem(LS_NAME) || ""; } catch (e) { return ""; } }
   function setName(n) { try { localStorage.setItem(LS_NAME, n); } catch (e) {} }
+
+  // Who we are, if signed in. Used for the author name (as before), for the reply
+  // bar's own avatar, and to attribute a comment written while the API is unreachable
+  // — the localStorage path has no server to stamp `by` for it. The server rebuilds
+  // every message from the session regardless, so this can't forge anything.
+  var ME = null;
+  var PEOPLE = {};   // id -> person
+  var BYNAME = {};   // name -> person (back-compat for messages with no `by`)
+
+  function loadMe() {
+    return fetch("/__me", { headers: { Accept: "application/json" } })
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (d) {
+        if (!d || !d.user) return;
+        ME = { id: d.user.id, name: d.user.name, initials: d.user.initials,
+               color: d.user.color, avatar: d.user.avatar };
+        if (ME.name) setName(ME.name);
+        if (ME.id) { PEOPLE[ME.id] = ME; BYNAME[ME.name] = ME; }
+      })
+      .catch(function () {});
+  }
+
+  // One request for every author on this page we don't already hold. Ids come from
+  // the threads themselves, so we never ask for — and can never receive — the roster.
+  var peoplePending = false;
+  function loadPeople() {
+    var ids = {}, names = {};
+    state.threads.forEach(function (t) {
+      (t.messages || []).forEach(function (m) {
+        if (m.by && !PEOPLE[m.by]) ids[m.by] = 1;
+        // Pre-`by` comments: a verified name is guaranteed by the server to belong to
+        // a real account, so it is safe to resolve. An unverified name is just a
+        // string someone typed — never look it up.
+        else if (!m.by && m.verified && m.author && !BYNAME[m.author]) names[m.author] = 1;
+      });
+    });
+    var idList = Object.keys(ids), nameList = Object.keys(names);
+    if (peoplePending || (!idList.length && !nameList.length)) return;
+    var q = [];
+    if (idList.length) q.push("ids=" + encodeURIComponent(idList.slice(0, 50).join(",")));
+    if (nameList.length) q.push("names=" + encodeURIComponent(nameList.slice(0, 50).join(",")));
+    peoplePending = true;
+    fetch("/__people?" + q.join("&"), { headers: { Accept: "application/json" } })
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (d) {
+        peoplePending = false;
+        if (!d || !d.people) return;
+        d.people.forEach(function (p) { PEOPLE[p.id] = p; BYNAME[p.name] = p; });
+        render();
+      })
+      .catch(function () { peoplePending = false; });
+  }
+
   // If signed in to Augur, adopt the profile name as the comment author (so the name
   // prompt is skipped and comments are attributed to the real person). On public
   // prototypes there's no login → /__me returns { user: null } and this is a no-op.
-  try {
-    fetch("/__me", { headers: { Accept: "application/json" } })
-      .then(function (r) { return r.json(); })
-      .then(function (d) { if (d && d.user && d.user.name) setName(d.user.name); })
-      .catch(function () {});
-  } catch (e) {}
+  loadMe();
 
   /* ---------- shadow UI ---------- */
 
@@ -249,6 +299,8 @@
     '.pin.anno img{width:100%;height:100%;object-fit:cover;display:block;border-radius:50%;pointer-events:none;}' +
     '.pin.anno:hover{transform:translate(-50%,-50%) rotate(0deg) scale(1.16);box-shadow:0 7px 20px rgba(0,0,0,0.42);z-index:2;}' +
     '.pin.anno.active{outline:3px solid rgba(61,116,244,0.45);}' +
+    '.av{flex:0 0 auto;border-radius:50%;object-fit:cover;display:block;}' +
+    '.av.ini{display:flex;align-items:center;justify-content:center;color:#fff;font-weight:600;line-height:1;letter-spacing:.02em;}' +
     /* note bubble (delivery mode), styled like a cursor-chat bubble: blue pill + tail */
     '.atip{position:fixed;pointer-events:none;max-width:340px;background:#5672da;color:#fff;padding:11px 16px;border-radius:18px;font:400 14px/1.4 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;box-shadow:0 4px 14px rgba(0,0,0,0.22),0 1px 3px rgba(0,0,0,0.12);transform:translate(-50%,var(--ty,-100%)) scale(.9);transform-origin:50% 110%;opacity:0;transition:opacity .14s ease,transform .2s cubic-bezier(.34,1.56,.64,1);white-space:pre-wrap;word-wrap:break-word;}' +
     '.atip::after{content:"";position:absolute;left:var(--tail-x,50%);bottom:-4px;width:9px;height:9px;background:#5672da;transform:translateX(-50%) rotate(45deg);border-radius:0 0 3px 0;}' +
@@ -527,6 +579,64 @@
       li.addEventListener("click", function () { openOrNavigate(t.id); });
       listEl.appendChild(li);
     });
+  }
+
+  // Initials + a stable colour from a name alone, for a verified author we could not
+  // resolve — /__people unreachable, or the localStorage fallback path with no server
+  // at all. A known person must never collapse back to an anonymous number.
+  var AV_COLORS = ["#4f46e5", "#0e7490", "#b45309", "#be123c", "#15803d", "#7c3aed", "#0369a1", "#a21caf"];
+  function fromName(name) {
+    var parts = String(name).trim().split(/\s+/).filter(Boolean);
+    var ini = !parts.length ? "?"
+      : (parts.length === 1 ? parts[0].slice(0, 2) : parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+    var h = 0, s = String(name).trim().toLowerCase();
+    for (var i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0;
+    return { id: null, name: name, initials: ini, color: AV_COLORS[h % AV_COLORS.length], avatar: null };
+  }
+
+  // null → this comment gets today's numbered blue pin. Order matters: an id beats a
+  // name, and an UNVERIFIED name resolves to nothing at all — an anonymous commenter
+  // never earns a face, however they signed themselves.
+  function personFor(m) {
+    if (!m) return null;
+    if (m.by && PEOPLE[m.by]) return PEOPLE[m.by];
+    if (!m.verified || !m.author) return null;
+    if (BYNAME[m.author]) return BYNAME[m.author];
+    // Verified, but the roster is unavailable or hasn't answered yet.
+    return fromName(m.author);
+  }
+  function authorOf(t) { return personFor(t && t.messages && t.messages[0]); }
+
+  // The one avatar implementation every surface uses: photo when there is one,
+  // initials on the person's colour when there isn't. Never a silhouette.
+  function avatarEl(p, size) {
+    var e;
+    if (p && p.avatar) {
+      e = document.createElement("img");
+      e.src = p.avatar;
+      e.alt = "";
+      // A dead photo URL must degrade to initials, not a broken-image glyph.
+      e.addEventListener("error", function () {
+        var f = initialsEl(p, size);
+        if (e.parentNode) e.parentNode.replaceChild(f, e);
+      });
+    } else {
+      e = initialsEl(p, size);
+    }
+    e.className = "av";
+    e.style.width = size + "px";
+    e.style.height = size + "px";
+    return e;
+  }
+  function initialsEl(p, size) {
+    var s = document.createElement("span");
+    s.className = "av ini";
+    s.textContent = (p && p.initials) || "?";
+    s.style.background = (p && p.color) || "#6b7280";
+    s.style.fontSize = Math.max(9, Math.round(size * 0.4)) + "px";
+    s.style.width = size + "px";
+    s.style.height = size + "px";
+    return s;
   }
 
   function renderPins() {
@@ -1043,7 +1153,7 @@
       if (wrap.querySelector(".nm")) setName(name);
       var thread = { id: uid(), sel: loc.sel, fx: loc.fx, fy: loc.fy, px: loc.px, py: loc.py,
         view: loc.view, screen: loc.screen, resolved: false, annotation: false,
-        messages: [{ author: name, body: text, at: nowIso() }] };
+        messages: [{ author: name, by: ME && ME.id, verified: !!ME, body: text, at: nowIso() }] };
       closeCard();
       mutate({ op: "add", thread: thread });
       toast("Comment added");
@@ -1094,7 +1204,8 @@
     });
     positionCard(xy);
     wireField(card.querySelector(".replybar .cfield"), function (text) {
-      mutate({ op: "reply", id: id, message: { author: getName() || "Anonymous", body: text, at: nowIso() } })
+      mutate({ op: "reply", id: id, message: { author: getName() || "Anonymous",
+        by: ME && ME.id, verified: !!ME, body: text, at: nowIso() } })
         .then(function () { openThread(id); });
     });
     card.querySelector(".res").addEventListener("click", function () {
