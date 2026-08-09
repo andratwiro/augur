@@ -93,6 +93,14 @@ const vnOf = (x) => (x && typeof x.vn === "number" ? x.vn : 0);
 const beats = (a, b) => vOf(a) > vOf(b) || (vOf(a) === vOf(b) && vnOf(a) > vnOf(b));
 const sameV = (a, b) => vOf(a) === vOf(b) && vnOf(a) === vnOf(b);
 const rnd = () => Math.floor(Math.random() * 0x7fffffff);
+// tombs is a plain object keyed by CLIENT-CHOSEN node ids — reads must not hit inherited
+// members (an id like "constructor" made every create bounce as tombed) and writes must
+// not follow the "__proto__" setter. Same rule client-side.
+const tombAt = (t, id) => (t && Object.prototype.hasOwnProperty.call(t, id) ? t[id] : null);
+const setTomb = (t, id, val) => Object.defineProperty(t, id, { value: val, writable: true, enumerable: true, configurable: true });
+// cheap content hash (FNV-1a) — used only to detect "did KV move under us since our last
+// mirror write", never for integrity
+const hashStr = (s) => { let h = 0x811c9dc5; for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 0x01000193); } return (h >>> 0).toString(36) + ":" + s.length; };
 
 export class BoardRoom {
   constructor(ctx, env) {
@@ -454,6 +462,12 @@ export class BoardRoom {
         }
         if (node && node.id) nodes.push(node);
       }
+      // restore the persisted z-order (rows come back key-sorted); ids the order row
+      // doesn't know (mid-flight writes) sink to the end, stably
+      if (Array.isArray(m.order)) {
+        const pos = new Map(m.order.map((id, i) => [id, i]));
+        nodes.sort((a, b) => (pos.has(a.id) ? pos.get(a.id) : Infinity) - (pos.has(b.id) ? pos.get(b.id) : Infinity));
+      }
       this.doc = { name: m.name || "Untitled canvas", nameV: m.nameV || 0, nodes, tombs: m.tombs || {}, clock: m.clock || 0 };
       this.indexDoc();
       // Fold the KV mirror back in (version-ruled, so a lagging mirror merges to nothing):
@@ -520,7 +534,9 @@ export class BoardRoom {
     return out;
   }
   metaRow() {
-    return { name: this.doc.name, nameV: this.doc.nameV, tombs: this.doc.tombs, clock: this.doc.clock };
+    // `order` pins node z-order across cold loads — storage.list returns rows in KEY
+    // order, which silently re-stacked overlapping nodes after every hibernation
+    return { name: this.doc.name, nameV: this.doc.nameV, tombs: this.doc.tombs, clock: this.doc.clock, order: this.doc.nodes.map((n) => n.id) };
   }
   writeAll() {
     const puts = { m: this.metaRow() }, dels = [];
@@ -571,11 +587,15 @@ export class BoardRoom {
     for (const op of ops) {
       if (!op) continue;
       if (op.op === "upsert" && op.node && op.node.id) {
-        const n = op.node, id = n.id, cur = this.byId.get(id), tomb = this.doc.tombs[id];
+        const n = op.node, id = n.id, cur = this.byId.get(id), tomb = tombAt(this.doc.tombs, id);
         const versioned = typeof n.v === "number";
         if (tomb && !(vOf(n) > tomb.v)) {
           // deleted, and this write predates the delete — a stale resurrection attempt
           if (!seedMode && !versioned) { /* legacy live edit of a deleted node: let the delete win */ }
+          // CORRECTIONS MUST STRICTLY OUT-VERSION THE LOSER (audit v2): on a tie the
+          // sender's own copy sits at the tomb's v, and its resurrection guard drops a
+          // del that doesn't exceed it — raise the tomb so the correction wins there too
+          if (versioned && vOf(n) === tomb.v) { tomb.v = vOf(n) + 1; setTomb(this.doc.tombs, id, tomb); metaDirty = true; }
           corrections.push({ op: "del", id, v: tomb.v });
           continue;
         }
@@ -585,11 +605,19 @@ export class BoardRoom {
             n.v = vOf(cur) + 1; n.vn = rnd();
           } else if (sameV(n, cur)) {
             // same version twice is an idempotent echo — UNLESS the content drifted, which
-            // only unversioned (legacy/migrated) writes can produce: the room's copy wins
-            // ties and the seeder is told so, or the two sides diverge forever in silence
-            if (JSON.stringify(n) !== JSON.stringify(cur)) corrections.push({ op: "upsert", node: cur });
+            // only unversioned (legacy/migrated) writes can produce. The room's copy wins,
+            // but a correction at the SAME v/vn would be dropped by the sender's own LWW
+            // gate — bump the winner so the correction strictly wins everywhere.
+            if (JSON.stringify(n) !== JSON.stringify(cur)) {
+              cur.v = vOf(cur) + 1; cur.vn = rnd();
+              this.putNode(puts, dels, cur);
+              accepted.push({ op: "upsert", node: cur });
+              corrections.push({ op: "upsert", node: cur });
+            }
             continue;
           } else if (!beats(n, cur)) {
+            // a v tie with a lower vn still loses cleanly (the correction's higher vn
+            // beats the sender's copy) — only exact sameV needed the bump above
             corrections.push({ op: "upsert", node: cur });
             continue;
           }
@@ -603,11 +631,23 @@ export class BoardRoom {
         this.putNode(puts, dels, n);
         accepted.push({ op: "upsert", node: n });
       } else if (op.op === "del" && op.id) {
-        const id = op.id, cur = this.byId.get(id), tomb = this.doc.tombs[id];
+        const id = op.id, cur = this.byId.get(id), tomb = tombAt(this.doc.tombs, id);
         const versioned = typeof op.v === "number";
         let tombV;
         if (cur) {
-          if (versioned && !(op.v > vOf(cur))) { corrections.push({ op: "upsert", node: cur }); continue; }
+          if (versioned && !(op.v > vOf(cur))) {
+            // the delete lost. On a TIE (concurrent delete + edit landing on the same v)
+            // the deleter's tomb sits at op.v == cur.v and its resurrection guard drops a
+            // corrective upsert that doesn't strictly exceed it — bump the survivor so the
+            // correction wins at the deleter too (audit v2: the deleter went blind forever)
+            if (op.v === vOf(cur)) {
+              cur.v = vOf(cur) + 1; cur.vn = rnd();
+              this.putNode(puts, dels, cur);
+              accepted.push({ op: "upsert", node: cur });
+            }
+            corrections.push({ op: "upsert", node: cur });
+            continue;
+          }
           tombV = versioned ? op.v : vOf(cur) + 1;
           this.doc.nodes.splice(this.doc.nodes.indexOf(cur), 1);
           this.byId.delete(id);
@@ -619,13 +659,24 @@ export class BoardRoom {
           tombV = Math.max(versioned ? op.v : 1, tomb ? tomb.v + (versioned ? 0 : 1) : 0);
           if (tomb && tombV <= tomb.v) continue;
         }
-        this.doc.tombs[id] = { v: tombV, t: Date.now() };
+        setTomb(this.doc.tombs, id, { v: tombV, t: Date.now() });
         metaDirty = true;
         accepted.push({ op: "del", id, v: tombV });
       } else if (op.op === "name" && typeof op.name === "string") {
         const versioned = typeof op.v === "number";
         const curV = this.doc.nameV;
-        if (versioned && op.v <= curV) { corrections.push({ op: "name", name: this.doc.name, v: curV }); continue; }
+        if (versioned && op.v <= curV) {
+          // name has no vn tiebreak, so a TIE (both renamed offline to the same nameV) is
+          // unresolvable by the correction alone — the loser's client drops v <= its own.
+          // Bump the winning name past the tie so everyone, loser included, converges.
+          if (op.v === curV && op.name !== this.doc.name) {
+            this.doc.nameV = curV + 1;
+            metaDirty = true;
+            accepted.push({ op: "name", name: this.doc.name, v: this.doc.nameV });
+          }
+          corrections.push({ op: "name", name: this.doc.name, v: this.doc.nameV });
+          continue;
+        }
         this.doc.name = op.name.slice(0, 200);
         this.doc.nameV = versioned ? op.v : curV + 1;
         metaDirty = true;
@@ -690,10 +741,33 @@ export class BoardRoom {
     if (!this.doc || !this.env.BOARD_KV || this.ephemeral) return;
     if (!(await this.isDirty())) return;
     await this.clearDirty(); // before the await: ops during the write re-set it
-    try { await this.env.BOARD_KV.put(BOARD_PREFIX + this.path, JSON.stringify(this.wireDoc())); }
-    catch (e) {
+    try {
+      // FOLD BEFORE OVERWRITE (audit v2): a solo client or terminal script may have
+      // written /__board while this room was HOT — the old blind put steamrolled that
+      // write and, since the room only reads KV on a COLD load, the edit was lost
+      // permanently (close-the-laptop-after-a-blip). If KV moved since OUR last mirror,
+      // reconcile it in (version-ruled, so a lagging copy merges to nothing) and let the
+      // live clients hear whatever was genuinely new.
+      const kvRaw = await this.env.BOARD_KV.get(BOARD_PREFIX + this.path);
+      if (kvRaw && hashStr(kvRaw) !== (await this.ctx.storage.get("mhash"))) {
+        try {
+          const kv = JSON.parse(kvRaw);
+          if (kv && Array.isArray(kv.nodes)) {
+            const r = this.reconcileSeed(kv);
+            if (r.accepted.length) this.broadcast({ t: "ops", sid: "room", ops: r.accepted });
+          }
+        } catch (e2) {}
+      }
+      const out = JSON.stringify(this.wireDoc());
+      await this.env.BOARD_KV.put(BOARD_PREFIX + this.path, out);
+      this.ctx.storage.put("mhash", hashStr(out));
+    } catch (e) {
       console.error("KV mirror write failed", e);
       this.dirty = true; this.ctx.storage.put("dirty", 1);
+      // a failed write deserves the FAST retry — the pending 45s cadence alarm would
+      // otherwise swallow the RETRY_MS re-arm (alarmSet is still true from markDirty)
+      this.alarmSet = true;
+      this.ctx.storage.setAlarm(Date.now() + RETRY_MS);
     }
   }
 
