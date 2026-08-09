@@ -16,6 +16,13 @@ The date is the day the update went live. The page works out "Today / 3 days ago
 
 ---
 
+## 2026-08-09 — Security hardening + bring-your-own AI key
+A pass over the login, publishing, and sharing paths: brute-force throttling on
+sign-in, publishes locked to their own space, admin-only spaces sealed on every
+API, and the invite page now shows whose account a link sets. The Project
+Builder's AI no longer runs on a built-in key — connect your own to get real AI
+summaries, otherwise it falls back to its simpler local draft.
+
 ## 2026-08-09 — Invite and remove people from the Admin page
 The user list is now a table: who they are, whether they're an admin, and when
 they were last here (most recent first). "Invite" at the top right adds an email

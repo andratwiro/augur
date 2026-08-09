@@ -362,7 +362,7 @@ function prependTitleEmoji(html, emoji) {
 // build.js shell/CSS, the index pages, or features like carousel/comments/download.
 // Do NOT bump it for changes inside individual prototypes; their content is
 // versioned by their own modified date, not this number.
-const UI_VERSION = "1.04";
+const UI_VERSION = "1.05";
 
 // One id per build (ms timestamp). Baked into every page's live-reload poller AND
 // into the worker's /__version endpoint, so a fresh deploy = a new id = open tabs
@@ -4043,7 +4043,11 @@ const ADMIN_JS = `(function(){
   var menu = document.querySelector('[data-menu]');
   var linkbox = document.querySelector('[data-link]');
   var invite = document.querySelector('[data-invite]');
-  var people = [], current = null, sortKey = 'seen', sortDir = -1;
+  var people = [], current = null, sortKey = 'seen', sortDir = -1, myEmail = '';
+  // Who am I — so the row menu can hide "Remove user" on my own row (the API refuses
+  // it with cannot-remove-self; the UI shouldn't offer a dialog that always errors).
+  fetch('/__me',{headers:{'Accept':'application/json'}}).then(function(r){ return r.ok ? r.json() : null; })
+    .then(function(d){ if(d && d.user) myEmail = (d.user.email||'').toLowerCase(); }).catch(function(){});
 
   function esc(s){ return (s||'').replace(/[&<>"]/g,function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
   function ago(iso){
@@ -4126,6 +4130,9 @@ const ADMIN_JS = `(function(){
   function openMenu(tr){
     current = tr.getAttribute('data-email');
     menu.querySelector('[data-menu-who]').textContent = current;
+    // Can't remove yourself (the API refuses it) — hide the option on your own row.
+    var rm = menu.querySelector('[data-menu-remove]');
+    if(rm) rm.style.display = (current && current.toLowerCase() === myEmail) ? 'none' : 'block';
     menu.hidden = false;
     var r = tr.getBoundingClientRect();
     var mh = menu.offsetHeight, mw = menu.offsetWidth;
@@ -4386,7 +4393,7 @@ function renderAdminPage() {
     <input type="email" data-invite-email placeholder="name@example.org" aria-label="Email address" required />
     <input type="text" data-invite-name placeholder="Name (optional)" aria-label="Name" />
     <select data-invite-role aria-label="Role"><option value="user">User</option><option value="admin">Admin</option></select>
-    <button type="submit" class="aubtn aubtn--primary">Send invite</button>
+    <button type="submit" class="aubtn aubtn--primary">Create link</button>
     <button type="button" class="aubtn" data-invite-cancel>Cancel</button>
     <span class="auinvite__msg" data-invite-msg aria-live="polite"></span>
   </form>

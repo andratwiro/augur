@@ -51,8 +51,11 @@ once the instance config is redeployed/published (build re-emits
 
 ## Optional AI endpoint
 
-`/__ai/summarize` is a public worker endpoint that summarizes an uploaded
-document. It needs two pieces of instance config: the builder prompts + output
-schema (from the deploy config) and an `ANTHROPIC_API_KEY` worker env var.
-Missing the builder config → **501**; missing the key → **503**. In either case
-features that use it hide themselves and fall back to their heuristic.
+`/__ai/summarize` is a public, open worker endpoint that summarizes an uploaded
+document. It needs the builder prompts + output schema (from the deploy config).
+The engine carries **no Anthropic key of its own** — a public instance never
+spends the operator's account. The key comes from the caller: either a local
+`AI_CLI_URL` bridge (offline mode) or an `x-anthropic-key` request header the
+caller's own agent supplies (their own key, their own spend). Missing the
+builder config → **501**; no backend/key → **503**. In either case the
+prototypes that use it fall back to their local heuristic.
