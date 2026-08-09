@@ -476,14 +476,13 @@ async function loginFail(env, ids) {
     } catch (e) {}
   }));
 }
-// A fixed, valid pbkdf2 string run when NO user matches, so an unknown email pays the
-// same PBKDF2 cost as a real one — closing the timing oracle that enumerated the roster.
-// Computed once per isolate (its value is irrelevant; only the work matters).
-let DUMMY_HASH = "";
-async function dummyHash() {
-  if (!DUMMY_HASH) DUMMY_HASH = await hashPassword("gv-timing-equalizer");
-  return DUMMY_HASH;
-}
+// A fixed, valid pbkdf2 string verified when NO user matches, so an unknown email pays
+// the same single PBKDF2 pass as a real one — closing the timing oracle that enumerated
+// the roster. STATIC (not computed per isolate): a lazy hashPassword() here meant a cold
+// isolate did the dummy hash AND the verify — two 600k passes in one request — which
+// blew the Worker CPU budget and 500'd every unknown-email login. Its bytes are
+// meaningless; only that verifyPassword runs one derivation against it matters.
+const DUMMY_HASH = "pbkdf2$600000$ZSsoSbowI9EqBlzWVNJWnw==$Vzy7tcEJCHBca9+RbqwO6QYtbc+9WmcLmiKi2hfb5JU=";
 
 // ---- Identity helpers -------------------------------------------------------
 function userByEmail(email, users = USERS) {
@@ -1233,7 +1232,7 @@ async function publishApi(request, url, env) {
     // this the KV read is a residual timing oracle after the dummy-hash equalizes PBKDF2.
     const real = await effectiveSecret(env, u || { email: "\x00nouser" });
     // Always run PBKDF2 (real or dummy) so an unknown email can't be told apart by timing.
-    const ok = await verifyPassword(pass, real || (await dummyHash()));
+    const ok = await verifyPassword(pass, real || DUMMY_HASH);
     // Same distinction the web gate makes: a roster user with no secret was reset, and
     // telling them "bad credentials" sends them looking for a typo in a password that
     // no longer exists. `augur login` surfaces `message` when present.
@@ -1441,13 +1440,13 @@ async function publishApi(request, url, env) {
             }
           }
         }
-        // Declared MCP hosts must match an instance-configured suffix — mounting a space
-        // is no longer the whole trust act now that any user can publish one.
-        for (const host of rf.mcpAllowlist || []) {
-          const okHost = typeof host === "string" &&
-            MCP_HOST_SUFFIXES.some((sfx) => host === sfx || host.endsWith("." + sfx));
-          if (!okHost) return jsonResponse({ error: "mcp-host-not-allowed", host }, 403);
-        }
+        // NOTE: a space's declared MCP hosts (rf.mcpAllowlist) are NOT constrained here.
+        // A space legitimately declares its clients' own domains (the planner names
+        // hundreds, on their own TLDs — not under any instance suffix), and that IS the
+        // feature. The proxy's real controls live in mcpProxy: only a DECLARED host is
+        // reachable, redirects aren't followed, IP-literal targets are rejected, and only
+        // four fixed MCP paths pass with a sanitized response. Constraining which hosts a
+        // space may declare added little over those and broke clients on their own domains.
       }
       // adminOnly/default are NOT self-asserted from a non-star manifest — a token scoped
       // to an admin-only space must not publish itself public (or claim default). Preserve
@@ -3147,7 +3146,7 @@ export default {
     const real = await effectiveSecret(env, u || { email: "\x00nouser" });
         // Always run PBKDF2 — against the real hash or a dummy — so an unknown email
         // costs the same as a known one (no timing enumeration).
-        const ok = await verifyPassword(pass, real || (await dummyHash()));
+        const ok = await verifyPassword(pass, real || DUMMY_HASH);
         if (u && real && ok) {
           const token = await userToken(env, u);
           if (ctx && ctx.waitUntil) ctx.waitUntil(touchLastSeen(env, u));
@@ -3328,6 +3327,6 @@ export const __testables = {
   isEmailish, nameFromEmail, initialsFor,
   applyDerivedRouting, canvasAggregate, synthBuildStamp,
   deleteUrlPrefix, removeFromStore,
-  revokePublishTokens, loginThrottled, loginFail, dummyHash,
+  revokePublishTokens, loginThrottled, loginFail, DUMMY_HASH,
   pathOwnedBySpace, LOGIN_MAX_FAILS,
 };

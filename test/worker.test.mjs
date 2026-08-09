@@ -879,12 +879,12 @@ test("login throttle no-ops without a KV binding (offline never locks out)", asy
   await W.loginFail({}, ["rl:login:em:x"]); // must not throw
 });
 
-test("dummyHash is a valid pbkdf2 string at the current iteration count", async () => {
-  const h = await W.dummyHash();
-  assert.ok(W.isPassHash(h));
+test("DUMMY_HASH is a valid pbkdf2 string at the current cost, verifiable without a hash pass", async () => {
+  const h = W.DUMMY_HASH; // STATIC, not computed — a lazy compute in the login path did
+  assert.ok(W.isPassHash(h)); // two 600k passes on a cold isolate and blew the CPU budget.
   assert.ok(h.startsWith("pbkdf2$" + W.PBKDF2_ITERATIONS + "$"), "uses the current cost");
   // Verifying a wrong password against it returns false without throwing — its only
-  // job is to make the timing of an unknown email match a known one.
+  // job is to make the timing of an unknown email match a known one (one derivation).
   assert.equal(await W.verifyPassword("anything", h), false);
 });
 
