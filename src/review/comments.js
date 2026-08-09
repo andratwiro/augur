@@ -340,6 +340,7 @@
     '.sb .it.resolved .num{background:#16a34a;}' +
     '.sb .it.anno .num{background:#fff;padding:0;overflow:hidden;}' +
     '.sb .it.anno .num img{width:100%;height:100%;object-fit:cover;display:block;border-radius:50%;}' +
+    '.sb .it .num.face{background:0;padding:0;overflow:hidden;}' +
     '.sb .it .txt{flex:1;min-width:0;}' +
     '.sb .it .body{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}' +
     '.sb .it .meta{display:block;color:#9ca3af;font-size:11px;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}' +
@@ -357,8 +358,10 @@
     '.card .anno-toggle{flex:0 0 auto;width:26px;height:26px;min-width:0;border-radius:50%;border:2px solid #e5e7eb;background:#fff;padding:0;overflow:hidden;cursor:pointer;opacity:.4;filter:grayscale(1);transition:opacity .12s,filter .12s,border-color .12s;}' +
     '.card .anno-toggle img{width:100%;height:100%;object-fit:cover;display:block;}' +
     '.card .anno-toggle.on{opacity:1;filter:none;border-color:#f59e0b;}' +
-    '.msg{padding:8px 0;border-top:1px solid #f0f0f0;}' +
+    '.msg{padding:8px 0;border-top:1px solid #f0f0f0;display:flex;gap:10px;align-items:flex-start;}' +
     '.msg:first-of-type{border-top:0;}' +
+    '.msg .mav{flex:0 0 auto;width:28px;}' +
+    '.msg .mbody{min-width:0;flex:1;}' +
     '.msg .who{font-weight:600;font-size:12px;}' +
     '.msg .when{color:#9ca3af;font-size:11px;margin-left:6px;}' +
     '.msg .body{margin-top:2px;white-space:pre-wrap;word-wrap:break-word;}' +
@@ -419,7 +422,9 @@
     '.msgs .msg:first-of-type{padding-top:0;}' +
     '.msgs .msg .body{margin-top:3px;font-size:14px;line-height:1.5;}' +
     /* reply bar: same pill→box behaviour as compose */
-    '.replybar{margin-top:6px;}' +
+    '.replybar{margin-top:6px;display:flex;gap:10px;align-items:center;}' +
+    '.replybar .rav{flex:0 0 auto;}' +
+    '.replybar .cfield{flex:1;min-width:0;}' +
     /* hover preview card — unfurls out of the pin, left edge → right */
     '.preview{position:fixed;pointer-events:none;width:280px;max-width:calc(100vw - 24px);background:#fff;border-radius:14px;box-shadow:0 10px 40px rgba(0,0,0,0.22);padding:13px 15px;opacity:0;display:flex;gap:10px;align-items:flex-start;transform:scaleX(.2);transform-origin:left center;transition:opacity .12s ease,transform .18s cubic-bezier(.34,1.56,.64,1);}' +
     '.preview .pav{flex:0 0 auto;}' +
@@ -584,9 +589,14 @@
       var away = !resolvesHere(t);
       li.innerHTML = '<span class="num"></span><span class="txt"><span class="body"></span>' +
         '<span class="meta"></span></span>';
+      var lp = authorOf(t);
       if (anno) {
         var av = document.createElement("img"); av.src = CAT; av.alt = "";
         var n = li.querySelector(".num"); n.textContent = ""; n.appendChild(av);
+      } else if (lp) {
+        var n2 = li.querySelector(".num");
+        n2.textContent = ""; n2.className = "num face";
+        n2.appendChild(avatarEl(lp, 20));
       } else {
         li.querySelector(".num").textContent = String(i + 1);
       }
@@ -1215,14 +1225,26 @@
       '<button class="ico res' + (t.resolved ? ' done' : '') + '" title="' + (t.resolved ? 'Reopen' : 'Resolve') + '">' + SVG.check + '</button>' +
       '<button class="ico close" title="Close">' + SVG.close + '</button></div>' +
       '<div class="msgs"></div>' +
-      '<div class="replybar"><div class="cfield idle">' +
+      '<div class="replybar"><div class="rav"></div><div class="cfield idle">' +
       '<textarea class="tx" rows="1" placeholder="Reply"></textarea>' +
       '<button class="send" title="Send">' + SVG.send + '</button></div></div>';
     var msgs = card.querySelector(".msgs");
+    var rav = card.querySelector(".replybar .rav");
+    if (ME) rav.appendChild(avatarEl(ME, 28)); else rav.remove();
     t.messages.forEach(function (m, i) {
       var d = document.createElement("div"); d.className = "msg";
-      d.innerHTML = '<div class="mhead"><span class="who"></span><span class="when" data-iso=""></span>' +
-        '<button class="mdel" title="Delete">' + SVG.dots + '</button></div><div class="body"></div>';
+      d.innerHTML = '<div class="mav"></div><div class="mbody">' +
+        '<div class="mhead"><span class="who"></span><span class="when" data-iso=""></span>' +
+        '<button class="mdel" title="Delete">' + SVG.dots + '</button></div>' +
+        '<div class="body"></div></div>';
+      var mp = personFor(m);
+      var mav = d.querySelector(".mav");
+      // Unlike .rav/.pav (a single, non-stacked instance), .mav sits in a column of
+      // sibling messages — removing it on an anonymous row would collapse its flex
+      // gap and shift that row's body to a different left edge than faced rows
+      // above/below. Leave the (empty) wrapper in place; ".msg .mav{width:28px}"
+      // reserves the same column width whether or not it holds a face.
+      if (mp) mav.appendChild(avatarEl(mp, 28));
       d.querySelector(".who").textContent = m.author;
       var w = d.querySelector(".when"); w.textContent = fmt(m.at); w.setAttribute("data-iso", m.at || "");
       renderBody(d.querySelector(".body"), m.body);
