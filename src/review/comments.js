@@ -256,8 +256,16 @@
     var idList = Object.keys(ids), nameList = Object.keys(names);
     if (peoplePending || (!idList.length && !nameList.length)) return;
     var q = [];
-    if (idList.length) q.push("ids=" + encodeURIComponent(idList.slice(0, 50).join(",")));
-    if (nameList.length) q.push("names=" + encodeURIComponent(nameList.slice(0, 50).join(",")));
+    // /__people caps ids.length + names.length COMBINED at PEOPLE_LOOKUP_MAX (50, see
+    // peopleApi in _worker.js) — it is not 50 of each. Ids win the budget first since an
+    // id is an exact, current identity, while a name lookup is only a back-compat path
+    // for pre-`by` comments; whatever's left after ids goes to names. Anything that
+    // doesn't fit is simply dropped, not retried — those authors still get initials via
+    // fromName(), so this degrades gracefully on its own.
+    var idPart = idList.slice(0, 50);
+    var namePart = nameList.slice(0, Math.max(0, 50 - idPart.length));
+    if (idPart.length) q.push("ids=" + encodeURIComponent(idPart.join(",")));
+    if (namePart.length) q.push("names=" + encodeURIComponent(namePart.join(",")));
     peoplePending = true;
     fetch("/__people?" + q.join("&"), { headers: { Accept: "application/json" } })
       .then(function (r) { return r.ok ? r.json() : null; })
