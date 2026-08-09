@@ -975,3 +975,53 @@ test("the composition graph is space content, published with its design system",
   assert.equal(W.pathOwnedBySpace("/__review/graph.js", "alpha", spaces), false,
     "the old home was shared chrome — that is why it moved");
 });
+
+// ── Hardening pass 2026-08-09 ────────────────────────────────────────────────
+// Three guards added after an adversarial re-audit. Each one closes a hole that
+// looked closed: the ownership rule that accepted the root, the throttle that
+// doubled as a lockout button, and the picker catalogue that doubled as a site index.
+
+test("a public prefix may not be the bare root (that opens the whole site)", () => {
+  const spaces = [{ id: "alpha", default: true }, { id: "beta" }];
+  // The hole: "/" IS owned by the default space, so the ownership rule alone passed it,
+  // and isPublicPath matches by startsWith — every gated path becomes public.
+  assert.equal(W.pathOwnedBySpace("/", "alpha", spaces), true, "still owned — that was the trap");
+  assert.equal(W.isPublishablePublicPrefix("/", "alpha", spaces), false, "but never publishable");
+  assert.equal(W.isPublishablePublicPrefix("", "alpha", spaces), false);
+  // Real subtrees still publish, with or without the trailing slash.
+  assert.equal(W.isPublishablePublicPrefix("/departments/x/", "alpha", spaces), true);
+  assert.equal(W.isPublishablePublicPrefix("/departments/x", "alpha", spaces), true);
+  // And the ownership rule still applies on top of it.
+  assert.equal(W.isPublishablePublicPrefix("/beta/x/", "alpha", spaces), false, "another space's subtree");
+  assert.equal(W.isPublishablePublicPrefix("/__canvas/", "alpha", spaces), false, "engine chrome");
+});
+
+test("the login throttle blocks a source but never locks an account out", async () => {
+  const kv = memKV();
+  const env = envWith(kv);
+  const ids = ["rl:login:em:t@example.test", "rl:login:ip:203.0.113.9"];
+  for (let i = 0; i < W.LOGIN_MAX_FAILS; i++) await W.loginFail(env, ids);
+  // The IP that did the hammering is hard-blocked.
+  assert.equal(await W.loginThrottled(env, ids), true);
+  // But the EMAIL alone only slows — otherwise ten guesses at a known address would bar
+  // that person from every IP for fifteen minutes, renewably. Anyone could do it to anyone.
+  const fromCleanIp = ["rl:login:em:t@example.test", "rl:login:ip:198.51.100.1"];
+  assert.equal(await W.loginThrottled(env, fromCleanIp), false, "the real user can still reach the gate");
+  assert.equal(await W.loginSlowed(env, fromCleanIp), true, "but they are braked");
+});
+
+test("the canvas catalogue is not a site index for a signed-out caller", async () => {
+  W.applyDerivedRouting({
+    alpha: {
+      id: "alpha", format: 1, files: {}, space: { id: "alpha", default: true },
+      routing: { canvasCatalog: [{ url: "/departments/secret-thing/", title: "secret-thing" }] },
+    },
+  });
+  // Signed in: the picker needs the full inventory.
+  assert.equal((await W.canvasAggregate("catalog", true).json()).length, 1);
+  // Signed out: the board they were sent still renders, but they get no directory of
+  // every URL on the site. Empty array, not a 401 — the client's fetch must still parse.
+  const anon = W.canvasAggregate("catalog", false);
+  assert.equal(anon.status, 200);
+  assert.deepEqual(await anon.json(), []);
+});

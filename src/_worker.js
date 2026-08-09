@@ -444,14 +444,19 @@ async function revokePublishTokens(env, email) {
 // the email and the caller IP so neither a single target nor a single source runs free.
 const LOGIN_WINDOW_MS = 15 * 60 * 1000;
 const LOGIN_MAX_FAILS = 10;
+// How long an attempt against a hammered EMAIL is held before it is answered. A brake,
+// not a lockout — see loginSlowed.
+const LOGIN_SLOW_MS = 1500;
+const RL_IP_PREFIX = "rl:login:ip:";
+const RL_EM_PREFIX = "rl:login:em:";
 function loginRlIds(request, email) {
   const ip = (request.headers.get("CF-Connecting-IP") || "").trim();
   const ids = [];
-  if (email) ids.push("rl:login:em:" + lcEmail(email));
-  if (ip) ids.push("rl:login:ip:" + ip);
+  if (email) ids.push(RL_EM_PREFIX + lcEmail(email));
+  if (ip) ids.push(RL_IP_PREFIX + ip);
   return ids;
 }
-async function loginThrottled(env, ids) {
+async function overCeiling(env, ids) {
   const kv = kvFor(env);
   if (!kv || !ids.length) return false;
   const now = Date.now();
@@ -462,6 +467,19 @@ async function loginThrottled(env, ids) {
     } catch (e) {}
   }
   return false;
+}
+// HARD BLOCK, on the IP counter only: one source hammering the gate is never legitimate.
+async function loginThrottled(env, ids) {
+  return overCeiling(env, ids.filter((id) => id.startsWith(RL_IP_PREFIX)));
+}
+// SLOW DOWN, on the email counter. Hard-blocking this one handed ANYONE an
+// account-lockout button: ten wrong guesses at a known address barred that person from
+// every IP for fifteen minutes, renewably — and the gate already tells a stranger which
+// addresses exist (the reset notice). A delay still turns a distributed dictionary run
+// against one address into a non-starter, on top of the 600k-iteration derivation every
+// attempt already pays, without letting an attacker deny a teammate their own account.
+async function loginSlowed(env, ids) {
+  return overCeiling(env, ids.filter((id) => id.startsWith(RL_EM_PREFIX)));
 }
 async function loginFail(env, ids) {
   const kv = kvFor(env);
@@ -1043,6 +1061,16 @@ const ENGINE_CHROME_PATHS = [
 const isEngineChrome = (key) => ENGINE_CHROME_PATHS.some((p) =>
   p.endsWith("/") ? key.startsWith(p) : key === p || key.startsWith(p + "/"));
 
+// A publisher-declared PUBLIC PREFIX — a path the gate will open to anonymous visitors.
+// Held to the same ownership rule as a file, normalizing a trailing slash so "/x" and
+// "/x/" both check as "/x/", plus one extra rule the file rule cannot express: "/" is
+// genuinely owned by the default space, but isPublicPath matches by startsWith, so a
+// root prefix opens EVERY gated path on the site. A prefix must name a real subtree.
+function isPublishablePublicPrefix(p, spaceId, spaces) {
+  const norm = String(p == null ? "" : p).replace(/\/?$/, "/");
+  return norm !== "/" && pathOwnedBySpace(norm, spaceId, spaces);
+}
+
 function pathOwnedBySpace(key, spaceId, spaces) {
   if (typeof key !== "string" || !key.startsWith("/")) return false;
   if (isEngineChrome(key)) return false;
@@ -1203,6 +1231,16 @@ async function publishAuth(request, env, spaceId, anySpace) {
     const map = raw ? JSON.parse(raw) : {};
     const e = map[h];
     if (!e) return null;
+    // A star-scope token is admin-equivalent — it pushes instance config, i.e. the user
+    // list itself. `augur login` labels the token it mints with the holder's email, so if
+    // that address is still on the roster but is no longer an admin, the token has
+    // outlived the role that justified it. (Reset and remove revoke tokens outright; a
+    // demotion is the one transition that left one live.) Labels an admin typed by hand
+    // — "ci", "godmode" — match no roster user and are unaffected.
+    if (e.space === "*" && e.label) {
+      const u = userByEmail(e.label);
+      if (u && u.role !== "admin") return null;
+    }
     if (!anySpace && e.space !== "*" && e.space !== spaceId) return null;
     return e;
   } catch (err) { return null; }
@@ -1225,6 +1263,7 @@ async function publishApi(request, url, env) {
     if (await loginThrottled(env, rlIds)) {
       return jsonResponse({ error: "rate-limited", message: "Too many attempts. Wait a few minutes." }, 429);
     }
+    if (await loginSlowed(env, rlIds)) await new Promise((r) => setTimeout(r, LOGIN_SLOW_MS));
     const u = userByEmail(email);
     const pass = String((body && body.password) || "");
     // Resolve through effectiveSecret even when no user matched (a throwaway address),
@@ -1422,9 +1461,11 @@ async function publishApi(request, url, env) {
       const rf = m.routing;
       if (rf && typeof rf === "object") {
         for (const p of rf.publicPrefixes || []) {
-          // A prefix is a path the gate will open; hold it to the same ownership rule
-          // (normalize a trailing slash so "/x" and "/x/" both check as "/x/").
-          if (!ownsPath(String(p).replace(/\/?$/, "/"))) {
+          // See isPublishablePublicPrefix: ownership, AND never the bare root. "/" passing
+          // the ownership rule was the hole — the default space really does own the root,
+          // and a root prefix opens every gated path on the site to anonymous visitors,
+          // from the token any signed-in user mints with `augur login`.
+          if (!isPublishablePublicPrefix(p, spaceId, SPACES)) {
             return jsonResponse({ error: "bad-routing-prefix", path: p }, 400);
           }
         }
@@ -2566,12 +2607,21 @@ let CANVAS_LOADER_EXTRAS = "";
 let CANVAS_CATALOG = [];
 let CANVAS_TRACKS = [];
 
-// Serve one of the aggregates. Public, matching what the files were: canvas boards
-// are shareable links that render without a login, and their insert picker and
-// music list have to load for an anonymous viewer too (isPublicPath already opens
-// /__canvas/*.json). Never cached at the edge — a publish changes it immediately.
-function canvasAggregate(which) {
-  return jsonResponse(which === "tracks" ? CANVAS_TRACKS : CANVAS_CATALOG);
+// Serve one of the aggregates. Reachable without a login, matching what the files were:
+// canvas boards are shareable links that render for a signed-out viewer, so their insert
+// picker and music player must load too. Never cached at the edge — a publish changes it
+// immediately.
+//
+// The CATALOG, though, is the site's whole inventory: the title, group and exact URL of
+// every prototype, page and component that ships. Served openly it is a directory —
+// it turns "you need the link" into "here is every link", which is the difference
+// between a shared prototype and a browsable index of the team's work. A signed-out
+// viewer needs the BOARD they were sent to render, not the catalogue of everything else
+// that exists, so they get an empty picker. Empty array rather than a 401 so the canvas
+// client's fetch still parses and the board renders normally.
+function canvasAggregate(which, authed = true) {
+  if (which === "tracks") return jsonResponse(CANVAS_TRACKS);
+  return jsonResponse(authed ? CANVAS_CATALOG : []);
 }
 
 // The same loader a repo canvas folder carries — the page just names the board and
@@ -2985,15 +3035,6 @@ export default {
       return jsonResponse(synthBuildStamp(await loadManifests(env)));
     }
 
-    // The canvas insert-picker catalog and the session-music list: merged from every
-    // space's routing fragment rather than served as files, because they are the only
-    // two site-wide aggregates and no single publisher can own one (see
-    // canvasAggregate). Public, exactly as the files were — a shared canvas board
-    // renders for a signed-out viewer, so its picker and player must load too. Placed
-    // here, before the gate, for the same reason /_build.json is.
-    if (url.pathname === "/__canvas/catalog.json") return canvasAggregate("catalog");
-    if (url.pathname === "/__canvas/tracks.json") return canvasAggregate("tracks");
-
     // Vanity domains (from the deploy config): a host CNAME'd to this
     // Pages project + added as a custom domain runs this worker. DNS can't target
     // a path, so land each such host's root on its configured page. Scoped to the
@@ -3056,6 +3097,16 @@ export default {
       const expectsConfig = !!(env && (env.BUNDLES || env.ASSETS));
       authed = expectsConfig ? CONFIG_LOADED : true;
     }
+
+    // The canvas insert-picker catalog and the session-music list: merged from every
+    // space's routing fragment rather than served as files, because they are the only two
+    // site-wide aggregates and no single publisher can own one (see canvasAggregate).
+    // Both answer without a login, so a shared board renders for a signed-out viewer —
+    // but the catalog is served EMPTY to one, because the full list is a directory of
+    // every URL on the site. Dispatched here, just after `authed` resolves and before any
+    // gate enforces anything, so it stays reachable to everyone either way.
+    if (url.pathname === "/__canvas/catalog.json") return canvasAggregate("catalog", authed);
+    if (url.pathname === "/__canvas/tracks.json") return canvasAggregate("tracks");
 
     // AI document summarizer — PUBLIC and OPEN (the Project Builder ships to
     // /playground/ and its viewers are never logged in). The engine holds no
@@ -3138,6 +3189,7 @@ export default {
         if (await loginThrottled(env, rlIds)) {
           return htmlResponse(loginPage(redirect, "Too many attempts. Wait a few minutes and try again."), 429);
         }
+        if (await loginSlowed(env, rlIds)) await new Promise((r) => setTimeout(r, LOGIN_SLOW_MS));
         const u = userByEmail(email);
         const pass = (form.get("password") || "").toString();
         // Resolve through effectiveSecret even when no user matched (a throwaway address),
@@ -3264,6 +3316,22 @@ export default {
       if (!me || me.role !== "admin") return Response.redirect(new URL("/", url).toString(), 303);
     }
 
+    // Admin pages (/admin/…): require an admin user. A signed-out visitor gets the
+    // login page; a signed-in non-admin is bounced home.
+    //
+    // Checked BEFORE the public-prototype door below, for the same reason the
+    // admin-only-space seal is: PUBLIC_PREFIXES is publisher-supplied data, and a door
+    // that opens on it must never be able to open the admin panel. The prefixes are
+    // validated at commit, but ordering makes that a second line of defence rather than
+    // the only one.
+    if (url.pathname === "/admin" || url.pathname.startsWith("/admin/")) {
+      if (!authed) return htmlResponse(loginPage(url.pathname + url.search, false), 200);
+      if (usersActive && (!me || me.role !== "admin")) return Response.redirect(new URL("/", url).toString(), 303);
+      const asset = await assetFetch(env, request);
+      if (asset.status === 404) return notFoundResponse();
+      return withAssetCache(withLiveReload(asset, url), url);
+    }
+
     // Published prototypes are public — never gated, regardless of the cookie.
     // The open door is for easy link-sharing, NOT public discovery, so tag every
     // public response as non-indexable (covers HTML and assets alike).
@@ -3274,16 +3342,6 @@ export default {
       const out = new Response(res.body, res);
       out.headers.set("X-Robots-Tag", "noindex, nofollow, noarchive");
       return out;
-    }
-
-    // Admin pages (/admin/…): require an admin user. A signed-out visitor gets the
-    // login page; a signed-in non-admin is bounced home.
-    if (url.pathname === "/admin" || url.pathname.startsWith("/admin/")) {
-      if (!authed) return htmlResponse(loginPage(url.pathname + url.search, false), 200);
-      if (usersActive && (!me || me.role !== "admin")) return Response.redirect(new URL("/", url).toString(), 303);
-      const asset = await assetFetch(env, request);
-      if (asset.status === 404) return notFoundResponse();
-      return withAssetCache(withLiveReload(asset, url), url);
     }
 
     // Past the gate (or nothing gates the site) → serve. A 404 gets one more chance
@@ -3327,6 +3385,6 @@ export const __testables = {
   isEmailish, nameFromEmail, initialsFor,
   applyDerivedRouting, canvasAggregate, synthBuildStamp,
   deleteUrlPrefix, removeFromStore,
-  revokePublishTokens, loginThrottled, loginFail, DUMMY_HASH,
-  pathOwnedBySpace, LOGIN_MAX_FAILS,
+  revokePublishTokens, loginThrottled, loginSlowed, loginFail, DUMMY_HASH,
+  pathOwnedBySpace, isPublishablePublicPrefix, LOGIN_MAX_FAILS,
 };
