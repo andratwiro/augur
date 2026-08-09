@@ -589,16 +589,18 @@
       var away = !resolvesHere(t);
       li.innerHTML = '<span class="num"></span><span class="txt"><span class="body"></span>' +
         '<span class="meta"></span></span>';
-      var lp = authorOf(t);
       if (anno) {
         var av = document.createElement("img"); av.src = CAT; av.alt = "";
         var n = li.querySelector(".num"); n.textContent = ""; n.appendChild(av);
-      } else if (lp) {
-        var n2 = li.querySelector(".num");
-        n2.textContent = ""; n2.className = "num face";
-        n2.appendChild(avatarEl(lp, 20));
       } else {
-        li.querySelector(".num").textContent = String(i + 1);
+        var lp = authorOf(t);
+        if (lp) {
+          var n2 = li.querySelector(".num");
+          n2.textContent = ""; n2.className = "num face";
+          n2.appendChild(avatarEl(lp, 20));
+        } else {
+          li.querySelector(".num").textContent = String(i + 1);
+        }
       }
       li.querySelector(".body").textContent = (t.messages[0] && t.messages[0].body) || "(empty)";
       li.querySelector(".meta").textContent = (anno ? "Annotation · " : "") + (t.messages[0] ? t.messages[0].author : "") +
@@ -1292,8 +1294,8 @@
     var left = r.right + gap, useLeft = false;
     if (left + pw > vw - m2) { left = r.left - pw - gap; useLeft = true; } // flip to the left edge
     previewEl.classList.toggle("left", useLeft);
-    previewEl.style.left = Math.max(m2, left) + "px";
-    previewEl.style.top = Math.max(m2, Math.min(r.top - 6, vh - ph - m2)) + "px";
+    var finalLeft = Math.max(m2, left);
+    var finalTop = Math.max(m2, Math.min(r.top - 6, vh - ph - m2));
 
     // The pin "becomes" the card's avatar, so no jump: land the avatar's centre
     // exactly on the pin's centre (r.left/r.top already include the pin's CSS
@@ -1319,8 +1321,8 @@
       var cardTop = r.top + r.height / 2 - 27;
       var clampedLeft = Math.max(m2, Math.min(cardLeft, vw - pw - m2));
       var clampedTop = Math.max(m2, Math.min(cardTop, vh - ph - m2));
-      previewEl.style.left = clampedLeft + "px";
-      previewEl.style.top = clampedTop + "px";
+      finalLeft = clampedLeft;
+      finalTop = clampedTop;
       // A viewport-clamped card can't land its avatar exactly on the pin's centre,
       // so hiding the pin here would fake the morph and produce the very jump this
       // feature exists to prevent. Only hand off to the card (hide the pin) when
@@ -1329,9 +1331,11 @@
       // same as for an anonymous comment with no avatar.
       var tol = 1;
       if (Math.abs(clampedLeft - cardLeft) <= tol && Math.abs(clampedTop - cardTop) <= tol) {
-        if (btn) btn.classList.add("under");
+        btn.classList.add("under");
       }
     }
+    previewEl.style.left = finalLeft + "px";
+    previewEl.style.top = finalTop + "px";
   }
   function hidePreview() {
     clearTimeout(previewTimer);

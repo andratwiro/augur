@@ -428,11 +428,20 @@ function userByEmail(email, users = USERS) {
 }
 
 // Safe-to-expose view of a user — never includes the password.
+// initials/color use the EXACT same fallbacks as peopleApi below — the two must
+// agree. The client seeds its people cache from /__me (loadMe() sets PEOPLE[ME.id])
+// and then deliberately never re-fetches its own id via /__people (loadPeople()
+// skips ids already in PEOPLE), so a roster user configured without initials/color
+// (only admin-panel invites populate them) would otherwise see "?" on default
+// indigo for their OWN pin/hover-card/reply-bar all session, while every other
+// viewer — who resolves that same person through /__people — sees the derived
+// initials and colour. See initialsFor/colorFor above.
 function publicUser(u) {
   return u ? {
     id: personId(u.email),
     email: u.email, name: u.name,
-    initials: u.initials || "", color: u.color || "#4f46e5",
+    initials: u.initials || initialsFor(u.name || nameFromEmail(u.email)),
+    color: u.color || colorFor(u.email),
     avatar: avatarUrl(u), admin: u.role === "admin",
   } : null;
 }
@@ -2887,7 +2896,10 @@ export default {
     // stay here, ahead of the auth gate, because intercepting first is what makes it
     // reachable without a session — there's no isPublicPath entry for it, and adding
     // one would be dead code the gate never sees.
-    if (url.pathname === "/__people") return peopleApi(url);
+    if (url.pathname === "/__people") {
+      if (request.method !== "GET") return jsonResponse({ error: "method-not-allowed" }, 405);
+      return peopleApi(url);
+    }
 
     // A user's avatar image, decoded from the identity list's data URI. Deliberately
     // ungated: presence chips on PUBLIC boards render it for everyone in the room.
@@ -3097,7 +3109,7 @@ export default {
 export const __testables = {
   hashPassword, verifyPassword, isPassHash, safeEqual, userByEmail,
   personId, avatarKey, publicUser, stampAuthor, sanitizeMsg, applyOp,
-  peopleApi, PEOPLE_LOOKUP_MAX,
+  peopleApi,
   tokenFor, hmacToken, userToken, identify, effectiveSecret,
   mintInvite, readInvite, consumeInvite,
   invitePost, inviteGet, invitePage, setUserSecret, MIN_PASSWORD_LENGTH,

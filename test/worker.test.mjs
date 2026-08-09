@@ -893,6 +893,29 @@ test("publicUser exposes the person id but never a password", () => {
   assert.equal(W.publicUser(null), null);
 });
 
+// ---- publicUser (/__me) and peopleApi (/__people) must derive initials/color the
+// SAME way for a roster user who has neither configured (only admin-panel invites
+// populate them — a user named straight in identity.json usually has neither).
+// This is NOT self-correcting client-side: loadMe() seeds PEOPLE[ME.id] from /__me
+// and loadPeople() deliberately skips ids already in PEOPLE, so a signed-in user's
+// own id is never re-resolved via /__people. If the two fallbacks disagreed, this
+// exact user would see "?" on default indigo for their own pin/hover-card/reply-bar
+// for the whole session, while every OTHER viewer (who resolves them via
+// /__people) sees proper derived initials and colour.
+
+test("publicUser and peopleApi agree on initials/color for a roster user with neither configured", async () => {
+  const u = { email: "nofrills@example.test", name: "No Frills" };
+  const viaMe = W.publicUser(u);
+  const peopleRes = await W.peopleApi(
+    new URL("https://x.test/__people?ids=" + W.personId(u.email)), [u]
+  ).json();
+  const viaPeople = peopleRes.people[0];
+  assert.ok(viaPeople, "peopleApi must resolve this user by id");
+  assert.notEqual(viaMe.initials, "", "publicUser must not fall back to an empty string");
+  assert.equal(viaMe.initials, viaPeople.initials, "/__me and /__people must derive the same initials");
+  assert.equal(viaMe.color, viaPeople.color, "/__me and /__people must derive the same color");
+});
+
 const PEOPLE = [
   { email: "rob@example.test", name: "Rob", initials: "RA", color: "#4f46e5",
     avatar: "data:image/png;base64,AAAA" },
