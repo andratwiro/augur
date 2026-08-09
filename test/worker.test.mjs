@@ -892,3 +892,45 @@ test("publicUser exposes the person id but never a password", () => {
   assert.equal(p.pass, undefined);
   assert.equal(W.publicUser(null), null);
 });
+
+const PEOPLE = [
+  { email: "rob@example.test", name: "Rob", initials: "RA", color: "#4f46e5",
+    avatar: "data:image/png;base64,AAAA" },
+  { email: "ana@example.test", name: "Ana", initials: "AB", color: "#15803d" },
+];
+const peopleFor = async (qs) =>
+  (await W.peopleApi(new URL("https://x.test/__people" + qs), PEOPLE).json()).people;
+
+test("peopleApi answers only the ids it was asked for", async () => {
+  const got = await peopleFor("?ids=" + W.personId("rob@example.test"));
+  assert.equal(got.length, 1);
+  assert.equal(got[0].name, "Rob");
+  assert.equal(got[0].id, W.personId("rob@example.test"));
+  assert.equal(got[0].avatar, "/__avatar/" + W.avatarKey(PEOPLE[0]));
+  assert.equal(got[0].email, undefined, "an address never leaves the server");
+});
+
+test("peopleApi has no enumeration mode", async () => {
+  assert.deepEqual(await peopleFor(""), []);
+  assert.deepEqual(await peopleFor("?ids="), []);
+  assert.deepEqual(await peopleFor("?ids=nosuchid"), [], "unknown ids are omitted, not an error");
+});
+
+test("peopleApi resolves exact names for pre-`by` comments", async () => {
+  const got = await peopleFor("?names=Ana");
+  assert.equal(got.length, 1);
+  assert.equal(got[0].id, W.personId("ana@example.test"));
+  assert.equal(got[0].avatar, null, "no photo on file");
+  assert.deepEqual(await peopleFor("?names=an"), [], "exact match only, no prefix search");
+});
+
+test("peopleApi caps a request at 50 lookups", async () => {
+  const ids = Array.from({ length: 60 }, (_, i) => "id" + i)
+    .concat(W.personId("rob@example.test")).join(",");
+  const res = W.peopleApi(new URL("https://x.test/__people?ids=" + ids), PEOPLE);
+  assert.equal(res.status, 400);
+});
+
+test("/__people is a public path — the overlay runs on ungated prototypes", () => {
+  assert.equal(W.isPublicPath("/__people"), true);
+});

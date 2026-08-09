@@ -115,6 +115,9 @@ function isPublicPath(pathname) {
   // The dormant review overlay + its avatar asset — both embedded into public
   // prototypes, so both must bypass the gate (else the <img> gets the login page).
   if (pathname === "/__review/comments.js" || pathname === "/__review/aslam.png") return true;
+  // Comment-author faces. Embedded in public prototypes like the overlay itself, and
+  // it resolves only ids/names the page already holds — see peopleApi.
+  if (pathname === "/__people") return true;
   // The composition graph the overlay recurses (window.__GV_GRAPH) — embedded into
   // every public prototype before comments.js, so it must bypass the gate too.
   if (pathname === "/__review/graph.js") return true;
@@ -435,6 +438,41 @@ function publicUser(u) {
     initials: u.initials || "", color: u.color || "#4f46e5",
     avatar: avatarUrl(u), admin: u.role === "admin",
   } : null;
+}
+
+// GET /__people?ids=a,b&names=Rob,Ana — resolve comment authors to a face.
+//
+// Answers ONLY what it is asked for. There is deliberately no "list everyone" mode:
+// the overlay is embedded in PUBLIC prototypes, so an enumerable roster here would
+// hand the team list to anyone with a prototype link. Ids are one-way hashes, so they
+// cannot be reversed to an address or guessed from one. `names` exists for comments
+// written before messages carried `by`; stampAuthor guarantees a verified message's
+// name belongs to a real account, so an exact-name lookup is safe for those.
+//
+// Ungated for the same reason /__avatar/ is: a gated fetch from a public prototype
+// would return the login page instead of the data.
+const PEOPLE_LOOKUP_MAX = 50;
+function peopleApi(url, users = USERS) {
+  const csv = (k) => (url.searchParams.get(k) || "").split(",").map((s) => s.trim()).filter(Boolean);
+  const ids = csv("ids"), names = csv("names");
+  if (ids.length + names.length > PEOPLE_LOOKUP_MAX) {
+    return jsonResponse({ error: "too-many" }, 400);
+  }
+  const wantId = new Set(ids), wantName = new Set(names);
+  const people = users
+    .filter((u) => wantId.has(personId(u.email)) || wantName.has(u.name))
+    .map((u) => ({
+      id: personId(u.email),
+      name: u.name,
+      initials: u.initials || initialsFor(u.name || nameFromEmail(u.email)),
+      color: u.color || colorFor(u.email),
+      avatar: avatarUrl(u),
+    }));
+  return jsonResponse({ people }, 200, {
+    // Long enough to spare a fetch per navigation, short enough that an admin-panel
+    // photo swap lands within the minute.
+    "Cache-Control": "private, max-age=60",
+  });
 }
 
 // A data-URI avatar in the user list is SERVED at a stable /__avatar/ URL rather than
@@ -1126,6 +1164,7 @@ async function publishApi(request, url, env) {
   if (spaceId === "_instance" && op === "profiles" && request.method === "GET") {
     if (!(await publishAuth(request, env, spaceId, true))) return jsonResponse({ error: "forbidden" }, 403);
     const profiles = USERS.map((u) => ({
+      id: personId(u.email),
       email: u.email, emails: u.emails || [],
       name: u.name, initials: u.initials || "", color: u.color || "#4f46e5",
       avatar: avatarUrl(u), role: u.role === "admin" ? "admin" : "user",
@@ -1969,10 +2008,14 @@ async function aiSummarize(request, env) {
 // ---- Review comments API (KV-backed) ----------------------------------------
 // Threads are stored one KV value per prototype page path, key "c:<path>".
 
-function jsonResponse(obj, status = 200) {
+function jsonResponse(obj, status = 200, headers = {}) {
   return new Response(JSON.stringify(obj), {
     status,
-    headers: { "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store" },
+    headers: {
+      "Content-Type": "application/json; charset=utf-8",
+      "Cache-Control": "no-store",
+      ...headers,
+    },
   });
 }
 
@@ -2843,6 +2886,8 @@ export default {
       return jsonResponse({ user: publicUser(me), accounts: usersActive });
     }
 
+    if (url.pathname === "/__people") return peopleApi(url);
+
     // A user's avatar image, decoded from the identity list's data URI. Deliberately
     // ungated: presence chips on PUBLIC boards render it for everyone in the room.
     if (url.pathname.startsWith("/__avatar/")) {
@@ -3051,6 +3096,7 @@ export default {
 export const __testables = {
   hashPassword, verifyPassword, isPassHash, safeEqual, userByEmail,
   personId, avatarKey, publicUser, stampAuthor, sanitizeMsg, applyOp,
+  peopleApi, isPublicPath, PEOPLE_LOOKUP_MAX,
   tokenFor, hmacToken, userToken, identify, effectiveSecret,
   mintInvite, readInvite, consumeInvite,
   invitePost, inviteGet, invitePage, setUserSecret, MIN_PASSWORD_LENGTH,
