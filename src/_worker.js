@@ -1395,63 +1395,63 @@ async function publishApi(request, url, env) {
     if (!m || m.id !== spaceId || !m.files || typeof m.files !== "object") {
       return jsonResponse({ error: "bad-manifest" }, 400);
     }
-    // ── Path ownership — the fix that keeps a space token to its own space. Any
+    const liveManifests = await loadManifests(env, true);
+    // ── Untrusted-token guard — the fix that keeps a space token to its own space. Any
     // signed-in user can mint a default-space token (`augur login`), so without this a
     // user could commit a manifest that claims /admin/* or /__canvas/canvas.js (engine
     // chrome) or another space's paths, and shadow them — then run script as the next
-    // admin who loads that asset. A commit may ONLY write paths its own space owns.
-    const commitIsDefault = spaceId === ((SPACES.find((s) => s.default) || {}).id || null);
-    const ownsPath = (k) => pathOwnedBySpace(k, spaceId, SPACES);
-    const liveManifests = await loadManifests(env, true);
-    for (const k in m.files) {
-      if (!ownsPath(k)) return jsonResponse({ error: "path-not-owned", path: k }, 403);
-      // Belt-and-suspenders: never overwrite a path another LIVE space (incl _engine)
-      // already serves, whatever the base rules above would allow.
-      for (const otherId in liveManifests) {
-        if (otherId === spaceId) continue;
-        if (liveManifests[otherId].files && liveManifests[otherId].files[k]) {
-          return jsonResponse({ error: "path-conflict", path: k, owner: otherId }, 409);
-        }
-      }
-    }
-    // ── Routing fragment — derived site routing trusts this verbatim (public prefixes,
-    // the admin-only seal, the MCP allowlist), so a rogue fragment could open the whole
-    // site or un-seal a restricted space. Validate every field against what this space
-    // is allowed to assert.
-    const rf = m.routing;
-    if (rf && typeof rf === "object") {
-      for (const p of rf.publicPrefixes || []) {
-        // A prefix is a path the gate will open; hold it to the same ownership rule
-        // (normalize a trailing slash so "/x" and "/x/" both check as "/x/").
-        if (!ownsPath(String(p).replace(/\/?$/, "/"))) {
-          return jsonResponse({ error: "bad-routing-prefix", path: p }, 400);
-        }
-      }
-      for (const k in rf.versionMap || {}) {
-        if (!ownsPath(k)) return jsonResponse({ error: "bad-routing-version", path: k }, 400);
-      }
-      // Public skill assets are a default-space concept only, and live under /skills/.
-      if (rf.publicSkillPrefixes) {
-        if (!commitIsDefault) return jsonResponse({ error: "skill-prefixes-not-default" }, 403);
-        for (const p of rf.publicSkillPrefixes) {
-          if (typeof p !== "string" || !p.startsWith("/skills/")) {
-            return jsonResponse({ error: "bad-skill-prefix", path: p }, 400);
+    // admin who loads that asset. STAR-scope tokens ("*") are admin/CI-only and already
+    // all-powerful (they push instance config, i.e. the user list), so they are exempt —
+    // that is also how the trusted `_engine` chrome publish writes /admin, /404.html, etc.
+    if (who.space !== "*") {
+      const commitIsDefault = spaceId === ((SPACES.find((s) => s.default) || {}).id || null);
+      const ownsPath = (k) => pathOwnedBySpace(k, spaceId, SPACES);
+      for (const k in m.files) {
+        if (!ownsPath(k)) return jsonResponse({ error: "path-not-owned", path: k }, 403);
+        // Belt-and-suspenders: never overwrite a path another LIVE space (incl _engine)
+        // already serves, whatever the base rules above would allow.
+        for (const otherId in liveManifests) {
+          if (otherId === spaceId) continue;
+          if (liveManifests[otherId].files && liveManifests[otherId].files[k]) {
+            return jsonResponse({ error: "path-conflict", path: k, owner: otherId }, 409);
           }
         }
       }
-      // Declared MCP hosts must match an instance-configured suffix — mounting a space
-      // is no longer the whole trust act now that any user can publish one.
-      for (const host of rf.mcpAllowlist || []) {
-        const okHost = typeof host === "string" &&
-          MCP_HOST_SUFFIXES.some((sfx) => host === sfx || host.endsWith("." + sfx));
-        if (!okHost) return jsonResponse({ error: "mcp-host-not-allowed", host }, 403);
+      // Routing fragment — derived site routing trusts this verbatim (public prefixes,
+      // the admin-only seal, the MCP allowlist), so a rogue fragment could open the whole
+      // site or un-seal a restricted space. Validate every field this space may assert.
+      const rf = m.routing;
+      if (rf && typeof rf === "object") {
+        for (const p of rf.publicPrefixes || []) {
+          // A prefix is a path the gate will open; hold it to the same ownership rule
+          // (normalize a trailing slash so "/x" and "/x/" both check as "/x/").
+          if (!ownsPath(String(p).replace(/\/?$/, "/"))) {
+            return jsonResponse({ error: "bad-routing-prefix", path: p }, 400);
+          }
+        }
+        for (const k in rf.versionMap || {}) {
+          if (!ownsPath(k)) return jsonResponse({ error: "bad-routing-version", path: k }, 400);
+        }
+        // Public skill assets are a default-space concept only, and live under /skills/.
+        if (rf.publicSkillPrefixes) {
+          if (!commitIsDefault) return jsonResponse({ error: "skill-prefixes-not-default" }, 403);
+          for (const p of rf.publicSkillPrefixes) {
+            if (typeof p !== "string" || !p.startsWith("/skills/")) {
+              return jsonResponse({ error: "bad-skill-prefix", path: p }, 400);
+            }
+          }
+        }
+        // Declared MCP hosts must match an instance-configured suffix — mounting a space
+        // is no longer the whole trust act now that any user can publish one.
+        for (const host of rf.mcpAllowlist || []) {
+          const okHost = typeof host === "string" &&
+            MCP_HOST_SUFFIXES.some((sfx) => host === sfx || host.endsWith("." + sfx));
+          if (!okHost) return jsonResponse({ error: "mcp-host-not-allowed", host }, 403);
+        }
       }
-    }
-    // The space's own adminOnly/default flags are NOT self-asserted from the manifest —
-    // strip them so a token scoped to an admin-only space cannot publish itself public
-    // (or claim default). applyDerivedRouting reads m.space; a preserved copy of the
-    // trusted prior value keeps the seal across publishes.
-    {
+      // adminOnly/default are NOT self-asserted from a non-star manifest — a token scoped
+      // to an admin-only space must not publish itself public (or claim default). Preserve
+      // the trusted prior value; trust-on-first-publish only when there is no prior.
       const prior = liveManifests[spaceId] && liveManifests[spaceId].space;
       const declared = m.space && typeof m.space === "object" ? m.space : { id: spaceId };
       m.space = {
