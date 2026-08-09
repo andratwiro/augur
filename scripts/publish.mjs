@@ -101,6 +101,25 @@ const idOf = (dir) => {
   try { return JSON.parse(readFileSync(path.join(dir, "space.json"), "utf8")).id || path.basename(dir); }
   catch (e) { return path.basename(dir); }
 };
+// Two sibling checkouts of the SAME space id make publish ambiguous and unsafe:
+// byId keeps whichever sorts LAST, so `ship`/`publish` from one clone can push a
+// different clone's (even uncommitted) tree — and the build then emits the space at
+// BOTH / and /<id>/, moving every live URL onto /<id>/ and serving shared links the
+// login page. Refuse it before anything is built: one checkout per space.
+{
+  const seenDir = {};
+  for (const d of spaceDirs) {
+    const id = idOf(d);
+    if (seenDir[id]) {
+      die(`two checkouts beside this engine both declare space "${id}":\n` +
+          `    ${seenDir[id]}\n    ${d}\n\n` +
+          `  Publishing would be ambiguous — it could ship the wrong tree or split the\n` +
+          `  site across / and /${id}/. Keep one checkout per space next to the engine\n` +
+          `  (move or remove the other), then re-run.`);
+    }
+    seenDir[id] = d;
+  }
+}
 const byId = Object.fromEntries(spaceDirs.map((d) => [idOf(d), d]));
 
 let targetSpace = opt("--space");
