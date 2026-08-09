@@ -93,9 +93,12 @@ function personId(email) {
 ```
 
 The id is a display-resolution key, not a credential — nothing is authorised by it. A
-collision would mean two people sharing one face; at roster sizes in the tens that is
-negligible, and the roster builder asserts uniqueness at startup so a collision surfaces
-as a loud error rather than a silently wrong photo.
+collision would mean two people sharing one face. Across a roster in the tens, the odds
+of any collision in a 32-bit space are on the order of one in a million, and the
+consequence is a wrong photo on a comment, not a security failure. That risk is
+accepted rather than engineered against: a worker has no startup hook to assert
+uniqueness in, and a per-request check would tax every read to guard an event that will
+not happen. `colorFor` and `avatarKey` already make the same trade.
 
 ### `GET /__people?ids=a,b,c` — resolve, don't enumerate
 
