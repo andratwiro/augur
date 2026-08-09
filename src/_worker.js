@@ -1209,7 +1209,10 @@ async function publishApi(request, url, env) {
     }
     const u = userByEmail(email);
     const pass = String((body && body.password) || "");
-    const real = u ? await effectiveSecret(env, u) : "";
+    // Resolve through effectiveSecret even when no user matched (a throwaway address),
+    // so an unknown email pays the SAME users:secrets KV read as a known one — without
+    // this the KV read is a residual timing oracle after the dummy-hash equalizes PBKDF2.
+    const real = await effectiveSecret(env, u || { email: "\x00nouser" });
     // Always run PBKDF2 (real or dummy) so an unknown email can't be told apart by timing.
     const ok = await verifyPassword(pass, real || (await dummyHash()));
     // Same distinction the web gate makes: a roster user with no secret was reset, and
@@ -3119,7 +3122,10 @@ export default {
         }
         const u = userByEmail(email);
         const pass = (form.get("password") || "").toString();
-        const real = u ? await effectiveSecret(env, u) : "";
+        // Resolve through effectiveSecret even when no user matched (a throwaway address),
+    // so an unknown email pays the SAME users:secrets KV read as a known one — without
+    // this the KV read is a residual timing oracle after the dummy-hash equalizes PBKDF2.
+    const real = await effectiveSecret(env, u || { email: "\x00nouser" });
         // Always run PBKDF2 — against the real hash or a dummy — so an unknown email
         // costs the same as a known one (no timing enumeration).
         const ok = await verifyPassword(pass, real || (await dummyHash()));
