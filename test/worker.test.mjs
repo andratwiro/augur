@@ -930,7 +930,3 @@ test("peopleApi caps a request at 50 lookups", async () => {
   const res = W.peopleApi(new URL("https://x.test/__people?ids=" + ids), PEOPLE);
   assert.equal(res.status, 400);
 });
-
-test("/__people is a public path — the overlay runs on ungated prototypes", () => {
-  assert.equal(W.isPublicPath("/__people"), true);
-});

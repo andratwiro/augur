@@ -115,9 +115,6 @@ function isPublicPath(pathname) {
   // The dormant review overlay + its avatar asset — both embedded into public
   // prototypes, so both must bypass the gate (else the <img> gets the login page).
   if (pathname === "/__review/comments.js" || pathname === "/__review/aslam.png") return true;
-  // Comment-author faces. Embedded in public prototypes like the overlay itself, and
-  // it resolves only ids/names the page already holds — see peopleApi.
-  if (pathname === "/__people") return true;
   // The composition graph the overlay recurses (window.__GV_GRAPH) — embedded into
   // every public prototype before comments.js, so it must bypass the gate too.
   if (pathname === "/__review/graph.js") return true;
@@ -2886,6 +2883,10 @@ export default {
       return jsonResponse({ user: publicUser(me), accounts: usersActive });
     }
 
+    // Comment-author faces, same deal as /__me and /__avatar/ above: this route must
+    // stay here, ahead of the auth gate, because intercepting first is what makes it
+    // reachable without a session — there's no isPublicPath entry for it, and adding
+    // one would be dead code the gate never sees.
     if (url.pathname === "/__people") return peopleApi(url);
 
     // A user's avatar image, decoded from the identity list's data URI. Deliberately
@@ -3096,7 +3097,7 @@ export default {
 export const __testables = {
   hashPassword, verifyPassword, isPassHash, safeEqual, userByEmail,
   personId, avatarKey, publicUser, stampAuthor, sanitizeMsg, applyOp,
-  peopleApi, isPublicPath, PEOPLE_LOOKUP_MAX,
+  peopleApi, PEOPLE_LOOKUP_MAX,
   tokenFor, hmacToken, userToken, identify, effectiveSecret,
   mintInvite, readInvite, consumeInvite,
   invitePost, inviteGet, invitePage, setUserSecret, MIN_PASSWORD_LENGTH,
