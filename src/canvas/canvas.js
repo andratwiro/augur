@@ -1188,12 +1188,21 @@
     else s += '<path d="' + d + '" stroke="' + color + '" stroke-width="' + width + '"/>';
     return s + "</svg>";
   }
+  // ⚠️ EVERY value interpolated below must be a number or a hex literal by the time it
+  // reaches strokeSvg, which concatenates them into attribute positions in an innerHTML
+  // string. The node did NOT necessarily come from this client: board docs round-trip
+  // through /__board — which answers an anonymous POST — and through the multiplayer
+  // socket, and neither path sanitizes. clipSanitize covers the CLIPBOARD only. So the
+  // clipping has to happen here, at the sink, or a stored `color` of
+  // `#fff"/><img src=x onerror=…>` executes for everyone who opens the board.
   function renderDraw(node) {
-    var pad = Math.ceil((node.size || 3) / 2) + 8;
+    var size = Math.max(0.5, Math.min(200, clipNum(node.size, 3)));
+    var pad = Math.ceil(size / 2) + 8;
     var host = el("div", { class: "gvc-draw" + (node.mode === "highlighter" ? " hl" : "") });
     place(host, node);
-    var pts = node.points.map(function (p) { return [p[0] + pad, p[1] + pad]; });
-    host.innerHTML = strokeSvg(pathD(pts), node.mode, node.color || "#1e1e1e", node.size || 3, node.w || 1, node.h || 1, pad);
+    var pts = (node.points || []).map(function (p) { return [clipNum(p && p[0], 0) + pad, clipNum(p && p[1], 0) + pad]; });
+    host.innerHTML = strokeSvg(pathD(pts), node.mode, clipColor(node.color) || "#1e1e1e", size,
+      clipNum(node.w, 1), clipNum(node.h, 1), pad);
     return host;
   }
   function strokeWidth() {
@@ -1251,7 +1260,9 @@
     var def = SHAPE_SIZE[node.shape] || [140, 140];
     node.w = node.w || def[0]; node.h = node.h || def[1];
     var host = el("div", { class: "gvc-shape" });
-    host.innerHTML = '<svg viewBox="0 0 100 100" preserveAspectRatio="none"><g fill="' + (node.color || "#ffffff") + '" stroke="#777a80" stroke-width="1.4" stroke-linejoin="round">' + (SHAPE_GEO[node.shape] || SHAPE_GEO.square) + "</g></svg>";
+    // clipColor, not node.color: this lands in an attribute position inside an innerHTML
+    // string, and the node may have arrived from KV or a peer. See renderDraw.
+    host.innerHTML = '<svg viewBox="0 0 100 100" preserveAspectRatio="none"><g fill="' + (clipColor(node.color) || "#ffffff") + '" stroke="#777a80" stroke-width="1.4" stroke-linejoin="round">' + (SHAPE_GEO[node.shape] || SHAPE_GEO.square) + "</g></svg>";
     var txt = editableText(node, host, "");
     if (node.bold) txt.style.fontWeight = "700";
     host.appendChild(txt);
