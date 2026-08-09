@@ -4135,7 +4135,6 @@ function renderNotFoundPage() {
 
 function renderAdminPage() {
   const body = `<style>
-    .admin-intro{ color:#5b626e; font-size:14px; margin:0 0 18px; max-width:62ch; line-height:1.6; }
     .admin-users{ display:flex; flex-direction:column; gap:8px; max-width:700px; }
     .au{ display:flex; align-items:center; gap:12px; padding:11px 14px; border:1px solid rgba(16,17,26,0.09); border-radius:12px; background:#fff; }
     .au__av{ flex:none; width:34px; height:34px; border-radius:50%; display:grid; place-items:center; color:#fff; font-weight:700; font-size:12px; text-transform:uppercase; }
@@ -4156,7 +4155,6 @@ function renderAdminPage() {
     @media (max-width:620px){ .au{ flex-wrap:wrap; } .au__act{ width:100%; } .au__link{ flex:1 1 auto; width:auto; } }
   </style>
   <header class="folderbar"><h1 class="folderbar__title">Admin</h1><span class="folderbar__rule"></span></header>
-  <p class="admin-intro">Lists internal users. Reset kills someone's password immediately and produces a single-use link you send them; you never see or set passwords. Names, emails and roles live in <code>src/identity.json</code>.</p>
   <div class="admin-users" data-admin-users><p class="empty">Loading…</p></div>
   <script>${ADMIN_JS}</script>`;
   return shell({ title: "Admin · Augur", activeTab: "admin", body });
