@@ -4,7 +4,8 @@
 //   augur dev       full local shell in the current space folder (or god-mode root)
 //   augur build     compose dist/ once
 //   augur deploy    build + direct-upload the whole site (see deploy.mjs)
-//   augur publish   incremental per-space direct publish (see publish.mjs)
+//   augur ship      commit + publish + push — the default way a change goes out
+//   augur publish   publish only, without committing or pushing (see publish.mjs)
 //   augur status    what is live vs what your clones hold (see status.mjs)
 //   augur export    take an off-Cloudflare copy of the store (see export.mjs)
 //   augur restore   put a copy back (see restore.mjs)
@@ -23,6 +24,7 @@ const map = {
   dev: "dev.mjs",
   offline: "offline.mjs",
   deploy: "deploy.mjs",
+  ship: "ship.mjs",
   publish: "publish.mjs",
   status: "status.mjs",
   export: "export.mjs",
@@ -31,7 +33,7 @@ const map = {
   build: path.join("..", "build.js"),
 };
 if (!map[sub]) {
-  console.error("usage: augur <dev|offline|build|deploy|publish|status|export|restore|login> [options]");
+  console.error("usage: augur <ship|dev|offline|build|deploy|publish|status|export|restore|login> [options]");
   process.exit(sub ? 1 : 0);
 }
 const child = spawn(process.execPath, [path.join(SCRIPTS, map[sub]), ...rest], { stdio: "inherit" });

@@ -73,6 +73,13 @@ for (const id of ids) {
   const localDirty = dir ? git(dir, "status", "--porcelain").length > 0 : false;
   if (dir && DO_FETCH) git(dir, "fetch", "--quiet", "origin");
   const remote = dir ? git(dir, "rev-parse", "origin/main") : "";
+  // Direction matters and a plain inequality doesn't carry it: a clone can be
+  // ahead of the remote (work nobody else can see) or behind it (work you
+  // haven't got yet), and telling someone to pull when they need to push sends
+  // them the wrong way.
+  const [ahead, behind] = dir && remote
+    ? git(dir, "rev-list", "--left-right", "--count", `${head}...${remote}`).split(/\s+/).map(Number)
+    : [0, 0];
 
   const short = (s) => (s ? s.slice(0, 12) : "—");
   const bits = [];
@@ -84,14 +91,18 @@ for (const id of ids) {
     verdict = "published from a working tree"; colour = C.red; problems++;
   } else if (!dir) {
     verdict = "live (no local clone to compare)"; colour = C.dim;
-  } else if (liveInfo.sha === head && !localDirty && (!remote || remote === head)) {
+  } else if (liveInfo.sha === head && !localDirty && !ahead && !behind) {
     verdict = "live matches your clone"; colour = C.green;
-  } else if (liveInfo.sha !== head) {
-    verdict = "your clone is AHEAD of live — publish it"; colour = C.yellow; problems++;
-  } else if (remote && remote !== head) {
-    verdict = "the remote is ahead of your clone — pull, then publish"; colour = C.yellow; problems++;
+  } else if (localDirty) {
+    verdict = "uncommitted changes — run `augur ship`"; colour = C.yellow; problems++;
+  } else if (liveInfo.sha !== head && !behind) {
+    verdict = "your clone is AHEAD of live — run `augur ship`"; colour = C.yellow; problems++;
+  } else if (ahead) {
+    verdict = `${ahead} commit(s) only on this machine — run \`augur ship\``; colour = C.yellow; problems++;
+  } else if (behind) {
+    verdict = `${behind} commit(s) waiting on the remote — pull, then ship`; colour = C.yellow; problems++;
   } else {
-    verdict = "uncommitted local changes (live is the last publish)"; colour = C.dim;
+    verdict = "live matches your clone"; colour = C.green;
   }
 
   if (liveInfo) {

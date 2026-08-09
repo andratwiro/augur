@@ -104,11 +104,22 @@ token (no account credentials) into an incremental, content-addressed directory;
 provenance and refusing to bury newer live content without `--force`. Walkthrough:
 `docs/2026-08-09-bundle-store-recovery.md`.
 
+**Shipping a change** — `augur ship` is the default and what agents should run:
+commit (everything, untracked included) → publish (the live URL, in seconds) →
+push (retried). That order is deliberate: the commit makes losing work
+impossible, and the publish must not wait on the network. A rejected push
+reconciles automatically — different prototypes merge silently, a genuine
+same-prototype conflict keeps THEIR version at the real path and forks yours to
+`<name>-conflict-<who>` with a note, because prototype HTML must never be
+textually merged. Conflicts outside a prototype folder abort the merge for a
+human.
+
 **Local commands** (`augur <cmd>` via the bin entry, or `node scripts/<cmd>.mjs`):
 `augur dev` (standalone shell — single space folder, dev identity fallback) ·
 `npm run offline` (god-mode multi-space) · `npm run deploy` (build + direct upload;
-`--check`, `--preview`) · `augur publish [--space <id>|--all] [--dry-run]`
-(incremental per-space publish; `AUGUR_TOKEN` + `AUGUR_ORIGIN`) · `augur status`
+`--check`, `--preview`) · `augur ship [-m msg] [--no-push]` (the default path) ·
+`augur publish [--space <id>|--all] [--dry-run]`
+(publish only; `AUGUR_TOKEN` + `AUGUR_ORIGIN`) · `augur status`
 (live vs clones vs `origin/main`; exit 1 on drift) · `augur export --out <dir>` /
 `augur restore <dir>` (store backup).
 

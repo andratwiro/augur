@@ -1,9 +1,55 @@
 # Publishing — how space work goes live
 
-**Push ≠ deploy.** `git push` saves and shares your work; it does not change the
-live site. The habit: **finish → publish → push.**
+**One command, every time:**
 
-This is the only path. The site's CI builds engine chrome and worker code with no
+```
+augur ship            # commit + publish + push, then print the live URL
+augur ship -m "…"     # with your own commit message
+```
+
+Agents: this is the default. Finish a change, run it, and hand the human the URL
+it prints — the live site, not localhost, not a `file://` path. Everyone works
+against the same live URL, so what you show is what everyone else sees.
+
+It does three things that used to be three separate decisions, each silently
+skippable:
+
+1. **Commits** everything, including untracked files. Local, instant, cannot
+   fail. This is the step that makes losing work impossible — two prototypes
+   once reached the live site while existing in no repository at all, one
+   `git clean` from gone.
+2. **Publishes**, so the live URL is true within seconds. Before the push, on
+   purpose: a network problem must never stand between you and seeing your work.
+3. **Pushes**, so everyone else and their agents know what changed. Retried. If
+   it ultimately fails, your work is still committed and still live — re-run
+   `augur ship` to catch GitHub up.
+
+`augur publish` still exists for publishing alone. Prefer `ship`.
+
+## When two people edit the same thing
+
+Handled, not blocked. If someone shipped while you were working, `ship` fetches
+and merges — silently when your changes are in different prototypes, telling you
+when they overlapped in the same one.
+
+If the same prototype was edited in ways that genuinely conflict, it is NOT
+merged: prototype HTML interleaved by a text merge renders wrong and nobody
+notices until a demo. Instead **their** version keeps the real path — so any
+shared link still resolves — and **yours** forks to a sibling folder,
+`<name>-conflict-<you>`, with a `CONFLICT.md` explaining what happened. Both are
+live, both are cards in the UI, nothing is lost, and a human folds them together
+later.
+
+A conflict outside a prototype folder (a design-system file, `space.json`) stops
+the merge instead — it isn't safe to resolve mechanically. Your work stays
+committed and live; resolve it and ship again.
+
+## Push ≠ deploy
+
+`git push` saves and shares your work; it does not change the
+live site. That is why `ship` exists.
+
+Publishing is the only path. The site's CI builds engine chrome and worker code with no
 space on disk at all, so there is no rebuild, redeploy, or pin bump that can put
 your work live — and equally, none that can silently overwrite it. If the live
 site doesn't show your change, the answer is always the same: it wasn't published.
