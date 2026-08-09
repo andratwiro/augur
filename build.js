@@ -2040,6 +2040,11 @@ const NAV_CSS = `
     }
     .gvprof__item:hover { background: rgba(16,17,26,0.05); }
     .gvprof__item .gvic { width: 15px; height: 15px; color: #5b626e; }
+    /* Reveal-on-demand rail bits carry the hidden attribute, but their own rules set
+       display (grid/flex), which out-specifies the UA [hidden] rule — without these
+       they show for everyone, always (same gotcha as the brand and the admin item). */
+    .gvprof__dot[hidden], .gvprof__ver[hidden], .gvsearch__clear[hidden], .gvside__store[hidden] { display: none; }
+
     /* Engine version footer (admins only) + the update-available "!" on the chip. */
     .gvprof__dot { flex: none; width: 15px; height: 15px; border-radius: 50%; display: grid; place-items: center;
       background: #b45309; color: #fff; font-size: 10px; font-weight: 800; line-height: 1; }
@@ -2225,6 +2230,14 @@ const NAV_CSS = `
     .gvside__sect[open] > .gvside__sum .gvside__caret { transform: rotate(90deg); }
     .gvside__sub { margin: 2px 0 4px 13px; padding-left: 8px; border-left: 1px solid rgba(16,17,26,0.08); }
 
+    /* Bundle-store fill gauge — admins only, revealed by PROFILE_JS once /__admin/storage
+       answers (instances with no store never show it). Sits in the rail foot above Library. */
+    .gvside__store { display: block; padding: 7px 8px 9px; }
+    .gvside__storeT { font-size: 12px; font-weight: 600; color: #2c2f36; }
+    .gvside__storeS { margin-top: 1px; font-size: 11.5px; font-weight: 500; color: #6b7280; }
+    .gvside__storeBar { margin-top: 7px; height: 5px; border-radius: 3px; background: rgba(16,17,26,0.09); overflow: hidden; }
+    .gvside__storeBar > span { display: block; height: 100%; border-radius: 3px; background: #5e6ad2; transition: width .3s ease; }
+
     /* Mobile drawer scrim. */
     .gvscrim { display: none; position: fixed; inset: 0; z-index: 2147483099; background: rgba(16,17,26,0.34); opacity: 0; transition: opacity .2s ease; }
 
@@ -2408,6 +2421,10 @@ function protoName(slug) {
 // Nav context (opportunities + whether Playground shipped), set once in main() so the
 // same rail renders identically on every page without threading it through each call.
 const NAV_STATE = { opportunities: [], hasPlayground: false, spaces: [], activeSpace: "" };
+// The default space's nav context, kept aside while the loop builds the other spaces.
+// The shared chrome pages (Changelog, Admin) ship at the dist ROOT, so their rail must
+// be the default space's rail — not whichever space happened to be built last.
+let DEFAULT_NAV = null;
 
 // The omni search field — lives in the rail, filters whatever cards are on the right
 // (the shared chrome script wires [data-filter] to the current page's [data-fitem]).
@@ -2525,6 +2542,11 @@ function sideRail(active) {
     </div>
     <div class="gvside__foot">
       <div class="gvside__rule"></div>
+      <div class="gvside__store" data-store hidden>
+        <div class="gvside__storeT">Storage space</div>
+        <div class="gvside__storeS" data-store-line></div>
+        <div class="gvside__storeBar"><span data-store-bar style="width:0%"></span></div>
+      </div>
       ${library}
       <div class="gvside__group" style="margin-top:6px">
         <button type="button" class="gvside__act" data-help-open>${IC_HELP}<span>Help</span></button>
@@ -3759,7 +3781,27 @@ const PROFILE_JS = `(function(){
     // Admin-only surfaces (e.g. the Pitis paw) reveal via html.gv-admin.
     document.documentElement.classList.toggle('gv-admin', !!u.admin);
     box.hidden = false;
-    if(u.admin) version();
+    if(u.admin){ version(); storage(); }
+  }
+  // Bundle-store fill gauge in the rail foot — admins only (the worker 403s everyone
+  // else) and only on instances that actually have a store.
+  function storage(){
+    var el = document.querySelector('[data-store]');
+    if(!el) return;
+    fetch('/__admin/storage', {headers:{'Accept':'application/json'}})
+      .then(function(r){ return r.ok ? r.json() : null; })
+      .then(function(d){
+        if(!d || !d.enabled) return;
+        var gb = function(n){ return n / 1073741824; };
+        var used = gb(d.bytes), cap = gb(d.limitBytes);
+        el.querySelector('[data-store-line]').textContent =
+          used.toFixed(2) + ' GB of ' + (Math.round(cap * 10) / 10) + ' GB used';
+        var bar = el.querySelector('[data-store-bar]');
+        bar.style.width = Math.max(1, Math.min(100, d.pct)) + '%';
+        if(d.pct >= 80) bar.style.background = '#b42318';
+        else if(d.pct >= 50) bar.style.background = '#b45309';
+        el.hidden = false;
+      }).catch(function(){});
   }
   // Engine version footer + update nudge — admins only (the worker 403s everyone
   // else). One cheap fetch per page view; the release-feed check itself is
@@ -4116,35 +4158,7 @@ function renderAdminPage() {
   <header class="folderbar"><h1 class="folderbar__title">Admin</h1><span class="folderbar__rule"></span></header>
   <p class="admin-intro">Lists internal users. Reset kills someone's password immediately and produces a single-use link you send them; you never see or set passwords. Names, emails and roles live in <code>src/identity.json</code>.</p>
   <div class="admin-users" data-admin-users><p class="empty">Loading…</p></div>
-  <section class="admin-storage" data-admin-storage hidden style="max-width:700px; margin-top:26px;">
-    <h2 style="font-size:15px; font-weight:600; margin:0 0 10px;">Storage</h2>
-    <div style="padding:13px 14px; border:1px solid rgba(16,17,26,0.09); border-radius:12px; background:#fff;">
-      <div style="display:flex; justify-content:space-between; font-size:13px; color:#5b626e; margin-bottom:8px;">
-        <span data-st-label>Checking…</span><span data-st-pct></span>
-      </div>
-      <div style="height:6px; border-radius:4px; background:rgba(16,17,26,0.07); overflow:hidden;">
-        <div data-st-bar style="height:100%; width:0%; border-radius:4px; background:#2c2150; transition:width .3s ease;"></div>
-      </div>
-      <p data-st-note style="font-size:12px; color:#9aa0ab; margin:8px 0 0;"></p>
-    </div>
-  </section>
-  <script>${ADMIN_JS}</script>
-  <script>(function(){
-    // Bundle-store fill gauge. Hidden entirely on instances without a store.
-    fetch('/__admin/storage').then(function(r){ return r.ok ? r.json() : null; }).then(function(d){
-      if (!d || !d.enabled) return;
-      var el = document.querySelector('[data-admin-storage]');
-      el.hidden = false;
-      var gb = function(n){ return (n / 1073741824).toFixed(2); };
-      el.querySelector('[data-st-label]').textContent = gb(d.bytes) + ' GB of ' + gb(d.limitBytes) + ' GB used, ' + d.objects + ' objects';
-      el.querySelector('[data-st-pct]').textContent = d.pct + '%';
-      var bar = el.querySelector('[data-st-bar]');
-      bar.style.width = Math.max(1, Math.min(100, d.pct)) + '%';
-      if (d.pct >= 80) { bar.style.background = '#b42318'; el.querySelector('[data-st-note]').textContent = 'Close to the free-tier ceiling. Prune old versions or upgrade the plan before publishing large assets.'; }
-      else if (d.pct >= 50) { bar.style.background = '#b45309'; el.querySelector('[data-st-note]').textContent = 'Comfortable, worth a look at what is largest.'; }
-      else { el.querySelector('[data-st-note]').textContent = 'Plenty of room. Publishes reuse identical files, so growth stays slow.'; }
-    }).catch(function(){});
-  })();</script>`;
+  <script>${ADMIN_JS}</script>`;
   return shell({ title: "Admin · Augur", activeTab: "admin", body });
 }
 
@@ -5032,6 +5046,7 @@ async function buildSpace(space) {
   // Opportunities/Playground + Library) is identical on every page of this space.
   NAV_STATE.opportunities = opportunities;
   NAV_STATE.hasPlayground = await isDir(path.join(WS_ROOT, "playground"));
+  if (space.default) DEFAULT_NAV = { space, opportunities, hasPlayground: NAV_STATE.hasPlayground };
 
   // Root index → opportunities.
   await fs.writeFile(path.join(DIST_SPACE, "index.html"), renderRootIndex(opportunities), "utf8");
@@ -5308,6 +5323,20 @@ async function main() {
   }
 
   // ── Shared chrome — emitted ONCE at the dist root (NOT space-scoped) ─────────────────
+
+  // These pages live at the root, so they must render with the DEFAULT space's context —
+  // the build loop above leaves it pointing at whichever space it finished with (which is
+  // why Admin used to open showing the last space as "Current"). GV_ONLY_SPACE builds skip
+  // the default space entirely; there we still restore its rail context, minus the
+  // listings (nothing scanned), and the root chrome isn't published from that pass anyway.
+  {
+    const dflt = spaces.find((s) => s.default);
+    if (dflt) {
+      setSpaceContext(dflt);
+      NAV_STATE.opportunities = DEFAULT_NAV ? DEFAULT_NAV.opportunities : [];
+      NAV_STATE.hasPlayground = DEFAULT_NAV ? DEFAULT_NAV.hasPlayground : false;
+    }
+  }
 
   // Changelog (platform-level) → rendered from the hand-edited changelog.md (the .md
   // itself is internal and never copied; only this generated page ships).
