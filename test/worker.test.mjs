@@ -891,8 +891,8 @@ test("dummyHash is a valid pbkdf2 string at the current iteration count", async 
 test("revokePublishTokens drops exactly the removed user's tokens", async () => {
   const kv = memKV({ "publish:tokens": JSON.stringify({
     h1: { space: "*", label: "gone@example.test", createdAt: "x" },
-    h2: { space: "go-vocal", label: "gone@example.test", createdAt: "y" }, // case-different label handled by lcEmail
-    h3: { space: "go-vocal", label: "keep@example.test", createdAt: "z" },
+    h2: { space: "space-alpha", label: "gone@example.test", createdAt: "y" }, // case-different label handled by lcEmail
+    h3: { space: "space-alpha", label: "keep@example.test", createdAt: "z" },
   }) });
   await W.revokePublishTokens(envWith(kv), "GONE@example.test");
   const map = JSON.parse(await kv.get("publish:tokens"));
@@ -900,24 +900,24 @@ test("revokePublishTokens drops exactly the removed user's tokens", async () => 
 });
 
 test("pathOwnedBySpace: a non-default space owns only its own subtree", () => {
-  const spaces = [{ id: "go-vocal", default: true }, { id: "go-vocal-2" }];
-  assert.equal(W.pathOwnedBySpace("/go-vocal-2/pages/x/", "go-vocal-2", spaces), true);
-  assert.equal(W.pathOwnedBySpace("/departments/x/", "go-vocal-2", spaces), false, "not its base");
-  assert.equal(W.pathOwnedBySpace("/admin/index.html", "go-vocal-2", spaces), false, "engine chrome");
+  const spaces = [{ id: "space-alpha", default: true }, { id: "space-beta" }];
+  assert.equal(W.pathOwnedBySpace("/space-beta/pages/x/", "space-beta", spaces), true);
+  assert.equal(W.pathOwnedBySpace("/departments/x/", "space-beta", spaces), false, "not its base");
+  assert.equal(W.pathOwnedBySpace("/admin/index.html", "space-beta", spaces), false, "engine chrome");
 });
 
 test("pathOwnedBySpace: the default space owns root EXCEPT engine chrome and other bases", () => {
-  const spaces = [{ id: "go-vocal", default: true }, { id: "go-vocal-2" }];
-  assert.equal(W.pathOwnedBySpace("/departments/x/", "go-vocal", spaces), true);
-  assert.equal(W.pathOwnedBySpace("/__canvas/canvas.js", "go-vocal", spaces), false, "engine internals");
-  assert.equal(W.pathOwnedBySpace("/admin/app.js", "go-vocal", spaces), false, "the admin panel");
-  assert.equal(W.pathOwnedBySpace("/go-vocal-2/pages/x/", "go-vocal", spaces), false, "the other space");
-  assert.equal(W.pathOwnedBySpace("relative", "go-vocal", spaces), false, "must be absolute");
+  const spaces = [{ id: "space-alpha", default: true }, { id: "space-beta" }];
+  assert.equal(W.pathOwnedBySpace("/departments/x/", "space-alpha", spaces), true);
+  assert.equal(W.pathOwnedBySpace("/__canvas/canvas.js", "space-alpha", spaces), false, "engine internals");
+  assert.equal(W.pathOwnedBySpace("/admin/app.js", "space-alpha", spaces), false, "the admin panel");
+  assert.equal(W.pathOwnedBySpace("/space-beta/pages/x/", "space-alpha", spaces), false, "the other space");
+  assert.equal(W.pathOwnedBySpace("relative", "space-alpha", spaces), false, "must be absolute");
 });
 
 test("the redeem page shows the target email read-only, and hides it when unknown", () => {
-  const withEmail = W.invitePage("tok", "", "tali@govocal.com");
-  assert.match(withEmail, /tali@govocal\.com/);
+  const withEmail = W.invitePage("tok", "", "tali@example.test");
+  assert.match(withEmail, /tali@example\.test/);
   assert.match(withEmail, /readonly/);
   const without = W.invitePage("tok", "");
   assert.ok(!/readonly/.test(without), "no email field when none is passed");
@@ -932,11 +932,11 @@ test("the redeem page html-escapes the target email (no attribute breakout)", ()
 test("synthBuildStamp redacts the publisher email to a display name", () => {
   // publishedBy is the token label (an email); the public build stamp must not leak it.
   const manifests = {
-    "go-vocal": { source: { sha: "abc" }, version: 3, publishedAt: "2026-08-09T00:00:00Z", publishedBy: "rob@govocal.com" },
+    "space-alpha": { source: { sha: "abc" }, version: 3, publishedAt: "2026-08-09T00:00:00Z", publishedBy: "rob@example.test" },
   };
   const stamp = W.synthBuildStamp(manifests);
   const s = JSON.stringify(stamp);
-  assert.ok(!s.includes("rob@govocal.com"), "raw email must not appear");
+  assert.ok(!s.includes("rob@example.test"), "raw email must not appear");
   // With no roster loaded it falls back to the local-part — still no domain.
-  assert.match(stamp.spaces["go-vocal"].publishedBy, /^rob$/);
+  assert.match(stamp.spaces["space-alpha"].publishedBy, /^rob$/);
 });
