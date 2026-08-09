@@ -556,7 +556,13 @@ function invitePage(token, error) {
     .logo { display: flex; justify-content: center; margin: 4px 0 24px; }
     .logo svg { width: 40px; height: 40px; display: block; }
     h1 { font-size: 17px; font-weight: 600; letter-spacing: -0.015em; margin: 0 0 6px; }
-    .lede { color: var(--muted); font-size: 13.5px; margin: 0 0 20px; }
+    h1 + form { margin-top: 20px; }
+    /* Live length hint. Reserves its own line so the card doesn't jump as it changes,
+       and goes quiet the moment the password is long enough. */
+    .hint { font-size: 12.5px; color: var(--faint); margin: 7px 0 0; min-height: 1.2em; }
+    .hint[data-ok="1"] { color: var(--muted); }
+    button[disabled] { opacity: .45; cursor: not-allowed; }
+    button[disabled]:hover { background: var(--accent-solid); }
     label { display: block; font-size: 13px; font-weight: 500; margin: 0 0 7px; }
     input[type=password] {
       width: 100%; font: inherit; font-size: 15px; padding: 8px 13px; border-radius: 9px;
@@ -590,7 +596,6 @@ function invitePage(token, error) {
       </svg>
     </div>
     <h1>Set your password</h1>
-    <p class="lede">At least ${MIN_PASSWORD_LENGTH} characters. Nobody else will know it — not even an admin.</p>
     <p class="error" role="alert">
       <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 8v5M12 16.5v.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M10.3 3.9 2.5 18a2 2 0 0 0 1.7 3h15.6a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>
       <span>${msg}</span>
@@ -600,10 +605,36 @@ function invitePage(token, error) {
       <label for="password">New password</label>
       <input id="password" name="password" type="password" autocomplete="new-password"
              minlength="${MIN_PASSWORD_LENGTH}" required autofocus
-             ${error ? 'aria-invalid="true"' : ""} />
-      <button type="submit">Set password</button>
+             aria-describedby="pw-hint" ${error ? 'aria-invalid="true"' : ""} />
+      <p class="hint" id="pw-hint" aria-live="polite">${MIN_PASSWORD_LENGTH} characters minimum</p>
+      <button type="submit" disabled>Set password</button>
     </form>
   </main>
+  <script>
+    // Live length check. The server enforces the same minimum (a disabled button is a
+    // convenience, not a control), and minlength="" already covers the no-JS case —
+    // this just tells you where you are while typing instead of after submitting.
+    (function () {
+      var MIN = ${MIN_PASSWORD_LENGTH};
+      var pw = document.getElementById("password");
+      var hint = document.getElementById("pw-hint");
+      var btn = document.querySelector("button[type=submit]");
+      if (!pw || !hint || !btn) return;
+      function sync() {
+        var n = pw.value.length;
+        var ok = n >= MIN;
+        btn.disabled = !ok;
+        hint.dataset.ok = ok ? "1" : "0";
+        hint.textContent = ok
+          ? "Long enough."
+          : n === 0
+            ? MIN + " characters minimum"
+            : (MIN - n) + (MIN - n === 1 ? " more character" : " more characters");
+      }
+      pw.addEventListener("input", sync);
+      sync();
+    })();
+  </script>
 </body></html>`;
 }
 
