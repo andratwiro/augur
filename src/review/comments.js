@@ -305,6 +305,8 @@
     '.pin.who .av{border-radius:50% 50% 50% 2px;}' +
     /* resolved keeps its green as a ring, not a fill — a filled disc would hide the face */
     '.pin.who.resolved{background:#fff;border-color:#16a34a;}' +
+    /* hidden while the hover preview is up — its avatar column takes the pin's place */
+    '.pin.under{visibility:hidden;}' +
     '.pin.active{outline:3px solid rgba(37,99,235,0.4);}' +
     '.pin.dragging{cursor:grabbing;opacity:0.85;}' +
     /* annotation pin: cat avatar, centred on its anchor, always-on. --rot is a
@@ -419,8 +421,10 @@
     /* reply bar: same pill→box behaviour as compose */
     '.replybar{margin-top:6px;}' +
     /* hover preview card — unfurls out of the pin, left edge → right */
-    '.preview{position:fixed;pointer-events:none;width:280px;max-width:calc(100vw - 24px);background:#fff;border-radius:14px;box-shadow:0 10px 40px rgba(0,0,0,0.22);padding:13px 15px;opacity:0;transform:scaleX(.2);transform-origin:left center;transition:opacity .12s ease,transform .18s cubic-bezier(.34,1.56,.64,1);}' +
-    '.preview.left{transform-origin:right center;}' +
+    '.preview{position:fixed;pointer-events:none;width:280px;max-width:calc(100vw - 24px);background:#fff;border-radius:14px;box-shadow:0 10px 40px rgba(0,0,0,0.22);padding:13px 15px;opacity:0;display:flex;gap:10px;align-items:flex-start;transform:scaleX(.2);transform-origin:left center;transition:opacity .12s ease,transform .18s cubic-bezier(.34,1.56,.64,1);}' +
+    '.preview .pav{flex:0 0 auto;}' +
+    '.preview .pbody{min-width:0;flex:1;}' +
+    '.preview.left{transform-origin:right center;flex-direction:row-reverse;}' +
     '.preview.show{opacity:1;transform:scaleX(1);}' +
     '.preview .phead{display:flex;align-items:baseline;gap:7px;margin-bottom:3px;}' +
     '.preview .who{font-weight:600;font-size:14px;}' +
@@ -1251,7 +1255,12 @@
   function showPreview(btn, id) {
     var t = find(id); if (!t) return;
     var m = t.messages[0] || {};
-    previewEl.innerHTML = '<div class="phead"><span class="who"></span><span class="when" data-iso=""></span></div><div class="body"></div>';
+    var who = personFor(m);
+    previewEl.innerHTML = '<div class="pav"></div><div class="pbody">' +
+      '<div class="phead"><span class="who"></span><span class="when" data-iso=""></span></div>' +
+      '<div class="body"></div></div>';
+    var pav = previewEl.querySelector(".pav");
+    if (who) pav.appendChild(avatarEl(who, 28)); else pav.remove();
     previewEl.querySelector(".who").textContent = m.author || "";
     var w = previewEl.querySelector(".when"); w.textContent = fmt(m.at); w.setAttribute("data-iso", m.at || "");
     renderBody(previewEl.querySelector(".body"), m.body);
@@ -1263,8 +1272,39 @@
     previewEl.classList.toggle("left", useLeft);
     previewEl.style.left = Math.max(m2, left) + "px";
     previewEl.style.top = Math.max(m2, Math.min(r.top - 6, vh - ph - m2)) + "px";
+
+    // The pin "becomes" the card's avatar, so no jump: land the avatar's centre
+    // exactly on the pin's centre (r.left/r.top already include the pin's CSS
+    // transform, so its centre is r.left + r.width/2, r.top + r.height/2).
+    // Only meaningful when there IS an avatar (`who`) — an anonymous pin has no
+    // disc to become, so it keeps its own base-computed position and stays visible.
+    if (who) {
+      // .preview's padding is "13px 15px" (padding:13px 15px above). padLead=15 is
+      // that left/right padding — the avatar column sits padLead in from the card's
+      // edge. Because a .pin.who box is 28px border-box (same as the 28px preview
+      // avatar drawn here), half the pin's width and half the avatar's width cancel,
+      // so the card's edge simply needs to sit padLead away from the pin's edge:
+      //   avatarCentreX = cardLeft + padLead + 14; set equal to r.left + r.width/2 (=
+      //   r.left + 14 for a 28px pin) and the 14s cancel, leaving cardLeft = r.left - padLead.
+      // The flipped card mirrors this from its right edge (row-reverse puts the
+      // avatar column last-in-DOM-first-visually, i.e. at the trailing/right side):
+      //   cardLeft = r.left - (pw - padLead - 28).
+      // Vertically the same cancellation gives topPadding(13) + half the 28px avatar
+      // (14) = 27, landing the avatar's centre on the pin's centre regardless of flip
+      // (top padding is symmetric, there's no left/right split for it).
+      var padLead = 15;
+      var cardLeft = useLeft ? r.left - (pw - padLead - 28) : r.left - padLead;
+      previewEl.style.left = Math.max(m2, Math.min(cardLeft, vw - pw - m2)) + "px";
+      previewEl.style.top = Math.max(m2, Math.min(r.top + r.height / 2 - 27, vh - ph - m2)) + "px";
+      if (btn) btn.classList.add("under");
+    }
   }
-  function hidePreview() { clearTimeout(previewTimer); previewEl.classList.remove("show"); }
+  function hidePreview() {
+    clearTimeout(previewTimer);
+    previewEl.classList.remove("show");
+    var u = pinsEl.querySelector(".pin.under");
+    if (u) u.classList.remove("under");
+  }
 
   // Open a thread; if it lives on another screen, navigate there first.
   function openOrNavigate(id) {
