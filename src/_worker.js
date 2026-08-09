@@ -2760,10 +2760,17 @@ async function assetApi(request, url, env) {
 // config's `realtimeOrigin`; without one, boards run solo (the client's socket-down
 // fallback: it persists via /__board to this instance's own KV).
 let RT_ORIGIN = "";
-function rtProxy(request, url) {
+function rtProxy(request, url, env) {
   if (!RT_ORIGIN) return jsonResponse({ error: "realtime-not-configured" }, 501);
   if (request.headers.get("Upgrade") !== "websocket") return jsonResponse({ error: "expected-websocket" }, 426);
-  return fetch(RT_ORIGIN + "/room" + url.search, request);
+  // Re-wrap so a header can be added; the Upgrade header and the socket handling ride
+  // along. The secret proves the request came through this worker, which is where the
+  // admin-only-space seal is enforced (see the isRestrictedPath check on ?path= above).
+  // Unset = send nothing, and a realtime worker without the secret accepts as before.
+  const req = new Request(RT_ORIGIN + "/room" + url.search, request);
+  const secret = env && env.RT_SHARED_SECRET;
+  if (secret) req.headers.set("X-Augur-RT", secret);
+  return fetch(req);
 }
 
 // Admin surface: manage PEOPLE, not credentials. There is deliberately no path here
@@ -3304,7 +3311,7 @@ export default {
     // Canvas multiplayer: same-origin WebSocket proxied to the augur-realtime worker (one
     // BoardRoom Durable Object per board path — cursors/presence/live ops). Public like
     // /__board: the board is the credential. The engine degrades to solo if this fails.
-    if (url.pathname === "/__rt") return rtProxy(request, url);
+    if (url.pathname === "/__rt") return rtProxy(request, url, env);
 
     // Admin-only spaces: seal the whole base path BEFORE the public-prototype
     // door, so nothing under it — not even an og.jpg — leaks. Only an admin

@@ -64,11 +64,30 @@ function json(data, status) {
   return new Response(JSON.stringify(data), { status: status || 200, headers: { "content-type": "application/json" } });
 }
 
+// Shared secret with the Pages worker. The rooms below hold the authoritative board
+// documents, and the admin-only-space seal is enforced in the PAGES worker, which checks
+// the requested board path before proxying to /__rt. This worker is reachable on its own
+// public URL, so without this guard anyone who learns that hostname joins any room
+// directly and the seal means nothing. Unset = the previous behaviour, so an instance
+// that has not provisioned the secret keeps working.
+const RT_SECRET_HEADER = "x-augur-rt";
+function rtSecretOk(given, want) {
+  given = String(given == null ? "" : given);
+  if (given.length !== want.length) return false;
+  let diff = 0;
+  for (let i = 0; i < given.length; i++) diff |= given.charCodeAt(i) ^ want.charCodeAt(i);
+  return diff === 0;
+}
+
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
     if (url.pathname === "/") return json({ ok: true, service: "augur-realtime" });
     if (url.pathname !== "/room") return json({ error: "not-found" }, 404);
+    const want = env && env.RT_SHARED_SECRET;
+    if (want && !rtSecretOk(request.headers.get(RT_SECRET_HEADER), want)) {
+      return json({ error: "forbidden" }, 403);
+    }
     if (request.headers.get("Upgrade") !== "websocket") return json({ error: "expected-websocket" }, 426);
     const path = (url.searchParams.get("path") || "").slice(0, 600);
     if (!path) return json({ error: "bad-input" }, 400);
