@@ -299,6 +299,11 @@
     '.catcher{position:fixed;inset:0;pointer-events:auto;cursor:crosshair;background:rgba(37,99,235,0.045);}' +
     '.pin{position:fixed;pointer-events:auto;transform:translate(-50%,-100%);cursor:grab;display:flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:50% 50% 50% 2px;background:#2563eb;color:#fff;font-weight:600;font-size:12px;box-shadow:0 2px 8px rgba(0,0,0,0.3);border:2px solid #fff;touch-action:none;}' +
     '.pin.resolved{background:#16a34a;}' +
+    /* a pin that knows who wrote it: the face fills the teardrop, keeping the notch */
+    '.pin.who{width:28px;height:28px;background:#fff;padding:0;overflow:hidden;}' +
+    '.pin.who .av{width:100%;height:100%;border-radius:50% 50% 50% 2px;}' +
+    /* resolved keeps its green as a ring, not a fill — a filled disc would hide the face */
+    '.pin.who.resolved{background:#fff;border-color:#16a34a;}' +
     '.pin.active{outline:3px solid rgba(37,99,235,0.4);}' +
     '.pin.dragging{cursor:grabbing;opacity:0.85;}' +
     /* annotation pin: cat avatar, centred on its anchor, always-on. --rot is a
@@ -665,7 +670,14 @@
         b.addEventListener("mouseenter", function () { showTip(b, t.id); });
         b.addEventListener("mouseleave", hideTip);
       } else {
-        b.textContent = String(nums[t.id] || "");
+        var who = authorOf(t);
+        if (who) {
+          b.classList.add("who");
+          b.appendChild(avatarEl(who, 28));
+          b.title = who.name;
+        } else {
+          b.textContent = String(nums[t.id] || "");
+        }
         // Hover preview card that unfurls out of the pin (review mode only).
         (function (btn, tid) {
           btn.addEventListener("mouseenter", function () {
