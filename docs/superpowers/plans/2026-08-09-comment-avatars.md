@@ -219,10 +219,13 @@ test("peopleApi caps a request at 50 lookups", async () => {
   assert.equal(res.status, 400);
 });
 
-test("/__people is a public path — the overlay runs on ungated prototypes", () => {
-  assert.equal(W.isPublicPath("/__people"), true);
-});
 ```
+
+> **Corrected during execution.** A sixth test asserting `W.isPublicPath("/__people")`
+> was originally listed here and has been removed: it exercised a dead branch (see
+> Step 4) and gave false confidence that `isPublicPath` was what made the endpoint
+> reachable. What actually makes it reachable is the route's placement above the auth
+> gate in `fetch()`, which `isPublicPath` never sees.
 
 - [ ] **Step 2: Run the tests to verify they fail**
 
@@ -285,15 +288,16 @@ function jsonResponse(obj, status = 200, headers = {}) {
 }
 ```
 
-- [ ] **Step 4: Register the route and the public-path bypass**
+- [ ] **Step 4: Register the route**
 
-In `isPublicPath`, beside the existing review-overlay entries (~line 115):
-
-```js
-  // Comment-author faces. Embedded in public prototypes like the overlay itself, and
-  // it resolves only ids/names the page already holds — see peopleApi.
-  if (pathname === "/__people") return true;
-```
+> **Corrected during execution.** This step originally also added a `/__people` entry to
+> `isPublicPath`. That would be **dead code**: the route below returns from `fetch()`
+> long before `isPublicPath` is consulted, and that gate only serves static assets — it
+> would never dispatch to an API handler. `src/_worker.js` already documents this exact
+> trap for `/__invite` ("an entry would be unreachable code that reads as a safety net
+> it is not"), and `/__me` and `/__avatar/` follow the early-return pattern with no
+> entry. Do not add one; what makes this endpoint reachable without a session is its
+> placement above the auth gate. Add a comment at the route saying so.
 
 In `fetch()`, immediately after the `/__me` route (~line 2829):
 
