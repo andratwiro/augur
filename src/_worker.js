@@ -33,10 +33,9 @@ const MAX_AGE = 60 * 60 * 24 * 7; // 7 days
 //   { email, name, initials, color, role?, pass? }
 // role:"admin" gates the admin API and admin-only spaces; admins can NOT set or read
 // passwords, only reset a user (which revokes and mints an invite link). `pass` is a
-// MIGRATION-ONLY leftover: the legacy plaintext for accounts that predate hashing. It
-// is used only when users:secrets has no key for that email, and it is rewritten as a
-// hash on that user's next successful login (upgradeSecretIfLegacy). Credentials live
-// in KV, never here — see effectiveSecret for the exact precedence.
+// fallback consulted only when users:secrets has no key for that email — kept for the
+// legacy shared-password mode and test fixtures, not populated in the live roster.
+// Credentials live in KV, never here — see effectiveSecret for the exact precedence.
 let USERS = [];
 // Deploy-specific knobs, filled at runtime from instance.json (all empty in a raw
 // engine build): gate-exempt skill-asset path prefixes, MCP-proxy host allowlist
@@ -214,8 +213,7 @@ async function verifyPassword(password, stored) {
     try { bits = await pbkdf2Bits(password, salt, iterations); } catch (e) { return false; }
     return safeEqual(toB64(bits), parts[3]);
   }
-  // TEMPORARY (migration) — remove in the finish step
-  return safeEqual(password, stored); // legacy plaintext override
+  return false;
 }
 
 // ---- Runtime config loader --------------------------------------------------
@@ -360,79 +358,6 @@ async function effectiveSecret(env, u) {
   // password the reset exists to invalidate. Only an ABSENT key falls back.
   if (Object.prototype.hasOwnProperty.call(ov, u.email)) return ov[u.email] || "";
   return u.passHash || u.pass || "";
-}
-
-// TEMPORARY (migration) — remove in the finish step
-// After a successful login against a legacy plaintext secret, rewrite it as a hash so
-// the plaintext stops existing. Fire-and-forget: never break a login.
-//
-// The legacy plaintext lives in one of two places, and BOTH must be upgraded:
-//   - an override entry in users:secrets that predates hashing, or
-//   - the roster's own `pass` field, with NO key in users:secrets at all — which is
-//     where every leaked seed account actually sits. Keying only off a present entry
-//     meant this never fired for the users it was written for.
-// The one shape that must NOT be upgraded is a key that is present holding a falsy
-// value: that is a revocation tombstone, and minting a hash over it would resurrect
-// an account an admin just reset.
-//
-// ⚠️ ORDERING IS LOAD-BEARING: hash FIRST, then re-read users:secrets immediately
-// before merging and writing. `users:secrets` is ONE shared key holding EVERY user,
-// and PBKDF2 takes ~100ms. Reading the map, hashing, then writing the stale copy back
-// clobbers everything that landed in that window — and the three things that land
-// there are all credential resurrections:
-//   - another user's reset tombstone disappears, so effectiveSecret falls back to
-//     THEIR leaked roster password and the admin list shows them as "accepted";
-//   - a reset of THIS user is reversed by hash(the password being revoked), stored as
-//     a well-formed pbkdf2$… value nothing can distinguish from a real migration;
-//   - a password chosen at invite redemption is overwritten by the leaked one.
-// So: hash, re-read, re-check against the FRESH map, and merge into it — never into
-// the stale copy, or a concurrent entry for a different user is dropped.
-//
-// This NARROWS the window; it does not close it. KV has no compare-and-swap and its
-// reads are eventually consistent across colos, so the re-read can legitimately
-// return a stale map from another colo and the clobber survives. The structural fix
-// is per-user keys (`users:secret:<email>`) instead of one shared map, which removes
-// cross-user clobbering entirely and reduces the same-user case to a last-write-wins
-// on one key. The identical clobber shape also exists between setUserSecret and the
-// reset handler in adminUsersApi (both read-modify-write the whole map); that is
-// pre-existing and out of scope here.
-async function upgradeSecretIfLegacy(env, u, password) {
-  try {
-    const kv = kvFor(env);
-    if (!kv || !u) return;
-    const raw = await kv.get(USER_SECRETS_KEY);
-    const ov = raw ? JSON.parse(raw) : {};
-    // Array.isArray is NOT redundant: typeof [] === "object", and assigning onto an
-    // array then stringifying SILENTLY DROPS the assignment — a write that reports
-    // success and stores nothing. Reject the corrupt shape outright.
-    if (!ov || typeof ov !== "object" || Array.isArray(ov)) return;
-    // Whichever value the login just verified against — mirrors effectiveSecret's
-    // precedence, so a tombstone resolves to null/"" and falls out below.
-    const hadKey = Object.prototype.hasOwnProperty.call(ov, u.email);
-    const legacy = hadKey ? ov[u.email] : (u.passHash || u.pass || "");
-    if (!legacy || isPassHash(legacy)) return; // tombstoned, already hashed, or nothing to upgrade
-    // Only upgrade a plaintext the supplied password actually matches: this can be
-    // reached for an absent key, where an unverified write would MINT a credential
-    // rather than merely rewrite one.
-    if (!(await verifyPassword(password, legacy))) return;
-
-    // ---- the slow part, done BEFORE the read we actually write against ----
-    const hash = await hashPassword(password);
-
-    const raw2 = await kv.get(USER_SECRETS_KEY);
-    const fresh = raw2 ? JSON.parse(raw2) : {};
-    if (!fresh || typeof fresh !== "object" || Array.isArray(fresh)) return;
-    // Re-check on the FRESH map. If this user had no key and now has one, someone
-    // wrote while we hashed — a reset tombstone or a redemption's hash — and either
-    // way our value is stale: abandon rather than overwrite it. If the key was already
-    // there, it must still hold the exact plaintext we verified against; anything else
-    // means it changed under us.
-    if (hadKey ? fresh[u.email] !== legacy
-               : Object.prototype.hasOwnProperty.call(fresh, u.email)) return;
-    // Merge into the fresh map, never the stale one.
-    fresh[u.email] = hash;
-    await kv.put(USER_SECRETS_KEY, JSON.stringify(fresh));
-  } catch (e) {}
 }
 
 // ---- Invite / reset tokens ---------------------------------------------------
@@ -698,14 +623,6 @@ async function userToken(env, u, resolved) {
   return tokenFor(u.email + ":" + secret);
 }
 
-// TEMPORARY (migration) — remove in the finish step
-// The pre-HMAC derivation. Accepted by identify() so sessions created before the
-// hashed worker deployed keep working; never issued.
-async function legacyUserToken(env, u, resolved) {
-  const secret = resolved === undefined ? await effectiveSecret(env, u) : resolved;
-  return tokenFor(u.email + ":" + secret);
-}
-
 // Resolve the signed-in user from the gv_user cookie ("<email>.<token>"). Stateless —
 // no session store. `users` defaults to the injected USERS; tests pass their own list.
 async function identify(request, env, users = USERS) {
@@ -719,26 +636,24 @@ async function identify(request, env, users = USERS) {
   const u = userByEmail(val.slice(0, dot), users);
   if (!u) return null;
   // A user with no effective secret (pending invite, or just reset) can have no valid
-  // session. Without this guard both the legacy derivation and userToken's own
-  // no-SESSION_SECRET fallback reduce to a publicly computable SHA-256("gv:<email>:"),
-  // letting anyone who knows an email forge a cookie for that account. NOT a migration
-  // path — this must survive the finish step. It signs no legitimate user out: the only
-  // two issuers of this cookie are /__auth, which requires a truthy secret, and
-  // invitePost, which issues only after writing the hash. (/__publish/_login/token mints
-  // a publish token, not a session — it never sets a cookie.)
+  // session. Without this guard userToken's own no-SESSION_SECRET fallback reduces to
+  // a publicly computable SHA-256("gv:<email>:"), letting anyone who knows an email
+  // forge a cookie for that account. NOT a migration path — this must survive the
+  // finish step. It signs no legitimate user out: the only two issuers of this cookie
+  // are /__auth, which requires a truthy secret, and invitePost, which issues only
+  // after writing the hash. (/__publish/_login/token mints a publish token, not a
+  // session — it never sets a cookie.)
   //
-  // Resolved ONCE and passed down. Three independent reads (guard, userToken,
-  // legacyUserToken) are not atomic: a truthy first read passes the guard while a
-  // later read returns "" — mid-request reset, or KV's own eventual consistency —
-  // and the derivation then reduces to the publicly computable tokenFor("<email>:"),
-  // accepting a forged cookie the guard was there to stop. Binding the guarded value
-  // to the derived value also cuts 2-3 KV reads per cookie-bearing request to one.
+  // Resolved ONCE and passed down. Two independent reads (guard, userToken) are not
+  // atomic: a truthy first read passes the guard while a later read returns "" —
+  // mid-request reset, or KV's own eventual consistency — and the derivation then
+  // reduces to the publicly computable tokenFor("<email>:"), accepting a forged cookie
+  // the guard was there to stop. Binding the guarded value to the derived value also
+  // cuts 2 KV reads per cookie-bearing request to one.
   const secret = await effectiveSecret(env, u);
   if (!secret) return null;
   const token = val.slice(dot + 1);
   if (safeEqual(token, await userToken(env, u, secret))) return u;
-  // TEMPORARY (migration) — remove in the finish step
-  if (safeEqual(token, await legacyUserToken(env, u, secret))) return u;
   return null;
 }
 
@@ -1025,8 +940,6 @@ async function publishApi(request, url, env) {
     if (!u || !(await verifyPassword(pass, real))) {
       return jsonResponse({ error: "bad-credentials" }, 403);
     }
-    // TEMPORARY (migration) — remove in the finish step
-    await upgradeSecretIfLegacy(env, u, pass);
     const kv = kvFor(env);
     if (!kv) return jsonResponse({ error: "no-kv-binding" }, 500);
     const space = u.role === "admin" ? "*" : (SPACES.find((s) => s.default) || { id: null }).id;
@@ -2576,8 +2489,6 @@ export default {
         if (u && real && (await verifyPassword(pass, real))) {
           const token = await userToken(env, u);
           if (ctx && ctx.waitUntil) ctx.waitUntil(touchLastSeen(env, u));
-          // TEMPORARY (migration) — remove in the finish step
-          if (ctx && ctx.waitUntil) ctx.waitUntil(upgradeSecretIfLegacy(env, u, pass));
           return new Response(null, {
             status: 303,
             headers: {
@@ -2725,8 +2636,7 @@ export default {
 // __testables — it exists only so test/worker.test.mjs can import them.
 export const __testables = {
   hashPassword, verifyPassword, isPassHash, safeEqual, userByEmail,
-  tokenFor, hmacToken, userToken, legacyUserToken, identify, effectiveSecret,
-  upgradeSecretIfLegacy,
+  tokenFor, hmacToken, userToken, identify, effectiveSecret,
   mintInvite, readInvite, consumeInvite,
   invitePost, inviteGet, invitePage, setUserSecret, MIN_PASSWORD_LENGTH,
   loginPage, RESET_NOTICE,
