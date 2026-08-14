@@ -13,6 +13,33 @@ The demo runs [Fulla](https://github.com/andratwiro/augur-space-fulla), an
 invented community garden product. That repo doubles as the starter space, so
 everything below works against it.
 
+## How a prototype gets made
+
+There is no editor. A prototype is briefed, not drawn — you describe the screen
+the way you would brief a designer, and an agent builds it as a real page in
+the space, using the design system like anyone else on the team.
+
+The brief that made [Seed swap](https://demo.augur.works/garden/seed-swap/):
+
+```text
+Seed swap — a noticeboard where members offer saved seeds and claim each
+other's. One screen. A board of offer cards: who, what, roughly how many,
+which plot they came from — "Fava beans, saved from plot 12, ~40 seeds".
+Claiming an offer keeps the card on the board but settles it down visually;
+the swap happens at the shed, not in the app. The empty state suggests the
+first action instead of apologizing. Warm and hand-made like the rest of
+Fulla — use the fulla design system, don't invent new vocabulary. Add the
+one-line meta description. No routing, no backend; seed the board with a
+handful of believable offers.
+```
+
+![The agent building the seed swap screen from the brief, the browser hot-reloading into it, and a comment pinned on the result](docs/shots/authoring.gif)
+
+That is Claude Code in the capture; any coding agent that can read the
+contracts in [agents/](./agents/) does the same job. Screens in the demo space
+carry the session that made them — [open the repo and read one](https://github.com/andratwiro/augur-space-fulla/tree/main/garden/prompts).
+The follow-ups read like design direction, because that is what they are.
+
 ## Boards where the prototypes run
 
 Drop a live prototype next to the stickies and drive it. Everyone on the board
