@@ -285,6 +285,9 @@ async function verifyPassword(password, stored) {
 // defaults, and a transient read failure never wipes a working gate.
 let SPACES = [];
 let INSTANCE_SENTINELS = [];
+// Optional one-liner rendered on the login page (deploy.config.json "loginHint") —
+// how a demo instance surfaces its test credentials without opening the gate.
+let LOGIN_HINT = "";
 // Engine version of the build that produced the live config/chrome (from
 // package.json via build.js) + the release feed the update nudge polls.
 let INSTANCE_ENGINE_VERSION = "";
@@ -302,6 +305,7 @@ function applyInstance(inst) {
   BUILDER_CONFIG = inst.builder || null;
   RT_ORIGIN = inst.rtOrigin || "";
   INSTANCE_SENTINELS = Array.isArray(inst.sentinels) ? inst.sentinels : [];
+  LOGIN_HINT = typeof inst.loginHint === "string" ? inst.loginHint : "";
   CONFIG_LOADED = true; // an instance document was actually applied this isolate
 }
 // Has a real instance config ever loaded in THIS isolate? A cold isolate whose first
@@ -2170,6 +2174,11 @@ function loginPage(redirect, error) {
       color: var(--err); font-size: 13.5px; font-weight: 500; margin: 14px 0 0;
     }
     .error svg { width: 16px; height: 16px; flex: none; margin-top: 1px; }
+    /* The instance's loginHint — a quiet panel under the form (demo credentials). */
+    .hint {
+      margin: 16px 0 0; padding: 9px 12px; border: 1px dashed var(--line-2);
+      border-radius: 9px; color: #667085; font-size: 13px; text-align: center;
+    }
     /* Present in the DOM for password managers (Bitwarden pairs username+password),
        but visually hidden so the UI stays password-only. NOT display:none — managers
        skip removed/hidden fields. */
@@ -2198,6 +2207,7 @@ function loginPage(redirect, error) {
         <span>${typeof error === "string" ? escapeHtml(error) : "Incorrect email or password. Try again."}</span>
       </p>
     </form>
+    ${LOGIN_HINT ? `<p class="hint">${escapeHtml(LOGIN_HINT)}</p>` : ""}
   </main>
 </body>
 </html>`;
@@ -3781,6 +3791,7 @@ export default {
 // Pure helpers exposed for unit tests. Nothing in the request path references
 // __testables — it exists only so test/worker.test.mjs can import them.
 export const __testables = {
+  applyInstance,
   hashPassword, verifyPassword, isPassHash, safeEqual, userByEmail,
   personId, avatarKey, publicUser, stampAuthor, sanitizeMsg, applyOp,
   peopleApi,

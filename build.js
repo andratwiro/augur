@@ -5933,6 +5933,7 @@ async function main() {
     builder: DEPLOY.builder || null,
     rtOrigin: DEPLOY.realtimeOrigin || "",
     sentinels: DEPLOY.sentinels || [],
+    loginHint: DEPLOY.loginHint || "",
   }), "utf8");
   await fs.writeFile(path.join(DIST, "__config", "routing.json"), JSON.stringify({
     buildId: shellId,

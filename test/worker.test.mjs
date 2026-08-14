@@ -1370,3 +1370,25 @@ test("avatarUrl passes a self-set URL through untouched (only data URIs get hash
   assert.equal(W.avatarUrl({ email: "a@example.test", avatar: "/__avatar/u/abc" }), "/__avatar/u/abc");
   assert.equal(W.avatarUrl({ email: "a@example.test" }), null);
 });
+
+// ---- loginHint --------------------------------------------------------------
+// The instance's one-liner under the login form (how a demo instance surfaces its
+// test credentials). Escaped like any other instance-supplied string, and absent
+// entirely when unset. Runs LAST in this file: applyInstance rewrites module state.
+
+test("the instance loginHint renders under the login form, escaped, only when set", () => {
+  W.applyInstance({ users: [], loginHint: "Demo login: visita@example.test / secret" });
+  assert.match(W.loginPage("/", false), /Demo login: visita@example\.test \/ secret/);
+
+  W.applyInstance({ users: [], loginHint: "<script>alert(1)</script>" });
+  const page = W.loginPage("/", false);
+  assert.doesNotMatch(page, /<script>alert\(1\)/);
+  assert.match(page, /&lt;script&gt;/);
+
+  W.applyInstance({ users: [] });
+  assert.doesNotMatch(W.loginPage("/", false), /class="hint"/);
+
+  // A non-string hint (config typo) is ignored, not stringified into the page.
+  W.applyInstance({ users: [], loginHint: { text: "nope" } });
+  assert.doesNotMatch(W.loginPage("/", false), /class="hint"/);
+});

@@ -235,7 +235,8 @@ field at all: invite them from the Admin panel and they choose their own.
 `spaces` is a roster for repo-side automation (the health canary reads it), **not** a
 build input — the shell mounts no space submodules. Optional keys: `realtimeOrigin`
 (step 9), `sentinels`, `mcpHostSuffixes`, `mcpHostAllowlistUrl`, `vanityRedirects`,
-`builder`, `updateFeed`.
+`builder`, `updateFeed`, `loginHint` (one line of plain text rendered under the
+login form — how a demo instance surfaces its test credentials).
 
 `package.json` — so a local build reproduces CI's:
 
