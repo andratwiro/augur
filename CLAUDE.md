@@ -39,8 +39,10 @@ change what `discoverSpaces()` parses, update agents/space-json.md in the same c
 
 **Publishing is whitelist-driven (critical guardrail).** Only the contents of
 `prototypes/` folders, the gallery tiers (`base/ components/ pages/ patterns/`,
-rebuilt), the `playground/`, and the whitelisted skill assets ship. `research.md`,
-`context.md`, anything outside `prototypes/` — internal, never copied to `/dist`.
+rebuilt), the `playground/`, and the skill assets the skill declares in its
+`skill.json` ship (see [agents/ui-skill.md](agents/ui-skill.md); a fixed legacy
+inventory covers manifest-less skills). `research.md`, `context.md`, anything
+outside `prototypes/` — internal, never copied to `/dist`.
 
 ## Deploys — this repo ships nothing
 

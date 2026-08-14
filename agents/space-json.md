@@ -24,7 +24,8 @@ not restate it.
   "designSystem": { "skill": "<dir>" },  // override the auto-detected UI skill
                              // (default: the dir under skills/ named <prefix>-ui
                              // containing <dirname>.css; every canonical asset name
-                             // derives from that prefix)
+                             // derives from that prefix). What the skill ships is
+                             // the skill's own call: see ui-skill.md (skill.json)
   "ignore": ["big-exports"], // extra top-level dirs the build must never treat
                              // as project folders
   "mcpAllowlists": ["path/to/mcp-allowlist.json"],  // hosts this space's

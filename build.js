@@ -5536,30 +5536,57 @@ async function buildSpace(space) {
   // drift is structurally impossible and a space can diverge its DS without touching
   // another. (Prototypes are the only tier that still copies assets — they may fork.)
   if (DS.dirName) {
-    const SHARED_ASSETS = [
-      "tokens.css", "primitives.css", "ui.css", "bo.css",
-      "themes.js", "cookies.js", "icons.js",
-      "avatars.js", "rail.js", "partbar.js",
-      "survey.css", "survey.js", "logo.svg",
-      "charts.js",
-      "pagebuilder.js", "widgets.js", "widgets.css",
-      "instances.js",
-    ].map((f) => `${DS.prefix}-${f}`);
     const sharedDir = path.join(DIST_SPACE, "skills", DS.dirName);
     await fs.mkdir(sharedDir, { recursive: true });
-    for (const asset of SHARED_ASSETS) {
-      if (await exists(path.join(UI_SKILL, asset))) {
-        await fs.copyFile(path.join(UI_SKILL, asset), path.join(sharedDir, asset));
+    // The skill declares what it ships: skills/<x>-ui/skill.json {"assets": [...]},
+    // file or directory names relative to the skill root (dirs copy wholesale).
+    // The inventory belongs to the WORKSPACE, not the engine — the fixed list below
+    // is only the legacy fallback for skills that predate the manifest. Markdown at
+    // the skill root (SKILL.md, components.md — internal notes) never ships either
+    // way, and neither does skill.json itself. Contract: agents/ui-skill.md.
+    let declared = null;
+    try {
+      const manifest = JSON.parse(await fs.readFile(path.join(UI_SKILL, "skill.json"), "utf8"));
+      if (Array.isArray(manifest.assets)) declared = manifest.assets;
+    } catch { /* no manifest → legacy inventory */ }
+    if (declared) {
+      for (const name of declared) {
+        // Stay inside the skill dir; a manifest can only name what sits in it.
+        if (typeof name !== "string" || name.includes("..") || path.isAbsolute(name)) continue;
+        if (name.toLowerCase().endsWith(".md") || name === "skill.json") continue;
+        const src = path.join(UI_SKILL, name);
+        const dest = path.join(sharedDir, name);
+        if (await isDir(src)) {
+          await copyDir(src, dest);
+        } else if (await exists(src)) {
+          await fs.mkdir(path.dirname(dest), { recursive: true });
+          await fs.copyFile(src, dest);
+        }
       }
-    }
-    // Asset SUBDIRECTORIES the shared JS depends on (binary, so not in the file
-    // whitelist above): e.g. avatars/ — the bundled face set the avatars JS drops
-    // into every .av bubble. Copied wholesale so the faces resolve on the shipped
-    // site exactly as they do locally (file://).
-    const SHARED_ASSET_DIRS = ["avatars", "img", "vendor"];
-    for (const d of SHARED_ASSET_DIRS) {
-      if (await isDir(path.join(UI_SKILL, d))) {
-        await copyDir(path.join(UI_SKILL, d), path.join(sharedDir, d));
+    } else {
+      const SHARED_ASSETS = [
+        "tokens.css", "primitives.css", "ui.css", "bo.css",
+        "themes.js", "cookies.js", "icons.js",
+        "avatars.js", "rail.js", "partbar.js",
+        "survey.css", "survey.js", "logo.svg",
+        "charts.js",
+        "pagebuilder.js", "widgets.js", "widgets.css",
+        "instances.js",
+      ].map((f) => `${DS.prefix}-${f}`);
+      for (const asset of SHARED_ASSETS) {
+        if (await exists(path.join(UI_SKILL, asset))) {
+          await fs.copyFile(path.join(UI_SKILL, asset), path.join(sharedDir, asset));
+        }
+      }
+      // Asset SUBDIRECTORIES the shared JS depends on (binary, so not in the file
+      // whitelist above): e.g. avatars/ — the bundled face set the avatars JS drops
+      // into every .av bubble. Copied wholesale so the faces resolve on the shipped
+      // site exactly as they do locally (file://).
+      const SHARED_ASSET_DIRS = ["avatars", "img", "vendor"];
+      for (const d of SHARED_ASSET_DIRS) {
+        if (await isDir(path.join(UI_SKILL, d))) {
+          await copyDir(path.join(UI_SKILL, d), path.join(sharedDir, d));
+        }
       }
     }
     // This space's composition graph (window.__GV_GRAPH), parsed from the very
