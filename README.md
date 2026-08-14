@@ -1,8 +1,8 @@
 # Augur
 
 A prototype and research repository for product teams. Real, clickable
-prototypes on one site, with login, comments and live boards on top.
-Underneath it is all git and static HTML.
+prototypes and the design system they are built from, on one site with login,
+comments and live boards on top. Underneath it is all git and static HTML.
 
 **See it running: [demo.augur.works](https://demo.augur.works)**, sign in with
 `visita@fulla.demo` / `regadora`. It resets every night, so scribble away.

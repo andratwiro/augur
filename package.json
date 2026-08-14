@@ -3,7 +3,7 @@
   "version": "0.12.0",
   "private": true,
   "license": "MIT",
-  "description": "Augur — build/deploy platform composing spaces (design system + prototypes repos) into a static site with an overlay worker.",
+  "description": "A prototype and research repository for product teams. Real, clickable prototypes and the design system they are built from, on one site with login, comments and live boards on top. Underneath it is all git and static HTML.",
   "type": "module",
   "bin": {
     "augur": "scripts/cli.mjs"
