@@ -39,7 +39,7 @@ a bad folder name after the fact; rename the display instead.
 
 An optional dev-status chip per prototype comes from `prototype-status.json`
 at the space root (see its `_comment` for the format; values are `in-progress`,
-`dev-ready`, `reviewed`, `ignore`); statuses are also cycled by clicking the
+`dev-ready`, `ignore`); statuses are also cycled by clicking the
 chip on the live site (stored in KV, overlaying the committed baseline).
 
 ## Posters and link cards
