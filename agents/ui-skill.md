@@ -40,6 +40,24 @@ New skills should always declare.
 The build additionally generates `graph.js` (the composition graph) into the
 shipped skill directory; that is derived output, not something to declare.
 
+## registry.json — required once a skill exists
+
+A space that carries a UI skill must also carry a `registry.json` at the SPACE
+root: the overlay catalog naming the design system's families, so the comment
+overlay and gallery cards can label components. The build fails loudly without
+it (no silent unlabeled overlay). Shape:
+
+```json
+{ "items": [
+  { "name": "card", "type": "component", "classes": ["acme-card"],
+    "label": "Card", "description": "One line on what it is." }
+] }
+```
+
+`type` is `primitive` (base tier), `component`, `pattern` or `page`; `classes`
+lists the CSS family roots the overlay matches in the DOM. A space with no
+skill needs no registry.
+
 ## Galleries
 
 The tokens/primitives gallery tiers derive from the conventional file split

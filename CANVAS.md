@@ -46,7 +46,8 @@ meaningful mess.
 
 ## Node schemas — the write-side reference (agents: this is your contract)
 
-Everything below is a plain object in `doc.nodes`. Positions/sizes are WORLD px.
+`doc.nodes` is an ARRAY of plain node objects (a full-state `POST /__board` with a
+keyed map is refused as `bad-input`). Positions/sizes are WORLD px.
 Every node gets `id` (any unique string; the engine uses `n<rand>`) and should
 get a human `name`. Omitted optional fields take defaults. Write nodes through
 the daemon's `upsert` (or `GVCanvas.addNode` in-page) — never a raw board POST

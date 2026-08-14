@@ -137,7 +137,10 @@ gh repo create <owner>/<space-repo> --private --source=. --push
 
 - Only the contents of `prototypes/` folders are published. Notes, research and anything
   outside them stay private by construction.
-- A design system is optional. Plain self-contained HTML builds and ships fine.
+- A design system is optional. Plain self-contained HTML builds and ships fine. If you
+  do add one (`skills/<x>-ui/`), the space also needs a `registry.json` overlay catalog
+  at its root — the build refuses to ship an unlabeled overlay. See
+  [agents/ui-skill.md](./agents/ui-skill.md).
 - `"adminOnly": true` seals a space behind the admin login. `"default": true` puts it at
   the site root — exactly one space per instance should have it.
 - Every field, with semantics: [agents/space-json.md](./agents/space-json.md).
@@ -327,6 +330,9 @@ Notes on each:
   with `augur login` — never paste a password into a chat or a workflow file.
 - `--all` discovers every sibling space next to the engine clone. From inside a single
   space clone, plain `node <parent>/augur/scripts/publish.mjs` infers that one space.
+  If one parent folder holds spaces belonging to SEVERAL instances, never use `--all` —
+  it would publish every instance's spaces to this one origin. Publish each space from
+  its own clone instead.
 - A Pages env var only applies to **new** deployments, which is why step 5 redeploys.
 
 **The flip is one-way.** Unsetting `GV_ASSET_SOURCE` again does not roll anything back: CI
