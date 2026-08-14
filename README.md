@@ -20,7 +20,10 @@ sees the same screen state. Agents join as pixel mascots and work next to you.
 
 ![The research board, with live prototype tiles and two agents](docs/shots/board.png)
 
-![Prototypes running inside a board](docs/shots/canvas-live.gif)
+Up close: the specimen spins inside its tile, a teammate's cursor works the
+area, and Menta the agent strolls over to watch.
+
+![A live prototype spinning on the board while people and agents move](docs/shots/canvas-live.gif)
 
 ## Comments on the real pixels
 
@@ -29,6 +32,16 @@ talks about, the thread keeps everyone's face on it, and the design system
 shows through as a layer.
 
 ![Review mode on a prototype](docs/shots/review.png)
+
+## Build your design library
+
+The same space that holds your prototypes holds your design system. Tokens,
+base, components, patterns and pages each get a tier, every entry is a plain
+HTML page you write, and the site renders it with a live preview and the class
+names it documents. A small registry gives the review overlay the same
+vocabulary, so a pin on a prototype knows which component it landed on.
+
+![The components tier of the library](docs/shots/library.png)
 
 ## Try it locally
 
