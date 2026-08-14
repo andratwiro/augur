@@ -166,7 +166,13 @@ const BUILD_ENV = {
 //    take only `avatar` from the instance, so a locally-added user still builds.
 // Either way a failed fetch is non-fatal: the file (or, without one, the engine's
 // empty placeholder) still builds — with the faces it can name.
-try {
+//
+// NEVER under --engine. An engine publish builds no space cards, and it PUSHES the
+// identity file as the live instance config — the config must carry each seed
+// avatar's data: URI (what /__avatar/<key> serves), not the /__avatar/ URLs the
+// profiles endpoint derives from it. Merging here would replace every data: URI
+// with its own derived URL, and every seed face on the instance would 404.
+if (!ENGINE_ONLY) try {
   const r = await fetch(`${ORIGIN}/__publish/_instance/profiles`, {
     headers: { Authorization: `Bearer ${TOKEN}` },
   });
