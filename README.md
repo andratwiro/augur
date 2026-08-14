@@ -1,94 +1,74 @@
 # Augur
 
-A build and deploy platform for prototyping sites. Augur composes one or more
-spaces, each a separate git repo holding a self-contained design system and its
-prototypes, into a single static site with a shared overlay layer, and ships it
-to Cloudflare.
+A prototype and research repository for product teams. Real, clickable
+prototypes on one site, with login, comments and live boards on top.
+Underneath it is all git and static HTML.
 
-## How it works
+**See it running: [demo.augur.works](https://demo.augur.works)**, sign in with
+`visita@fulla.demo` / `regadora`. It resets every night, so scribble away.
 
-- **Spaces are repos.** A directory counts as a space when it has a `space.json`
-  at its root; locally, any folder of space clones works via `GV_SPACES_ROOT`.
-  The default space builds at the site root; every other space serves under
-  `/<id>/`. A space with `adminOnly: true` in its `space.json` is sealed behind
-  the admin login.
-- **The build is a single script.** `node build.js` walks every space,
-  publishes only the contents of `prototypes/` folders plus the space's
-  galleries, generates the landing page and per-space indexes, and stamps a
-  public `/_build.json` so collaborators can verify their commit is live.
-  Internal files (research notes, anything outside `prototypes/`) are never
-  published.
-- **An overlay worker runs on top.** `src/_worker.js` adds a per-user login
-  gate, review comments and pins, dev status chips, and live multiplayer canvas
-  boards over the static pages. State lives in Cloudflare KV.
-- **Two ship paths, via a deploy shell.** This engine repo deploys nothing
-  itself. A separate private shell repo pins the engine as a submodule and holds
-  the CI workflows, the user list and all secrets. **Engine changes ship on
-  push:** pushing the engine fires a `repository_dispatch` that bumps the engine
-  pin in the shell and redeploys, about a minute end to end. **Space content
-  ships by direct publish:** `augur publish` from a space clone uploads only
-  what changed to the R2 bundle store and flips the live site atomically in
-  seconds (self-serve token via `augur login`; a git push saves and shares the
-  work but does not deploy it). The shell never holds space content — its CI
-  builds with no space on disk — so a redeploy cannot overwrite a publish, and
-  collaborators only ever need their own space repo.
-- **Offline mode.** `npm run offline` builds from editable sibling clones, runs
-  the real worker locally, and hot-reloads in about a second. See
-  [CLAUDE.md](./CLAUDE.md) for the full conventions.
+![The projects gallery](docs/shots/gallery.png)
 
-## Quick start
+The demo runs [Fulla](https://github.com/andratwiro/augur-space-fulla), an
+invented community garden product. That repo doubles as the starter space, so
+everything below works against it.
+
+## Boards where the prototypes run
+
+Drop a live prototype next to the stickies and drive it. Everyone on the board
+sees the same screen state. Agents join as pixel mascots and work next to you.
+
+![The research board, with live prototype tiles and two agents](docs/shots/board.png)
+
+![Prototypes running inside a board](docs/shots/canvas-live.gif)
+
+## Comments on the real pixels
+
+Shift+C on any prototype opens review mode. A pin sticks to the element it
+talks about, the thread keeps everyone's face on it, and the design system
+shows through as a layer.
+
+![Review mode on a prototype](docs/shots/review.png)
+
+## Try it locally
 
 ```bash
-git clone <this-repo> augur
-cd <a space repo, next to the engine clone>
-node ../augur/scripts/dev.mjs                    # the full local shell: login gate, rail,
-                                                 # overlays, ~1s hot reload
+git clone https://github.com/andratwiro/augur.git
+git clone https://github.com/andratwiro/augur-space-fulla.git
+cd augur-space-fulla
+node ../augur/scripts/dev.mjs
 ```
 
-`augur dev` runs one space at its real root URLs. To build or serve several at once,
-point the engine at a folder of space clones:
+That is the full shell on your machine, with about a second of hot reload. The
+engine has no runtime dependencies, plain `node` is enough. Prototypes are
+self-contained static HTML and also open straight from disk.
 
-```bash
-GV_SPACES_ROOT=/path/to/spaces node build.js     # any dir holding space repos (each with a space.json)
-GV_SPACES_ROOT=/path/to/spaces npm run dev       # build + serve statically, no worker
-```
+## How it is put together
 
-Keep the env var — a bare clone has no `./spaces` and the build refuses to run empty.
+- **A space is a git repo.** Your design system and your prototypes, nothing
+  else. Only the contents of `prototypes/` folders and the gallery tiers ever
+  publish. The research notes sitting next to them stay private by
+  construction.
+- **The engine is this repo.** It composes spaces into one static site and
+  runs the overlay worker on Cloudflare. It carries no secrets and no content.
+- **A private deploy shell holds your instance.** The engine pin, the user
+  list, every secret. Engine fixes reach your instance by pin bump, never by
+  forking.
+- **Publishing is `augur publish`.** Seconds, atomic, straight from your
+  clone. A git push saves and shares work without deploying anything.
 
-## Deploying an instance
+## Run your own
 
-**[INSTALL.md](./INSTALL.md) is the full recipe** — an hour, start to finish,
-written to be executed step by step (by a person or an agent) with the handful
-of human-only steps marked. In outline: a private deploy shell pinning this
-engine, one repo per space, and a Cloudflare Pages project with a KV namespace
-bound as `COMMENTS`, an R2 bucket bound as `BUNDLES`, and a `SESSION_SECRET`.
-The shell holds three secrets — `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`
-and `SUBMODULE_PAT` (Contents:read on the shell itself and every private space
-repo; `.gitmodules` URLs must stay HTTPS for it to work). Copy-paste workflows
-for the shell are in [templates/](./templates/).
+[INSTALL.md](./INSTALL.md) is the whole recipe, written to be executed top to
+bottom by a person or an agent. About an hour, most of it waiting on DNS
+and CI.
 
-## Adding a space
+## Docs
 
-Create a repo with a `space.json` and one or more `<project>/prototypes/`
-folders — a design system is optional; plain self-contained HTML builds fine.
-(The UI calls these top-level folders "Projects" by default; a space renames
-the section via `space.json` `projectsLabel`.) Add it to the `spaces` roster in
-the shell's `deploy.config.json`, then publish from its clone with
-`augur publish`. The space id comes from `space.json`, so the repo name is a
-free label; the default space builds at the site root and every other serves
-under `/<id>/`.
-
-A space repo needs no CI, no secrets and no submodule mount — publishing is the
-whole content path.
-
-## Modifying the engine
-
-Instances **pin** this engine and take fixes by pin bump — never fork-and-patch an
-instance. If the engine is missing something, **send it here — PRs are welcome**
-(see [CONTRIBUTING.md](./CONTRIBUTING.md)): fork to PR, not to deploy; your instance
-takes the fix by its next pin bump. Instance-specific behavior belongs in the shell's
-`deploy.config.json`, space-specific behavior in `space.json`. Full rationale:
-[CLAUDE.md](./CLAUDE.md).
+- [CLAUDE.md](./CLAUDE.md), the engine conventions
+- [agents/](./agents/), the contracts for agents working in a space
+- [CANVAS.md](./CANVAS.md), the board engine and how agents co-work on it
+- [CONTRIBUTING.md](./CONTRIBUTING.md), fork to PR, never fork to deploy
 
 ## License
 
