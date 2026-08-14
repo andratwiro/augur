@@ -15,9 +15,9 @@ everything below works against it.
 
 ## How a prototype gets made
 
-There is no editor. A prototype is briefed, not drawn — you describe the screen
-the way you would brief a designer, and an agent builds it as a real page in
-the space, using the design system like anyone else on the team.
+There is no editor. A prototype is briefed, not drawn. You describe the screen
+the way you would brief a designer, and an agent builds it as a page in the
+space, using the design system like anyone else on the team.
 
 The brief that made [Seed swap](https://demo.augur.works/garden/seed-swap/):
 
@@ -37,12 +37,15 @@ handful of believable offers.
 
 That is Claude Code in the capture; any coding agent that can read the
 contracts in [agents/](./agents/) does the same job. Screens in the demo space
-carry the session that made them — [open the repo and read one](https://github.com/andratwiro/augur-space-fulla/tree/main/garden/prompts).
+carry the session that made them: [open the repo and read one](https://github.com/andratwiro/augur-space-fulla/tree/main/garden/prompts).
 The follow-ups read like design direction, because that is what they are.
 
 ## Boards where the prototypes run
 
-Drop a live prototype next to the stickies and drive it. Everyone on the board sees the same screen state. Agents join as pixel mascots and work next to you. Up close: the specimen spins inside its tile, a teammate's cursor works the area, and Menta the agent strolls over to watch.
+Drop a live prototype next to the stickies and drive it. Everyone on the board
+sees the same screen state. Agents join as pixel mascots and work next to you.
+Up close: the specimen spins inside its tile, a teammate's cursor works the
+area, and Menta the agent strolls over to watch.
 
 ![A live prototype spinning on the board while people and agents move](docs/shots/canvas-live.gif)
 
@@ -99,9 +102,8 @@ self-contained static HTML and also open straight from disk.
 
 ## Run your own
 
-[INSTALL.md](./INSTALL.md) is the whole recipe, written to be executed top to
-bottom by a person or an agent. About an hour, most of it waiting on DNS
-and CI.
+[INSTALL.md](./INSTALL.md) is the recipe, written to be executed top to bottom
+by a person or an agent. About an hour, most of it waiting on DNS and CI.
 
 ## Docs
 
