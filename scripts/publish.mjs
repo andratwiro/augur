@@ -135,7 +135,7 @@ if (!targetSpace && !ALL && !ENGINE_ONLY) die("name a target: --space <id>, --al
 if (targetSpace && !byId[targetSpace]) die(`unknown space "${targetSpace}" (have: ${Object.keys(byId).join(", ")})`);
 
 // ── build (single space unless --all; engine chrome always emitted) ──────────
-const SHELL_DIR = findShellDir(ROOT);
+const SHELL_DIR = findShellDir(ROOT, (() => { try { return new URL(ORIGIN).host; } catch { return ""; } })());
 const IDENTITY_PATH = process.env.GV_IDENTITY_PATH
   || (SHELL_DIR && existsSync(path.join(SHELL_DIR, "identity.json")) ? path.join(SHELL_DIR, "identity.json") : null);
 const DEPLOY_CONFIG_PATH = process.env.GV_DEPLOY_CONFIG_PATH
