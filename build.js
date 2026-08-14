@@ -381,7 +381,7 @@ function prependTitleEmoji(html, emoji) {
 // build.js shell/CSS, the index pages, or features like carousel/comments/download.
 // Do NOT bump it for changes inside individual prototypes; their content is
 // versioned by their own modified date, not this number.
-const UI_VERSION = "1.11";
+const UI_VERSION = "1.12";
 
 // One id per build (ms timestamp). Baked into every page's live-reload poller AND
 // into the worker's /__version endpoint, so a fresh deploy = a new id = open tabs
@@ -2431,12 +2431,16 @@ function pinStar(key, href) {
 // chip's own inline colour is one `background:` shorthand away from resetting the
 // stylesheet's cover/center (that is exactly how it broke). Set together, they can't
 // come apart.
+// `data-person` is the live path: ids are resolved through /__people, which answers with
+// each person's CURRENT face. `data-face` is still honoured because pages published by an
+// older build have the URL baked in and must keep painting until they are republished.
+// PEOPLE_LOOKUP_MAX in the worker caps a lookup at 50 ids, hence the chunking; the
+// per-id cache means a re-wire after cards are injected refetches nothing.
 const FACE_JS = `
 (function(){
-  function paint(el){
-    var src = el.getAttribute('data-face');
-    if(!src || el.dataset.faceDone) return;
-    el.dataset.faceDone = '1';
+  var RESOLVED = {};
+  function lay(el, src){
+    if(!src) return;
     var img = new Image();
     img.onload = function(){
       el.style.backgroundImage = "url('" + src + "')";
@@ -2444,10 +2448,50 @@ const FACE_JS = `
       el.style.backgroundPosition = 'center';
       el.textContent = '';
     };
-    img.onerror = function(){ el.removeAttribute('data-face'); delete el.dataset.faceDone; };
+    img.onerror = function(){ delete el.dataset.faceDone; };
     img.src = src;
   }
-  function wire(){ Array.prototype.forEach.call(document.querySelectorAll('[data-face]'), paint); }
+  function paintBaked(el){
+    var src = el.getAttribute('data-face');
+    if(!src || el.dataset.faceDone) return;
+    el.dataset.faceDone = '1';
+    lay(el, src);
+  }
+  function chunk(a, n){ var o = []; for(var i=0;i<a.length;i+=n) o.push(a.slice(i,i+n)); return o; }
+  function resolve(els){
+    var pending = {}, need = [];
+    for(var i=0;i<els.length;i++){
+      var el = els[i], id = el.getAttribute('data-person');
+      if(!id || el.dataset.faceDone) continue;
+      el.dataset.faceDone = '1';
+      if(RESOLVED[id] !== undefined){ lay(el, RESOLVED[id]); continue; }
+      (pending[id] = pending[id] || []).push(el);
+      if(need.indexOf(id) < 0) need.push(id);
+    }
+    chunk(need, 50).forEach(function(ids){
+      fetch('/__people?ids=' + encodeURIComponent(ids.join(',')), { credentials: 'same-origin' })
+        .then(function(r){ return r.ok ? r.json() : null; })
+        .then(function(d){
+          if(!d || !d.people) return;
+          // Cache the misses too (null): an id nobody answers for must not be re-asked
+          // on every wire, and the chip is already showing the right initials.
+          ids.forEach(function(id){ if(RESOLVED[id] === undefined) RESOLVED[id] = null; });
+          d.people.forEach(function(p){
+            RESOLVED[p.id] = p.avatar || null;
+            (pending[p.id] || []).forEach(function(el){ lay(el, p.avatar); });
+          });
+        })
+        .catch(function(){
+          // Offline/file:// or a gate in the way — leave the initials standing and let a
+          // later wire try again rather than caching a network failure as "no face".
+          ids.forEach(function(id){ (pending[id] || []).forEach(function(el){ delete el.dataset.faceDone; }); });
+        });
+    });
+  }
+  function wire(){
+    Array.prototype.forEach.call(document.querySelectorAll('[data-face]'), paintBaked);
+    resolve([].slice.call(document.querySelectorAll('[data-person]')));
+  }
   window.__gvFacesWire = wire;
   wire();
 })();`;
@@ -2463,12 +2507,31 @@ function newCanvasBtn(dir) {
   return `<button type="button" class="folderbar__new" data-new-canvas="${dir}" hidden>${IC_PLUS}New canvas</button>`;
 }
 
+// The same one-way person id the worker derives (`personId` in src/_worker.js) and
+// answers `/__people?ids=` for. Duplicated rather than imported because the build emits
+// static HTML and shares no module with the worker; the two hashes MUST agree, so change
+// them together or every chip on every page resolves to nobody.
+function personIdOf(email) {
+  const s = String(email == null ? "" : email).trim().toLowerCase();
+  let h = 5381;
+  for (let i = 0; i < s.length; i++) h = (h * 33 + s.charCodeAt(i)) >>> 0;
+  return h.toString(36);
+}
+
 // Initials on the person's colour, with their photo laid over it by FACE_JS once it
-// actually loads. The photo is never the chip's only content: an avatar URL is valid
-// against the identity the instance serves RIGHT NOW, and published pages outlive it —
-// a seed photo dropped from identity.json (or any change to one) 404s that URL in
-// every page published before it, and a background-image that 404s leaves a blank
-// circle with nothing in it. Initials first means a stale face degrades to a name.
+// resolves. What gets baked is the person's ID, never their photo URL: a face is not a
+// build-time fact. An avatar URL is content-addressed (it hashes the photo's bytes), so
+// it names one specific photo — and every way a face can change happens AFTER the page
+// is built. Someone sets their own photo from the profile menu, an admin edits the
+// roster, a seed changes in identity.json: each mints a new URL and every page published
+// before it keeps pointing at the old one, which 404s. That is not a stale image, it is
+// no image — the chip silently drops to initials across the whole site until every space
+// is republished, and nothing in the product tells you it happened.
+//
+// Resolving the id at request time instead makes republishing irrelevant: /__people
+// hands back whatever face that person has NOW (60s cache), so a self-upload lands
+// everywhere on its own. Initials still render first and still stand if the lookup
+// fails, so the degraded state is a name rather than an empty circle.
 //
 // The colour is `background-color`, never the `background` SHORTHAND: the shorthand is
 // inline, so it beats `.proto-editor` and resets `background-size`/`background-position`
@@ -2476,7 +2539,7 @@ function newCanvasBtn(dir) {
 // 96px from the top-left, and every card face becomes a blurry crop of someone's hair.
 function faceChip(u, cls, label) {
   const ini = escAttr((u.initials || (u.name || "?").slice(0, 2)).toUpperCase());
-  const face = u.avatar ? ` data-face="${escAttr(u.avatar)}"` : "";
+  const face = u.email ? ` data-person="${escAttr(personIdOf(u.email))}"` : "";
   return `<span class="${cls}" style="background-color:${u.color || "#4f46e5"}"${face} title="${label}" aria-label="${label}">${ini}</span>`;
 }
 
