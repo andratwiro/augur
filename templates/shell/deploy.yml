@@ -1,0 +1,101 @@
+name: Deploy to Cloudflare Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch: # allow manual runs from the Actions tab
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pages-deploy
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      # A deploy shell composes ONLY the Augur ENGINE (submodule at engine/). No
+      # space repo is mounted here and none is checked out: space content reaches
+      # production exclusively through `augur publish` from a space clone, into the
+      # bundle store the worker serves from.
+      #
+      # If you are tempted to mount spaces here and build the whole site: that was
+      # the previous design, and it gave every page two sources of content with
+      # nothing to tell them apart. The store shadowed the built assets at serve
+      # time, so a submodule pin could sit weeks behind its space repo while the
+      # live URL served something else — and bumping the pin changed nothing,
+      # because pins were never the serving path. Keep the roster of space repos in
+      # deploy.config.json (`spaces`) for repo-side automation instead.
+      #
+      # The engine is public; SUBMODULE_PAT is only needed because actions/checkout
+      # uses one token for the host repo and its submodules, and this shell repo is
+      # private. (.gitmodules URLs must stay HTTPS — checkout cannot authenticate
+      # SSH URLs.)
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0          # the realtime step below diffs across the engine pin move
+          submodules: true        # the engine only
+          token: ${{ secrets.SUBMODULE_PAT }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      # GV_ENGINE_ONLY=1 builds the shared chrome and the worker with NO space on
+      # disk. That is the point: a build that never sees a space cannot emit one, so
+      # this job is structurally incapable of overwriting a direct publish however
+      # stale its checkout. build.js asserts the result really is chrome-only and
+      # fails the deploy if anything space-derived slipped in.
+      - name: Build engine chrome
+        run: node engine/build.js
+        env:
+          GV_ENGINE_ONLY: "1"
+          GV_IDENTITY_PATH: ${{ github.workspace }}/identity.json
+          GV_DEPLOY_CONFIG_PATH: ${{ github.workspace }}/deploy.config.json
+
+      # Pages carries the WORKER (_worker.js) — the code that serves the site — plus
+      # the chrome as an assets-mode fallback. Content is not here.
+      - name: Deploy to Cloudflare Pages
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: pages deploy engine/dist --project-name=your-pages-project --branch=main
+
+      # The store's copy of the chrome, plus the instance config (identity + knobs)
+      # the worker reads at runtime. --engine sets GV_ENGINE_ONLY itself, so it
+      # cannot touch space content. Skips gracefully while AUGUR_TOKEN isn't
+      # configured (assets-mode setups, where Pages is the only source).
+      - name: Publish engine chrome to the bundle store
+        env:
+          AUGUR_TOKEN: ${{ secrets.AUGUR_TOKEN }}
+          AUGUR_ORIGIN: https://your-site-origin.example
+          GV_IDENTITY_PATH: ${{ github.workspace }}/identity.json
+          GV_DEPLOY_CONFIG_PATH: ${{ github.workspace }}/deploy.config.json
+        run: |
+          if [ -z "$AUGUR_TOKEN" ]; then echo "AUGUR_TOKEN not configured — skipping store publish"; exit 0; fi
+          cd engine && node scripts/publish.mjs --engine
+
+      # The realtime (canvas multiplayer) worker deploys separately from Pages; its
+      # instance config lives in THIS repo (realtime.wrangler.toml). Third parties
+      # forget manual redeploys, so: when the engine pin moved AND the move touched
+      # engine realtime code, redeploy it here. Skips gracefully when the shell has
+      # no realtime config, the pin didn't move, or realtime/ is untouched.
+      - name: Redeploy realtime if the engine bump changed it
+        if: ${{ hashFiles('realtime.wrangler.toml') != '' }}
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          set -euo pipefail
+          OLD="$(git rev-parse '${{ github.event.before }}:engine' 2>/dev/null \
+             || git rev-parse 'HEAD^:engine' 2>/dev/null || true)"
+          NEW="$(git rev-parse 'HEAD:engine')"
+          if [ -z "$OLD" ] || [ "$OLD" = "$NEW" ]; then echo "engine pin unmoved — skipping realtime."; exit 0; fi
+          if git -C engine diff --quiet "$OLD" "$NEW" -- realtime/ 2>/dev/null; then
+            echo "engine bump didn't touch realtime/ — skipping."; exit 0
+          fi
+          echo "realtime/ changed in ${OLD:0:12}..${NEW:0:12} — redeploying"
+          npx wrangler deploy -c realtime.wrangler.toml

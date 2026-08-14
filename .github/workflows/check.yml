@@ -1,0 +1,35 @@
+name: check
+
+on: [push, pull_request]
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Doc drift (doc-lint)
+        run: node scripts/doc-lint.mjs
+      - name: No instance, product, or personal words in the engine
+        # The engine is generic — instance-specific values belong in deploy.config.json /
+        # space.json, never in engine code, scripts, docs, or shipped chrome. Scan the
+        # WHOLE repo (case-insensitive) minus vendored/build output and this file (which
+        # necessarily names the words). Two pattern groups: instance/product names (each
+        # separator class allows a SPACE — a product name written the way a human writes
+        # it slips past a slug-only pattern), and personal names — people and pets have
+        # no place in a shared engine. Correct exit handling: grep 0 = found (fail),
+        # 1 = clean (pass), >=2 = error such as a renamed path (fail, never a silent pass).
+        run: |
+          set +e
+          grep -rInEi \
+            --exclude-dir=.git --exclude-dir=node_modules --exclude-dir=dist \
+            --exclude=check.yml \
+            'go[ ._-]?vocal|citizen[ ._-]?lab|delta[ ._-]?studio|delta[ ._-]?designs|demo[ ._-]?gouda|\bgouda\b|wervik|westmere|\brob\b|\birene\b|\btali\b|\baslam\w*|\bsenda\b|\bpruna\b|god[ -]?mode' \
+            .
+          rc=$?
+          set -e
+          if [ "$rc" -eq 0 ]; then echo "::error::instance/product word found in the engine (matches above)"; exit 1; fi
+          if [ "$rc" -ge 2 ]; then echo "::error::product-word scan failed to run (grep rc=$rc)"; exit 1; fi
+          echo "clean — no instance/product words"

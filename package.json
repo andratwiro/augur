@@ -1,0 +1,32 @@
+{
+  "name": "augur",
+  "version": "0.11.0",
+  "private": true,
+  "license": "MIT",
+  "description": "Augur — build/deploy platform composing spaces (design system + prototypes repos) into a static site with an overlay worker.",
+  "type": "module",
+  "bin": {
+    "augur": "scripts/cli.mjs"
+  },
+  "scripts": {
+    "test": "node --test \"test/*.test.mjs\"",
+    "smoke": "node scripts/smoke-invite.mjs",
+    "build": "node build.js",
+    "shoot": "node scripts/shoot.mjs",
+    "shoot:stale": "node scripts/shoot.mjs --stale",
+    "og": "node scripts/og.mjs",
+    "og:stale": "node scripts/og.mjs --stale",
+    "review": "node scripts/review.mjs",
+    "dev": "node build.js && npx --yes serve dist",
+    "offline": "node scripts/offline.mjs",
+    "deploy": "node scripts/deploy.mjs",
+    "deploy:realtime": "set -a && . ./.env.deploy && set +a && npx wrangler deploy realtime/src/index.js -c \"${REALTIME_CONFIG:?set it in .env.deploy — path to the realtime.wrangler.toml in your deploy shell (see realtime/wrangler.example.toml)}\"",
+    "posters": "node scripts/shoot.mjs --stale && node scripts/og.mjs --stale"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "devDependencies": {
+    "playwright": "^1.60.0"
+  }
+}

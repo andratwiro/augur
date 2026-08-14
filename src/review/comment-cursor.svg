@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="26" height="26" viewBox="0 0 26 26">
+  <!-- The cursor for placing a comment: a white speech bubble outlined in black, its tail
+       pointing at the exact spot the pin will land (hotspot 4 23, the tail's tip). Flat by
+       design — cursor images are painted by the OS, where filters and shadows are unreliable. -->
+  <path d="M7 3 H20 A3 3 0 0 1 23 6 V15 A3 3 0 0 1 20 18 H10.5 L4 23 L6.5 18 A3 3 0 0 1 4 15 V6 A3 3 0 0 1 7 3 Z"
+        fill="#ffffff" stroke="#1a1a1a" stroke-width="1.8" stroke-linejoin="round"/>
+</svg>

@@ -1,0 +1,93 @@
+name: Roster update (from Augur Admin)
+
+# Receiver for Admin-panel roster changes. Inviting or removing a person in the
+# Augur Admin UI fires a `roster-update` repository_dispatch here (same channel
+# as "Delete forever"), and this job commits the change to identity.json — so
+# the identity file stays the ONE durable record and the KV roster overlay only
+# bridges the minute this takes. The deploy this push triggers sends the fresh
+# config back to the worker, which then drains the superseded overlay entry
+# itself. Both directions are idempotent: an email already in (or already gone
+# from) the file exits green with no commit.
+#
+# The push uses AUGUR_PIN_TOKEN so the commit retriggers deploy.yml — the
+# default GITHUB_TOKEN deliberately would not.
+
+on:
+  repository_dispatch:
+    types: [roster-update]
+
+concurrency:
+  group: roster-update
+  cancel-in-progress: false
+
+permissions:
+  contents: read # the push below authenticates with AUGUR_PIN_TOKEN
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.AUGUR_PIN_TOKEN }}
+          submodules: false
+
+      - name: Apply the change to identity.json and push (retry on races)
+        env:
+          ACTION: ${{ github.event.client_payload.action }}
+          EMAIL: ${{ github.event.client_payload.user.email || github.event.client_payload.email }}
+          USER_NAME: ${{ github.event.client_payload.user.name }}
+          USER_INITIALS: ${{ github.event.client_payload.user.initials }}
+          USER_COLOR: ${{ github.event.client_payload.user.color }}
+          USER_ROLE: ${{ github.event.client_payload.user.role }}
+          BY: ${{ github.event.client_payload.by }}
+        run: |
+          set -euo pipefail
+          case "$ACTION" in add|remove) ;; *) echo "::error::bad action '$ACTION'"; exit 1;; esac
+          if ! printf '%s' "$EMAIL" | grep -Eq '^[^[:space:]@]+@[^[:space:]@]+\.[^[:space:]@]+$'; then
+            echo "::error::client_payload does not carry a valid email"; exit 1
+          fi
+
+          # The edit, as an idempotent script we can re-run after a lost push race.
+          cat > "$RUNNER_TEMP/edit.cjs" <<'EOF'
+          const fs = require("fs");
+          const { ACTION, EMAIL, USER_NAME, USER_INITIALS, USER_COLOR, USER_ROLE } = process.env;
+          const lc = (s) => String(s || "").toLowerCase();
+          const users = JSON.parse(fs.readFileSync("identity.json", "utf8"));
+          const known = (u) => lc(u.email) === lc(EMAIL) || (u.emails || []).some((e) => lc(e) === lc(EMAIL));
+          let out = users, changed = false;
+          if (ACTION === "add" && !users.some(known)) {
+            const entry = {
+              email: EMAIL,
+              name: USER_NAME || EMAIL.split("@")[0],
+              initials: USER_INITIALS || "",
+              emails: [],
+              color: USER_COLOR || "#4f46e5",
+            };
+            if (USER_ROLE === "admin") entry.role = "admin";
+            out = [...users, entry];
+            changed = true;
+          }
+          if (ACTION === "remove") {
+            out = users.filter((u) => !known(u));
+            changed = out.length !== users.length;
+          }
+          if (changed) fs.writeFileSync("identity.json", JSON.stringify(out, null, 2) + "\n");
+          console.log(changed ? "identity.json updated" : "already in the desired state");
+          EOF
+
+          git config user.name "augur-deploy"
+          git config user.email "augur-deploy@users.noreply.github.com"
+          for attempt in 1 2 3 4 5; do
+            node "$RUNNER_TEMP/edit.cjs"
+            if git diff --quiet identity.json; then
+              echo "nothing to commit — the file already agrees"; exit 0
+            fi
+            git commit -q -m "[roster] $ACTION $EMAIL (via Augur Admin${BY:+, by $BY})" identity.json
+            if git push origin HEAD; then exit 0; fi
+            echo "push rejected (concurrent commit) — refetching and reapplying"
+            git fetch origin main
+            git reset --hard --quiet origin/main
+            sleep "$attempt"
+          done
+          echo "::error::push still rejected after 5 attempts — re-run this dispatch"; exit 1

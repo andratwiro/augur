@@ -1,0 +1,146 @@
+name: Health canary
+
+# Deploy-path monitoring. Space content ships via `augur publish` into the bundle
+# store, not via pushes — so the failure worth catching is DRIFT: someone pushed
+# work to a space repo and nothing published it, and the live site quietly lags
+# what is in git. Nobody notices on their own, because everyone's own clone looks
+# right.
+#
+#   a. every space in the roster (deploy.config.json `spaces`): does the live
+#      /_build.json sha match the space repo's main HEAD? Drift older than a
+#      grace window = pushed-but-never-published (or a failed publish).
+#   b. a DIRTY publish that has outlived its window. Live content built from an
+#      uncommitted working tree exists in NO repository, so it cannot be rebuilt,
+#      reviewed or rolled forward. Fine for an hour of active work; not fine left
+#      standing.
+#   c. is AUGUR_PIN_TOKEN alive, if this shell uses one (roster-update.yml pushes
+#      with it)? Skipped when the secret is unset.
+#   d. is the site up at all? (implicit in (a)'s stamp fetch.)
+#
+# On any failure the run exits non-zero (GitHub emails the owner) AND maintains a
+# single open issue labelled `health`; a green run closes it.
+#
+# SET BEFORE USE: SITE below. Secrets: SUBMODULE_PAT (Contents:read on every
+# space repo in the roster).
+
+on:
+  schedule:
+    - cron: "23 */6 * * *" # every 6 hours (offset minute — GitHub drops top-of-hour crons)
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write # create/comment/close the health issue with the default token
+
+concurrency:
+  group: health
+  cancel-in-progress: true
+
+jobs:
+  health:
+    runs-on: ubuntu-latest
+    env:
+      SITE: https://your-site-origin.example # ← your deploy.config.json siteOrigin
+      # NB: the `runner` context is not available in job-level env, so a literal path.
+      FAILS: /tmp/health-failures.txt
+      GRACE_SECONDS: "3600"        # 1h: a human or agent may publish minutes after pushing
+      DIRTY_GRACE_SECONDS: "21600" # 6h: an active session may legitimately sit dirty
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: false # the roster is deploy.config.json; no checkout needed
+          fetch-depth: 1
+
+      # (a)+(b) Live /_build.json sha vs each space repo's main HEAD. The stamp is
+      # written by `augur publish` (source sha + dirty flag + publishedAt), so
+      # equality means "what is in git is what is live". A recent push gets a grace
+      # window; so does a fresh working-tree publish, but only a window.
+      - name: Check live shas vs space repo HEADs (publish drift + dirty publishes)
+        env:
+          PAT: ${{ secrets.SUBMODULE_PAT }} # Contents:read on every space repo
+        run: |
+          set -euo pipefail
+          : > "$FAILS"
+          NOW=$(date -u +%s)
+          if ! STAMP="$(curl -fsS --max-time 30 "$SITE/_build.json")"; then
+            echo "could not fetch $SITE/_build.json — site down or stamp gone" >> "$FAILS"
+            exit 0
+          fi
+          jq -r '.spaces[]? | "\(.id) \(.repo)"' deploy.config.json | while read -r ID REPO; do
+            HEAD_SHA="$(GH_TOKEN="$PAT" gh api "repos/${REPO}/branches/main" --jq .commit.sha 2>/dev/null || true)"
+            if [ -z "$HEAD_SHA" ]; then
+              echo "cannot read ${REPO} main HEAD with SUBMODULE_PAT (token dead/expired, or repo access revoked?)" >> "$FAILS"
+              continue
+            fi
+            LIVE_SHA="$(printf '%s' "$STAMP" | jq -r --arg id "$ID" '.spaces[$id].sha // empty')"
+            DIRTY="$(printf '%s' "$STAMP" | jq -r --arg id "$ID" '.spaces[$id].dirty // false')"
+            if [ "$LIVE_SHA" = "$HEAD_SHA" ] && [ "$DIRTY" != "true" ]; then
+              echo "OK: $ID live sha matches main HEAD (${HEAD_SHA:0:12})"
+              continue
+            fi
+            PUSHED_AT="$(GH_TOKEN="$PAT" gh api "repos/${REPO}" --jq .pushed_at 2>/dev/null || true)"
+            AGE=$(( NOW - $(date -u -d "${PUSHED_AT:-1970-01-01T00:00:00Z}" +%s) ))
+            if [ "$DIRTY" = "true" ]; then
+              PUB_AT="$(printf '%s' "$STAMP" | jq -r --arg id "$ID" '.spaces[$id].publishedAt // empty')"
+              DIRTY_AGE=$(( NOW - $(date -u -d "${PUB_AT:-1970-01-01T00:00:00Z}" +%s) ))
+              if [ -n "$PUB_AT" ] && [ "$DIRTY_AGE" -le "$DIRTY_GRACE_SECONDS" ]; then
+                echo "OK: $ID live is a working-tree publish ${DIRTY_AGE}s ago — inside the ${DIRTY_GRACE_SECONDS}s window"
+              else
+                echo "dirty publish: $ID has been serving a working-tree publish (base ${LIVE_SHA:0:12}) for ${DIRTY_AGE}s — those exact bytes exist in NO repository. Commit the work and re-run \`augur publish\` from the $ID clone" >> "$FAILS"
+              fi
+              continue
+            fi
+            if [ "$AGE" -gt "$GRACE_SECONDS" ]; then
+              echo "publish drift: $ID main HEAD is ${HEAD_SHA:0:12} (pushed ${AGE}s ago) but live serves '${LIVE_SHA:-<absent>}' — pushed but never published; run \`augur publish\` from the $ID clone" >> "$FAILS"
+            else
+              echo "OK: $ID drifting but pushed ${AGE}s ago (inside the ${GRACE_SECONDS}s grace window)"
+            fi
+          done
+
+      # (c) AUGUR_PIN_TOKEN — only shells that wired roster write-back (or another
+      # push-must-retrigger-CI workflow) have one. Unset = nothing to monitor.
+      - name: Validate AUGUR_PIN_TOKEN
+        env:
+          GH_TOKEN: ${{ secrets.AUGUR_PIN_TOKEN }}
+        run: |
+          set -euo pipefail
+          if [ -z "${GH_TOKEN:-}" ]; then echo "AUGUR_PIN_TOKEN not configured — skipping"; exit 0; fi
+          if ! gh api "repos/${GITHUB_REPOSITORY}" --jq .full_name >/dev/null 2>&1; then
+            echo "AUGUR_PIN_TOKEN is dead/expired — workflows that push cannot retrigger CI (regenerate the PAT and update the secret)" >> "$FAILS"
+          else
+            echo "OK: AUGUR_PIN_TOKEN authenticates"
+          fi
+
+      # Report — one issue, not a pile: create-or-comment on the single open
+      # `health` issue on failure (+ exit 1 so GitHub emails the owner); close it
+      # on recovery.
+      - name: Report — maintain the health issue
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          set -euo pipefail
+          gh label create health --color D93F0B --description "Deploy-path canary failures (health.yml)" 2>/dev/null || true
+          EXISTING="$(gh issue list --label health --state open --json number --jq '.[0].number // empty')"
+          if [ -s "$FAILS" ]; then
+            N="$(wc -l < "$FAILS" | tr -d ' ')"
+            FIRST="$(head -n1 "$FAILS" | cut -c1-100)"
+            if [ "$N" -gt 1 ]; then TITLE="🚨 Health: $N checks failing"; else TITLE="🚨 Health: $FIRST"; fi
+            BODY="$(printf 'Canary run: %s\n\nFailing checks:\n%s\n\n(Auto-maintained by health.yml — this issue closes itself when a run goes green.)' "$RUN_URL" "$(sed 's/^/- /' "$FAILS")")"
+            if [ -n "$EXISTING" ]; then
+              gh issue edit "$EXISTING" --title "$TITLE" >/dev/null
+              gh issue comment "$EXISTING" --body "$BODY" >/dev/null
+              echo "Updated open issue #$EXISTING"
+            else
+              gh issue create --title "$TITLE" --body "$BODY" --label health >/dev/null
+              echo "Opened a new health issue"
+            fi
+            echo "::error::health checks failing:"; sed 's/^/  - /' "$FAILS"
+            exit 1
+          fi
+          echo "All health checks green."
+          if [ -n "$EXISTING" ]; then
+            gh issue close "$EXISTING" --comment "All health checks green again — closing. ($RUN_URL)" >/dev/null
+            echo "Closed recovered issue #$EXISTING"
+          fi

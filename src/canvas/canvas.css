@@ -1,0 +1,865 @@
+/* Augur Canvas — hand-rolled infinite-canvas engine. Served from /__canvas/canvas.css.
+   A "canvas" is a prototype that mounts Augur's shared infinite-canvas engine; nodes live in a
+   single CSS-transformed "world" layer, the UI sits in a fixed layer above it. See CANVAS.md.
+   The chrome is a full whiteboard suite: warm paper background + dot grid, the bottom pill
+   toolbar with illustrated marker/sticky tools, and the draw/shapes/stamps sub-toolbars. */
+
+html, body { margin: 0; height: 100%; overflow: hidden; background: #f6f6f6; }
+
+#gvc-root {
+  /* ⚠️ clip, NEVER hidden. `overflow: hidden` clips the same but leaves a SCROLL CONTAINER,
+     and the world's nodes give it a real scroll range (they extend far past the viewport in
+     both axes). Nothing user-facing can scroll an overflow:hidden box — but the BROWSER can,
+     and does: focus() on a contenteditable outside the viewport (enterEdit on a node at the
+     screen edge, a tile rename, a table cell) makes Chrome scroll it into view. #gvc-world is
+     absolutely positioned INSIDE this box so it goes with the scroll, while #gvc-ui is fixed
+     and does not — and every coordinate transform assumes the world's origin is the viewport's.
+     One stray focus therefore offset the whole board from the pointer for the rest of the
+     session: strokes landed hundreds of px to the left of the cursor, placed nodes missed the
+     click, and a selected node's toolbar sat far away from it. `overflow: clip` is not a scroll
+     container at all, so there is no scroll to leak. (`touch-action: none` never covered this —
+     the scroll came from the browser, not from a gesture.) */
+  position: fixed; inset: 0; overflow: clip; touch-action: none;
+  font: 14px/1.4 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  color: #1e1e1e; user-select: none; -webkit-user-select: none;
+  /* Paper only — the dot grid moved to #gvc-grid (its own layer, transform-panned);
+     gridSpec()/applyTransform paint the dots there. */
+  background-color: #f6f6f6;
+}
+/* The dot grid lives on its OWN compositor layer, oversized by more than the largest
+   grid step (96px), and pans by transform only (see applyTransform) — the pattern
+   repeats, so a mod-step translate looks identical to the real camera translate and a
+   pan never repaints the viewport. Paint properties change only on zoom. */
+#gvc-grid { position: absolute; inset: -128px; pointer-events: none; will-change: transform; }
+#gvc-root.panning { cursor: grabbing; }
+#gvc-root.hand { cursor: grab; }
+#gvc-root.crosshair { cursor: crosshair; }
+/* Option held = dragging a node duplicates it. Nodes set their own `cursor: grab`, so this has
+   to reach them specifically; the hand tool still wins (it's a pan, not a drag). */
+#gvc-root.altcopy:not(.hand) .gvc-node, #gvc-root.altcopy:not(.hand) .gvc-node * { cursor: copy; }
+#gvc-root.dropping::after {
+  content: "Drop image to place it"; position: fixed; inset: 0; display: flex;
+  align-items: center; justify-content: center; font-size: 22px; color: #2563eb; font-weight: 600;
+  background: rgba(37, 99, 235, .06); border: 3px dashed #2563eb; box-sizing: border-box; pointer-events: none;
+}
+
+#gvc-world { position: absolute; top: 0; left: 0; width: 0; height: 0; transform-origin: 0 0; will-change: transform; }
+
+/* ---- nodes ---------------------------------------------------------------- */
+.gvc-node { position: absolute; box-sizing: border-box; }
+/* rotation: only the nodes that HAVE an angle carry the transform (--gvc-rot, set in place()).
+   Applying it unconditionally would turn every node into a containing block + stacking
+   context — a real cost on a big board, for nothing. */
+.gvc-node.rot { transform: rotate(var(--gvc-rot, 0deg)); }
+/* FigJam's selection is a HAIRLINE flush to the node, not a ring standing off it — the node
+   stays the loudest thing on the board and the chrome gets out of its way. */
+/* Screen-constant selection ring: --gvc-inv (set per zoom in applyTransform)
+   cancels the world scale, so the ring reads ~2.5px on screen at every zoom —
+   visible from afar without swallowing the node up close. */
+.gvc-node.sel { outline: calc(2.5px * var(--gvc-inv, 1)) solid #2563eb; outline-offset: 0; }
+.gvc-node > .gvc-name {
+  position: absolute; left: 0; top: -19px; font-size: 11px; color: #6b7280;
+  max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: text;
+}
+.gvc-node > .gvc-name:empty { display: none; }
+
+/* the host must NOT clip (it would cut the corner resize handles, which straddle the edge) —
+   the inner wrap carries the padding + overflow clip instead.
+   Proportions are FigJam's, measured off a reference screenshot and normalised to the note's
+   width (so zoom and DPR cancel): padding 8.7% a side, author label ~5% and sitting ~10% up
+   from the bottom edge, and a radius of exactly 0 — a FigJam sticky's corners are SHARP. */
+.gvc-sticky {
+  min-width: 96px; min-height: 96px; border-radius: 0;
+  background: #fce495; box-shadow: 0 4px 10px rgba(0, 0, 0, .14); font-size: 16px; line-height: 1.35;
+  cursor: grab;
+}
+/* padding-bottom is the author's lane — it keeps the text off the name. Its vertical total
+   is STICKY_PAD_V in canvas.js; the two must move together or the fit measures the wrong box. */
+.gvc-sticky .gvc-stickyin { position: absolute; inset: 0; padding: 19px 19px 40px; overflow: hidden; border-radius: 0; }
+.gvc-sticky .gvc-txt { outline: none; white-space: pre-wrap; word-break: break-word; min-height: 1em; }
+/* rich text: one <div> per line (the line model in canvas.js), lists as real ul/ol runs.
+   No margins anywhere — the line box IS the spacing, so a list sits flush with plain lines. */
+/* A node's text is never draggable CONTENT. Chromium treats a press on selected text as a
+   request to drag that text — it lifts a ghost image of the glyphs and the node underneath
+   never moves, which is exactly what "I can only drag this node from the empty space next to
+   the text" feels like. exitEdit clears the selection on the way out; this makes the gesture
+   impossible even while the text IS selected (the root's dragstart guard is the third layer). */
+.gvc-txt { -webkit-user-drag: none; user-drag: none; }
+.gvc-txt ul, .gvc-txt ol { margin: 0; padding-left: 1.3em; }
+.gvc-txt li { margin: 0; }
+.gvc-txt li::marker { font-size: .95em; }
+.gvc-sticky .gvc-txt:empty::before { content: "Type anything"; color: rgba(0, 0, 0, .32); }
+.gvc-sticky .gvc-author { position: absolute; left: 19px; bottom: 18px; font-size: 11px; color: rgba(0, 0, 0, .5); pointer-events: none; max-width: calc(100% - 38px); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.gvc-sticky.editing, .gvc-text.editing, .gvc-shape.editing { cursor: text; }
+.gvc-sticky.editing .gvc-txt, .gvc-text.editing .gvc-txt, .gvc-shape.editing .gvc-txt { cursor: text; }
+
+.gvc-text { padding: 4px 6px; font-size: 16px; color: #1e1e1e; cursor: grab; }
+.gvc-text .gvc-txt { outline: none; white-space: pre-wrap; word-break: break-word; min-width: 40px; min-height: 1em; }
+.gvc-text .gvc-txt:empty::before { content: "Text"; color: rgba(0, 0, 0, .3); }
+
+/* no overflow:hidden on the host — it would clip the .gvc-name label that floats above the
+   node; the inner wrap clips instead (which is also what makes a crop possible) */
+.gvc-image { cursor: grab; box-shadow: 0 3px 10px rgba(0, 0, 0, .18); border-radius: 4px; background: #fff; }
+/* A cut-out image has no edges to cast a shadow and no paper to sit on — the card would show
+   straight through its transparent pixels. Set by node.alpha, or by the load-time probe. */
+.gvc-image.alpha { background: transparent; box-shadow: none; }
+.gvc-image .gvc-imgwrap { position: absolute; inset: 0; overflow: hidden; border-radius: 4px; }
+.gvc-image img { display: block; width: 100%; height: 100%; object-fit: contain; pointer-events: none; }
+/* cropped: percent size/offset set inline from node.crop show just the crop window */
+.gvc-image img.cropped { position: absolute; max-width: none; object-fit: fill; }
+
+.gvc-tile { border-radius: 8px; box-shadow: 0 4px 14px rgba(0, 0, 0, .16); }
+/* the frame title: floats ABOVE the tile, counter-scaled by JS (scaleTileChrome)
+   so it reads at a constant 12px at any zoom; max-width follows the tile's VISUAL width */
+.gvc-tilename { position: absolute; bottom: 100%; left: 0; margin-bottom: 6px; transform-origin: left bottom; font: 600 12px/1.3 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; color: #4b5563; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: text; outline: none; padding: 1px 2px; }
+.gvc-tilename:hover { color: #111827; }
+.gvc-tile .gvc-tilebody { position: absolute; inset: 0; background: #f4f5f7; border-radius: 8px; overflow: hidden; }
+.gvc-tile .gvc-tilebody img { display: block; width: 100%; height: 100%; object-fit: cover; object-position: top center; pointer-events: none; }
+/* width/height/transform are set inline by fitFrame() — a fixed desktop viewport scaled to the tile */
+.gvc-tile .gvc-tilebody iframe { display: block; border: 0; background: #fff; transform-origin: top left; }
+/* tiles are ALWAYS live but inert: the hit overlay makes the tile select/drag like any node
+   (grab = the drag affordance); enterInteract() hides it while you drive the prototype */
+.gvc-tile .gvc-hit { position: absolute; inset: 0; cursor: grab; }
+.gvc-tile.interacting { box-shadow: 0 0 0 2.5px #2563eb, 0 4px 14px rgba(0, 0, 0, .16); }
+.gvc-tile .gvc-tilebody .ph { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; padding: 12px; text-align: center; color: #9ca3af; font-size: 12px; }
+
+.gvc-arrow { cursor: grab; }
+.gvc-arrow svg { display: block; overflow: visible; }
+.gvc-arrow svg path { fill: none; stroke: #374151; stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; }
+
+/* freehand strokes: the host box is the stroke bbox; the svg hangs -pad outside it so round
+   caps never clip. Highlighter multiplies like a real marker over content. */
+.gvc-draw { cursor: grab; }
+.gvc-draw svg { position: absolute; overflow: visible; }
+.gvc-draw svg path { fill: none; stroke-linecap: round; stroke-linejoin: round; }
+.gvc-draw.hl svg { mix-blend-mode: multiply; }
+.gvc-drawing { position: absolute; left: 0; top: 0; pointer-events: none; }
+.gvc-drawing svg { position: absolute; overflow: visible; }
+
+/* shapes: geometry svg stretched to the node box, editable text centered on top */
+.gvc-shape { cursor: grab; }
+.gvc-shape svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+/* flex-direction: column — a shape's text is a stack of line blocks now (rich text), and a
+   row would lay them out side by side */
+.gvc-shape .gvc-txt { position: absolute; inset: 12%; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; font-size: 14px; outline: none; overflow: hidden; white-space: pre-wrap; word-break: break-word; }
+
+/* sections: translucent background containers with a colored label chip */
+.gvc-section { background: rgba(255, 255, 255, .62); border: 1px solid rgba(0, 0, 0, .08); border-radius: 12px; cursor: grab; }
+/* locked: the background is inert (click through to work on top / nothing); the label chip
+   stays clickable so it's how you re-select the section to unlock it */
+.gvc-section.locked { pointer-events: none; }
+.gvc-section.locked > .gvc-seclabel { pointer-events: auto; }
+.gvc-seclabel { position: absolute; bottom: calc(100% + 7px); left: 0; transform-origin: left bottom; display: flex; align-items: center; gap: 6px;
+  padding: 4px 9px 4px 8px; border-radius: 8px; background: #e9ecef; color: #4a4f57;
+  font: 600 13px/1.2 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, .12); max-width: calc(100% - 20px); cursor: grab; }
+.gvc-seclabel.colored { color: #fff; }
+.gvc-seclabel .ic { width: 15px; height: 15px; flex: 0 0 auto; }
+.gvc-seclabel .lk { width: 13px; height: 13px; flex: 0 0 auto; opacity: .92; }
+.gvc-seclabel .gvc-name { position: static; outline: none; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: text; color: inherit; }
+
+/* tables: plain white cells, thin inner gridlines; when selected, blue +
+   strips (right = add column, bottom = add row) */
+.gvc-table { display: grid; background: #fff; border: 1px solid #cfd1d6; border-radius: 2px; box-shadow: 0 2px 8px rgba(0, 0, 0, .06); cursor: grab; }
+.gvc-cell { border-right: 1px solid #e3e3e6; border-bottom: 1px solid #e3e3e6; padding: 8px 10px; font-size: 13px; outline: none; overflow: hidden; min-width: 0; }
+.gvc-addrow, .gvc-addcol {
+  position: absolute; display: flex; align-items: center; justify-content: center;
+  background: #c9dff9; color: #2f80ed; font-size: 22px; font-weight: 500;
+  border-radius: 8px; cursor: pointer; z-index: 2; transition: background .12s;
+}
+.gvc-addrow:hover, .gvc-addcol:hover { background: #b4d3f7; }
+.gvc-addrow { left: 0; right: 0; bottom: -46px; height: 38px; }
+.gvc-addcol { top: 0; bottom: 0; right: -46px; width: 38px; }
+
+/* sticker stamps: SVG stickers carry their own white die-cut outline (paint-order:stroke);
+   the stacked white drop-shadows give legacy emoji stamps the same look */
+/* One soft shadow, and nothing else. The white die-cut edge is PAINTED in the art
+   (paint-order:stroke), so it stays crisp at any zoom; the white drop-shadow glows
+   that used to sit here blurred that edge into a halo. */
+.gvc-stamp { display: flex; align-items: center; justify-content: center; cursor: grab; line-height: 1; filter: drop-shadow(0 1px 2px rgba(0, 0, 0, .24)); }
+svg.stk { display: block; overflow: visible; }
+.gvc-stamp svg.stk { width: 100%; height: 100%; }
+
+.gvc-handle { position: absolute; width: 12px; height: 12px; margin: -6px 0 0 -6px; border-radius: 50%; background: #fff; border: 2px solid #2563eb; cursor: crosshair; z-index: 2; }
+/* resize handles: all FOUR corners. Each is centred exactly on its corner
+   (left/top % + a half-size negative margin) so the JS counter-scale — transform:
+   scale(1/zoom), origin centre — keeps it pinned there at a constant screen size. */
+.gvc-resize { position: absolute; width: 9px; height: 9px; margin: -4.5px 0 0 -4.5px; border-radius: 50%; background: #fff; border: 1.5px solid #2563eb; box-shadow: 0 1px 2px rgba(0, 0, 0, .18); z-index: 3; }
+.gvc-resize.nw { left: 0; top: 0; cursor: nwse-resize; }
+.gvc-resize.ne { left: 100%; top: 0; cursor: nesw-resize; }
+.gvc-resize.sw { left: 0; top: 100%; cursor: nesw-resize; }
+.gvc-resize.se { left: 100%; top: 100%; cursor: nwse-resize; }
+/* rotate pads: a square hanging just OUTSIDE each corner (FigJam's affordance — the corner
+   dot resizes, a hair beyond it rotates). Invisible, cursor-only. transform-origin is the
+   corner it hangs off, so the JS counter-scale keeps it pinned there at every zoom. Below
+   the corner dots (z-index 1) so the resize grab always wins the overlap. */
+.gvc-rot { position: absolute; width: 22px; height: 22px; z-index: 1; }
+.gvc-rot.nw { left: 0; top: 0; margin: -22px 0 0 -22px; transform-origin: 100% 100%; }
+.gvc-rot.ne { left: 100%; top: 0; margin: -22px 0 0 0; transform-origin: 0 100%; }
+.gvc-rot.sw { left: 0; top: 100%; margin: 0 0 0 -22px; transform-origin: 100% 0; }
+.gvc-rot.se { left: 100%; top: 100%; margin: 0; transform-origin: 0 0; }
+/* Figma's rotate cursor: one curved arrow, black on a white keyline (so it reads on any
+   node), TURNED PER CORNER — 45° off the vertical toward the corner it hangs on, so it
+   always points the way that corner will travel. Four literal data URIs because a cursor
+   image cannot be transformed in CSS; they differ only in the `rotate(N 16 16)` wrapper.
+   Same glyph each time: a 140° arc over the top of a 32×32 box with a solid head at the
+   right end, hotspot at the centre. */
+.gvc-rot.nw { cursor: url("data:image/svg+xml;charset=utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32'%3E%3Cg transform='rotate(-45 16 16)'%3E%3Cpath d='M8.5 13.3A8 8 0 0 1 23.5 13.3' fill='none' stroke='%23fff' stroke-width='5.4' stroke-linecap='round'/%3E%3Cpath d='M24.9 17.1 26.4 12.2 20.7 14.3Z' fill='%23fff' stroke='%23fff' stroke-width='3.4' stroke-linejoin='round'/%3E%3Cpath d='M8.5 13.3A8 8 0 0 1 23.5 13.3' fill='none' stroke='%231e1e1e' stroke-width='2.1' stroke-linecap='round'/%3E%3Cpath d='M24.9 17.1 26.4 12.2 20.7 14.3Z' fill='%231e1e1e'/%3E%3C/g%3E%3C/svg%3E") 16 16, crosshair; }
+.gvc-rot.ne { cursor: url("data:image/svg+xml;charset=utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32'%3E%3Cg transform='rotate(45 16 16)'%3E%3Cpath d='M8.5 13.3A8 8 0 0 1 23.5 13.3' fill='none' stroke='%23fff' stroke-width='5.4' stroke-linecap='round'/%3E%3Cpath d='M24.9 17.1 26.4 12.2 20.7 14.3Z' fill='%23fff' stroke='%23fff' stroke-width='3.4' stroke-linejoin='round'/%3E%3Cpath d='M8.5 13.3A8 8 0 0 1 23.5 13.3' fill='none' stroke='%231e1e1e' stroke-width='2.1' stroke-linecap='round'/%3E%3Cpath d='M24.9 17.1 26.4 12.2 20.7 14.3Z' fill='%231e1e1e'/%3E%3C/g%3E%3C/svg%3E") 16 16, crosshair; }
+.gvc-rot.se { cursor: url("data:image/svg+xml;charset=utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32'%3E%3Cg transform='rotate(135 16 16)'%3E%3Cpath d='M8.5 13.3A8 8 0 0 1 23.5 13.3' fill='none' stroke='%23fff' stroke-width='5.4' stroke-linecap='round'/%3E%3Cpath d='M24.9 17.1 26.4 12.2 20.7 14.3Z' fill='%23fff' stroke='%23fff' stroke-width='3.4' stroke-linejoin='round'/%3E%3Cpath d='M8.5 13.3A8 8 0 0 1 23.5 13.3' fill='none' stroke='%231e1e1e' stroke-width='2.1' stroke-linecap='round'/%3E%3Cpath d='M24.9 17.1 26.4 12.2 20.7 14.3Z' fill='%231e1e1e'/%3E%3C/g%3E%3C/svg%3E") 16 16, crosshair; }
+.gvc-rot.sw { cursor: url("data:image/svg+xml;charset=utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32'%3E%3Cg transform='rotate(225 16 16)'%3E%3Cpath d='M8.5 13.3A8 8 0 0 1 23.5 13.3' fill='none' stroke='%23fff' stroke-width='5.4' stroke-linecap='round'/%3E%3Cpath d='M24.9 17.1 26.4 12.2 20.7 14.3Z' fill='%23fff' stroke='%23fff' stroke-width='3.4' stroke-linejoin='round'/%3E%3Cpath d='M8.5 13.3A8 8 0 0 1 23.5 13.3' fill='none' stroke='%231e1e1e' stroke-width='2.1' stroke-linecap='round'/%3E%3Cpath d='M24.9 17.1 26.4 12.2 20.7 14.3Z' fill='%231e1e1e'/%3E%3C/g%3E%3C/svg%3E") 16 16, crosshair; }
+/* the live angle readout while a rotate drag is in flight */
+#gvc-rotbadge {
+  position: fixed; z-index: 60; pointer-events: none;
+  padding: 3px 7px; border-radius: 5px; background: #2563eb; color: #fff;
+  font: 600 11px/1.2 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-variant-numeric: tabular-nums; box-shadow: 0 2px 6px rgba(0, 0, 0, .2);
+}
+#gvc-rotbadge.hidden { display: none; }
+
+/* edge handles: invisible strips straddling each border along its FULL length, so a side can
+   be grabbed anywhere — not only at a corner. 8px thick, centred on the border by the negative
+   margin; the JS counter-scales the thickness axis only (scaleY/scaleX), so they stay 8px on
+   screen at any zoom while still spanning the side. Below the corners, which keep z-index 3. */
+.gvc-resize.edge { border: 0; border-radius: 0; background: transparent; box-shadow: none; z-index: 2; }
+.gvc-resize.n, .gvc-resize.s { left: 0; width: 100%; height: 8px; margin: -4px 0 0 0; cursor: ns-resize; }
+.gvc-resize.e, .gvc-resize.w { top: 0; height: 100%; width: 8px; margin: 0 0 0 -4px; cursor: ew-resize; }
+.gvc-resize.n { top: 0; }
+.gvc-resize.s { top: 100%; }
+.gvc-resize.w { left: 0; }
+.gvc-resize.e { left: 100%; }
+
+/* ---- image crop mode (double-click an image; non-destructive) -------------
+   .gvc-crop = the full image ghosted at its world rect; .gvc-cropwin = the visible window at
+   full opacity (inner .clip clips its copy of the image; the handles hang on the window edges
+   OUTSIDE the clip so they never get cut). Solid blue flush-inside handles, like the ref. */
+.gvc-crop { position: absolute; z-index: 5; cursor: grab; }
+.gvc-crop img { display: block; pointer-events: none; }
+.gvc-crop .ghost { width: 100%; height: 100%; opacity: .35; border-radius: 4px; }
+.gvc-cropwin { position: absolute; cursor: move; box-shadow: 0 0 0 1.5px #2563eb, 0 3px 10px rgba(0, 0, 0, .18); }
+.gvc-cropwin .clip { position: absolute; inset: 0; overflow: hidden; background: #fff; }
+.gvc-cropwin .clip img { position: absolute; max-width: none; }
+.gvc-croph { position: absolute; background: #2563eb; z-index: 2; }
+.gvc-croph.corner { width: 13px; height: 13px; }
+.gvc-croph.nw { left: 0; top: 0; cursor: nwse-resize; }
+.gvc-croph.ne { right: 0; top: 0; cursor: nesw-resize; }
+.gvc-croph.sw { left: 0; bottom: 0; cursor: nesw-resize; }
+.gvc-croph.se { right: 0; bottom: 0; cursor: nwse-resize; }
+.gvc-croph.n { top: 0; left: 50%; margin-left: -12px; width: 24px; height: 7px; cursor: ns-resize; }
+.gvc-croph.s { bottom: 0; left: 50%; margin-left: -12px; width: 24px; height: 7px; cursor: ns-resize; }
+.gvc-croph.w { left: 0; top: 50%; margin-top: -12px; width: 7px; height: 24px; cursor: ew-resize; }
+.gvc-croph.e { right: 0; top: 50%; margin-top: -12px; width: 7px; height: 24px; cursor: ew-resize; }
+
+/* alignment guides: screen-space 1px lines drawn while a drag/resize is snapped to a
+   neighbour's edge or centre (signal red) */
+#gvc-guides { position: fixed; inset: 0; pointer-events: none; z-index: 55; }
+.gvc-guide { position: absolute; background: #f24822; }
+.gvc-guide.x { width: 1px; }
+.gvc-guide.y { height: 1px; }
+
+/* ---- fixed UI layer ------------------------------------------------------- */
+#gvc-ui { position: fixed; inset: 0; pointer-events: none; z-index: 60; transition: opacity .16s ease; }
+#gvc-ui.hidden { opacity: 0; pointer-events: none !important; }
+#gvc-ui > * { pointer-events: auto; }
+
+#gvc-topbar { position: fixed; top: 14px; left: 16px; display: flex; align-items: center; gap: 6px; background: #fff; border: 1px solid #e9e8e6; border-radius: 12px; box-shadow: 0 4px 16px rgba(0, 0, 0, .10); padding: 6px 8px; }
+#gvc-topbar .back { border: 0; background: 0; padding: 6px 9px; border-radius: 8px; cursor: pointer; color: #374151; font: inherit; display: flex; align-items: center; gap: 5px; }
+#gvc-topbar .back:hover { background: #f3f4f6; }
+#gvc-topbar .nm { font-weight: 600; padding: 6px 8px; border-radius: 8px; cursor: text; outline: none; min-width: 60px; max-width: 300px; white-space: nowrap; overflow: hidden; }
+#gvc-topbar .nm:hover { background: #f9fafb; }
+
+#gvc-zoom { position: fixed; bottom: 24px; left: 16px; display: flex; align-items: center; gap: 2px; background: #fff; border-radius: 12px; box-shadow: 0 1px 3px rgba(0, 0, 0, .08), 0 4px 16px rgba(0, 0, 0, .10); padding: 5px; }
+#gvc-zoom button { border: 0; background: 0; width: 30px; height: 30px; border-radius: 8px; cursor: pointer; font-size: 16px; color: #1e1e1e; }
+#gvc-zoom button:hover { background: #f3f2f0; }
+#gvc-zoom .pct { font-size: 13px; color: #1e1e1e; min-width: 48px; text-align: center; cursor: pointer; }
+
+/* ---- bottom toolbar — the main pill --------------------------------------- */
+/* metrics measured off the reference shots: pill 47px, small icons ~1/3 of pill height —
+   the airiness comes from small icons in a generous pill, not from a short pill */
+#gvc-toolbar {
+  position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
+  display: flex; align-items: center; gap: 6px; height: 47px;
+  background: #fff; border-radius: 13px; padding: 0 7px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, .10), 0 12px 32px rgba(0, 0, 0, .14);
+}
+#gvc-toolbar .tool {
+  display: flex; align-items: center; justify-content: center; width: 32px; height: 32px;
+  border-radius: 8px; cursor: pointer; color: #1e1e1e; user-select: none; position: relative;
+  transition: background .12s, color .12s;
+}
+#gvc-toolbar .tool:hover { background: #f2f1ef; }
+#gvc-toolbar .tool.on { background: #7b61ff; color: #fff; }
+#gvc-toolbar .tool svg { width: 21px; height: 21px; }
+#gvc-toolbar .sep { width: 1px; align-self: stretch; background: #e5e4e2; margin: 0 4px; }
+/* phone (.gvc-mobile, ≤640px at boot): navigation-first. Toolbar collapses to
+   select + hand + a chevron that expands the full set; topbar is the bare arrow
+   (no "Back" label, no board name) to leave room for the top-right module. */
+#gvc-toolbar .morebtn { display: none; }
+.gvc-mobile #gvc-toolbar .morebtn { display: flex; flex: 0 0 auto; width: 34px; height: 34px; border-radius: 50%; background: #f2f1ef; }
+.gvc-mobile #gvc-toolbar .morebtn svg { stroke-width: 2.2; }
+.gvc-mobile #gvc-toolbar:not(.open) > *:not([data-t="cursor"]):not([data-t="hand"]):not(.morebtn) { display: none; }
+/* expanded = ONE lateral row, edge to edge, horizontally scrollable (no wrap); the
+   chevron rides sticky at the right so closing never needs a scroll-to-the-end */
+.gvc-mobile #gvc-toolbar.open { left: 10px; right: 10px; transform: none; justify-content: flex-start; overflow-x: auto; overflow-y: hidden; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
+.gvc-mobile #gvc-toolbar.open::-webkit-scrollbar { display: none; }
+.gvc-mobile #gvc-toolbar.open > * { flex: 0 0 auto; }
+.gvc-mobile #gvc-toolbar.open .morebtn { position: sticky; right: 0; box-shadow: -6px 0 8px #fff, 6px 0 0 #fff; }
+.gvc-mobile #gvc-toolbar.open .morebtn svg { transform: rotate(180deg); }
+.gvc-mobile #gvc-topbar .back .bl, .gvc-mobile #gvc-topbar .nm { display: none; }
+
+/* the illustrated marker + sticky: full-height slots whose art fills the pill and lifts on
+   hover; when armed the whole slot tints grey */
+#gvc-toolbar .tool.big { width: 40px; height: 47px; border-radius: 8px; }
+#gvc-toolbar .tool.big:hover { background: transparent; }
+#gvc-toolbar .tool.big.armed { background: #ececea; }
+/* the arts hang BELOW the pill's bottom edge and get cut by it; hovering lifts them
+   back up, revealing the hidden part. The pen apex sits ~10px below the pill top at rest and
+   never breaches it — the hover-lift is the only reveal. */
+#gvc-toolbar .tool.big .artclip { position: absolute; inset: 0; pointer-events: none; clip-path: inset(-70px -30px 0 -30px); }
+#gvc-toolbar .tool.big .art { position: absolute; bottom: -7px; left: 50%; transform: translateX(-50%); transition: transform .18s cubic-bezier(.3, 1.4, .6, 1); pointer-events: none; }
+#gvc-toolbar .tool.big:hover .art { transform: translateX(-50%) translateY(-7px); }
+#gvc-toolbar .art.pen { height: 44px; width: 26px; }
+#gvc-toolbar .art.sticky { height: 42px; width: 53px; bottom: -5px; }
+#gvc-toolbar .tool[data-t="sticky"] { width: 54px; }
+
+/* the shape cluster (big square + long curved arrow + circle, drawn as one illustrated cluster) */
+#gvc-toolbar .tool.cluster { width: 50px; height: 47px; border-radius: 8px; }
+#gvc-toolbar .tool.cluster svg { width: 40px; height: 33px; }
+#gvc-toolbar .tool.cluster.armed { background: #ececea; }
+
+/* the round grey insert button at the end — its circle is exactly the size of the other
+   icons' tap targets */
+#gvc-toolbar .tool.plus { width: 32px; height: 32px; border-radius: 50%; background: #f0efed; margin-left: 3px; }
+#gvc-toolbar .tool.plus:hover { background: #e7e6e4; }
+#gvc-toolbar .tool.plus svg { width: 17px; height: 17px; }
+
+/* tooltips: dark with a caret notch, name + grey shortcut key, shown after a beat */
+#gvc-toolbar .tool .tip, .gvc-subbar .sbtn .tip, #gvc-moreshapes .sbtn .tip {
+  position: absolute; bottom: calc(100% + 11px); left: 50%; transform: translateX(-50%);
+  background: #1e1e1e; color: #fff; font-size: 13px; font-weight: 400; white-space: nowrap;
+  padding: 6px 10px; border-radius: 7px; opacity: 0; pointer-events: none; transition: opacity .1s;
+}
+#gvc-toolbar .tool .tip::after, .gvc-subbar .sbtn .tip::after, #gvc-moreshapes .sbtn .tip::after {
+  content: ""; position: absolute; top: 100%; left: 50%; transform: translateX(-50%);
+  border: 5px solid transparent; border-top-color: #1e1e1e;
+}
+#gvc-toolbar .tool:hover .tip, .gvc-subbar .sbtn:hover .tip, #gvc-moreshapes .sbtn:hover .tip { opacity: 1; transition-delay: .35s; }
+#gvc-toolbar.plusopen .tool.plus .tip { opacity: 0 !important; }
+#gvc-toolbar .tool .tip .k, .gvc-subbar .sbtn .tip .k, #gvc-moreshapes .sbtn .tip .k { color: #999; margin-left: 8px; }
+
+/* ---- sub-toolbars (draw / shapes / stamps) -------------------------------- */
+.gvc-subbar {
+  position: fixed; bottom: 77px; left: 50%; transform: translateX(calc(-50% - 56px));
+  display: flex; align-items: center; gap: 2px;
+  background: #fff; border-radius: 12px; padding: 5px 6px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, .10), 0 10px 26px rgba(0, 0, 0, .14);
+  animation: gvc-rise .15s ease-out;
+}
+@keyframes gvc-rise { from { opacity: 0; margin-bottom: -6px; } }
+
+/* the stamp wheel — a radial picker: grey segmented ring, white hub, stamps in the slices */
+#gvc-stampwheel {
+  position: fixed; bottom: 77px; left: 50%; transform: translateX(calc(-50% + 60px));
+  width: 216px; height: 216px; border-radius: 50%; background: #f1f0ee;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, .10), 0 16px 38px rgba(0, 0, 0, .18);
+  animation: gvc-rise .15s ease-out;
+}
+#gvc-stampwheel.hidden { display: none; }
+#gvc-stampwheel::before {
+  content: ""; position: absolute; inset: 0; border-radius: 50%; pointer-events: none;
+  background: repeating-conic-gradient(from 20.5deg, #fff 0 4deg, transparent 4deg 45deg);
+}
+#gvc-stampwheel .hub {
+  position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
+  width: 92px; height: 92px; border-radius: 50%; background: #fff;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, .10);
+  display: flex; align-items: center; justify-content: center; text-align: center;
+  font-size: 17px; line-height: 1.25; white-space: pre-line; pointer-events: none;
+}
+#gvc-stampwheel .stampb {
+  position: absolute; width: 46px; height: 46px; margin: -23px 0 0 -23px;
+  display: flex; align-items: center; justify-content: center; font-size: 29px; line-height: 1;
+  cursor: pointer; border-radius: 50%; transition: transform .12s;
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, .2));
+}
+#gvc-stampwheel .stampb:hover { transform: scale(1.18); }
+#gvc-stampwheel .stampb.sel { background: rgba(123, 97, 255, .16); }
+#gvc-stampwheel .stampb svg.stk { width: 33px; height: 33px; }
+.gvc-subbar.hidden, #gvc-moreshapes.hidden, #gvc-plusmenu.hidden { display: none; }
+.gvc-subbar .sbtn {
+  display: flex; align-items: center; justify-content: center; width: 34px; height: 34px;
+  border-radius: 8px; cursor: pointer; color: #1e1e1e; position: relative;
+  transition: background .12s;
+}
+.gvc-subbar .sbtn:hover { background: #f2f1ef; }
+.gvc-subbar .sbtn.on { background: #e9e1ff; }
+.gvc-subbar .sbtn.sel { box-shadow: inset 0 0 0 2px #7b61ff; }
+.gvc-subbar .sbtn svg { width: 21px; height: 21px; }
+.gvc-subbar .sbtn svg.shp { width: 17px; height: 17px; }
+.gvc-subbar .dsep { width: 1px; align-self: stretch; background: #e5e4e2; margin: -5px 4px; }
+
+/* current-shape chip + chevron at the left of the shapes bar */
+.gvc-subbar .cur { display: flex; align-items: center; gap: 5px; padding: 0 9px; height: 34px; border-radius: 8px; cursor: pointer; }
+.gvc-subbar .cur:hover { background: #f2f1ef; }
+.gvc-subbar .cur svg.shp { width: 18px; height: 18px; }
+.gvc-subbar .cur svg.chev { width: 10px; height: 6px; flex: 0 0 auto; }
+
+/* marker color dots (+ the rainbow custom-color well) */
+.gvc-subbar .dot { width: 20px; height: 20px; border-radius: 50%; margin: 0 3px; cursor: pointer; flex: 0 0 auto; position: relative; }
+.gvc-subbar .dot.white { box-shadow: inset 0 0 0 1px #ddd; }
+.gvc-subbar .dot.selc { box-shadow: 0 0 0 2.5px #fff, 0 0 0 4.5px #7b61ff; }
+.gvc-subbar .dot.white.selc { box-shadow: inset 0 0 0 1px #ddd, 0 0 0 2.5px #fff, 0 0 0 4.5px #7b61ff; }
+.gvc-subbar .dot.rainbow { background: conic-gradient(#ff3b30, #ffcc00, #34c759, #32ade6, #5856d6, #ff2d95, #ff3b30); }
+.gvc-subbar .dot.rainbow input { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%; }
+.gvc-subbar .more { border: 1px solid #e3e2e0; background: #fff; border-radius: 8px; padding: 7px 11px; font: inherit; font-size: 12.5px; font-weight: 500; color: #1e1e1e; cursor: pointer; margin-left: 4px; white-space: nowrap; }
+.gvc-subbar .more:hover { background: #f7f6f5; }
+
+/* the More-shapes tray floats above the shapes bar */
+#gvc-moreshapes {
+  position: fixed; bottom: 130px; left: 50%; transform: translateX(calc(-50% + 120px));
+  display: grid; grid-template-columns: repeat(4, 1fr); gap: 2px;
+  background: #fff; border-radius: 12px; padding: 6px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, .10), 0 10px 26px rgba(0, 0, 0, .16);
+}
+#gvc-moreshapes .sbtn { width: 34px; height: 34px; border-radius: 8px; display: flex; align-items: center; justify-content: center; cursor: pointer; color: #1e1e1e; }
+#gvc-moreshapes .sbtn:hover { background: #f2f1ef; }
+#gvc-moreshapes .sbtn svg.shp { width: 17px; height: 17px; }
+
+/* + insert menu */
+#gvc-plusmenu {
+  position: fixed; bottom: 77px; left: 50%; transform: translateX(calc(-50% + 210px));
+  background: #fff; border-radius: 12px; padding: 5px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, .10), 0 10px 26px rgba(0, 0, 0, .16); min-width: 150px;
+}
+#gvc-plusmenu .row { display: flex; align-items: center; gap: 9px; padding: 8px 10px; border-radius: 8px; cursor: pointer; font-size: 13px; color: #1e1e1e; }
+#gvc-plusmenu .row:hover { background: #f2f1ef; }
+#gvc-plusmenu .row svg { width: 18px; height: 18px; }
+
+/* sticky selection toolbar + color palette (dark) */
+#gvc-selbar, #gvc-palette { position: fixed; z-index: 65; background: #1f2430; border-radius: 12px; box-shadow: 0 10px 30px rgba(0, 0, 0, .34); display: flex; align-items: center; padding: 5px; gap: 2px; }
+#gvc-selbar.hidden, #gvc-palette.hidden { display: none; }
+#gvc-selbar .sw { display: flex; align-items: center; gap: 5px; padding: 5px 8px; border-radius: 8px; cursor: pointer; }
+#gvc-selbar .sw:hover, #gvc-selbar .btn:hover { background: rgba(255, 255, 255, .12); }
+#gvc-selbar .dot { width: 18px; height: 18px; border-radius: 50%; border: 1.5px solid rgba(255, 255, 255, .5); box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .06); }
+#gvc-selbar .chev { color: #aeb4c0; font-size: 10px; }
+#gvc-selbar .div { width: 1px; align-self: stretch; background: rgba(255, 255, 255, .14); margin: 4px 3px; }
+#gvc-selbar .btn { min-width: 32px; height: 30px; padding: 0 9px; border-radius: 8px; color: #e8eaee; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 14px; border: 0; background: 0; }
+#gvc-selbar .btn.on { background: rgba(255, 255, 255, .18); }
+#gvc-selbar .btn.wide { font-size: 12px; white-space: nowrap; }
+#gvc-palette .pc { width: 26px; height: 26px; border-radius: 50%; margin: 2px; cursor: pointer; border: 2px solid transparent; box-sizing: border-box; box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .08); }
+#gvc-palette .pc.on { border-color: #7b61ff; }
+#gvc-selbar .btn.lock { gap: 3px; }
+#gvc-selbar .btn.lock .chev { color: #aeb4c0; font-size: 10px; }
+/* section lock dropdown (dark menu) */
+#gvc-lockmenu { position: fixed; z-index: 66; background: #1f2430; border-radius: 10px; box-shadow: 0 10px 30px rgba(0, 0, 0, .34); padding: 6px; min-width: 186px; }
+#gvc-lockmenu.hidden { display: none; }
+#gvc-lockmenu .item { padding: 8px 12px; border-radius: 7px; color: #e8eaee; font-size: 13px; cursor: pointer; white-space: nowrap; }
+#gvc-lockmenu .item:hover { background: rgba(255, 255, 255, .12); }
+#gvc-fontmenu { position: fixed; z-index: 66; background: #1f2430; border-radius: 10px; box-shadow: 0 10px 30px rgba(0, 0, 0, .34); padding: 6px; min-width: 168px; }
+#gvc-fontmenu.hidden { display: none; }
+#gvc-fontmenu .item { display: flex; align-items: center; gap: 8px; padding: 4px 10px; border-radius: 7px; color: #e8eaee; cursor: pointer; white-space: nowrap; line-height: 1.35; }
+#gvc-fontmenu .item:hover { background: rgba(255, 255, 255, .12); }
+#gvc-fontmenu .item .ck { flex: none; width: 12px; color: #cfd3da; font-size: 12px; }
+#gvc-fontmenu .item .lb { font-weight: 500; }
+#gvc-fontmenu .num { margin-top: 5px; width: 100%; box-sizing: border-box; background: #12151c; border: 1px solid #7b61ff; border-radius: 6px; color: #e8eaee; font: inherit; font-size: 13px; padding: 6px 9px; outline: none; }
+#gvc-fontmenu .num::-webkit-inner-spin-button { opacity: .5; }
+#gvc-selbar .btn.fontbtn { gap: 4px; }
+#gvc-selbar .btn.fontbtn .fslabel { font-size: 12px; }
+#gvc-selbar .btn svg { width: 16px; height: 16px; }
+
+/* deep links: the copy confirmation, and the pulse on the node you land on */
+/* sits ABOVE the bottom toolbar pill, not on it */
+#gvc-toast { position: fixed; z-index: 90; left: 50%; bottom: 104px; transform: translate(-50%, 8px); background: #1f2430; color: #e8eaee; font-size: 13px; padding: 9px 15px; border-radius: 10px; box-shadow: 0 10px 30px rgba(0, 0, 0, .34); white-space: nowrap; opacity: 0; pointer-events: none; transition: opacity .16s, transform .16s; }
+#gvc-toast.show { opacity: 1; transform: translate(-50%, 0); }
+@keyframes gvc-linkpulse { 0%, 100% { box-shadow: 0 0 0 0 rgba(123, 97, 255, 0); } 22% { box-shadow: 0 0 0 7px rgba(123, 97, 255, .42); } 60% { box-shadow: 0 0 0 4px rgba(123, 97, 255, .22); } }
+.gvc-node.gvc-linked { animation: gvc-linkpulse 1.7s ease-out; }
+
+.gvc-marquee { position: fixed; z-index: 55; border: 1px solid #2563eb; background: rgba(37, 99, 235, .09); pointer-events: none; }
+.gvc-ghost { position: fixed; pointer-events: none; z-index: 100; opacity: .9; transform: translate(-50%, -50%); }
+.gvc-ghost .tip { display: none; }
+/* smooth grab-and-drop: the sticky ghost springs up under the cursor, the dropped node pops in */
+.gvc-ghost-sticky { width: 66px; height: 66px; border-radius: 0; background: #a9cbf5; box-shadow: 0 12px 26px rgba(0, 0, 0, .24); opacity: 0; transform: translate(-50%, -50%) rotate(-5deg) scale(.5); transition: transform .17s cubic-bezier(.34, 1.56, .64, 1), opacity .12s; }
+.gvc-ghost-sticky.in { opacity: .96; transform: translate(-50%, -50%) rotate(-4deg) scale(1); }
+/* the ghost is the sticker you are about to press: same size, same crisp edge */
+.gvc-ghost-stamp { font-size: 42px; line-height: 1; filter: drop-shadow(0 2px 4px rgba(0, 0, 0, .25)); }
+.gvc-ghost-stamp svg.stk { width: 46px; height: 46px; }
+/* the pop composes with the node's own angle — a stamp lands tilted AND springs in */
+@keyframes gvc-pop { from { transform: rotate(var(--gvc-rot, 0deg)) scale(.7); } to { transform: rotate(var(--gvc-rot, 0deg)) scale(1); } }
+.gvc-node.gvc-pop { animation: gvc-pop .2s cubic-bezier(.34, 1.56, .64, 1); }
+
+/* insert picker — search prototypes / pages / components */
+#gvc-picker { position: fixed; top: 74px; left: 50%; transform: translateX(-50%); width: min(920px, calc(100vw - 32px)); max-height: 80vh; background: #fff; border: 1px solid #e9e8e6; border-radius: 16px; box-shadow: 0 20px 54px rgba(0, 0, 0, .24); z-index: 80; display: flex; flex-direction: column; overflow: hidden; }
+#gvc-picker.hidden { display: none; }
+#gvc-picker .head { display: flex; align-items: center; gap: 8px; padding: 12px 14px 10px; }
+#gvc-picker .head input { flex: 1; border: 1.5px solid #d9dce1; border-radius: 10px; padding: 10px 12px; font: inherit; outline: none; }
+#gvc-picker .head input:focus { border-color: #7b61ff; }
+#gvc-picker .head .x { border: 0; background: 0; font-size: 20px; line-height: 1; color: #6b7280; cursor: pointer; width: 32px; height: 32px; border-radius: 8px; }
+#gvc-picker .head .x:hover { background: #f3f4f6; }
+#gvc-picker .tabs { display: flex; gap: 4px; padding: 0 14px 8px; border-bottom: 1px solid #f0f1f3; }
+#gvc-picker .tab { font-size: 13px; padding: 6px 12px; border-radius: 8px; cursor: pointer; color: #6b7280; }
+#gvc-picker .tab.on { background: #eef0f3; color: #111827; font-weight: 600; }
+/* flex:1 + min-height:0 make this a proper scroll region inside the flex-column picker;
+   grid-auto-rows:max-content stops the auto rows collapsing to ~8px when flex shrinks it. */
+#gvc-picker .grid { padding: 14px; flex: 1; min-height: 0; overflow: auto; display: grid; grid-template-columns: repeat(2, 1fr); grid-auto-rows: max-content; gap: 14px; align-content: start; }
+#gvc-picker .card { border: 1px solid #eceef1; border-radius: 10px; overflow: hidden; cursor: pointer; background: #fff; transition: box-shadow .12s, transform .12s; }
+#gvc-picker .card:hover { box-shadow: 0 8px 20px rgba(0, 0, 0, .13); transform: translateY(-2px); }
+/* A tall fixed height (NOT aspect-ratio — that collapsed the card to ~8px because its computed
+   height didn't contribute to the card's block layout, and overflow:hidden clipped the poster to
+   a sliver). cover + top center shows the page's identifying top half, big and legible. */
+#gvc-picker .card .thumb { height: 240px; background-color: #f4f5f7; background-size: cover; background-position: top center; background-repeat: no-repeat; display: flex; align-items: center; justify-content: center; color: #b6bcc6; font-size: 11px; text-transform: capitalize; }
+/* components are small pieces (and many have no poster) — show the whole thing on a shorter tile */
+#gvc-picker .card.is-component .thumb { height: 120px; background-size: contain; background-position: center; background-color: #fafbfc; }
+#gvc-picker .card .cap { padding: 8px 9px; }
+#gvc-picker .card .cap .t { font-size: 12px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: #1f2430; }
+#gvc-picker .card .cap .ty { font-size: 10px; color: #9ca3af; text-transform: capitalize; margin-top: 1px; }
+#gvc-picker .empty { grid-column: 1 / -1; padding: 34px; text-align: center; color: #9ca3af; font-size: 13px; }
+
+/* ---- mobile (phones / touch) ---------------------------------------------
+   One finger pans, two fingers pinch-zoom (handled in JS); here the chrome compacts:
+   the toolbar fits the screen and scrolls sideways if it must, sub-bars follow, the
+   zoom pill hides (pinch replaces it), and hover tooltips are dropped on touch. */
+@media (pointer: coarse) {
+  #gvc-toolbar .tool .tip, .gvc-subbar .sbtn .tip, #gvc-moreshapes .sbtn .tip { display: none; }
+}
+@media (max-width: 760px) {
+  #gvc-toolbar {
+    bottom: 12px;
+    max-width: calc(100vw - 12px); overflow-x: auto; overflow-y: hidden;
+    scrollbar-width: none; -webkit-overflow-scrolling: touch;
+  }
+  #gvc-toolbar::-webkit-scrollbar { display: none; }
+  #gvc-toolbar > * { flex: 0 0 auto; }
+  .gvc-subbar {
+    bottom: 60px; max-width: calc(100vw - 12px); overflow-x: auto; overflow-y: hidden;
+    scrollbar-width: none;
+    left: 50%; transform: translateX(-50%);
+  }
+  .gvc-subbar::-webkit-scrollbar { display: none; }
+  .gvc-subbar > * { flex: 0 0 auto; }
+  #gvc-stampwheel { transform: translateX(-50%); bottom: 60px; }
+  #gvc-moreshapes { bottom: 112px; transform: translateX(-50%); }
+  #gvc-plusmenu { bottom: 60px; left: auto; right: 8px; transform: none; }
+  #gvc-zoom { display: none; }
+  #gvc-topbar { top: 8px; left: 8px; padding: 4px 6px; }
+  #gvc-topbar .nm { max-width: 40vw; }
+}
+/* on narrow phones the bar can overflow — a right-edge fade hints at the hidden tools
+   (position:sticky scroll-shadow trick; sits at content end, pinned to the visible edge) */
+@media (max-width: 480px) {
+  #gvc-toolbar::after {
+    content: ""; position: sticky; right: 0; flex: 0 0 24px; margin-left: -24px;
+    align-self: stretch; pointer-events: none; border-radius: 0 12px 12px 0;
+    background: linear-gradient(to right, rgba(255, 255, 255, 0), #fff 82%);
+  }
+}
+
+/* ---- multiplayer: peer cursors · presence · remote editing focus ---------- */
+/* cursors live OUTSIDE #gvc-ui so ⌘. (hide UI) keeps collaborators visible */
+#gvc-cursors { position: fixed; inset: 0; overflow: hidden; pointer-events: none; z-index: 58; }
+/* no transform transition: the spline interpolator (mpCursorStep) animates at rAF —
+   a CSS tween on top would double-smooth into visible lag */
+.gvc-cursor { position: absolute; left: 0; top: 0; will-change: transform; transition: opacity .4s; }
+/* the piti arrow glyph (fill+outline live in the SVG); margin puts the TIP (hotspot
+   5,3 of 21px) exactly on the peer's position, like the local cursor hotspot */
+.gvc-cursor svg { display: block; width: 21px; height: 21px; margin: -3px 0 0 -5px; filter: drop-shadow(0 1px 2px rgba(0, 0, 0, .3)); }
+/* the pill's SHARP corner = top-left, pointing back at the cursor tip it hangs from */
+.gvc-cursor .lbl { position: absolute; left: 13px; top: 17px; padding: 2px 8px 3px; border-radius: 3px 10px 10px 10px; color: #fff; font: 600 11px/1.4 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; white-space: nowrap; box-shadow: 0 1px 4px rgba(0, 0, 0, .22); }
+.gvc-cursor.idle { opacity: 0; }
+/* agent peers wear Clawd (icons8): hotspot at the mascot's TOP-LEFT (points at the target like a
+   normal cursor tip); the icon's body starts partway down its 48x48 box, so the margin lifts it
+   so the body's top-left sits on the point. Name pill trails to the bottom-right. */
+/* --clawd-k (set per-frame from zoom) scales ONLY the mascot; origin = the hotspot point
+   (5,15 inside the svg box after margins) so the tip stays planted while Clawd shrinks.
+   pointer-events back ON (the layer is none): Clawd is pettable — see boing/hop below */
+.gvc-cursor.agent svg { width: 40px; height: 40px; margin: -15px 0 0 -5px; transform: scale(var(--clawd-k, 1)); transform-origin: 5px 15px; pointer-events: auto; cursor: pointer; }
+/* the pill keeps constant SIZE but its anchor tracks the scaled mascot's bottom-right */
+.gvc-cursor.agent .lbl { left: calc(30px * var(--clawd-k, 1)); top: calc(24px * var(--clawd-k, 1)); }
+/* a parked/sleeping agent stays FULLY visible (never fades like an idle human cursor) */
+.gvc-cursor.agent.idle { opacity: 1; }
+/* walking: a little vertical bob while the agent's cursor is moving */
+@keyframes gvc-clawd-bob { 0%, 100% { transform: scale(var(--clawd-k, 1)) translateY(0); } 50% { transform: scale(var(--clawd-k, 1)) translateY(-2.5px); } }
+.gvc-cursor.agent.walking svg { animation: gvc-clawd-bob .32s ease-in-out infinite; }
+/* Clawd is pettable (local-only delight): hover = a little boing, click = a wound-up hop.
+   Every keyframe carries the zoom scale so the tip stays planted. Order matters: these
+   rules sit AFTER .walking so a pet wins over the walk bob while it plays. */
+@keyframes gvc-clawd-boing {
+  0%, 100% { transform: scale(var(--clawd-k, 1)); }
+  35% { transform: scale(calc(var(--clawd-k, 1) * 1.14)) translateY(-4px); }
+  70% { transform: scale(calc(var(--clawd-k, 1) * .94)); }
+}
+.gvc-cursor.agent svg:hover { animation: gvc-clawd-boing .5s ease-in-out; }
+@keyframes gvc-clawd-hop {
+  0% { transform: scale(var(--clawd-k, 1)); }
+  25% { transform: scale(var(--clawd-k, 1)) scaleY(.72); }
+  55% { transform: scale(var(--clawd-k, 1)) translateY(-16px) rotate(-8deg); }
+  78% { transform: scale(var(--clawd-k, 1)) translateY(0) rotate(5deg); }
+  100% { transform: scale(var(--clawd-k, 1)) rotate(0deg); }
+}
+.gvc-cursor.agent.poked svg { animation: gvc-clawd-hop .7s cubic-bezier(.34, 1.56, .64, 1); }
+/* the presence row lives INSIDE the top-right card — no chrome of its own. The left
+   padding absorbs the -7px chip-overlap margin of whichever chip renders first (flex
+   `order` reorders them, so :first-child can't know which one that is). */
+#gvc-presence { display: flex; align-items: center; padding-left: 14px; }
+#gvc-presence.hidden { display: none; }
+.gvc-peerchip { position: relative; width: 27px; height: 27px; border-radius: 50%; margin-left: -7px; display: flex; align-items: center; justify-content: center; color: #fff; font: 700 10.5px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; border: 2px solid #fff; box-shadow: 0 1px 3px rgba(0, 0, 0, .16); transition: transform .12s; }
+.gvc-peerchip.me { order: 1; }
+/* click a peer's face to fly to them; hover names them (our own label, not the OS tooltip —
+   that took a second to appear and looked foreign on the board) */
+.gvc-peerchip.jump { cursor: pointer; }
+.gvc-peerchip.jump:hover { transform: translateY(-1px) scale(1.08); z-index: 2; }
+/* A highlighted chip — the one you're following, the Clawd asking for you — keeps EXACTLY
+   the footprint of every other avatar: the ring is drawn INSIDE the circle (an inset ring
+   over the rim of the face), never as an outer halo. An outer ring grew the chip past the
+   white card it lives in and dwarfed its neighbours.
+   The chip's own white rim takes the colour and a white band is inset behind it, so the ring
+   reads the same on a photo, a letter chip, or a Clawd — the anatomy of the old outer halo,
+   folded inwards. */
+.gvc-peerchip.following { z-index: 2; border-color: var(--halo, #2563eb); }
+.gvc-peerchip.following::after, .gvc-peerchip.attn::after {
+  content: ""; position: absolute; inset: 0; border-radius: 50%; pointer-events: none; z-index: 1;
+  box-shadow: inset 0 0 0 2px #fff;
+}
+/* …and the whole viewport wears their color (FigJam-style): border + Following pill.
+   The pill is PART of the border — same background color, hanging flush from the top
+   edge — with Stop as a darker inset segment. Both colors are set inline (the peer's). */
+#gvc-follow-frame { position: fixed; inset: 0; border: 5px solid #2563eb; pointer-events: none; z-index: 70; }
+#gvc-follow-pill { position: fixed; top: 5px; left: 50%; transform: translateX(-50%); z-index: 71; display: flex; align-items: center; gap: 10px; background: #2563eb; color: #fff; padding: 5px 6px 7px 16px; border-radius: 0 0 10px 10px; font: 600 12.5px/1.4 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; white-space: nowrap; }
+#gvc-follow-pill .stop { border: 0; background: rgba(0, 0, 0, .28); color: #fff; font: 700 12px/1.4 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; padding: 4px 11px; border-radius: 7px; cursor: pointer; }
+#gvc-follow-pill .stop:hover { background: rgba(0, 0, 0, .42); }
+.gvc-peerchip .lbl {
+  position: absolute; top: calc(100% + 7px); left: 50%; transform: translateX(-50%);
+  padding: 3px 8px 4px; border-radius: 7px; background: #1e1e1e; color: #fff;
+  font: 600 11px/1.35 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; white-space: nowrap;
+  opacity: 0; pointer-events: none; transition: opacity .12s; box-shadow: 0 2px 8px rgba(0, 0, 0, .22);
+}
+.gvc-peerchip:hover .lbl { opacity: 1; }
+/* the peer you just jumped to pulses once, so you spot them on arrival. Animate the SVG, never
+   the .gvc-cursor itself — its transform carries the cursor's position. */
+.gvc-cursor.pinged svg { animation: gvc-ping .9s ease-out; }
+@keyframes gvc-ping {
+  0% { transform: scale(var(--clawd-k, 1)); }
+  22% { transform: scale(calc(var(--clawd-k, 1) * 1.6)); }
+  55% { transform: scale(calc(var(--clawd-k, 1) * .92)); }
+  100% { transform: scale(var(--clawd-k, 1)); }
+}
+/* agent (Clawd) chip: a cream CIRCLE with a mini Clawd instead of a letter initial */
+.gvc-peerchip.agent { overflow: visible; }
+.gvc-peerchip.agent svg { display: block; }
+/* a peer is typing in this node — colored ring + name tag (border-color/background set inline) */
+.gvc-remote-focus { position: absolute; inset: -4px; border: 2px solid; border-radius: 7px; pointer-events: none; z-index: 4; }
+.gvc-remote-focus .who { position: absolute; top: -20px; left: -2px; padding: 1px 7px 2px; border-radius: 8px 8px 8px 2px; color: #fff; font: 600 10.5px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; white-space: nowrap; }
+/* ---- cursor chat + the agents strip --------------------------------------- */
+/* chat bubble at a cursor: a MOMENT (6s, then gone) — states live in the agents strip */
+.gvc-cursor .chat {
+  position: absolute; left: 13px; top: 40px; max-width: 260px; padding: 5px 10px 6px;
+  border-radius: 3px 12px 12px 12px; color: #fff;
+  font: 500 12.5px/1.4 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, .25); white-space: pre-wrap; word-break: break-word;
+}
+.gvc-cursor .chat.hidden { display: none; }
+.gvc-cursor.self { pointer-events: none; z-index: 71; }
+#gvc-cursorchat { position: fixed; z-index: 72; }
+#gvc-cursorchat input {
+  width: 220px; padding: 7px 11px; border: 0; border-radius: 3px 12px 12px 12px;
+  background: #1e1e1e; color: #fff; font: 500 12.5px/1.4 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  outline: none; box-shadow: 0 4px 14px rgba(0, 0, 0, .3);
+}
+#gvc-cursorchat input::placeholder { color: rgba(255, 255, 255, .45); }
+/* the Clawd that needs you pulses amber at the cursor (locality) — the strip is the home */
+.gvc-cursor.attention svg { animation: gvc-attn 1.1s ease-in-out infinite; }
+@keyframes gvc-attn {
+  0%, 100% { filter: drop-shadow(0 0 0 rgba(245, 158, 11, 0)); }
+  50% { filter: drop-shadow(0 0 7px rgba(245, 158, 11, .95)); }
+}
+
+/* agents strip: the Clawds' home, bottom-right — glance here instead of the terminal.
+   working = breathing face + live dot · idle = dimmed, still · attention = amber pulse ·
+   done = one green flash. Click a row to follow that Clawd. */
+/* Clawds sit IN the presence row as avatar chips, wearing their status as the dot on the
+   face — like people, just with a working/idle/attention/done heartbeat. Attention makes
+   the whole chip jump; the status text + actions live in the click-open card below. */
+.gvc-peerchip .st { position: absolute; right: -3px; bottom: -3px; width: 9px; height: 9px; border-radius: 50%; border: 2px solid #fff; z-index: 2; }
+.gvc-peerchip .st.working { background: #22c55e; animation: gvc-live 1.6s ease-in-out infinite; }
+.gvc-peerchip .st.idle { background: #c4c9d4; }
+.gvc-peerchip .st.attention { background: #f59e0b; }
+.gvc-peerchip .st.done { background: #22c55e; }
+.gvc-peerchip.resting { opacity: .62; }
+.gvc-peerchip.attn { animation: gvc-jump 2.2s ease-in-out infinite; border-color: #f59e0b; box-shadow: 0 2px 6px rgba(0, 0, 0, .22); z-index: 2; }
+@keyframes gvc-live { 0%, 100% { opacity: 1; } 50% { opacity: .35; } }
+/* two quick hops, then rest — repeated, so it beckons without vibrating */
+@keyframes gvc-jump {
+  0%, 26%, 100% { transform: translateY(0); }
+  8% { transform: translateY(-6px); }
+  16% { transform: translateY(0); }
+  21% { transform: translateY(-2.5px); }
+}
+
+/* the agent card: status text + actions under the clicked chip */
+#gvc-agentpop { position: fixed; z-index: 80; width: 218px; background: #fff; border: 1px solid #e9e8e6; border-radius: 12px; box-shadow: 0 8px 28px rgba(0, 0, 0, .15); padding: 11px; font: 500 12.5px/1.4 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; color: #1e1e1e; }
+#gvc-agentpop .hd { display: flex; align-items: center; gap: 8px; }
+#gvc-agentpop .hd .face { width: 23px; height: 23px; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex: 0 0 auto; }
+#gvc-agentpop .hd .face svg { display: block; }
+#gvc-agentpop .hd .who { font-weight: 700; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#gvc-agentpop .hd .dot { width: 8px; height: 8px; border-radius: 50%; flex: 0 0 auto; background: #c4c9d4; }
+#gvc-agentpop .hd .dot.working { background: #22c55e; animation: gvc-live 1.6s ease-in-out infinite; }
+#gvc-agentpop .hd .dot.attention { background: #f59e0b; }
+#gvc-agentpop .hd .dot.done { background: #22c55e; }
+#gvc-agentpop .txt { margin: 7px 1px 10px; color: #6b7280; }
+#gvc-agentpop .txt.attention { color: #b45309; font-weight: 600; }
+#gvc-agentpop .acts { display: flex; gap: 6px; }
+#gvc-agentpop .acts button { flex: 1; border: 1px solid #e5e7eb; background: #fff; border-radius: 8px; padding: 6px 8px; font: inherit; font-weight: 600; cursor: pointer; color: #1e1e1e; }
+#gvc-agentpop .acts button:hover { background: #f9fafb; border-color: #d1d5db; }
+#gvc-agentpop .acts .kick { color: #b91c1c; border-color: #fecaca; }
+#gvc-agentpop .acts .kick:hover { background: #fef2f2; border-color: #fca5a5; }
+
+/* peers' drags arrive at tick rate (~8Hz) — a short linear tween makes them glide */
+/* 90ms: just over the 50ms drag fast-path cadence, so remote motion is always mid-tween
+   (continuous glide) instead of hop-pause-hop at the old 120ms ops tick */
+.gvc-node.gvc-remote-move { transition: left .09s linear, top .09s linear, width .09s linear, height .09s linear, transform .09s linear; }
+/* what a peer has SELECTED — thin ring in their color (typing gets the thicker named ring) */
+.gvc-peer-sel { position: absolute; inset: -3px; border: calc(1.5px * var(--gvc-inv, 1)) solid; border-radius: 6px; pointer-events: none; z-index: 4; opacity: .85; }
+/* interact-mode drag grip: pinned to the tile's top-right corner, counter-scaled like the
+   name chip; its pointerdown bubbles to the root drag path — no special handling */
+.gvc-draghandle { position: absolute; top: -13px; right: -13px; width: 30px; height: 30px; display: none; align-items: center; justify-content: center; background: #2563eb; color: #fff; border-radius: 50%; box-shadow: 0 2px 8px rgba(0, 0, 0, .28); cursor: grab; transform-origin: top right; z-index: 6; }
+.gvc-draghandle svg { width: 15px; height: 15px; }
+.gvc-tile.interacting .gvc-draghandle { display: flex; }
+
+/* ---- session: the shared timer + music ------------------------------------
+   Lives in the top bar because it belongs to the MEETING, not to the selection: it stays
+   put and stays readable while you work, which is the whole point of a countdown. */
+/* the top-right row: [timer pill] [presence chips] — one flex line so the pill keeps its place
+   as peers come and go, and so it survives presence hiding itself when you're on the board alone */
+/* ONE white card for the whole room: [presence avatars][session inset]. The colored
+   session state (lavender live, red over) is a segment INSIDE this card, never its own
+   floating pill — the reference's big-white-chip anatomy. */
+#gvc-topright { position: fixed; top: 14px; right: 16px; display: flex; align-items: center; gap: 9px; background: #fff; border: 1px solid #e9e8e6; border-radius: 14px; box-shadow: 0 4px 16px rgba(0, 0, 0, .10); padding: 5px; }
+/* the seven-segment display face (shipped under /__canvas/, license alongside) */
+@font-face { font-family: "DSEG7"; src: url("/__canvas/DSEG7Classic-Bold.woff2") format("woff2"); font-weight: 700; font-display: block; }
+
+/* the session inset: [mini record] [time or track name] [speaker while music plays] —
+   a light-bordered segment when idle, colored fill when the room is live */
+.gvc-sesspill { border: 1px solid #e5e7eb; background: #fff; padding: 5px 10px; border-radius: 10px; cursor: pointer; color: #374151; font: inherit; display: flex; align-items: center; gap: 7px; }
+.gvc-sesspill:hover, .gvc-sesspill.on { background: #f9fafb; }
+/* one quiet timer glyph — the pill is a COUNTDOWN first; music is what the panel behind it
+   holds, not something the pill has to advertise (the track name + speaker already say it) */
+.gvc-sesspill .ico { display: flex; color: #b3b6bd; }
+.gvc-sesspill .ico svg { width: 15px; height: 15px; display: block; }
+/* time (or name). Ghost = the pending duration in unlit gray; digits modes render in the
+   seven-segment face, the name mode in the UI face */
+.gvc-sesspill .t { font-family: DSEG7, ui-monospace, monospace; font-weight: 700; font-size: 12.5px; letter-spacing: .04em; color: #cbccd0; }
+.gvc-sesspill .t[data-mode="name"] { font-family: inherit; font-weight: 500; font-size: 12px; letter-spacing: 0; color: #4338ca; max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.gvc-sesspill .spk { display: none; color: #6366f1; padding-left: 8px; margin-left: 0; border-left: 1px solid #e5e7eb; align-self: stretch; align-items: center; }
+.gvc-sesspill .spk.shown { display: flex; }
+.gvc-sesspill .spk:hover { color: #4338ca; }
+.gvc-sesspill .spk svg { width: 17px; height: 17px; }
+/* a running timer colors the inset so it reads from across the board, not just up close */
+.gvc-sesspill.live, .gvc-sesspill.music { background: #eef2ff; border-color: transparent; }
+.gvc-sesspill.live .t { color: #4338ca; }
+.gvc-sesspill.live .ico, .gvc-sesspill.music .ico { color: #6366f1; }
+.gvc-sesspill.live:hover, .gvc-sesspill.music:hover { background: #e0e7ff; }
+
+#gvc-sesspanel { position: fixed; top: 58px; right: 16px; width: 264px; background: #fff; border: 1px solid #e9e8e6; border-radius: 14px; box-shadow: 0 8px 28px rgba(0, 0, 0, .13); font-size: 12.5px; color: #111827; }
+#gvc-sesspanel.hidden { display: none; }
+#gvc-sesspanel .head { display: flex; align-items: center; justify-content: space-between; padding: 10px 9px 10px 13px; border-bottom: 1px solid #ebebed; }
+#gvc-sesspanel .ttl { font-weight: 650; font-size: 13.5px; }
+#gvc-sesspanel .x { border: 0; background: 0; padding: 4px; border-radius: 6px; cursor: pointer; color: #6b7280; display: flex; }
+#gvc-sesspanel .x:hover { background: #f3f4f6; color: #111827; }
+#gvc-sesspanel .x svg { width: 16px; height: 16px; }
+#gvc-sesspanel .row { padding: 11px 13px; border-bottom: 1px solid #ebebed; }
+/* no tracks installed → the music surface hides wholesale (the panel row; the pill shows
+   the timer either way) */
+#gvc-sesspanel .row.hidden { display: none; }
+#gvc-sesspanel .row:last-child { border-bottom: 0; }
+
+#gvc-sesspanel .row.vol { display: flex; align-items: center; gap: 10px; }
+#gvc-sesspanel .vol .vol { border: 0; background: 0; padding: 0; cursor: pointer; color: #4b5563; display: flex; flex: 0 0 auto; }
+#gvc-sesspanel .vol .vol:hover { color: #111827; }
+#gvc-sesspanel .vol svg { width: 16px; height: 16px; }
+/* filled-track slider: the split gradient is repainted from JS at the thumb's position */
+#gvc-sesspanel input[type=range] { flex: 1; -webkit-appearance: none; appearance: none; height: 6px; border-radius: 999px; background: linear-gradient(90deg, #4f46e5 60%, #e5e7eb 60%); outline: none; }
+#gvc-sesspanel input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 18px; height: 18px; border-radius: 50%; background: #fff; border: 1px solid #d4d5d9; box-shadow: 0 1px 4px rgba(0, 0, 0, .22); cursor: pointer; }
+#gvc-sesspanel input[type=range]::-moz-range-thumb { width: 18px; height: 18px; border-radius: 50%; background: #fff; border: 1px solid #d4d5d9; box-shadow: 0 1px 4px rgba(0, 0, 0, .22); cursor: pointer; }
+
+/* the clock: unlit 88:88 ghost under the live digits; the ghost copies the input's exact
+   box metrics (font, size, padding, centering) so segments overlay segment-for-segment */
+#gvc-sesspanel .clock { position: relative; background: #f1f1f4; border-radius: 12px; }
+#gvc-sesspanel .clock .ghost { position: absolute; inset: 0; width: 100%; box-sizing: border-box; border: 1px solid transparent; background: transparent; border-radius: 12px; padding: 14px 0; text-align: center; font-family: DSEG7, ui-monospace, monospace; font-size: 36px; font-weight: 700; letter-spacing: .06em; color: #e4e4e7; pointer-events: none; user-select: none; outline: none; }
+/* mid-edit values ("5:0", "15") center-float and can't sit on the fixed 88:88 cells —
+   hide the ghost while typing; blur normalizes to mm:ss, which aligns again */
+#gvc-sesspanel .clock:focus-within .ghost { visibility: hidden; }
+#gvc-sesspanel .digits { position: relative; width: 100%; box-sizing: border-box; border: 1px solid transparent; background: transparent; border-radius: 12px; padding: 14px 0; text-align: center; font-family: DSEG7, ui-monospace, monospace; font-variant-numeric: tabular-nums; font-size: 36px; font-weight: 700; letter-spacing: .06em; color: #1f2023; outline: none; }
+#gvc-sesspanel .digits:not(.live):hover { border-color: #d9d8d6; }
+#gvc-sesspanel .digits:not(.live):focus { border-color: #4f46e5; }
+
+#gvc-sesspanel .idle, #gvc-sesspanel .run { display: flex; align-items: center; gap: 7px; margin-top: 10px; }
+#gvc-sesspanel .idle.hidden, #gvc-sesspanel .run.hidden { display: none; }
+#gvc-sesspanel .idle .sp, #gvc-sesspanel .run .sp { flex: 1; }
+
+/* circular controls; .go is the filled one (start timer / play music) */
+#gvc-sesspanel .act { border: 1px solid #e5e7eb; background: #fff; border-radius: 999px; width: 34px; height: 34px; flex: none; padding: 0; display: flex; align-items: center; justify-content: center; gap: 6px; font: inherit; color: #374151; cursor: pointer; }
+#gvc-sesspanel .act:hover { background: #f9fafb; border-color: #d1d5db; }
+#gvc-sesspanel .act.hidden { display: none; }
+#gvc-sesspanel .act.wide { width: auto; padding: 0 12px; border-radius: 999px; font-size: 12.5px; }
+#gvc-sesspanel .act svg { width: 16px; height: 16px; }
+#gvc-sesspanel .go { border: 0; background: #4f46e5; color: #fff; border-radius: 999px; width: 34px; height: 34px; flex: none; display: flex; align-items: center; justify-content: center; font: inherit; cursor: pointer; }
+#gvc-sesspanel .go:hover { background: #4338ca; }
+#gvc-sesspanel .go svg { width: 17px; height: 17px; margin-left: 2px; }
+#gvc-sesspanel .go.playing { background: #fff; border: 1px solid #e5e7eb; color: #374151; }
+#gvc-sesspanel .go.playing:hover { background: #f9fafb; border-color: #d1d5db; }
+#gvc-sesspanel .go.playing svg { margin-left: 0; }
+/* sound is waiting on this tab's first click (autoplay policy) — say so quietly */
+#gvc-sesspanel .go.blocked, #gvc-sesspanel .act.blocked { border: 1px solid #fcd34d; background: #fffbeb; color: #b45309; }
+
+/* dark hover tooltips (data-tip), FigJam-quiet: no caret, slight delay */
+#gvc-sesspanel [data-tip] { position: relative; }
+#gvc-sesspanel [data-tip]:hover::after { content: attr(data-tip); position: absolute; top: calc(100% + 8px); left: 50%; transform: translateX(-50%); background: #1e1e1e; color: #fff; font-size: 12px; font-weight: 500; padding: 6px 10px; border-radius: 7px; white-space: nowrap; z-index: 7; pointer-events: none; opacity: 0; animation: gvc-tipin .12s ease .4s forwards; }
+@keyframes gvc-tipin { to { opacity: 1; } }
+
+/* the turntable, measured off the reference: disc inside the box over its shadow, the
+   arm above it with its own soft shadow, the grill at the right */
+#gvc-sesspanel .row.music { position: static; }
+#gvc-sesspanel .deck { position: relative; background: #f1f1f4; border-radius: 12px; height: 86px; margin-bottom: 10px; }
+#gvc-sesspanel .deck .decksvg { position: absolute; inset: 0; width: 100%; height: 100%; }
+#gvc-sesspanel .deck .vinyl { transform-box: fill-box; transform-origin: center; }
+#gvc-sesspanel .deck.playing .vinyl { animation: gvc-spin 2s linear infinite; }
+/* idle label = white with the dark motif (the reference's resting look); playing takes the
+   track color. CSS fill wins over the SVG presentation attribute, so no rebuild needed. */
+#gvc-sesspanel .deck:not(.playing) .label circle { fill: #fff; }
+/* the arm rotates only 14°, so a fixed-direction shadow stays believable */
+#gvc-sesspanel .deck .arm { transform-box: view-box; transform-origin: 160px 14px; transition: transform .5s ease; filter: drop-shadow(0 3px 2.5px rgba(0, 0, 0, .18)); }
+#gvc-sesspanel .deck.playing .arm { transform: rotate(12deg); }
+#gvc-sesspanel .deck.off { opacity: .75; }
+#gvc-sesspanel .deck.off .decksvg { filter: grayscale(1); }
+@keyframes gvc-spin { to { transform: rotate(360deg); } }
+
+#gvc-sesspanel .musicrow { display: flex; align-items: center; gap: 10px; }
+#gvc-sesspanel .trackbtn { flex: 1; min-width: 0; display: flex; align-items: center; gap: 9px; border: 1px solid #e5e7eb; background: #fff; border-radius: 10px; height: 40px; padding: 0 10px; font: inherit; font-size: 12.5px; font-weight: 400; color: #1f2023; cursor: pointer; }
+#gvc-sesspanel .trackbtn:hover, #gvc-sesspanel .trackbtn.on { background: #f9fafb; border-color: #d1d5db; }
+#gvc-sesspanel .trackbtn .nm { flex: 1; text-align: left; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#gvc-sesspanel .trackbtn .chev { display: flex; color: #6b7280; }
+#gvc-sesspanel .trackbtn .chev svg { width: 15px; height: 15px; }
+#gvc-sesspanel .chip { width: 24px; height: 24px; border-radius: 5px; display: inline-flex; align-items: center; justify-content: center; flex: none; }
+#gvc-sesspanel .chip svg { width: 19px; height: 19px; }
+
+/* the track menu: dark, over the deck; selected row lights up and gains its check */
+#gvc-sesspanel .trackmenu { position: absolute; left: 16px; right: 64px; bottom: 14px; background: #1e1e1e; border-radius: 12px; padding: 6px; box-shadow: 0 12px 32px rgba(0, 0, 0, .32); z-index: 6; }
+#gvc-sesspanel .trackmenu.hidden { display: none; }
+#gvc-sesspanel .trackmenu .item { display: flex; align-items: center; gap: 10px; width: 100%; border: 0; background: transparent; color: #fff; font: inherit; font-size: 13.5px; padding: 8px 10px; border-radius: 8px; cursor: pointer; text-align: left; outline: none; }
+#gvc-sesspanel .trackmenu .item:hover, #gvc-sesspanel .trackmenu .item:focus-visible { background: #333336; }
+#gvc-sesspanel .trackmenu .item.sel, #gvc-sesspanel .trackmenu .item.sel:hover { background: #4f46e5; }
+#gvc-sesspanel .trackmenu .item .tick { display: none; width: 16px; color: #fff; }
+#gvc-sesspanel .trackmenu .item .tick svg { width: 15px; height: 15px; }
+#gvc-sesspanel .trackmenu .item.sel .tick { display: flex; }
+#gvc-sesspanel .trackmenu .item .nm { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+#gvc-sesspanel .empty { color: #9ca3af; font-size: 12px; padding: 2px 0; }
+
+/* 00:00 is AUDIBLE, not visual: the last five seconds tick, the chime closes them, and the
+   timer reverts to the duration it ran. Nothing turns red and nothing shakes — an alarm
+   state parked in the corner of everyone's board outlives the moment it's announcing. */
+
+@media (max-width: 640px) {
+  #gvc-topright { top: 8px; right: 8px; }
+  #gvc-sesspanel { left: 8px; right: 8px; width: auto; top: 58px; }
+  .gvc-sesspill .t { font-size: 12px; }
+}

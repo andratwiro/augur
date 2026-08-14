@@ -1,0 +1,44 @@
+# TEMPLATE — copy this into YOUR DEPLOY SHELL as realtime.wrangler.toml and fill it in.
+# It is deliberately not a live wrangler.toml: this worker's identity (its name, and the
+# KV namespace it persists boards into) belongs to one instance and one Cloudflare
+# account, so the shared engine must not carry it. `wrangler` ignores this filename.
+#
+# What the worker is: one BoardRoom Durable Object per board path (same key as the KV
+# doc). Every visitor's WebSocket meets there, and the room relays cursors, presence,
+# node ops, selections and editing focus between them. The room OWNS the document: the
+# source of truth is the DO's SQLite storage (per-node rows, version-checked LWW,
+# tombstoned deletes), migrated lazily from KV on first touch; BOARD_KV holds a
+# write-through mirror (dirty-flag alarm + flush-on-empty) serving the public GET and
+# the clients' solo fallback, folded back in on cold loads. Rooms under /__test/ never
+# persist. NOTE: sqlite-backed DO storage (new_sqlite_classes below) is REQUIRED.
+#
+# ONE WORKER PER INSTANCE. Rooms are keyed by board path, so two instances pointed at the
+# same worker would share rooms *and* board storage.
+#
+# Deploy it standalone — never via Pages CI, which cannot define Durable Object classes.
+# From your shell repo's root, with the engine submodule checked out and CLOUDFLARE_*
+# creds in the environment:
+#
+#   npx wrangler deploy -c realtime.wrangler.toml
+#
+# Then set  "realtimeOrigin": "https://<name>.<your-subdomain>.workers.dev"  in the
+# shell's deploy.config.json and redeploy the site. Without it the engine refuses to
+# guess: /__rt answers 501 and boards run solo, persisting through the Pages worker.
+# A brand-new worker can 500 (error code 1104) for its first minute of propagation.
+
+name = "<your-instance>-realtime"
+main = "engine/realtime/src/index.js" # relative to THIS file, i.e. your shell's root
+compatibility_date = "2026-07-01"
+
+# The board-doc KV namespace — the same namespace the Pages project binds as COMMENTS.
+[[kv_namespaces]]
+binding = "BOARD_KV"
+id = "<your-kv-namespace-id>"
+
+[[durable_objects.bindings]]
+name = "ROOMS"
+class_name = "BoardRoom"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["BoardRoom"]

@@ -1,0 +1,36 @@
+# Unit tests for the worker's pure helpers (node --test, zero dependencies — no
+# npm install, no submodule checkout needed). Runs on every branch so a red suite
+# is visible BEFORE anything merges to main (main auto-deploys).
+name: test
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm test
+
+      # The chrome-purity invariant, exercised for real rather than asserted in a
+      # comment. Every deploy shell's CI builds with GV_ENGINE_ONLY=1 and ships the
+      # result as the _engine content manifest; if the build emits anything derived
+      # from a space, that content overwrites what a direct publish put there —
+      # which is exactly the bug this mode exists to make impossible. build.js
+      # throws on a stray file, so a green run here means the manifest is chrome.
+      #
+      # Runs with no space on disk and no shell (a bare engine clone), which is
+      # also a useful check in itself: the engine must build standalone.
+      - name: Engine-only build emits chrome and nothing else
+        run: |
+          set -euo pipefail
+          GV_ENGINE_ONLY=1 node build.js
+          ls dist/__manifests/
+          if [ "$(ls dist/__manifests/)" != "_engine.json" ]; then
+            echo "::error::engine-only build produced manifests other than _engine.json (see ENGINE_CHROME in build.js)"; exit 1
+          fi

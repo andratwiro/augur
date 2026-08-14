@@ -1,0 +1,113 @@
+name: Bundle-store backup
+
+# Off-Cloudflare copies of everything the live site serves.
+#
+# The store is the only copy of published content, and R2 has no point-in-time
+# restore. Most of it is reproducible — clone a space at the sha /_build.json
+# reports and publish again — but a publish made from an uncommitted working tree
+# serves bytes held in NO repository, and those are gone with the bucket.
+# `augur ship` makes that state rare by committing first; this makes it
+# survivable.
+#
+# The copy is a plain directory: manifests/<id>.json + blobs/<sha256> +
+# export.json. Restore is `augur restore <dir>` from any machine holding a
+# publish token — see the engine's docs/store-recovery.md.
+#
+# TWO SLOTS, ON PURPOSE — one recent copy and one old one:
+#
+#   weekly   Sunday, kept 10 days  → there is always a copy under a week old
+#   monthly  the 1st, kept 40 days → there is always a copy roughly a month old
+#
+# The old slot is the one that matters against a quiet compromise. Anything that
+# corrupts or empties the store on a Tuesday is in every copy taken after it, so
+# a rolling week of dailies protects you from accidents and not from an attack
+# you notice late. A month-old copy does.
+#
+# Cost: each run uploads a FULL copy (the export's incremental skip saves nothing
+# across runs, because a fresh runner starts empty), and Actions artifact storage
+# is shared across every repo in the account — not per-repo. Two slots is roughly
+# two full copies steady state. Frequency and retention are the only real knobs.
+#
+# Residual risk worth naming: anyone with write access to THIS repo can delete
+# these artifacts as easily as read them. Genuine immutability needs an offsite
+# with object-lock, which is a different job from this one.
+#
+# SET BEFORE USE: AUGUR_ORIGIN below. Secrets: AUGUR_TOKEN, star-scoped — a
+# space-scoped token silently skips the spaces it cannot read, and this job fails
+# if anything was skipped.
+
+on:
+  schedule:
+    - cron: "40 2 * * 0" # weekly  — Sunday 02:40 UTC (offset: GitHub drops top-of-hour crons)
+    - cron: "40 3 1 * *" # monthly — the 1st, 03:40 UTC
+  workflow_dispatch: # take one on demand before anything risky
+    inputs:
+      slot:
+        description: "Which slot this manual copy fills"
+        type: choice
+        default: weekly
+        options: [weekly, monthly]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: store-backup
+  cancel-in-progress: false
+
+# github.event.schedule carries the cron line that fired, so one workflow serves
+# both slots without duplicating the job.
+env:
+  SLOT: ${{ github.event.schedule == '40 3 1 * *' && 'monthly' || inputs.slot || 'weekly' }}
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: true # the engine carries the export script
+          token: ${{ secrets.SUBMODULE_PAT }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Export the store
+        env:
+          AUGUR_TOKEN: ${{ secrets.AUGUR_TOKEN }}
+          AUGUR_ORIGIN: https://your-site-origin.example # ← your deploy.config.json siteOrigin
+        run: |
+          set -euo pipefail
+          if [ -z "$AUGUR_TOKEN" ]; then
+            echo "::error::AUGUR_TOKEN is not configured — nothing can be backed up."; exit 1
+          fi
+          node engine/scripts/export.mjs --out backup
+
+      # A backup that quietly omits a space is the one you discover is short on
+      # the day you need it. export.json records anything it could not read;
+      # refuse to publish an artifact that claims to be a copy and isn't.
+      - name: Refuse an incomplete copy
+        run: |
+          set -euo pipefail
+          SKIPPED="$(jq -r '.skipped | length' backup/export.json)"
+          if [ "$SKIPPED" != "0" ]; then
+            echo "::error::the export skipped $SKIPPED target(s) — check AUGUR_TOKEN is star-scoped:"
+            jq -r '.skipped[] | "  - \(.id): \(.reason)"' backup/export.json
+            exit 1
+          fi
+          echo "Spaces copied:"; jq -r '.spaces[] | "  \(.id) v\(.version)\(if .source.dirty then "  [DIRTY — these bytes exist in no repo]" else "" end)"' backup/export.json
+          echo "Blobs: $(jq -r .blobs backup/export.json)  ·  $(du -sh backup | cut -f1)"
+
+      - name: Stamp the copy
+        id: stamp
+        run: echo "on=$(date -u +%Y-%m-%d)" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: store-${{ env.SLOT }}-${{ steps.stamp.outputs.on }}
+          path: backup
+          # Each slot outlives its own interval, so a copy always exists even in
+          # the moments around a scheduled run.
+          retention-days: ${{ env.SLOT == 'monthly' && 40 || 10 }}
+          compression-level: 0 # the payload is already-compressed images and woff2
