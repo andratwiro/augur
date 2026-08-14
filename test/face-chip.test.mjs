@@ -23,9 +23,11 @@ function lift(name) {
   assert.notEqual(start, -1, `${name} was found in build.js`);
   return SRC.slice(start, SRC.indexOf("\n}", start) + 2);
 }
-const faceChip = new Function(`${lift("escAttr")}\n${lift("faceChip")}\nreturn faceChip;`)();
+const faceChip = new Function(
+  `${lift("escAttr")}\n${lift("personIdOf")}\n${lift("faceChip")}\nreturn faceChip;`,
+)();
 
-const ANA = { name: "Ana", initials: "R", color: "#4f46e5", avatar: "/__avatar/u/abc" };
+const ANA = { name: "Ana", initials: "R", color: "#4f46e5", email: "ana@example.com" };
 
 test("the chip was actually lifted out of build.js", () => {
   assert.equal(typeof faceChip, "function");
@@ -45,11 +47,14 @@ test("the stylesheet is the other half of that pairing", () => {
   assert.match(rule, /background-position:\s*center/);
 });
 
-test("the photo is a data attribute, never a baked background", () => {
-  // FACE_JS paints it only once the image has loaded, so a URL the instance no longer
-  // serves degrades to initials instead of an empty circle.
+test("the person is a data attribute, never a baked photo or address", () => {
+  // What gets baked is the person's id, resolved through /__people at request time, so a
+  // face that changes after the page was built lands without republishing. FACE_JS paints
+  // it only once the image has loaded, so a failed lookup degrades to initials instead of
+  // an empty circle.
   const html = faceChip(ANA, "proto-editor", "Ana");
-  assert.match(html, /data-face="\/__avatar\/u\/abc"/);
+  assert.match(html, /data-person="[a-z0-9]+"/);
+  assert.doesNotMatch(html, /ana@example\.com/, "the id is one-way; the address never ships");
   assert.doesNotMatch(html, /url\(/);
   assert.match(html, />R</, "initials are the chip's own content");
 });
@@ -62,8 +67,9 @@ test("FACE_JS stamps the sizing alongside the image", () => {
   assert.match(js, /backgroundPosition = 'center'/);
 });
 
-test("someone without a photo gets no data-face at all", () => {
+test("someone the build cannot identify gets no lookup at all", () => {
   const html = faceChip({ name: "Iva Kopraleva", initials: "IK", color: "#0d9488" }, "proto-editor", "Iva");
+  assert.doesNotMatch(html, /data-person/);
   assert.doesNotMatch(html, /data-face/);
   assert.match(html, />IK</);
 });
