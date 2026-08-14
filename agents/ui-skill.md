@@ -33,9 +33,8 @@ The skill declares its own published assets in a `skill.json` at the skill root:
 - Markdown at the skill root (`SKILL.md`, `components.md` — internal notes) and
   `skill.json` itself never ship. Paths may not escape the skill directory.
 
-Without a `skill.json`, a legacy fixed inventory of `<prefix>-*` names applies
-(see `SHARED_ASSETS` in `build.js`) — kept for skills that predate the manifest.
-New skills should always declare.
+Without a `skill.json`, a fixed default inventory of `<prefix>-*` names applies
+(see `SHARED_ASSETS` in `build.js`). Skills should declare.
 
 The build additionally generates `graph.js` (the composition graph) into the
 shipped skill directory; that is derived output, not something to declare.

@@ -91,9 +91,12 @@ if (!TOKEN) die("no publish token — run `augur login` once (uses your web cred
 // inference: running inside a space repo publishes THAT space.
 const PARENT = path.join(ROOT, "..");
 const discoverIn = (root) => {
+  // A root that IS a space (space.json at its top) is a one-space site — same
+  // semantics as build.js discoverSpaces(). Symlinked space dirs count too.
   try {
+    if (existsSync(path.join(root, "space.json"))) return [path.resolve(root)];
     return readdirSync(root, { withFileTypes: true })
-      .filter((e) => e.isDirectory() && !e.name.startsWith(".")
+      .filter((e) => (e.isDirectory() || e.isSymbolicLink()) && !e.name.startsWith(".")
         && existsSync(path.join(root, e.name, "space.json")))
       .map((e) => path.join(root, e.name));
   } catch (e) { return []; }

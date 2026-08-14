@@ -26,9 +26,8 @@ export function findShellDir(root = ENGINE_ROOT, originHost = "") {
         && existsSync(path.join(parent, e.name, "identity.json")))
       .map((e) => path.join(parent, e.name)).sort();
     // Several instances can share one parent folder. When the caller knows which
-    // ORIGIN it is talking to, the shell whose declared siteOrigin matches that host
-    // wins — resolving by shape alone here once handed a publish the OTHER instance's
-    // identity file, purely because its shell sorted first.
+    // ORIGIN it is talking to, the shell whose declared siteOrigin matches that
+    // host wins; with one shell, or no host, it is the first by name.
     if (originHost && shells.length > 1) {
       const match = shells.find((s) => {
         try {

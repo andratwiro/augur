@@ -5540,10 +5540,10 @@ async function buildSpace(space) {
     await fs.mkdir(sharedDir, { recursive: true });
     // The skill declares what it ships: skills/<x>-ui/skill.json {"assets": [...]},
     // file or directory names relative to the skill root (dirs copy wholesale).
-    // The inventory belongs to the WORKSPACE, not the engine — the fixed list below
-    // is only the legacy fallback for skills that predate the manifest. Markdown at
-    // the skill root (SKILL.md, components.md — internal notes) never ships either
-    // way, and neither does skill.json itself. Contract: agents/ui-skill.md.
+    // The inventory belongs to the WORKSPACE, not the engine; a skill with no
+    // manifest gets the fixed default inventory below. Markdown at the skill root
+    // (SKILL.md, components.md — internal notes) never ships either way, and
+    // neither does skill.json itself. Contract: agents/ui-skill.md.
     let declared = null;
     try {
       const manifest = JSON.parse(await fs.readFile(path.join(UI_SKILL, "skill.json"), "utf8"));
