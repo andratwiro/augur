@@ -36,6 +36,19 @@ The skill declares its own published assets in a `skill.json` at the skill root:
 Without a `skill.json`, a fixed default inventory of `<prefix>-*` names applies
 (see `SHARED_ASSETS` in `build.js`). Skills should declare.
 
+`skill.json` also names the CSS vocabulary the composition graph parses:
+
+```json
+{ "assets": ["acme-tokens.css", "acme-ui.css"], "cssPrefixes": ["acme"] }
+```
+
+`cssPrefixes` lists the class and token prefixes the stylesheets use (classes
+`.acme-*`, tokens `--acme-*`). The graph reads tokens from
+`<prefix>-tokens.css` and families from the canonical layer files, and the
+review overlay's layer drilldown (Shift+C, then the arrow keys) badges exactly
+what the graph knows: components, then base atoms, then token usage down to
+spacing. Skills with no manifest get a fixed default prefix pair.
+
 The build additionally generates `graph.js` (the composition graph) into the
 shipped skill directory; that is derived output, not something to declare.
 

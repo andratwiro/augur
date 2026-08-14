@@ -763,7 +763,8 @@
     var best = null;
     for (var i = 0; i < el.classList.length; i++) {
       var c = el.classList[i];
-      if (c.indexOf("gv-") !== 0 && c.indexOf("sv-") !== 0) continue;
+      // The graph's own keys are the vocabulary — any class whose family root it
+      // knows can badge, whatever prefix the space's design system chose.
       // Only the family ROOT (or a --modifier of it) marks a component root; a BEM
       // __part (e.g. .gv-feed__head) is internal scaffolding, not its own root, so it
       // must not badge as the whole component or it spawns phantom duplicate roots.

@@ -541,20 +541,34 @@ const readCanon = (f) => fs.readFile(path.join(UI_SKILL, f), "utf8").catch(() =>
  * Returns { tokens, classes, generatedFrom } — see the block comment above.
  */
 async function buildGraph() {
+  // The CSS vocabulary is the SKILL's: skill.json {"cssPrefixes": ["acme"]} names
+  // the class/token prefixes its stylesheets use (classes .acme-*, tokens --acme-*).
+  // Skills with no manifest get the fixed default pair below.
+  let cssPrefixes = ["gv", "sv"];
+  try {
+    const man = JSON.parse(await readCanon("skill.json"));
+    if (Array.isArray(man.cssPrefixes) && man.cssPrefixes.length) cssPrefixes = man.cssPrefixes;
+  } catch { /* no manifest */ }
+  const PFX = cssPrefixes.map((p) => p.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("|");
+  const tokenDeclRe = new RegExp(String.raw`(--(?:${PFX})-[\w-]+)\s*:\s*([^;]+);`, "g");
+  const tokenVarRe = new RegExp(String.raw`var\(\s*(--(?:${PFX})-[\w-]+)`, "g");
+  const soloVarRe = new RegExp(String.raw`^var\(\s*(--(?:${PFX})-[\w-]+)\s*\)$`);
+  const famSelRe = new RegExp(String.raw`\.((?:${PFX})-[\w-]+)`);
+
   // ── tokens: name → declared value (first definition wins) ──────────────────
   const tokensCss = (await readCanon(`${DS.prefix}-tokens.css`)).replace(/\/\*[\s\S]*?\*\//g, "");
   const tokenVals = {};
-  for (const m of tokensCss.matchAll(/(--gv-[\w-]+)\s*:\s*([^;]+);/g)) {
+  for (const m of tokensCss.matchAll(tokenDeclRe)) {
     if (!(m[1] in tokenVals)) tokenVals[m[1]] = m[2].trim();
   }
-  const refsOf = (v) => [...new Set([...v.matchAll(/var\(\s*(--gv-[\w-]+)/g)].map((x) => x[1]))];
+  const refsOf = (v) => [...new Set([...v.matchAll(tokenVarRe)].map((x) => x[1]))];
   // Resolve a token's alias chain down to the first non-(solo-var) value = its raw.
   function resolve(name, seen) {
     seen = seen || new Set();
     if (seen.has(name) || !(name in tokenVals)) return { chain: [name], raw: tokenVals[name] || null };
     seen.add(name);
     const v = tokenVals[name];
-    const solo = v.match(/^var\(\s*(--gv-[\w-]+)\s*\)$/);
+    const solo = v.match(soloVarRe);
     if (solo && solo[1] in tokenVals) {
       const nx = resolve(solo[1], seen);
       return { chain: [name, ...nx.chain], raw: nx.raw };
@@ -579,11 +593,11 @@ async function buildGraph() {
     const css = (await readCanon(file)).replace(/\/\*[\s\S]*?\*\//g, "");
     for (const rule of css.matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
       const sel = rule[1], body = rule[2];
-      const vars = [...new Set([...body.matchAll(/var\(\s*(--gv-[\w-]+)/g)].map((x) => x[1]))];
-      // Subject family = the first .gv-/.sv- class of each comma-separated part.
+      const vars = [...new Set([...body.matchAll(tokenVarRe)].map((x) => x[1]))];
+      // Subject family = the first prefixed class of each comma-separated part.
       const fams = new Set();
       for (const part of sel.split(",")) {
-        const m = part.trim().match(/\.((?:gv|sv)-[\w-]+)/);
+        const m = part.trim().match(famSelRe);
         if (m) fams.add(familyRoot("." + m[1]));
       }
       for (const fam of fams) {
