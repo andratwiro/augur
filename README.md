@@ -43,6 +43,12 @@ vocabulary, so a pin on a prototype knows which component it landed on.
 
 ![The components tier of the library](docs/shots/library.png)
 
+Up close, at the tokens depth: paddings shade in place like devtools, and the
+panel lists the tokens a component drinks with their live values. Token usage
+is tracked to the pixel across every prototype that links the system.
+
+![A component's padding shaded, its tokens listed with live values](docs/shots/tokens.png)
+
 ## Try it locally
 
 ```bash
