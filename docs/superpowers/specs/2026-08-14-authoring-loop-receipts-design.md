@@ -116,3 +116,15 @@ ending on pixels rather than terminal. Weight budget: match `canvas-live.gif`
    deploys.
 
 Each step leaves both repos shippable.
+
+## Amendment — 2026-08-14, the sandbox session
+
+The featured session is directed by Claude end to end — the brief and the
+follow-ups both — and the receipt discloses this in its own words. Decided with
+Rob when he delegated the session; the disclosure keeps the receipt the truth
+anchor. The capture comes from a recorded sandbox pipeline — a scratch clone
+pair, the harness terminal served through ttyd beside the live-reloading
+prototype in a single browser page, Playwright recording that page — rather
+than a hand-held screen recording. The recording is still of the real session:
+no staging, no replays. Nothing lands in the real space repo, on the demo, or
+on a pushed branch until Rob has reviewed the artifacts.

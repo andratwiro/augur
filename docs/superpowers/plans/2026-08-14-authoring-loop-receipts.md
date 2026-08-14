@@ -91,6 +91,10 @@ how to restart it.
 
 ### Task 2: HUMAN — the authoring session
 
+> **Superseded 2026-08-14:** the session is agent-directed in a sandbox — see
+> the spec's Amendment. The HUMAN gate moves to reviewing the artifacts before
+> Task 3 publishes anything.
+
 One session produces the screen, the receipt, and the recording. Nothing here can
 be done by the executing agent on Rob's behalf — the honesty rule forbids it.
 The executing agent's job for this task: prepare the two files in steps 1–2,
