@@ -16,6 +16,16 @@ The date is the day the update went live. The page works out "Today / 3 days ago
 
 ---
 
+## 2026-08-14 — Faces stay right after you change your photo
+Change your photo and it now updates everywhere at once — on cards, comments and
+canvases, on pages that were published long before. Until now those pages kept
+pointing at your old picture and quietly showed your initials instead.
+
+## 2026-08-14 — A viewer role
+You can now invite someone who signs in, reads, comments and drives boards, but
+can never publish. Handy for a client or a colleague you want in the conversation
+without handing them the keys.
+
 ## 2026-08-12 — Change ten things at once on a canvas
 Select a pile of stickies and pick a colour: they all change. Same for text size,
 bold, italic and alignment — whatever you pick lands on everything you selected.

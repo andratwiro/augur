@@ -1,6 +1,6 @@
 {
   "name": "augur",
-  "version": "0.11.0",
+  "version": "0.12.0",
   "private": true,
   "license": "MIT",
   "description": "Augur — build/deploy platform composing spaces (design system + prototypes repos) into a static site with an overlay worker.",
