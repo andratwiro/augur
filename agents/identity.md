@@ -16,7 +16,11 @@ once the instance config is redeployed/published (build re-emits
   "email": "person@example.org",   // login id
   "emails": ["alias@example.org"], // optional extra addresses that also log in
   "name": "Person Name",
-  "role": "admin",                 // "admin" or omit for a regular user
+  "role": "admin",                 // "admin", "viewer", or omit for a regular user.
+                                   // A viewer signs in, comments and drives boards but
+                                   // can never mint a publish token — the role for an
+                                   // account whose password is public (a demo
+                                   // instance's loginHint credentials)
   "passHash": "pbkdf2$…",          // FIRST ADMIN ONLY — everyone else is invited
   "initials": "PN",                // presence chip fallback
   "color": "#7A5AF8",              // presence chip color

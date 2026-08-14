@@ -1392,3 +1392,30 @@ test("the instance loginHint renders under the login form, escaped, only when se
   W.applyInstance({ users: [], loginHint: { text: "nope" } });
   assert.doesNotMatch(W.loginPage("/", false), /class="hint"/);
 });
+
+test("a viewer can never trade its public credentials for a publish token", async () => {
+  const hash = await W.hashPassword("public-demo-pass");
+  W.applyInstance({ users: [
+    { email: "visita@example.test", name: "Visita", role: "viewer", passHash: hash },
+    { email: "member@example.test", name: "Member", passHash: hash },
+  ] });
+  const env = envWith(memKV(), { BUNDLES: {} , SESSION_SECRET: "s3cret" });
+  const mint = (email) => W.publishApi(
+    new Request("https://example.test/__publish/_login/token", {
+      method: "POST",
+      body: JSON.stringify({ email, password: "public-demo-pass" }),
+    }),
+    new URL("https://example.test/__publish/_login/token"), env);
+
+  const v = await mint("visita@example.test");
+  assert.equal(v.status, 403);
+  assert.equal((await v.json()).error, "viewer-role");
+
+  // The same credentials on a regular account get PAST the role gate (what stops
+  // them here is only the fixture's missing default space — not their role).
+  const m = await mint("member@example.test");
+  const mBody = await m.json();
+  assert.notEqual(mBody.error, "viewer-role");
+
+  W.applyInstance({ users: [] });
+});

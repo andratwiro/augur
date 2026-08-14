@@ -1560,6 +1560,13 @@ async function publishApi(request, url, env) {
     }
     const kv = kvFor(env);
     if (!kv) return jsonResponse({ error: "no-kv-binding" }, 500);
+    // A viewer signs in, comments and drives boards like anyone else, but can never
+    // hold a publish token — the role for accounts whose password is public knowledge
+    // (a demo instance's loginHint). Checked after credential verification so an
+    // unknown email and a viewer stay indistinguishable in timing.
+    if (u.role === "viewer") {
+      return jsonResponse({ error: "viewer-role", message: "This account can look around but not publish." }, 403);
+    }
     const space = u.role === "admin" ? "*" : (SPACES.find((s) => s.default) || { id: null }).id;
     if (!space) return jsonResponse({ error: "no-default-space" }, 500);
     const bytes = new Uint8Array(32);
