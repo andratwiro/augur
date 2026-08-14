@@ -42,13 +42,7 @@ The follow-ups read like design direction, because that is what they are.
 
 ## Boards where the prototypes run
 
-Drop a live prototype next to the stickies and drive it. Everyone on the board
-sees the same screen state. Agents join as pixel mascots and work next to you.
-
-![The research board, with live prototype tiles and two agents](docs/shots/board.png)
-
-Up close: the specimen spins inside its tile, a teammate's cursor works the
-area, and Menta the agent strolls over to watch.
+Drop a live prototype next to the stickies and drive it. Everyone on the board sees the same screen state. Agents join as pixel mascots and work next to you. Up close: the specimen spins inside its tile, a teammate's cursor works the area, and Menta the agent strolls over to watch.
 
 ![A live prototype spinning on the board while people and agents move](docs/shots/canvas-live.gif)
 
