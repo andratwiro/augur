@@ -1334,15 +1334,58 @@ function isPublishablePublicPrefix(p, spaceId, spaces) {
   return norm !== "/" && pathOwnedBySpace(norm, spaceId, spaces);
 }
 
+// A publicPrefixes entry only counts as LIVE if some file in the manifest
+// actually serves under it. build.js only ever pushes a prefix alongside the
+// files that back it — one loop, over the same folder, for every opportunity
+// and playground prototype — so a legitimate build can never produce a prefix
+// without files behind it. A prefix with nothing behind it is DEAD: content
+// renamed or removed out from under a routing fragment that never got
+// re-derived, a reconcile patch that copied a live routing entry without its
+// files, or some other bug that let the two drift apart. Either way, nothing
+// is being served there right now — it already 404s for every visitor — so it
+// is not "live" in the sense the unpublish guard exists to protect.
+//
+// Decodes both sides before comparing: routing prefixes are
+// encodeURIComponent'd per build.js's S(), manifest.files keys are the literal
+// disk-relative paths walkDist wrote. Same tolerant decode, same reasoning, as
+// scripts/lib/publish-conflict.mjs's unitPaths — the CLI's equivalent notion
+// of "does this unit have files" — kept in step by hand since this file ships
+// standalone (no shared import) and unitPaths runs in Node only.
+function decUrlPath(s) { try { return decodeURIComponent(String(s)); } catch (e) { return String(s); } }
+function isPrefixBacked(manifest, prefix) {
+  const norm = decUrlPath(prefix).replace(/\/?$/, "/");
+  const files = (manifest && manifest.files) || {};
+  for (const p in files) if (decUrlPath(p).startsWith(norm)) return true;
+  return false;
+}
+// The subset of a manifest's declared publicPrefixes that are genuinely live
+// right now (backed by at least one file). Every reader of "what's live" for
+// the unpublish guard's purposes — the guard below, /check's advisory
+// livePrefixes, and the pruning at commit — goes through this one function so
+// the three can never drift into disagreeing about what counts as dead.
+function backedPublicPrefixes(manifest) {
+  const list = ((manifest && manifest.routing) || {}).publicPrefixes || [];
+  return list.filter((p) => isPrefixBacked(manifest, p));
+}
+
 // Which public URLs would this incoming manifest take off the site? Compares the
 // live routing fragment against the incoming one — nothing else, because
 // publicPrefixes IS the set of pages anyone can open without a password, and a
 // prefix disappearing is exactly a shareable link going dark. Order-insensitive
 // and duplicate-tolerant: only membership means anything here. A space with no
 // live manifest yet (first publish) removes nothing by definition.
+//
+// "had" is the LIVE side's GENUINELY-live prefixes (backedPublicPrefixes), not
+// its raw routing list: a dead/orphaned entry already serves nothing, so a
+// publish that fails to re-declare it isn't taking anything down — it's just
+// not carrying forward damage an earlier commit already did. Blocking on a
+// dead entry would only ever punish whoever happens to publish next, forever,
+// for a page they never touched. A prefix that IS actually serving content
+// still counts, exactly as before — this narrows what "live" means, it does
+// not weaken the guard over anything really live.
 function removedPublicPrefixes(live, next) {
   const keep = new Set(((next && next.routing) || {}).publicPrefixes || []);
-  const had = ((live && live.routing) || {}).publicPrefixes || [];
+  const had = backedPublicPrefixes(live);
   return [...new Set(had)].filter((p) => !keep.has(p));
 }
 
@@ -1652,11 +1695,15 @@ async function publishApi(request, url, env) {
     return jsonResponse({
       missing,
       liveVersion: (cur && cur.version) || 0,
-      // The public URLs live RIGHT NOW, so a client can see it is about to take some
-      // of them down before it uploads a single blob. Advisory only: the refusal that
-      // counts happens at commit, where it also covers the one-round-trip fast path
-      // (which never calls check) and any client that has never heard of this field.
-      livePrefixes: ((cur && cur.routing) || {}).publicPrefixes || [],
+      // The public URLs GENUINELY live RIGHT NOW (backedPublicPrefixes — a dead,
+      // unbacked entry is filtered out, exactly like the guard at commit), so a
+      // client can see it is about to take some of them down before it uploads a
+      // single blob, without also being told to pass --allow-unpublish for a page
+      // that already 404s and was never really there to lose. Advisory only: the
+      // refusal that counts happens at commit, where it also covers the
+      // one-round-trip fast path (which never calls check) and any client that has
+      // never heard of this field.
+      livePrefixes: backedPublicPrefixes(cur),
       filesUnchanged,
       liveSource: cur && cur.source
         ? { sha: cur.source.sha || null, dirty: !!cur.source.dirty } : null,
@@ -1739,6 +1786,22 @@ async function publishApi(request, url, env) {
     try { m = await request.json(); } catch (e) { return jsonResponse({ error: "bad-json" }, 400); }
     if (!m || m.id !== spaceId || !m.files || typeof m.files !== "object") {
       return jsonResponse({ error: "bad-manifest" }, 400);
+    }
+    // Prune any publicPrefixes entry THIS manifest declares without backing it with
+    // a file, before anything downstream — the ownership checks, the unpublish
+    // guard, the persisted manifest — ever sees it. A legitimate build never
+    // produces one (build.js only ever adds a prefix alongside the files under it),
+    // so this only ever catches drift: a bug elsewhere, a hand-edited manifest, a
+    // reconcile patch that copied a routing entry without its files. Pruning here,
+    // at the one chokepoint that writes the live manifest, is what stops a dead
+    // entry from persisting to trap the NEXT publisher — nothing this commit writes
+    // can ever contain a prefix with nothing behind it, so there is nothing left to
+    // misread as live on a future commit. (It also closes the mirror-image hole: a
+    // manifest that CLAIMS to keep a live prefix without actually shipping files for
+    // it would otherwise slip past the guard below as "kept" while quietly creating
+    // a new orphan.)
+    if (m.routing && Array.isArray(m.routing.publicPrefixes)) {
+      m.routing.publicPrefixes = backedPublicPrefixes(m);
     }
     const liveManifests = await loadManifests(env, true);
     // ── Untrusted-token guard — the fix that keeps a space token to its own space. Any
@@ -3849,6 +3912,7 @@ export const __testables = {
   deleteUrlPrefix, removeFromStore,
   revokePublishTokens, loginThrottled, loginSlowed, loginFail, DUMMY_HASH,
   pathOwnedBySpace, isPublishablePublicPrefix, removedPublicPrefixes, publishApi, LOGIN_MAX_FAILS,
+  isPrefixBacked, backedPublicPrefixes,
   isPublicPath, isTrackPath, isRestrictedPath, versionFor, brandMark,
   boardApi, canvasesApi, virtualCanvas, CANVASES_KEY, BOARD_PREFIX, BOARD_MAX_BYTES,
 };
