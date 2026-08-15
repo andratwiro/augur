@@ -19,6 +19,7 @@ import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { findShellDir } from "./lib/instance.mjs";
+import { __testables } from "../src/_worker.js";
 
 const SCRIPTS = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(SCRIPTS, "..");
@@ -34,8 +35,15 @@ if (!env.GV_IDENTITY_PATH && !findShellDir(ROOT)) {
   const dir = path.join(os.tmpdir(), "augur-dev");
   mkdirSync(dir, { recursive: true });
   const file = path.join(dir, "identity.json");
+  // A real pbkdf2$… hash, not a plaintext `pass` — verifyPassword() (src/_worker.js)
+  // accepts only that format, so a plaintext seed used to read as an "active" account
+  // (effectiveSecret resolves it) while being unable to ever log in (verifyPassword
+  // rejects it outright) — the documented dev@local / "dev" fallback 401ed, every time.
+  // Derive it the same way a redeemed invite does (__testables.hashPassword is the
+  // exact function invitePost calls), so the seeded account can actually authenticate.
+  const passHash = await __testables.hashPassword("dev");
   writeFileSync(file, JSON.stringify([{
-    email: "dev@local", name: "Dev", pass: "dev",
+    email: "dev@local", name: "Dev", passHash,
     initials: "D", color: "#2c2150", role: "admin",
   }], null, 2));
   env.GV_IDENTITY_PATH = file;
