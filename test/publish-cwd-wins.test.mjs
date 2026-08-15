@@ -26,13 +26,41 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
 import { createServer } from "node:http";
-import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from "node:fs";
+import { mkdtempSync, mkdirSync, writeFileSync, rmSync, cpSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const ENGINE_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-const PUBLISH_MJS = path.join(ENGINE_ROOT, "scripts", "publish.mjs");
+
+// The CLI's own `dist/` output path is derived from publish.mjs's file location
+// (ROOT/dist) and isn't overridable via env — and Node's test runner runs test
+// FILES concurrently by default, so any two files that spawn a REAL build (this
+// one and test/publish-preflight.test.mjs) race on that ONE shared directory:
+// build.js's own startup step (fs.rm(DIST, {recursive:true})) in one process can
+// delete the manifest another process just finished writing, moments before it
+// reads it back. This is exactly what CI hit: the log showed a successful build
+// with the correct content ("Built dist/ — 1 space (acme)."), immediately
+// followed by ENOENT reading that same manifest path, in the same process — the
+// only actor that could remove it in between is a concurrently-running build.
+// Give this test its own private copy of the engine's build inputs — a "fresh
+// clone in a tmpdir" — so its dist/ can never collide with any other test file's.
+const COPY_EXCLUDE = new Set([".git", "node_modules", "dist", ".wrangler", "test"]);
+function isolatedEngineCopy() {
+  const root = mkdtempSync(path.join(tmpdir(), "augur-cli-copy-"));
+  cpSync(ENGINE_ROOT, root, {
+    recursive: true,
+    filter: (src) => {
+      const name = path.basename(src);
+      // .env.deploy (real deploy credentials, present on a maintainer's machine)
+      // must never ride along into a throwaway test copy, even though the token
+      // this test sets explicitly would win over it anyway (env beats file).
+      if (name.startsWith(".env")) return false;
+      return !COPY_EXCLUDE.has(name);
+    },
+  });
+  return { root, publishMjs: path.join(root, "scripts", "publish.mjs") };
+}
 
 // A minimal stand-in for the worker's /__publish/* surface. liveVersion 0 takes the
 // "live is empty" fast path, so the client never needs a live manifest or a real git
@@ -75,9 +103,9 @@ function makeSpaceClone(dir, protoName, marker) {
   writeFileSync(path.join(protoDir, "index.html"), `<!doctype html><html><body>${marker}</body></html>`);
 }
 
-function runPublishFrom(cwd, env) {
+function runPublishFrom(publishMjs, cwd, env) {
   return new Promise((resolve) => {
-    const child = spawn(process.execPath, [PUBLISH_MJS, "--dry-run"], { cwd, env });
+    const child = spawn(process.execPath, [publishMjs, "--dry-run"], { cwd, env });
     let stdout = "", stderr = "";
     child.stdout.on("data", (d) => { stdout += d; });
     child.stderr.on("data", (d) => { stderr += d; });
@@ -86,6 +114,7 @@ function runPublishFrom(cwd, env) {
 }
 
 test("cwd wins its own space id over a same-id sibling next to the engine (dry-run, real CLI)", async () => {
+  const { root: engineCopy, publishMjs } = isolatedEngineCopy();
   const work = mkdtempSync(path.join(tmpdir(), "augur-cwd-wins-test-"));
   const fakeHome = mkdtempSync(path.join(tmpdir(), "augur-cwd-wins-home-"));
   const siblingsRoot = path.join(work, "siblings");
@@ -99,7 +128,7 @@ test("cwd wins its own space id over a same-id sibling next to the engine (dry-r
   const { server, checks } = await startMockOrigin();
   try {
     const origin = `http://127.0.0.1:${server.address().port}`;
-    const { code, stderr } = await runPublishFrom(cwdDir, {
+    const { code, stderr } = await runPublishFrom(publishMjs, cwdDir, {
       PATH: process.env.PATH,
       HOME: fakeHome,
       AUGUR_ORIGIN: origin,
@@ -121,12 +150,14 @@ test("cwd wins its own space id over a same-id sibling next to the engine (dry-r
     server.close();
     rmSync(work, { recursive: true, force: true });
     rmSync(fakeHome, { recursive: true, force: true });
+    rmSync(engineCopy, { recursive: true, force: true });
   }
 });
 
 test("no collision, no override — an ordinary sibling-only publish never mentions cwd override", async () => {
   // The common case must stay exactly as before: zero cost, zero behavior change,
   // when cwd IS the (only) clone for its id.
+  const { root: engineCopy, publishMjs } = isolatedEngineCopy();
   const work = mkdtempSync(path.join(tmpdir(), "augur-cwd-wins-control-"));
   const fakeHome = mkdtempSync(path.join(tmpdir(), "augur-cwd-wins-control-home-"));
   const siblingsRoot = path.join(work, "siblings");
@@ -137,7 +168,7 @@ test("no collision, no override — an ordinary sibling-only publish never menti
   const { server, checks } = await startMockOrigin();
   try {
     const origin = `http://127.0.0.1:${server.address().port}`;
-    const { code, stderr } = await runPublishFrom(onlyDir, {
+    const { code, stderr } = await runPublishFrom(publishMjs, onlyDir, {
       PATH: process.env.PATH,
       HOME: fakeHome,
       AUGUR_ORIGIN: origin,
@@ -153,5 +184,6 @@ test("no collision, no override — an ordinary sibling-only publish never menti
     server.close();
     rmSync(work, { recursive: true, force: true });
     rmSync(fakeHome, { recursive: true, force: true });
+    rmSync(engineCopy, { recursive: true, force: true });
   }
 });
