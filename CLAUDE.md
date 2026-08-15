@@ -80,7 +80,7 @@ never a file.
 **Runtime config (no build-time worker stamping).** `src/_worker.js` ships VERBATIM;
 build.js emits `dist/__config/instance.json` (users from `GV_IDENTITY_PATH`; from
 `GV_DEPLOY_CONFIG_PATH`: `mcpHostSuffixes`, `mcpHostAllowlistUrl`, `vanityRedirects`,
-`builder`, `rtOrigin`, `sentinels`) and `dist/__config/routing.json` (public prefixes,
+`rtOrigin`, `sentinels`) and `dist/__config/routing.json` (public prefixes,
 version map, restricted bases, space list, the mcp allowlist union spaces declare via
 `space.json "mcpAllowlists"`). The worker fills these via `loadConfig()` (~1.5s
 per-isolate cache) and seals `/__config/*` from external requests. Build.js also

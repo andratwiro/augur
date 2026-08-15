@@ -43,8 +43,8 @@ let CONFIG_USERS = [];
 let USERS = [];
 // Deploy-specific knobs, filled at runtime from instance.json (all empty in a raw
 // engine build): gate-exempt skill-asset path prefixes, MCP-proxy host allowlist
-// (suffix rule + space-declared exact hosts + the URL of an exact-host list),
-// vanity-host redirects, and the optional AI project-builder prompts + schema.
+// (suffix rule + space-declared exact hosts + the URL of an exact-host list), and
+// vanity-host redirects.
 // MCP_HOST_ALLOWLIST alone comes from routing.json: the union of the {"hosts":[…]}
 // files the spaces declare via space.json "mcpAllowlists" (see build.js).
 let PUBLIC_SKILL_PREFIXES = [];
@@ -52,7 +52,6 @@ let MCP_HOST_SUFFIXES = [];
 let MCP_HOST_ALLOWLIST = [];
 let MCP_HOST_ALLOWLIST_URL = "";
 let VANITY_REDIRECTS = {};
-let BUILDER_CONFIG = null;
 const USER_COOKIE = "gv_user";              // value: "<email>.<token>"
 // KV {email: "pbkdf2$…"} — the credential store, written only by a user redeeming an
 // invite. A key PRESENT holding null/"" is a REVOCATION TOMBSTONE (admin reset): it
@@ -302,7 +301,6 @@ function applyInstance(inst) {
   MCP_HOST_SUFFIXES = inst.mcpHostSuffixes || [];
   MCP_HOST_ALLOWLIST_URL = inst.mcpHostAllowlistUrl || "";
   VANITY_REDIRECTS = inst.vanityRedirects || {};
-  BUILDER_CONFIG = inst.builder || null;
   RT_ORIGIN = inst.rtOrigin || "";
   INSTANCE_SENTINELS = Array.isArray(inst.sentinels) ? inst.sentinels : [];
   LOGIN_HINT = typeof inst.loginHint === "string" ? inst.loginHint : "";
@@ -2385,7 +2383,7 @@ function withLiveReload(res, url) {
 // never logs a token. Allowlist is tight: subdomains of the injected
 // MCP_HOST_SUFFIXES, the exact hosts the spaces declared at build time
 // (MCP_HOST_ALLOWLIST), plus the exact hosts published at MCP_HOST_ALLOWLIST_URL,
-// and exactly the paths the builder + OAuth flows need.
+// and exactly the paths the OAuth flows need.
 
 const MCP_PROXY_PATHS = new Set([
   "/mcp",
@@ -2482,102 +2480,6 @@ async function mcpProxy(request, url) {
       "Content-Security-Policy": "sandbox",
     },
   });
-}
-
-// ---- AI document summarizer ------------------------------------------------
-// The Project Builder prototype drops a doc → this route reads its extracted
-// text and returns a plain-language summary + structured drafting signals
-// (archetype / method flags / tags), so the builder suggests a genuinely
-// better-shaped project instead of keyword-guessing. PUBLIC and OPEN — the
-// prototype ships to /playground/ and is shown to logged-out viewers.
-//
-// BRING YOUR OWN KEY. The engine holds NO Anthropic key of its own, so a public
-// instance never spends the operator's account. Two backends, in order:
-//   1. AI_CLI_URL  — a local `claude -p` bridge (offline mode; the maintainer's
-//      own Claude login, NO API tokens). The normal path for local work.
-//   2. an `x-anthropic-key` header the CALLER supplies (their own agent/key,
-//      their own spend). This is what makes the open endpoint usable on the
-//      deployed site.
-// Neither present → 503 (ai_byo_required), and the prototype falls back to its
-// local heuristic. The model is a single constant; whoever supplies the key pays.
-
-const AI_MODEL = "claude-opus-4-8";
-
-// The AI project-builder prompts + output schema are deploy-specific content —
-// injected via BUILDER_CONFIG (see the placeholder near USERS). A raw engine build
-// has none, and /__ai/summarize answers 501 until a deploy config provides them.
-
-async function aiSummarize(request, env) {
-  if (request.method !== "POST") return jsonResponse({ error: "method not allowed" }, 405);
-  // The builder's prompts + output schema are deploy content, not engine code —
-  // without an injected BUILDER_CONFIG this endpoint is simply not configured.
-  if (!BUILDER_CONFIG) return jsonResponse({ error: "builder not configured" }, 501);
-  let body;
-  try { body = await request.json(); } catch { return jsonResponse({ error: "bad json" }, 400); }
-  const text = String((body && body.text) || "").slice(0, 60000); // ~15k tokens cap
-  if (text.trim().length < 40) return jsonResponse({ error: "text too short" }, 400);
-
-  // Preferred path: a local CLI bridge (offline mode wires AI_CLI_URL to a
-  // 127.0.0.1 server that shells out to `claude -p` — the maintainer's Claude
-  // login, NO API tokens). Absent, the caller must bring their own key below.
-  if (env.AI_CLI_URL) {
-    try {
-      const r = await fetch(env.AI_CLI_URL.replace(/\/+$/, "") + "/summarize", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ text }),
-      });
-      const j = await r.json().catch(() => null);
-      if (r.ok && j && j.summary) return jsonResponse(j);
-      return jsonResponse({ error: "cli", status: r.status }, 502);
-    } catch (e) {
-      return jsonResponse({ error: "cli_unreachable", detail: String((e && e.message) || e) }, 502);
-    }
-  }
-
-  // Bring-your-own key: the Anthropic key comes from the CALLER (their own agent/
-  // prototype), never from an engine env var — a public instance spends nobody's
-  // account but the caller's. No key → not configured → the prototype's heuristic.
-  const key = (request.headers.get("x-anthropic-key") || "").trim();
-  if (!key) return jsonResponse({ error: "ai_byo_required", message: "Connect your own AI key." }, 503);
-
-  let upstream;
-  try {
-    upstream = await fetch("https://api.anthropic.com/v1/messages", {
-      method: "POST",
-      headers: {
-        "content-type": "application/json",
-        "x-api-key": key,
-        "anthropic-version": "2023-06-01",
-      },
-      body: JSON.stringify({
-        // This caps OUTPUT, not input (the doc is sliced to 60k chars above). The output
-        // is the project structure — bounded by the SCHEMA (≤6 phases, a few questions
-        // per survey, ≤3-4 events, summary+rationale), NOT by document length: a 5-page
-        // brief and a 200-page plan both collapse to that shape (~2k tokens even for a
-        // rich comprehensive plan). 2048 truncated the JSON on rich docs (→ parse → 502
-        // → silent heuristic fallback), so this is set far above the realistic max as
-        // free insurance — only tokens actually generated are billed.
-        model: AI_MODEL,
-        max_tokens: 16384,
-        system: BUILDER_CONFIG.system,
-        output_config: { format: { type: "json_schema", schema: BUILDER_CONFIG.schema } },
-        messages: [{ role: "user", content: "Document:\n\n" + text }],
-      }),
-    });
-  } catch (e) {
-    return jsonResponse({ error: "network", detail: String(e && e.message || e) }, 502);
-  }
-  if (!upstream.ok) {
-    const detail = await upstream.text().catch(() => "");
-    return jsonResponse({ error: "upstream", status: upstream.status, detail: detail.slice(0, 400) }, 502);
-  }
-  const data = await upstream.json().catch(() => null);
-  const block = data && Array.isArray(data.content) ? data.content.find((b) => b.type === "text") : null;
-  if (!block) return jsonResponse({ error: "empty" }, 502);
-  let out;
-  try { out = JSON.parse(block.text); } catch { return jsonResponse({ error: "parse" }, 502); }
-  return jsonResponse(out);
 }
 
 // ---- Review comments API (KV-backed) ----------------------------------------
@@ -3539,14 +3441,6 @@ export default {
     // gate enforces anything, so it stays reachable to everyone either way.
     if (url.pathname === "/__canvas/catalog.json") return canvasAggregate("catalog", authed);
     if (url.pathname === "/__canvas/tracks.json") return canvasAggregate("tracks", !usersActive || !!(me && me.role === "admin"));
-
-    // AI document summarizer — PUBLIC and OPEN (the Project Builder ships to
-    // /playground/ and its viewers are never logged in). The engine holds no
-    // Anthropic key: the caller brings their own (x-anthropic-key), or a local
-    // CLI bridge serves offline. No backend → 503 → the prototype's heuristic.
-    if (url.pathname === "/__ai/summarize") {
-      return aiSummarize(request, env);
-    }
 
     // Who am I — the sidebar profile chip and the comment overlay read this. Open
     // (returns {user:null} when signed out) so the chip can decide what to render.

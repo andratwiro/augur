@@ -295,8 +295,8 @@ async function stampLinkedInto(srcDir, destDir) {
 }
 
 // Deploy-specific configuration: the site origin, the worker's MCP-proxy allowlist,
-// vanity-host redirects, and the optional AI-builder prompts. Provided by the deploy
-// shell via GV_DEPLOY_CONFIG_PATH; a raw engine build runs with empty defaults.
+// and vanity-host redirects. Provided by the deploy shell via GV_DEPLOY_CONFIG_PATH;
+// a raw engine build runs with empty defaults.
 const DEPLOY_CONFIG_PATH = process.env.GV_DEPLOY_CONFIG_PATH || path.join(ROOT, "deploy.config.json");
 const DEPLOY = existsSync(DEPLOY_CONFIG_PATH) ? JSON.parse(readFileSync(DEPLOY_CONFIG_PATH, "utf8")) : {};
 
@@ -5956,8 +5956,8 @@ async function main() {
     .filter((s) => s.adminOnly && !s.default)
     .map((s) => s.base);
   // Deploy knobs (gate-exempt skill-asset prefixes from the DEFAULT space's detected
-  // UI skill, the MCP-proxy host allowlist, vanity redirects, the optional AI-builder
-  // prompts) ride the runtime config documents below instead of worker stamping.
+  // UI skill, the MCP-proxy host allowlist, vanity redirects) ride the runtime
+  // config documents below instead of worker stamping.
   //
   // Space-declared MCP hosts: space.json "mcpAllowlists" names shipped JSON
   // documents ({"hosts":[…]}, e.g. a generated client list) whose union ships in
@@ -6007,7 +6007,6 @@ async function main() {
     mcpHostSuffixes: DEPLOY.mcpHostSuffixes || [],
     mcpHostAllowlistUrl: DEPLOY.mcpHostAllowlistUrl || "",
     vanityRedirects: DEPLOY.vanityRedirects || {},
-    builder: DEPLOY.builder || null,
     rtOrigin: DEPLOY.realtimeOrigin || "",
     sentinels: DEPLOY.sentinels || [],
     loginHint: DEPLOY.loginHint || "",
