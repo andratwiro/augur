@@ -15,7 +15,15 @@ import assert from "node:assert/strict";
 import { __testables as W } from "../src/_worker.js";
 
 const removed = W.removedPublicPrefixes;
-const live = (...prefixes) => ({ routing: { publicPrefixes: prefixes } });
+// Every prefix passed here is genuinely LIVE — backed by a synthetic file — so
+// these fixtures represent real pages, exactly as they did before the guard
+// learned to tell live from dead. The dead/orphaned case below builds its
+// manifests by hand instead, precisely so it can declare a prefix with nothing
+// backing it.
+const live = (...prefixes) => ({
+  routing: { publicPrefixes: prefixes },
+  files: Object.fromEntries(prefixes.map((p) => [`${p}index.html`, { h: "f".repeat(64), ct: "text/html", s: 1 }])),
+});
 
 test("an ordinary publish that changes nothing about the public surface removes nothing", () => {
   assert.deepEqual(removed(live("/toolkit/storytelling-widgets/"), live("/toolkit/storytelling-widgets/")), []);
@@ -70,6 +78,38 @@ test("deleting a prototype is a real removal — the flag is the only way past, 
   assert.deepEqual(removed(live("/a/one/", "/a/two/"), live("/a/one/")), ["/a/two/"]);
 });
 
+// ---- Dead/orphaned prefixes: declared live, backed by nothing ---------------
+// The landmine this fix exists for: a prototype gets renamed (or otherwise loses
+// its files) and its OLD publicPrefixes entry is left behind in a live manifest —
+// a URL that already 404s for every visitor, e.g.
+// /toolkit/old-workshop-name/ after that prototype was renamed. The guard used to treat that
+// leftover exactly like a real removal, which meant the FIRST person to publish
+// after the rename got refused (expected — the rename really did happen), but so
+// did EVERY person after them, forever, because nothing ever cleared the orphan
+// out of what "live" meant. Fixed at the source: a publicPrefixes entry only
+// counts as live if a file backs it (backedPublicPrefixes / isPrefixBacked).
+test("a dead/orphaned prefix — live in routing, backed by no file — is not a removal", () => {
+  const deadLive = {
+    routing: { publicPrefixes: ["/a/one/", "/toolkit/old-workshop-name/"] },
+    files: { "/a/one/index.html": { h: "f".repeat(64), ct: "text/html", s: 1 } },
+    // No file anywhere under /toolkit/old-workshop-name/ — it is
+    // already gone; nothing this publish does can be the thing that "takes it down".
+  };
+  assert.deepEqual(removed(deadLive, live("/a/one/")), []);
+});
+
+test("a dead prefix and a real removal in the same publish: only the real one is reported", () => {
+  const mixedLive = {
+    routing: { publicPrefixes: ["/a/one/", "/a/two/", "/dead/orphan/"] },
+    files: {
+      "/a/one/index.html": { h: "f".repeat(64), ct: "text/html", s: 1 },
+      "/a/two/index.html": { h: "f".repeat(64), ct: "text/html", s: 1 },
+    },
+  };
+  assert.deepEqual(removed(mixedLive, live("/a/one/")), ["/a/two/"],
+    "the orphan never had to be re-declared to avoid being 'removed'; the real page did");
+});
+
 // ---- The endpoint, not just the predicate -----------------------------------
 // The commit handler is where the refusal has to happen: it is the one door BOTH
 // publish paths go through (the classic upload-then-commit and the one-round-trip
@@ -100,7 +140,14 @@ function memR2(initial = {}) {
 const LIVE = {
   id: "alpha", version: 4, format: 1,
   space: { id: "alpha", default: true },
-  files: { "/toolkit/widgets/index.html": { h: "a".repeat(64), ct: "text/html", s: 10 } },
+  // Both declared prefixes are genuinely backed by a file — required so the
+  // "real removal still blocks" tests below actually exercise a real removal
+  // under the dead-prefix-aware guard (see unpublish-guard-dead-prefix.test.mjs
+  // for the orphan side of the same story).
+  files: {
+    "/toolkit/widgets/index.html": { h: "a".repeat(64), ct: "text/html", s: 10 },
+    "/toolkit/map/index.html": { h: "b".repeat(64), ct: "text/html", s: 10 },
+  },
   routing: { publicPrefixes: ["/toolkit/widgets/", "/toolkit/map/"], versionMap: {} },
 };
 
@@ -177,4 +224,76 @@ test("the first publish of a space is not blocked by an empty store", async () =
     routing: { publicPrefixes: ["/toolkit/widgets/"], versionMap: {} },
   });
   assert.equal(res.status, 200);
+});
+
+// ---- Dead/orphaned prefixes at the endpoint ----------------------------------
+// Same landmine as the predicate tests above, exercised through the actual commit
+// door: a live manifest carrying a publicPrefixes entry with no backing file must
+// never require --allow-unpublish to drop, and — the other half of "make it right
+// forever" — the manifest a commit persists must never carry that dead entry
+// forward, or it just traps whoever publishes next instead.
+const LIVE_WITH_ORPHAN = {
+  id: "alpha", version: 4, format: 1,
+  space: { id: "alpha", default: true },
+  files: { "/toolkit/widgets/index.html": { h: "a".repeat(64), ct: "text/html", s: 10 } },
+  // The renamed-away URL: declared live, nothing backs it — the exact shape a
+  // renamed prototype's dead old URL is live in.
+  routing: { publicPrefixes: ["/toolkit/widgets/", "/toolkit/old-workshop-name/"], versionMap: {} },
+};
+const envWithOrphan = () => ({
+  BUNDLES: memR2({ "spaces/alpha/manifest.json": JSON.stringify(LIVE_WITH_ORPHAN) }),
+  PUBLISH_BOOTSTRAP_TOKEN: "tok",
+});
+const noOrphan = {
+  id: "alpha", format: 1, files: LIVE_WITH_ORPHAN.files,
+  space: { id: "alpha", default: true },
+  routing: { publicPrefixes: ["/toolkit/widgets/"], versionMap: {} },
+};
+
+test("a publish that only drops a dead/orphaned prefix needs no flag and is not refused", async () => {
+  const env = envWithOrphan();
+  const res = await commit(env, noOrphan);
+  assert.equal(res.status, 200, "a dead prefix's disappearance is not an unpublish");
+  const after = JSON.parse(env.BUNDLES.store.get("spaces/alpha/manifest.json"));
+  assert.equal(after.version, 5);
+});
+
+test("once gone, the orphan does not come back — the persisted manifest never carries it forward", async () => {
+  const env = envWithOrphan();
+  await commit(env, noOrphan);
+  const after = JSON.parse(env.BUNDLES.store.get("spaces/alpha/manifest.json"));
+  assert.deepEqual(after.routing.publicPrefixes, ["/toolkit/widgets/"],
+    "no dead entry left to trap the NEXT publisher");
+});
+
+test("a manifest that DECLARES a live prefix without shipping its files has it pruned, not trusted", async () => {
+  // The mirror-image hole: a client claims to "keep" a real live prefix (so the
+  // guard sees no removal) but never actually ships a file under it. Auto-pruning
+  // at commit strips the empty claim — so it cannot silently plant a FRESH orphan
+  // — and the guard still catches the resulting real removal, because "declared"
+  // stopped being enough to count as "keeping" it.
+  const env = envWithLive(); // LIVE: /toolkit/widgets/ and /toolkit/map/, both backed
+  const res = await commit(env, {
+    id: "alpha", format: 1,
+    files: { "/toolkit/widgets/index.html": LIVE.files["/toolkit/widgets/index.html"] },
+    space: { id: "alpha", default: true },
+    routing: { publicPrefixes: ["/toolkit/widgets/", "/toolkit/map/"], versionMap: {} },
+  });
+  assert.equal(res.status, 422, "claiming to keep it is not the same as actually shipping it");
+  const body = await res.json();
+  assert.deepEqual(body.removed, ["/toolkit/map/"]);
+});
+
+test("/check's advisory livePrefixes excludes dead/orphaned entries too, matching what commit enforces", async () => {
+  const env = envWithOrphan();
+  const res = await W.publishApi(
+    new Request("https://x.test/__publish/alpha/check", {
+      method: "POST",
+      headers: { Authorization: "Bearer tok", "content-type": "application/json" },
+      body: JSON.stringify({ files: {} }),
+    }),
+    new URL("https://x.test/__publish/alpha/check"),
+    env);
+  assert.equal(res.status, 200);
+  assert.deepEqual((await res.json()).livePrefixes, ["/toolkit/widgets/"]);
 });
