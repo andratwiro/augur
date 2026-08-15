@@ -17,7 +17,7 @@
 // flag ride in the manifest (a working-tree publish is visible, never hidden).
 
 import { spawn, execFileSync } from "node:child_process";
-import { existsSync, readFileSync, readdirSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync, realpathSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -137,6 +137,30 @@ const idOf = (dir) => {
 }
 const byId = Object.fromEntries(spaceDirs.map((d) => [idOf(d), d]));
 
+// Running inside a space repo publishes THAT space — the contract documented up
+// top. `byId` above only ever looked at clones sitting next to the engine, so a
+// cwd that is NOT a direct sibling (a nested clone, a worktree, the
+// collab-sandbox layout) never lands in it — which also means the
+// duplicate-checkout guard above never sees it. Left alone, a DIFFERENT sibling
+// clone that happens to declare the SAME id keeps winning byId, and this run
+// would silently build and publish THAT tree instead of the one it's standing
+// in — exit 0, a plausible live URL, nothing to say it shipped the wrong thing.
+// Make the cwd win for its own id. (Reaching the actual build too needs one
+// more step — see BUILD_SPACES_ROOT below; byId alone only fixes what THIS
+// script derives from the source dir: git sha, dirty flag, the shallow-clone
+// guard, conflict-fork naming.)
+// realpath, not path.resolve: cwd and a discovered sibling can be the SAME directory
+// reached through different symlinks (e.g. macOS's /tmp → /private/tmp) — a lexical
+// compare would call that a collision and pay for a mirror copy that changes nothing.
+const real = (p) => { try { return realpathSync(p); } catch (e) { return path.resolve(p); } };
+const cwdSpaceDir = existsSync(path.join(process.cwd(), "space.json")) ? real(process.cwd()) : "";
+let overriddenSiblingId = null;
+if (cwdSpaceDir) {
+  const cwdId = idOf(cwdSpaceDir);
+  if (byId[cwdId] && real(byId[cwdId]) !== cwdSpaceDir) overriddenSiblingId = cwdId;
+  byId[cwdId] = cwdSpaceDir;
+}
+
 let targetSpace = opt("--space");
 if (!targetSpace && !ALL && !ENGINE_ONLY && existsSync(path.join(process.cwd(), "space.json"))) {
   targetSpace = idOf(process.cwd());
@@ -182,6 +206,32 @@ if (targetSpace && !byId[targetSpace]) die(`unknown space "${targetSpace}" (have
 }
 
 // ── build (single space unless --all; engine chrome always emitted) ──────────
+// The byId override above fixed this script's OWN bookkeeping but not what
+// build.js actually reads: it discovers space CONTENT itself, straight off
+// SPACES_ROOT, which still resolves the collided id to the sibling — and a
+// symlink swap wouldn't reach it either (discoverSpaces() only counts real
+// directories; a symlinked entry reads as "not a space" and drops out
+// silently). So when the cwd actually won something above, hand the build a
+// throwaway mirror instead: a real copy of every directory byId now names,
+// keyed by id, so it reads exactly the tree this script just resolved — same
+// answer for "id → dir" on both sides. Skipped entirely when nothing was
+// overridden (the overwhelmingly common case): SPACES_ROOT is used as-is, no
+// copying, no cost.
+let BUILD_SPACES_ROOT = SPACES_ROOT;
+if (overriddenSiblingId && !ENGINE_ONLY) {
+  const { mkdtempSync, cpSync } = await import("node:fs");
+  const os = await import("node:os");
+  const mirror = mkdtempSync(path.join(os.tmpdir(), "augur-publish-spaces-"));
+  const skip = new Set([".git", "node_modules", "dist"]);
+  for (const [id, dir] of Object.entries(byId)) {
+    cpSync(dir, path.join(mirror, id), {
+      recursive: true, dereference: true,
+      filter: (src) => !skip.has(path.basename(src)),
+    });
+  }
+  BUILD_SPACES_ROOT = mirror;
+  log(`cwd wins space "${overriddenSiblingId}" over a same-id sibling next to the engine — building from a throwaway copy of the resolved tree`);
+}
 const SHELL_DIR = findShellDir(ROOT, (() => { try { return new URL(ORIGIN).host; } catch { return ""; } })());
 const IDENTITY_PATH = process.env.GV_IDENTITY_PATH
   || (SHELL_DIR && existsSync(path.join(SHELL_DIR, "identity.json")) ? path.join(SHELL_DIR, "identity.json") : null);
@@ -189,7 +239,7 @@ const DEPLOY_CONFIG_PATH = process.env.GV_DEPLOY_CONFIG_PATH
   || (SHELL_DIR && existsSync(path.join(SHELL_DIR, "deploy.config.json")) ? path.join(SHELL_DIR, "deploy.config.json") : null);
 const BUILD_ENV = {
   ...process.env,
-  GV_SPACES_ROOT: SPACES_ROOT,
+  GV_SPACES_ROOT: BUILD_SPACES_ROOT,
   ...(IDENTITY_PATH ? { GV_IDENTITY_PATH: IDENTITY_PATH } : {}),
   ...(DEPLOY_CONFIG_PATH ? { GV_DEPLOY_CONFIG_PATH: DEPLOY_CONFIG_PATH } : {}),
   ...(targetSpace ? { GV_ONLY_SPACE: targetSpace } : {}),
