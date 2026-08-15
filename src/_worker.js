@@ -2682,6 +2682,25 @@ function applyOp(threads, op, me) {
   return threads;
 }
 
+// The two ops that take a whole thread with them: an explicit delete, and delmsg on
+// the root message (applyOp filters the thread out for index 0, it does not leave a
+// headless remainder). Kept next to applyOp so the two stay in step.
+function removesThread(op) {
+  if (!op) return false;
+  return op.op === "delete" || (op.op === "delmsg" && +op.index === 0);
+}
+
+// Who may take a thread away: an admin, or the person the root message is stamped to.
+// `by` is server-stamped (sanitizeMsg), never read from a request body, which is what
+// makes it usable as an authorisation input rather than just a display hint.
+function mayRemoveThread(thread, me) {
+  if (!me) return false;
+  if (me.role === "admin") return true;
+  const root = (thread.messages || [])[0];
+  const by = root && root.by;
+  return !!by && by === personId(me.email);
+}
+
 // GET/POST /__review/api?path=<page> — read or mutate one page's threads.
 // Fully OPEN, reads AND writes (see router): reviewers with only a public
 // prototype link must be able to comment. applyOp clamps/caps every field.
@@ -2711,6 +2730,18 @@ async function reviewApi(request, url, env, authed) {
     const me = await identify(request, env);
     const raw = await kv.get(key);
     let threads = raw ? JSON.parse(raw) : [];
+    // Removing a thread erases someone else's words, so "is anyone signed in" is not a
+    // strong enough gate on an instance with a roster: it let any teammate — or anyone
+    // holding a shared viewer login — wipe a colleague's thread. Both ops that FULLY
+    // remove a thread (`delete`, and `delmsg` on the root message) additionally require
+    // the caller to be an admin or the author of that root message, matched on the
+    // stable `by` marker sanitizeMsg stamps from the session. A root with no `by`
+    // (anonymous, or written before the field existed) is admin-only — a display name
+    // is not an ownership claim. Deleting a REPLY keeps the signed-in-only rule.
+    if (authed !== undefined && removesThread(op)) {
+      const t = threads.find((x) => x.id === op.id);
+      if (t && !mayRemoveThread(t, me)) return jsonResponse({ error: "forbidden" }, 403);
+    }
     threads = applyOp(threads, op, me);
     await kv.put(key, JSON.stringify(threads));
     return jsonResponse({ threads });
@@ -3800,7 +3831,7 @@ export default {
 export const __testables = {
   applyInstance,
   hashPassword, verifyPassword, isPassHash, safeEqual, userByEmail,
-  personId, avatarKey, publicUser, stampAuthor, sanitizeMsg, applyOp,
+  personId, avatarKey, publicUser, stampAuthor, sanitizeMsg, applyOp, reviewApi,
   peopleApi,
   tokenFor, hmacToken, userToken, identify, effectiveSecret,
   mintInvite, readInvite, consumeInvite,
