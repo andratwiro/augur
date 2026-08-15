@@ -33,6 +33,13 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const log = (msg) => console.error(`\x1b[35m[ship]\x1b[0m ${msg}`);
 const warn = (msg) => console.error(`\x1b[33m[ship]\x1b[0m ${msg}`);
 const die = (msg) => { console.error(`\x1b[31m[ship]\x1b[0m ${msg}`); process.exit(1); };
+// Appended when publish itself couldn't happen this run: the sanctioned meanwhile is
+// the real local shell, never a bare file:// path — see MEANWHILE in publish.mjs.
+// publish.mjs's own stderr (inherited below) already carries this, but its die()
+// message is the one an agent that only reads ship's own output would otherwise miss.
+const MEANWHILE = "Meanwhile: `node scripts/dev.mjs` runs a full local preview " +
+  "(chrome, login, canvas) — always local-only, not shipped, nobody else can see it. " +
+  "Never hand over a file:// path.";
 
 const args = process.argv.slice(2);
 const flag = (f) => args.includes(f);
@@ -154,7 +161,7 @@ async function publish() {
     p.stdout.on("data", (d) => { tail += d.toString(); });
     p.on("close", resolve);
   });
-  if (code !== 0) die(`publish failed (exit ${code}) — nothing was lost, your work is committed. Fix and re-run.`);
+  if (code !== 0) die(`publish failed (exit ${code}) — nothing was lost, your work is committed. Fix and re-run. ${MEANWHILE}`);
   return tail.trim().split("\n").filter(Boolean).pop() || null;
 }
 let liveLine = await publish();
@@ -262,11 +269,26 @@ if (NO_PUSH) {
 }
 
 // ── report ───────────────────────────────────────────────────────────────────
+// By the time we get here, commit and publish have already SUCCEEDED — either one
+// failing calls die() upstream, which exits before this point is ever reached. So a
+// push that didn't land is the only outcome left to report, and it must not read as
+// the ship itself having failed: the live site, the part people look at, is already
+// true. Contract: exit code is truth, and from here on the truth is always "it's
+// live" — a stuck push is an `augur ship` rerun away, not a redo. The live URL still
+// has to be the LAST line of stdout (agents hand it straight to a human), so a push
+// failure gets its own line ahead of it rather than folded into it.
+function pushFailureNotice(pushed, noPush) {
+  if (pushed || noPush) return null;
+  return "published (live), but git push failed — re-run `augur ship` to sync GitHub.";
+}
+
 if (forks.length) {
   for (const f of forks) {
     warn(`conflict: ${f.folder} kept ${f.theirs}'s version — yours is now ${f.fork} (both live)`);
   }
 }
 if (DRY) { console.log("(dry run, nothing changed)"); process.exit(0); }
+const notice = pushFailureNotice(pushed, NO_PUSH);
+if (notice) console.log(notice);
 console.log(liveLine || `${SPACE} published`);
-process.exit(pushed || NO_PUSH ? 0 : 1);
+process.exit(0);

@@ -8,6 +8,13 @@ published folder stays internal by the build's whitelist. **`playground/` also
 ships** (verbatim, to the public `/playground/`), so nothing private belongs
 there either.
 
+That `file://`-ability is a property of the *files* — it keeps them portable and
+buildless, nothing more. It is not a hand-off channel: publish the change and
+share the live URL (see `agents/publishing.md`). The only acceptable local
+stand-in, and only when publishing is genuinely impossible, is the real shell
+(`node ../augur/scripts/dev.mjs`), said out loud to be exactly that — local
+only, not shipped, nobody else can see it.
+
 Beyond that, the engine reads a few things *from* your prototype. None are
 required, but each one improves how the site presents and reviews it:
 

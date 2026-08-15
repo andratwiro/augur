@@ -17,6 +17,13 @@ site, never localhost, never a `file://` path. A local path shows them something
 nobody else can see. Everyone works
 against the same live URL, so what you show is what everyone else sees.
 
+If publishing is genuinely impossible right now (no credentials, a rejected
+token, no network), do not fall back to opening a file and calling it done. The
+only acceptable meanwhile is the real local shell — see "Local preview" below —
+and only labeled out loud as exactly that: local only, not shipped, nobody else
+can see this. A bare `file://` path has no login, no chrome, no canvas; it is
+strictly worse than the shell and is never a hand-off, working credentials or not.
+
 It does three things in one step, in this order and for this reason:
 
 1. **Commits** everything, including untracked files. Local, instant, cannot
@@ -180,10 +187,24 @@ responses agree before declaring a chrome bug.
 ## Local preview (no publish involved)
 
 `node ../augur/scripts/dev.mjs` from the space root runs the full site shell
-locally (login `dev@local` / `dev` when no identity file is around); prototypes
-are static HTML, so opening `index.html` directly (`file://`) also works.
+locally — login, rail, overlays, canvas, the same experience the live site
+gives (login `dev@local` / `dev` when no identity file is around). This is the
+**only** acceptable stand-in when you genuinely cannot publish, and always say
+so out loud when you point someone at it: "local only, not shipped, nobody else
+can see this." It is a meanwhile, never a hand-off.
+
+Prototypes are self-contained static HTML, so `index.html` also opens directly
+via `file://` — fine for your own quick sanity check while editing, never for
+showing anyone else anything. It has no login, no chrome, no canvas: strictly
+worse than the shell above, and never an acceptable substitute for it.
 
 ## If something's wrong
 
 Network/upload errors → nothing shipped, the live site is untouched, retry.
 403 → re-login. Anything else → ping the instance maintainer.
+
+Either way, `publish`/`ship` fail loud and refuse to build until they've
+confirmed the token actually works — so there is never a half-finished local
+build lying around to mistake for a completed hand-off. If you need to show
+someone something while you sort it out, that's what the local shell above is
+for — clearly labeled as local, never a `file://` path.

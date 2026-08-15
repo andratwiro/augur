@@ -27,6 +27,13 @@ import { isAncestor, resolvePublish, applyManifestPatches } from "./lib/publish-
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const log = (msg) => console.error(`\x1b[32m[publish]\x1b[0m ${msg}`);
 const die = (msg) => { log(msg); process.exit(1); };
+// Appended to every "publish is not happening this run" failure: the sanctioned
+// meanwhile is the real local shell (chrome, login, canvas — a faithful preview),
+// never a bare file:// path opened directly, which has none of that and is only
+// ever a personal sanity check, not something to hand to anyone else.
+const MEANWHILE = "Meanwhile: `node scripts/dev.mjs` runs a full local preview " +
+  "(chrome, login, canvas) — always local-only, not shipped, nobody else can see it. " +
+  "Never hand over a file:// path.";
 
 const args = process.argv.slice(2);
 const flag = (f) => args.includes(f);
@@ -84,7 +91,7 @@ if (!TOKEN) {
     TOKEN = (saved[new URL(ORIGIN).host] || {}).token || "";
   } catch (e) {}
 }
-if (!TOKEN) die("no publish token — run `augur login` once (uses your web credentials).");
+if (!TOKEN) die(`no publish token — run \`augur login\` once (uses your web credentials). ${MEANWHILE}`);
 
 // Space discovery: GV_SPACES_ROOT when set (explicit wins, same as build.js),
 // else sibling clones (the maintainer-workspace layout), else ./spaces mounts. cwd
@@ -136,6 +143,43 @@ if (!targetSpace && !ALL && !ENGINE_ONLY && existsSync(path.join(process.cwd(), 
 }
 if (!targetSpace && !ALL && !ENGINE_ONLY) die("name a target: --space <id>, --all, --engine, or run from a space repo.");
 if (targetSpace && !byId[targetSpace]) die(`unknown space "${targetSpace}" (have: ${Object.keys(byId).join(", ")})`);
+
+// ── credential pre-flight ─────────────────────────────────────────────────────
+// A token that merely EXISTS is not a token that WORKS — expired, revoked, or
+// scoped to a different space all look identical to the "no token" check above,
+// but nothing used to catch them until deep inside the actual upload, by which
+// point the build below had already run and left a real artifact on disk. Ping
+// the same auth path the real publish hits (POST .../check, with no files — the
+// same read the "true no-op" branch already relies on, so it costs nothing the
+// classic path wasn't going to spend anyway) before spawning that build, so a
+// bad-but-present token fails exactly as loud and exactly as early as an absent
+// one: nothing is ever built for an agent to mistake for a completed hand-off.
+//
+// An unreachable origin fails exactly the same way, on purpose. It would be
+// tempting to let a network blip through and let the real publish below retry —
+// but that is precisely how the build got a chance to run and leave a local
+// artifact lying around in the first place. There is no way to build here that
+// isn't offline-first, and offline-first is what created the file:// hazard this
+// whole check exists to close, so this errs terminal rather than guessing at
+// "just a blip": if publishing can't be verified as possible, nothing gets built.
+{
+  const probeSpace = targetSpace || "_engine";
+  let r;
+  try {
+    r = await fetch(`${ORIGIN}/__publish/${probeSpace}/check`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${TOKEN}`, "content-type": "application/json" },
+      body: JSON.stringify({ files: {} }),
+    });
+  } catch (e) {
+    die(`can't reach ${ORIGIN} to verify the publish token (${e.message}) — check your connection ` +
+        `or AUGUR_ORIGIN. ${MEANWHILE}`);
+  }
+  if (r.status === 401 || r.status === 403) {
+    die(`publish token rejected (${r.status}) by ${ORIGIN} — it's likely expired, revoked, or not ` +
+        `scoped for "${probeSpace}". Run \`node scripts/login.mjs\` (or \`augur login\`) again. ${MEANWHILE}`);
+  }
+}
 
 // ── build (single space unless --all; engine chrome always emitted) ──────────
 const SHELL_DIR = findShellDir(ROOT, (() => { try { return new URL(ORIGIN).host; } catch { return ""; } })());
@@ -472,7 +516,7 @@ async function publishOne(id, sourceDir) {
       }
     });
     await Promise.all(workers);
-    if (failed) die(`${id}: ${failed} blob uploads failed — nothing committed, live site untouched.`);
+    if (failed) die(`${id}: ${failed} blob uploads failed — nothing committed, live site untouched. ${MEANWHILE}`);
 
     let res;
     try {
@@ -509,7 +553,7 @@ async function publishOne(id, sourceDir) {
     });
     return res.version;
   }
-  die(`${id}: live kept changing while publishing — re-run.`);
+  die(`${id}: live kept changing while publishing — re-run. ${MEANWHILE}`);
 }
 
 let results = [];
@@ -530,7 +574,7 @@ if (ALL || ENGINE_ONLY) {
   const settled = await Promise.allSettled(jobs.map(([, p]) => p));
   const failed = settled.filter((s) => s.status === "rejected");
   for (const f of failed) log(`FAILED: ${f.reason && f.reason.message}`);
-  if (failed.length) die(`${failed.length} target(s) failed — see above.`);
+  if (failed.length) die(`${failed.length} target(s) failed — see above. ${MEANWHILE}`);
   results = jobs
     .map(([id], i) => [id, settled[i].value])
     .filter(([id]) => id !== null);
