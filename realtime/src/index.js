@@ -68,8 +68,9 @@ function json(data, status) {
 // documents, and the admin-only-space seal is enforced in the PAGES worker, which checks
 // the requested board path before proxying to /__rt. This worker is reachable on its own
 // public URL, so without this guard anyone who learns that hostname joins any room
-// directly and the seal means nothing. Unset = the previous behaviour, so an instance
-// that has not provisioned the secret keeps working.
+// directly and the seal means nothing. The secret is REQUIRED: unset means no room
+// request is served at all (501), so an instance cannot quietly launch open. Provision
+// it on both sides — the realtime worker and the site — before pointing traffic here.
 const RT_SECRET_HEADER = "x-augur-rt";
 function rtSecretOk(given, want) {
   given = String(given == null ? "" : given);
@@ -84,8 +85,14 @@ export default {
     const url = new URL(request.url);
     if (url.pathname === "/") return json({ ok: true, service: "augur-realtime" });
     if (url.pathname !== "/room") return json({ error: "not-found" }, 404);
+    // Fail CLOSED. An unset secret used to skip the guard entirely, which meant every
+    // new instance launched wide open and showed no symptom for it — rooms simply
+    // worked, for anyone who learned the hostname. Refusing outright makes the
+    // unconfigured state loud instead of silent, and 501 is the same answer the site
+    // worker's rtProxy already gives when realtime is unconfigured on its side.
     const want = env && env.RT_SHARED_SECRET;
-    if (want && !rtSecretOk(request.headers.get(RT_SECRET_HEADER), want)) {
+    if (!want) return json({ error: "realtime-not-configured" }, 501);
+    if (!rtSecretOk(request.headers.get(RT_SECRET_HEADER), want)) {
       return json({ error: "forbidden" }, 403);
     }
     if (request.headers.get("Upgrade") !== "websocket") return json({ error: "expected-websocket" }, 426);

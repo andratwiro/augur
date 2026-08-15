@@ -392,12 +392,18 @@ two instances sharing a worker would share rooms and board storage.
    submodule checked out and the Cloudflare credentials in the environment.
 3. Add `"realtimeOrigin": "https://<worker>.<subdomain>.workers.dev"` to
    `deploy.config.json`, push, redeploy.
-4. Optionally set `RT_SHARED_SECRET` on both workers so the realtime worker only accepts
-   traffic proxied through the site (which is where the admin-only seal is enforced).
+4. **Required:** set the same `RT_SHARED_SECRET` on BOTH workers — a secret on the
+   realtime worker (`wrangler secret put RT_SHARED_SECRET -c realtime.wrangler.toml`)
+   and a matching environment variable on the site project — then redeploy both. The
+   realtime worker sits on a public URL while the admin-only-space seal is enforced in
+   the site worker, so this is what stops anyone who learns the hostname from joining
+   any room directly. It is not optional and it fails closed: a realtime worker with no
+   secret answers **501** to every room request rather than serving them openly.
 
 Verify with a websocket upgrade to `/__rt?path=/__test/x` — **101**. Paths under
 `/__test/` never persist. Without any of this, `/__rt` answers 501 and boards run
-single-user, persisting to KV through the Pages worker. A brand-new workers.dev worker
+single-user, persisting to KV through the Pages worker. A 501 from the realtime worker
+after wiring `realtimeOrigin` means step 4 is missing or the two values disagree. A brand-new workers.dev worker
 can 500 (`error code: 1104`) for its first minute — retry before debugging.
 
 ## Step 11 — optional: the platform MCP proxy

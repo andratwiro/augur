@@ -35,9 +35,25 @@ test("the right secret gets past the guard to the upgrade check", async () => {
   assert.equal(res.status, 426, "guard passed; no Upgrade header, so it stops here");
 });
 
-test("with no secret configured the worker behaves exactly as before", async () => {
+// Fail CLOSED when unprovisioned. The old behaviour — skip the guard entirely when
+// RT_SHARED_SECRET is unset — meant a new instance launched wide open by default and
+// nothing ever said so: rooms answered normally, so there was no symptom to notice.
+// 501 matches what the Pages-side rtProxy already answers when realtime is
+// unconfigured, so "not set up" reads the same from both ends.
+test("with no secret configured the worker refuses every room request", async () => {
   const res = await worker.fetch(roomReq(), envWith(undefined));
-  assert.equal(res.status, 426, "an instance that has not provisioned the secret keeps working");
+  assert.equal(res.status, 501, "an unprovisioned instance must not serve rooms");
+  assert.deepEqual(await res.json(), { error: "realtime-not-configured" });
+});
+
+test("an unprovisioned worker refuses even a caller that sends a header", async () => {
+  const res = await worker.fetch(roomReq({ "x-augur-rt": "anything" }), envWith(undefined));
+  assert.equal(res.status, 501, "there is nothing to compare against — no header can pass");
+});
+
+test("an empty-string secret counts as unprovisioned, not as a secret to match", async () => {
+  const res = await worker.fetch(roomReq({ "x-augur-rt": "" }), envWith(""));
+  assert.equal(res.status, 501, "a blank secret must never be a satisfiable one");
 });
 
 test("the service banner stays open (health checks, no secret needed)", async () => {
