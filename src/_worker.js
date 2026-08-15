@@ -3849,5 +3849,6 @@ export const __testables = {
   deleteUrlPrefix, removeFromStore,
   revokePublishTokens, loginThrottled, loginSlowed, loginFail, DUMMY_HASH,
   pathOwnedBySpace, isPublishablePublicPrefix, removedPublicPrefixes, publishApi, LOGIN_MAX_FAILS,
-  isPublicPath, isTrackPath, brandMark,
+  isPublicPath, isTrackPath, isRestrictedPath, versionFor, brandMark,
+  boardApi, canvasesApi, virtualCanvas, CANVASES_KEY, BOARD_PREFIX, BOARD_MAX_BYTES,
 };
