@@ -138,12 +138,12 @@ test("creating a canvas slugs the name and registers it under the dir", async ()
 
 test("the slug strips apostrophes and collapses everything else to single dashes", async () => {
   const kv = memKV();
-  const res = await create(kv, { dir: "/x/", name: "  Rob's — Ideas!!  " });
-  assert.equal((await res.json()).path, "/x/robs-ideas/",
+  const res = await create(kv, { dir: "/x/", name: "  Alex's — Ideas!!  " });
+  assert.equal((await res.json()).path, "/x/alexs-ideas/",
     "the apostrophe is deleted BEFORE slugging, so it joins the word rather than splitting it");
   // Curly and straight apostrophes are treated alike, and leading/trailing dashes trim.
-  const curly = await create(kv, { dir: "/y/", name: "Rob’s Ideas" });
-  assert.equal((await curly.json()).path, "/y/robs-ideas/");
+  const curly = await create(kv, { dir: "/y/", name: "Alex’s Ideas" });
+  assert.equal((await curly.json()).path, "/y/alexs-ideas/");
 });
 
 test("a name that slugs to nothing is refused", async () => {
