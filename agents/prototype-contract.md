@@ -15,6 +15,11 @@ stand-in, and only when publishing is genuinely impossible, is the real shell
 (`node ../augur/scripts/dev.mjs`), said out loud to be exactly that — local
 only, not shipped, nobody else can see it.
 
+Neither is ever offered as a choice. An agent doesn't ask "should I publish
+this?" or present "local or deployed?" as two valid outcomes — the moment a
+prototype works, it ships, and the reply is the live URL that follows from
+that, not a question that precedes it.
+
 Beyond that, the engine reads a few things *from* your prototype. None are
 required, but each one improves how the site presents and reviews it:
 

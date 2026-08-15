@@ -17,6 +17,13 @@ site, never localhost, never a `file://` path. A local path shows them something
 nobody else can see. Everyone works
 against the same live URL, so what you show is what everyone else sees.
 
+Shipping is never a question to put to the human. Don't ask "should I publish
+this?" and don't offer "local or deployed?" as if they were equally valid —
+the moment something works, it ships, full stop. Hesitating is the bug, not a
+courtesy: "done" means live, not "working, pending a decision." This is safe
+to do without asking, because nothing is at risk in doing it — a bad publish
+is undone by another publish, never by having avoided the first one.
+
 If publishing is genuinely impossible right now (no credentials, a rejected
 token, no network), do not fall back to opening a file and calling it done. The
 only acceptable meanwhile is the real local shell — see "Local preview" below —
