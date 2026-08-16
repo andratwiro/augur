@@ -4,6 +4,18 @@
    The chrome is a full whiteboard suite: warm paper background + dot grid, the bottom pill
    toolbar with illustrated marker/sticky tools, and the draw/shapes/stamps sub-toolbars. */
 
+/* Chrome accents. Two tokens because they do two different jobs, and one hue cannot
+   do both well: --gvc-accent FILLS (white icon on top, so it must be dark) and
+   --gvc-accent-ring OUTLINES (drawn on white sub-bars and on the near-black font
+   menu alike, so it must be light enough to read on both). Both come from Augur's
+   own mark — the aubergine and the dawn gold in brand/augur-mark.svg.
+   Distinct from #2563eb on purpose: blue means "your selection out on the canvas",
+   these mean "the tool you are holding". Retune here, not at the call sites. */
+:root {
+  --gvc-accent: #2c2150;
+  --gvc-accent-ring: #e2a14e;
+}
+
 html, body { margin: 0; height: 100%; overflow: hidden; background: #f6f6f6; }
 
 #gvc-root {
@@ -279,7 +291,10 @@ svg.stk { display: block; overflow: visible; }
 #gvc-toolbar {
   position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
   display: flex; align-items: center; gap: 6px; height: 47px;
-  background: #fff; border-radius: 13px; padding: 0 7px;
+  /* A stadium, not a soft rect, and the insert button below is squared rather than
+     round — the inverse of the reference silhouette this was measured against, so
+     the two do not read as the same product at a glance. Radius tracks the height. */
+  background: #fff; border-radius: 23.5px; padding: 0 9px;
   box-shadow: 0 1px 4px rgba(0, 0, 0, .10), 0 12px 32px rgba(0, 0, 0, .14);
 }
 #gvc-toolbar .tool {
@@ -288,7 +303,7 @@ svg.stk { display: block; overflow: visible; }
   transition: background .12s, color .12s;
 }
 #gvc-toolbar .tool:hover { background: #f2f1ef; }
-#gvc-toolbar .tool.on { background: #7b61ff; color: #fff; }
+#gvc-toolbar .tool.on { background: var(--gvc-accent); color: #fff; }
 #gvc-toolbar .tool svg { width: 21px; height: 21px; }
 #gvc-toolbar .sep { width: 1px; align-self: stretch; background: #e5e4e2; margin: 0 4px; }
 /* phone (.gvc-mobile, ≤640px at boot): navigation-first. Toolbar collapses to
@@ -329,7 +344,7 @@ svg.stk { display: block; overflow: visible; }
 
 /* the round grey insert button at the end — its circle is exactly the size of the other
    icons' tap targets */
-#gvc-toolbar .tool.plus { width: 32px; height: 32px; border-radius: 50%; background: #f0efed; margin-left: 3px; }
+#gvc-toolbar .tool.plus { width: 32px; height: 32px; border-radius: 9px; background: #f0efed; margin-left: 3px; }
 #gvc-toolbar .tool.plus:hover { background: #e7e6e4; }
 #gvc-toolbar .tool.plus svg { width: 17px; height: 17px; }
 
@@ -393,7 +408,7 @@ svg.stk { display: block; overflow: visible; }
 }
 .gvc-subbar .sbtn:hover { background: #f2f1ef; }
 .gvc-subbar .sbtn.on { background: #e9e1ff; }
-.gvc-subbar .sbtn.sel { box-shadow: inset 0 0 0 2px #7b61ff; }
+.gvc-subbar .sbtn.sel { box-shadow: inset 0 0 0 2px var(--gvc-accent-ring); }
 .gvc-subbar .sbtn svg { width: 21px; height: 21px; }
 .gvc-subbar .sbtn svg.shp { width: 17px; height: 17px; }
 .gvc-subbar .dsep { width: 1px; align-self: stretch; background: #e5e4e2; margin: -5px 4px; }
@@ -407,8 +422,8 @@ svg.stk { display: block; overflow: visible; }
 /* marker color dots (+ the rainbow custom-color well) */
 .gvc-subbar .dot { width: 20px; height: 20px; border-radius: 50%; margin: 0 3px; cursor: pointer; flex: 0 0 auto; position: relative; }
 .gvc-subbar .dot.white { box-shadow: inset 0 0 0 1px #ddd; }
-.gvc-subbar .dot.selc { box-shadow: 0 0 0 2.5px #fff, 0 0 0 4.5px #7b61ff; }
-.gvc-subbar .dot.white.selc { box-shadow: inset 0 0 0 1px #ddd, 0 0 0 2.5px #fff, 0 0 0 4.5px #7b61ff; }
+.gvc-subbar .dot.selc { box-shadow: 0 0 0 2.5px #fff, 0 0 0 4.5px var(--gvc-accent-ring); }
+.gvc-subbar .dot.white.selc { box-shadow: inset 0 0 0 1px #ddd, 0 0 0 2.5px #fff, 0 0 0 4.5px var(--gvc-accent-ring); }
 .gvc-subbar .dot.rainbow { background: conic-gradient(#ff3b30, #ffcc00, #34c759, #32ade6, #5856d6, #ff2d95, #ff3b30); }
 .gvc-subbar .dot.rainbow input { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%; }
 .gvc-subbar .more { border: 1px solid #e3e2e0; background: #fff; border-radius: 8px; padding: 7px 11px; font: inherit; font-size: 12.5px; font-weight: 500; color: #1e1e1e; cursor: pointer; margin-left: 4px; white-space: nowrap; }
@@ -447,7 +462,7 @@ svg.stk { display: block; overflow: visible; }
 #gvc-selbar .btn.on { background: rgba(255, 255, 255, .18); }
 #gvc-selbar .btn.wide { font-size: 12px; white-space: nowrap; }
 #gvc-palette .pc { width: 26px; height: 26px; border-radius: 50%; margin: 2px; cursor: pointer; border: 2px solid transparent; box-sizing: border-box; box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .08); }
-#gvc-palette .pc.on { border-color: #7b61ff; }
+#gvc-palette .pc.on { border-color: var(--gvc-accent-ring); }
 #gvc-selbar .btn.lock { gap: 3px; }
 #gvc-selbar .btn.lock .chev { color: #aeb4c0; font-size: 10px; }
 /* section lock dropdown (dark menu) */
@@ -461,7 +476,7 @@ svg.stk { display: block; overflow: visible; }
 #gvc-fontmenu .item:hover { background: rgba(255, 255, 255, .12); }
 #gvc-fontmenu .item .ck { flex: none; width: 12px; color: #cfd3da; font-size: 12px; }
 #gvc-fontmenu .item .lb { font-weight: 500; }
-#gvc-fontmenu .num { margin-top: 5px; width: 100%; box-sizing: border-box; background: #12151c; border: 1px solid #7b61ff; border-radius: 6px; color: #e8eaee; font: inherit; font-size: 13px; padding: 6px 9px; outline: none; }
+#gvc-fontmenu .num { margin-top: 5px; width: 100%; box-sizing: border-box; background: #12151c; border: 1px solid var(--gvc-accent-ring); border-radius: 6px; color: #e8eaee; font: inherit; font-size: 13px; padding: 6px 9px; outline: none; }
 #gvc-fontmenu .num::-webkit-inner-spin-button { opacity: .5; }
 #gvc-selbar .btn.fontbtn { gap: 4px; }
 #gvc-selbar .btn.fontbtn .fslabel { font-size: 12px; }
@@ -492,7 +507,7 @@ svg.stk { display: block; overflow: visible; }
 #gvc-picker.hidden { display: none; }
 #gvc-picker .head { display: flex; align-items: center; gap: 8px; padding: 12px 14px 10px; }
 #gvc-picker .head input { flex: 1; border: 1.5px solid #d9dce1; border-radius: 10px; padding: 10px 12px; font: inherit; outline: none; }
-#gvc-picker .head input:focus { border-color: #7b61ff; }
+#gvc-picker .head input:focus { border-color: var(--gvc-accent-ring); }
 #gvc-picker .head .x { border: 0; background: 0; font-size: 20px; line-height: 1; color: #6b7280; cursor: pointer; width: 32px; height: 32px; border-radius: 8px; }
 #gvc-picker .head .x:hover { background: #f3f4f6; }
 #gvc-picker .tabs { display: flex; gap: 4px; padding: 0 14px 8px; border-bottom: 1px solid #f0f1f3; }

@@ -134,7 +134,7 @@
       return '<svg viewBox="0 0 40 40" class="stk"><defs><clipPath id="' + cid + '"><circle cx="20" cy="20" r="16.6"/></clipPath></defs>' +
         '<image href="' + src + '" x="3.4" y="3.4" width="33.2" height="33.2" preserveAspectRatio="xMidYMid slice" clip-path="url(#' + cid + ')"/>' + ring + "</svg>";
     }
-    return '<svg viewBox="0 0 40 40" class="stk"><circle cx="20" cy="20" r="16.6" fill="' + (color || "#7b61ff") + '"/>' + ring +
+    return '<svg viewBox="0 0 40 40" class="stk"><circle cx="20" cy="20" r="16.6" fill="' + (color || "#2c2150") + '"/>' + ring +
       '<text x="20" y="25.5" text-anchor="middle" font-family="' + STAMP_FONT + '" font-size="14" font-weight="700" fill="#ffffff">' + initialsOf(name) + "</text></svg>";
   }
   function myFace() { return { src: clipPath(mpAvatar || ""), name: mpName || ME || "", color: mpColor }; }
