@@ -305,6 +305,39 @@ if (!ENGINE_ONLY) try {
   log(`profiles unavailable (${e.message}) — publishing with ${IDENTITY_PATH ? "config faces only" : "no editor faces"}`);
 }
 
+// Keeping the engine current cannot depend on anyone remembering to do it — that is
+// what already failed. The adversarial-test sandbox sat for weeks on a lineage the
+// public repo had re-cut, and every finding it produced was about code nobody runs,
+// reported with total confidence. Discipline is not a mechanism.
+//
+// So the check rides the command everyone has to run anyway, throttled hard: at most
+// once every 12h per clone, the stamp kept inside .git/ where it can never be committed
+// or show up in `git status`. If the clone is clean and behind, selfUpdate fast-forwards
+// it and re-execs; a dirty or diverged clone is left alone with a note to the agent.
+// Never fatal, never blocking: a failed fetch just means we try again tomorrow.
+const REFRESH_EVERY_MS = 12 * 60 * 60 * 1000;
+async function maybeRefreshEngine() {
+  if (NO_SELF_UPDATE || process.env.AUGUR_SELF_UPDATED === "1") return;
+  const stamp = path.join(ROOT, ".git", "augur-last-refresh");
+  try {
+    const { statSync } = await import("node:fs");
+    if (Date.now() - statSync(stamp).mtimeMs < REFRESH_EVERY_MS) return;
+  } catch (e) { /* never checked before */ }
+  try {
+    // Touch the stamp FIRST: a fetch that hangs or fails must not make every subsequent
+    // publish retry it, which would turn a network problem into a permanent slowdown.
+    const { writeFileSync } = await import("node:fs");
+    writeFileSync(stamp, new Date().toISOString());
+    execFileSync("git", ["-C", ROOT, "fetch", "--quiet", "origin"], { timeout: 10_000, stdio: "ignore" });
+  } catch (e) { return; }
+  const behind = (() => {
+    try {
+      return Number(execFileSync("git", ["-C", ROOT, "rev-list", "--count", "HEAD..@{u}"], { encoding: "utf8" }).trim());
+    } catch (e) { return 0; }
+  })();
+  if (behind > 0) selfUpdate(`engine clone is ${behind} commit(s) behind its upstream`);
+}
+
 const started = Date.now();
 async function runBuild(label) {
   log(label || `building ${targetSpace || "all spaces"}…`);
@@ -313,6 +346,7 @@ async function runBuild(label) {
   });
   if (code !== 0) die(`build failed (exit ${code}). ${MEANWHILE}`);
 }
+await maybeRefreshEngine(); // may re-exec and never return
 await runBuild();
 
 // Who forked, for conflict folder names — what git will actually sign as, not the

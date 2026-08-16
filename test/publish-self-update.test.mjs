@@ -111,3 +111,38 @@ test("a diverged clone cannot be fast-forwarded, so selfUpdate's git call fails 
       "a diverged clone must make --ff-only fail — that failure is what makes selfUpdate give up");
   } finally { rmSync(dir, { recursive: true, force: true }); }
 });
+
+// ---- the periodic refresh: why the sandbox rotted, and what stops it recurring ----
+
+const REFRESH = SRC.slice(SRC.indexOf("async function maybeRefreshEngine"), SRC.indexOf("const started = Date.now()"));
+
+test("the refresh is throttled, and the stamp cannot be committed or show up in git status", () => {
+  assert.match(REFRESH, /REFRESH_EVERY_MS/, "must be throttled, not run on every publish");
+  assert.match(REFRESH, /"\.git",\s*"augur-last-refresh"/,
+    "the stamp lives inside .git/ — anywhere else and it becomes a file someone has to gitignore, " +
+    "or worse, a file that publishes");
+});
+
+test("a failed fetch does not make every later publish retry it", () => {
+  // Writing the stamp before the fetch is deliberate: otherwise a network problem turns
+  // into a permanent per-publish slowdown, and `publish` is contractually seconds.
+  const write = REFRESH.indexOf("writeFileSync(stamp");
+  const fetch = REFRESH.indexOf('"fetch"');
+  assert.ok(write > -1 && fetch > -1);
+  assert.ok(write < fetch, "the stamp must be written BEFORE the fetch is attempted");
+  assert.match(REFRESH, /timeout: 10_000|timeout: 10000/, "the fetch must be time-boxed");
+});
+
+test("it never blocks or fails a publish", () => {
+  // Every failure path returns rather than throwing: not a clone, no upstream, offline,
+  // fetch timeout. Keeping the engine current is a background nicety; shipping is not.
+  const returns = (REFRESH.match(/return;/g) || []).length;
+  assert.ok(returns >= 3, `expected several quiet bail-outs, found ${returns}`);
+  assert.doesNotMatch(REFRESH, /\bdie\(/, "must never terminate the publish");
+  assert.doesNotMatch(REFRESH, /process\.exit/, "must never exit — only selfUpdate re-execs");
+});
+
+test("it respects the same opt-outs as selfUpdate, and never runs in the re-exec", () => {
+  assert.match(REFRESH, /NO_SELF_UPDATE/);
+  assert.match(REFRESH, /AUGUR_SELF_UPDATED/);
+});
