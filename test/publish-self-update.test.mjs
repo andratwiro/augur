@@ -236,3 +236,98 @@ test("a clean clone that is behind its upstream updates itself and completes the
     rmSync(dir, { recursive: true, force: true });
   }
 });
+
+// ---- the case that actually bit: the instance is running an engine we do not ----
+//
+// A shell's engine submodule is auto-bumped, so the worker and shared chrome stay
+// current by themselves. `publish` deliberately bypasses CI, so the PAGES are composed
+// by whichever clone ran the command — and nothing kept that current. An instance can
+// therefore report a current engine while serving pages a laptop built weeks ago, which
+// is exactly what happened: two instances on the same engine sha, different profile
+// menus, and no signal anywhere.
+const AHEAD = SRC.slice(SRC.indexOf("async function refreshIfInstanceIsAhead"), SRC.indexOf("const started = Date.now()"));
+
+test("being AHEAD of the instance is fine — only being behind triggers a refresh", () => {
+  assert.match(AHEAD, /merge-base",\s*"--is-ancestor"/,
+    "ancestry, not equality: publishing an engine change before CI catches up is normal");
+  const i = AHEAD.indexOf("--is-ancestor");
+  assert.match(AHEAD.slice(i, i + 220), /return;/,
+    "if the deployed commit is already in our history, do nothing");
+});
+
+test("it reads the deployed engine from the public stamp, needing no credentials", () => {
+  assert.match(AHEAD, /buildStamp\(origin\)/);
+  assert.match(AHEAD, /engine[\s\S]{0,30}sha/, "reads engine.sha from the stamp");
+});
+
+test("a malformed or unreachable stamp never blocks a publish", () => {
+  assert.match(AHEAD, /catch[\s\S]{0,80}return;/, "an unreachable stamp is not fatal");
+  assert.match(AHEAD, /\[0-9a-f\]\{40\}/, "a stamp that is not a real sha is ignored, not acted on");
+});
+
+test("the two triggers are distinct: a timer sweep AND the exact instance-ahead case", () => {
+  // The timer alone would have taken up to 12h to notice, and only if the clone happened
+  // to be behind its git upstream — which says nothing about what the INSTANCE runs.
+  assert.match(SRC, /await maybeRefreshEngine\(\)/);
+  assert.match(SRC, /await refreshIfInstanceIsAhead\(ORIGIN\)/);
+});
+
+test("the instance-ahead check alone updates the clone, with the timer sweep disabled", async () => {
+  // Isolates the NEW path: the periodic sweep is suppressed by pre-writing its stamp, so
+  // the only thing that can move this clone is "the instance runs an engine we lack".
+  // The mock reports a sha that exists nowhere, which is the honest reading of an engine
+  // we do not have — merge-base errors on an unknown object, and that must count as
+  // "not an ancestor" rather than as a reason to do nothing.
+  const { createServer } = await import("node:http");
+  const { spawn } = await import("node:child_process");
+  const { writeFileSync: wf } = await import("node:fs");
+  const dir = mkdtempSync(path.join(tmpdir(), "ahead-e2e-"));
+  const git = (cwd, ...a) => execFileSync("git", ["-C", cwd, ...a], { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] });
+  const ENGINE = path.dirname(path.dirname(new URL(import.meta.url).pathname));
+
+  const server = await new Promise((res) => {
+    const sv = createServer(async (req, r) => {
+      for await (const _ of req) {}
+      r.writeHead(200, { "content-type": "application/json" });
+      if (/_build\.json/.test(req.url)) return r.end(JSON.stringify({ engine: { sha: "f".repeat(40) }, spaces: {} }));
+      if (/\/check$/.test(req.url)) return r.end(JSON.stringify({ missing: [], liveVersion: 1, filesUnchanged: false, protocol: 3 }));
+      r.end(JSON.stringify({ ok: true, version: 1 }));
+    });
+    sv.listen(0, "127.0.0.1", () => res(sv));
+  });
+
+  try {
+    const origin = path.join(dir, "origin.git"), seed = path.join(dir, "seed"), clone = path.join(dir, "clone");
+    execFileSync("git", ["clone", "-q", "--bare", ENGINE, origin]);
+    execFileSync("git", ["clone", "-q", origin, seed]);
+    git(seed, "config", "user.email", "t@example.test"); git(seed, "config", "user.name", "T");
+    const { cpSync } = await import("node:fs");
+    cpSync(path.join(ENGINE, "scripts"), path.join(seed, "scripts"), { recursive: true });
+    git(seed, "add", "-A", "scripts");
+    try { git(seed, "commit", "-qm", "overlay"); } catch (e) {}
+    const branch = git(seed, "rev-parse", "--abbrev-ref", "HEAD").trim();
+    git(seed, "push", "-q", "origin", "HEAD:" + branch);
+    execFileSync("git", ["clone", "-q", origin, clone]);
+    git(clone, "config", "user.email", "t@example.test"); git(clone, "config", "user.name", "T");
+    wf(path.join(seed, "AHEAD-DRILL.md"), "x\n");
+    git(seed, "add", "AHEAD-DRILL.md"); git(seed, "commit", "-qm", "advance"); git(seed, "push", "-q", "origin", "HEAD:" + branch);
+    git(clone, "fetch", "-q", "origin");
+
+    // Suppress the timer sweep so only the instance-ahead check can act.
+    wf(path.join(clone, ".git", "augur-last-refresh"), new Date().toISOString());
+
+    const before = git(clone, "rev-parse", "HEAD").trim();
+    const out = await new Promise((res) => {
+      const c = spawn(process.execPath, [path.join(clone, "scripts", "publish.mjs"), "--engine"], {
+        cwd: clone,
+        env: { PATH: process.env.PATH, HOME: mkdtempSync(path.join(tmpdir(), "h-")),
+               AUGUR_ORIGIN: `http://127.0.0.1:${server.address().port}`, AUGUR_TOKEN: "drill" },
+      });
+      let o = ""; c.stdout.on("data", (d) => { o += d; }); c.stderr.on("data", (d) => { o += d; });
+      c.on("close", () => res(o));
+    });
+
+    assert.match(out, /engine updated/, "the instance-ahead check must trigger the update:\n" + out.slice(0, 600));
+    assert.notEqual(git(clone, "rev-parse", "HEAD").trim(), before, "and the clone must actually move");
+  } finally { server.close(); rmSync(dir, { recursive: true, force: true }); }
+});

@@ -23,7 +23,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { findShellDir, deployConfig } from "./lib/instance.mjs";
 import { isAncestor, resolvePublish, applyManifestPatches } from "./lib/publish-resolve.mjs";
-import { CLIENT_PROTOCOL } from "./lib/store.mjs";
+import { CLIENT_PROTOCOL, buildStamp } from "./lib/store.mjs";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const log = (msg) => console.error(`\x1b[32m[publish]\x1b[0m ${msg}`);
@@ -343,6 +343,36 @@ async function maybeRefreshEngine() {
   if (behind > 0) selfUpdate(`engine clone is ${behind} commit(s) behind its upstream`);
 }
 
+// The targeted version of the same problem, and the one that actually bit.
+//
+// A shell's engine submodule IS auto-bumped, so an instance's worker and shared chrome
+// stay current on their own. But `publish` deliberately does not go through CI — that is
+// the invariant that stops a redeploy overwriting a publish — which means the pages
+// everyone sees are composed by THIS clone, on whoever's machine ran the command.
+// Nothing was keeping that clone current, so a laptop three weeks behind would quietly
+// rebuild every page with three-week-old chrome and publish it over the current ones.
+//
+// The instance already publishes what it is running, ungated: /_build.json engine.sha.
+// If that commit is not in our history, the instance has an engine we do not — so our
+// build would be a downgrade. One public GET, no auth, and it is the exact condition
+// rather than a timer's guess.
+async function refreshIfInstanceIsAhead(origin) {
+  if (NO_SELF_UPDATE || process.env.AUGUR_SELF_UPDATED === "1") return;
+  let deployed;
+  try {
+    const stamp = await buildStamp(origin);
+    deployed = stamp && stamp.engine && stamp.engine.sha;
+  } catch (e) { return; } // stamp unreachable or shapeless: not worth blocking a publish
+  if (!deployed || !/^[0-9a-f]{40}$/.test(deployed)) return;
+  try {
+    // Already in our history (or IS our head) → our build is at least as new. Being
+    // AHEAD is normal and fine: an engine change is published before CI catches up.
+    execFileSync("git", ["-C", ROOT, "merge-base", "--is-ancestor", deployed, "HEAD"], { stdio: "ignore" });
+    return;
+  } catch (e) { /* not an ancestor — the instance has something we do not */ }
+  selfUpdate(`${origin} runs engine ${deployed.slice(0, 12)}, which this clone does not have`);
+}
+
 const started = Date.now();
 async function runBuild(label) {
   log(label || `building ${targetSpace || "all spaces"}…`);
@@ -351,7 +381,8 @@ async function runBuild(label) {
   });
   if (code !== 0) die(`build failed (exit ${code}). ${MEANWHILE}`);
 }
-await maybeRefreshEngine(); // may re-exec and never return
+await maybeRefreshEngine();               // periodic sweep; may re-exec and never return
+await refreshIfInstanceIsAhead(ORIGIN);   // and the exact case: the instance is newer
 await runBuild();
 
 // Who forked, for conflict folder names — what git will actually sign as, not the
