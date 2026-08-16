@@ -7,6 +7,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { __testables as W } from "../src/_worker.js";
 import { CLIENT_PROTOCOL } from "../scripts/lib/store.mjs";
+import { readFileSync } from "node:fs";
 
 // applyInstance is how a deploy.config.json value reaches the worker's module scope.
 const withFloor = (n) => W.applyInstance({ users: [], minClientProtocol: n });
@@ -132,4 +133,20 @@ test("publish stops at check when it is below the floor, before uploading anythi
   const die = src.slice(src.indexOf("function dieOutdated"), src.indexOf("async function publishOne"));
   assert.match(die, /Nothing was shipped/);
   assert.match(die, /npx augur@latest/);
+});
+
+test("the skew warning names the lost GUARD, not a lost optimisation", () => {
+  // This wording matters more than it looks. It used to say the newer engine was "for
+  // the faster path", which files a correctness problem as a performance tip — and a
+  // performance tip is exactly what an agent or a busy human skips. A client below
+  // protocol 3 sends no baseVersion, so the store cannot tell whether its tree was
+  // built on what is live: a stale checkout can revert whoever published last,
+  // silently. The message has to say that.
+  const src = readFileSync(new URL("../scripts/publish.mjs", import.meta.url), "utf8");
+  const block = src.slice(src.indexOf("warnedSkew = true"), src.indexOf("warnedSkew = true") + 1200);
+
+  assert.doesNotMatch(block, /faster path/i, "must not read as a performance tip");
+  assert.match(block, /revert guard/i, "must name what protection is missing");
+  assert.match(block, /roll back|revert/i, "must say what can actually happen");
+  assert.match(block, /git pull/, "must still say how to fix it");
 });

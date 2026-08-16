@@ -308,7 +308,7 @@ async function runBuild(label) {
   const code = await new Promise((resolve) => {
     spawn("node", ["build.js"], { cwd: ROOT, env: BUILD_ENV, stdio: ["ignore", 2, 2] }).on("close", resolve);
   });
-  if (code !== 0) die(`build failed (exit ${code})`);
+  if (code !== 0) die(`build failed (exit ${code}). ${MEANWHILE}`);
 }
 await runBuild();
 
@@ -344,7 +344,7 @@ function refuseShallow(dir) {
     const shallow = execFileSync("git", ["-C", dir, "rev-parse", "--is-shallow-repository"],
       { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }).trim();
     if (shallow === "true") {
-      die(`${path.basename(dir)} is a SHALLOW clone — edit dates and editor chips would all collapse to the clone moment. Run \`git -C ${dir} fetch --unshallow origin\` first.`);
+      die(`${path.basename(dir)} is a SHALLOW clone — edit dates and editor chips would all collapse to the clone moment. Run \`git -C ${dir} fetch --unshallow origin\` first.` + `\n\n  ${MEANWHILE}`);
     }
   } catch (e) {}
 }
@@ -403,7 +403,7 @@ function dieUnpublish(id, removed, count) {
       `  usually means your checkout is missing those folders or has them somewhere\n` +
       `  else — check \`git status\` and \`git pull\` first. Anyone's shared links and\n` +
       `  embeds for those pages would have started showing the login page.\n\n` +
-      `  If you really are taking them down, re-run with --allow-unpublish.`);
+      `  If you really are taking them down, re-run with --allow-unpublish.\n\n  ${MEANWHILE}`);
 }
 
 // The instance set a protocol floor and this clone is below it. Say what to do, and
@@ -416,7 +416,7 @@ function dieOutdated(id, minProtocol) {
       `  never heard of. A pre-3 client sends no baseVersion, so the store cannot tell\n` +
       `  whether this tree is built on what is live, and a stale checkout can revert\n` +
       `  whoever published last without either of you seeing it happen.\n\n` +
-      `  Update: \`npx augur@latest\`, or \`git pull\` in your engine checkout.`);
+      `  Update: \`npx augur@latest\`, or \`git pull\` in your engine checkout.\n\n  ${MEANWHILE}`);
 }
 
 async function publishOne(id, sourceDir) {
@@ -501,9 +501,23 @@ async function publishOne(id, sourceDir) {
     // would refuse anyway (426 cli-outdated), and the difference between finding out
     // now and finding out after the upload is the whole point of check advertising it.
     if (check.minProtocol && CLIENT_PROTOCOL < check.minProtocol) dieOutdated(id, check.minProtocol);
+    // Behind the instance, but not below its floor (or it has none). This used to read
+    // "for the faster path", which is how a correctness problem gets filed as a
+    // performance tip and ignored: what an older client actually loses is the GUARD.
+    // Below protocol 3 it sends no `baseVersion`, so the store cannot tell whether this
+    // tree was built on what is live, and a stale checkout can revert whoever published
+    // last with neither of them seeing it happen.
     if (!warnedSkew && check.protocol && check.protocol > CLIENT_PROTOCOL) {
       warnedSkew = true;
-      log(`⚠ the instance speaks publish protocol ${check.protocol} (this clone: ${CLIENT_PROTOCOL}) — \`git pull\` your engine checkout for the faster path.`);
+      const unguarded = CLIENT_PROTOCOL < 3 && check.protocol >= 3;
+      log(`⚠ this clone speaks publish protocol ${CLIENT_PROTOCOL}; ${ORIGIN} speaks ${check.protocol}.`);
+      if (unguarded) {
+        log(`  Your publishes are NOT covered by the revert guard: this clone cannot tell the`);
+        log(`  store what version it was built on, so a stale tree can roll back someone else's`);
+        log(`  work silently. \`git pull\` your engine checkout before publishing again.`);
+      } else {
+        log(`  \`git pull\` your engine checkout to pick up the newer publish path.`);
+      }
     }
 
     // ── The store guard: can this publish prove it contains what is live? ─────
