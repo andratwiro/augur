@@ -17,6 +17,24 @@ site, never localhost, never a `file://` path. A local path shows them something
 nobody else can see. Everyone works
 against the same live URL, so what you show is what everyone else sees.
 
+## The engine is yours to maintain, not theirs
+
+The person you are working for has no reason to know the engine is a git
+checkout, and telling them to run `git pull` is a support ticket you created.
+Assume **none of them know what git is** — that is the design target, not a
+worst case.
+
+So: keep the engine clone current yourself. `publish` fast-forwards it
+automatically when the instance speaks a newer publish protocol (clean tree,
+`--ff-only`, once per run), and re-runs itself — you will see
+`engine updated <a> → <b>`. When it cannot (uncommitted changes in the engine
+clone, no upstream, diverged, offline), the message is addressed to **you**:
+bring the clone up to date and re-run. Do not pass that instruction on.
+
+The same holds for the space repo. `ship` commits and pushes for them. If a
+publish is refused because the tree is missing folders, reconcile the tree —
+that is your job, not a git lesson for them.
+
 Shipping is never a question to put to the human. Don't ask "should I publish
 this?" and don't offer "local or deployed?" as if they were equally valid —
 the moment something works, it ships, full stop. Hesitating is the bug, not a
