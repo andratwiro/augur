@@ -113,6 +113,17 @@ const USER_ROLES_KEY = "users:roles";
 // seal is the hard gate and stays the hard gate. A KV failure here returns the old
 // baseline, which is why readSpaces swallows errors into {} the way its siblings do.
 const USER_SPACES_KEY = "users:spaces";
+// KV {spaceId: {k, mime, at}} — a workspace's own icon, set by an admin of THAT
+// workspace from its settings. Exactly the shape and the same bargain as
+// users:avatars: the space repo's /space-icon.png is the SEED, shown until someone
+// changes it and restored if they remove it. Blob lives one indirection away under
+// SPACE_ICON_BLOB_PREFIX so this document stays small enough to re-read every config
+// tick. Served at /__space-icon/<hash>, content-addressed so a new icon is a new URL
+// and the immutable caching downstream stays honest.
+const SPACE_ICONS_KEY = "spaces:icons";
+const SPACE_ICON_BLOB_PREFIX = "spaceicon:";
+let SPACE_ICON_KEYS = new Set(); // hashes the index vouches for — see the serve route
+let SPACE_ICONS = {};       // last-read icon index, re-applied whenever SPACES is rebuilt
 // The three roles, and the one rule that turns a stored value into one of them.
 //
 // `user` is the legacy spelling of `editor` — it was the only non-admin value the
@@ -464,9 +475,12 @@ function mergeRoster(configUsers, roster) {
 
 async function applyRoster(env) {
   try {
-    const [roster, avatars, names, roles, spaces] = await Promise.all([
+    const [roster, avatars, names, roles, spaces, icons] = await Promise.all([
       readRoster(env), readAvatars(env), readNames(env), readRoles(env), readSpaces(env),
+      readSpaceIcons(env),
     ]);
+    SPACE_ICONS = icons;
+    SPACES = applySpaceIcons(SPACES, icons);
     USERS = applySpaces(
       applyRoles(applyAvatars(applyNames(mergeRoster(CONFIG_USERS, roster), names), avatars), roles),
       spaces,
@@ -586,6 +600,84 @@ const roleIn = (u, spaceId) => {
 
 const spacesFor = (u, spaces) => (spaces || []).filter((s) => isMemberOf(u, s.id));
 
+// ---- Workspace icons --------------------------------------------------------
+async function readSpaceIcons(env) {
+  const kv = kvFor(env);
+  if (!kv) return {};
+  try {
+    const doc = JSON.parse((await kv.get(SPACE_ICONS_KEY)) || "null");
+    return doc && typeof doc === "object" && !Array.isArray(doc) ? doc : {};
+  } catch (e) { return {}; }
+}
+
+// Stamp each space's icon URL and refresh the hash allowlist the serve route checks.
+// Same copy-never-mutate rule as applyAvatars: SPACES entries come from the live
+// manifests, so writing onto them would outlive the overlay.
+function applySpaceIcons(spaces, index) {
+  const keys = new Set();
+  const out = (spaces || []).map((s) => {
+    const rec = index && index[s.id];
+    const k = rec && typeof rec.k === "string" ? rec.k : null;
+    if (!k) return s;
+    keys.add(k);
+    return { ...s, icon: "/__space-icon/" + k };
+  });
+  SPACE_ICON_KEYS = keys;
+  return out;
+}
+
+// Serve a workspace icon. The allowlist check comes FIRST for the same reason it does
+// on /__avatar/: an ungated route must not become a KV read amplifier for anyone
+// typing hashes at it.
+async function serveSpaceIcon(env, k) {
+  if (!SPACE_ICON_KEYS.has(k)) return new Response("Not found", { status: 404 });
+  const kv = kvFor(env);
+  const raw = kv ? await kv.get(SPACE_ICON_BLOB_PREFIX + k) : null;
+  const parsed = raw && parseAvatarDataUri(raw);
+  if (!parsed) return new Response("Not found", { status: 404 });
+  return new Response(parsed.bytes, {
+    headers: {
+      "Content-Type": parsed.mime,
+      "Cache-Control": "public, max-age=31536000, immutable",
+      "X-Content-Type-Options": "nosniff",
+    },
+  });
+}
+
+// POST {space, icon: "data:image/…"} sets it; DELETE {space} restores the repo's seed.
+// Admin of THAT workspace only — the same authority that edits its people.
+async function spaceIconApi(request, env, me, spaces = SPACES) {
+  if (!me) return jsonResponse({ error: "unauthorized" }, 401);
+  const kv = kvFor(env);
+  if (!kv) return jsonResponse({ error: "no-kv-binding" }, 500);
+  let body;
+  try { body = await request.json(); } catch (e) { return jsonResponse({ error: "bad-json" }, 400); }
+  const sid = String((body && body.space) || "");
+  if (!spaces.some((s) => s.id === sid)) return jsonResponse({ error: "unknown-space" }, 400);
+  if (roleIn(me, sid) !== "admin") return jsonResponse({ error: "forbidden" }, 403);
+
+  if (request.method === "DELETE") {
+    const index = await readSpaceIcons(env);
+    if (sid in index) { delete index[sid]; await kv.put(SPACE_ICONS_KEY, JSON.stringify(index)); }
+    cfgAt = 0;
+    return jsonResponse({ ok: true, icon: null });
+  }
+  if (request.method === "POST") {
+    const parsed = parseAvatarDataUri(body && body.icon);
+    if (!parsed) return jsonResponse({ error: "bad-image" }, 400);
+    const k = await avatarHash(body.icon);
+    // Blob first: an index entry pointing at a missing blob serves a broken icon,
+    // whereas a blob no index names is just an orphan.
+    await kv.put(SPACE_ICON_BLOB_PREFIX + k, body.icon);
+    const index = await readSpaceIcons(env);
+    index[sid] = { k, mime: parsed.mime, at: new Date().toISOString() };
+    await kv.put(SPACE_ICONS_KEY, JSON.stringify(index));
+    cfgAt = 0;
+    return jsonResponse({ ok: true, icon: "/__space-icon/" + k });
+  }
+  return jsonResponse({ error: "method-not-allowed" }, 405);
+}
+
 // The switcher's payload. Deliberately NOT folded into publicUser: that object is
 // embedded in PUBLIC prototypes for the comment overlay, and a space list there would
 // hand the whole site's structure to anyone holding a prototype link — the same reason
@@ -640,7 +732,10 @@ function mayResetPassword(users, actorEmail, targetEmail, spaces = SPACES) {
 
 const meSpaces = (u, spaces) =>
   spacesFor(u, spaces).map((s) => ({
-    id: s.id, name: s.name, base: s.base || "", badge: s.badge || "", role: roleIn(u, s.id),
+    id: s.id, name: s.name, base: s.base || "", role: roleIn(u, s.id),
+    // Absent when the workspace has never set one — the rail then keeps the space
+    // repo's /space-icon.png seed it already rendered.
+    ...(s.icon ? { icon: s.icon } : {}),
   }));
 
 // Drop someone's membership entry. Called when an address is removed, for the same
@@ -1590,6 +1685,7 @@ function applyDerivedRouting(manifests) {
   MCP_HOST_ALLOWLIST = [...mcp].sort();
   mcpStaticHosts = new Set(MCP_HOST_ALLOWLIST);
   SPACES = spacesList.sort((a, b) => (b.default === true) - (a.default === true) || String(a.id).localeCompare(String(b.id)));
+  SPACES = applySpaceIcons(SPACES, SPACE_ICONS);
 }
 
 // Does a path (or routing prefix) belong to `spaceId`, given the live space list? This
@@ -4184,6 +4280,17 @@ export default {
       });
     }
 
+    // A workspace's icon. Serving is ungated like /__avatar/ (the rail renders it on
+    // the login page too, and the allowlist check inside stops hash-guessing); setting
+    // it is admin-of-that-workspace only, re-checked inside spaceIconApi.
+    if (url.pathname.startsWith("/__space-icon/")) {
+      return serveSpaceIcon(env, url.pathname.slice("/__space-icon/".length));
+    }
+    if (url.pathname === "/__admin/space-icon") {
+      if (!authed) return jsonResponse({ error: "unauthorized" }, 401);
+      return spaceIconApi(request, env, me);
+    }
+
     // My own profile photo — set or clear. Ahead of the gate for the same reason
     // /__me is: the profile chip is chrome, and it must work on every page a signed-in
     // person can already see. meAvatarApi re-checks the session (401 without one).
@@ -4493,6 +4600,7 @@ export const __testables = {
   ROLES, roleOf, readRoles, applyRoles, clearRole, USER_ROLES_KEY,
   USER_SPACES_KEY, readSpaces, applySpaces, membershipOf, isMemberOf, roleIn,
   spacesFor, clearSpaces, meSpaces, spaceIdForPath, administersAny, lastAdminOf, mayResetPassword,
+  SPACE_ICONS_KEY, SPACE_ICON_BLOB_PREFIX, readSpaceIcons, applySpaceIcons, serveSpaceIcon, spaceIconApi,
   mergeRoster, readRoster, revokeSecret, revokeInvitesFor,
   applyAvatars, readAvatars, parseAvatarDataUri, avatarHash, clearAvatar,
   meAvatarApi, serveKvAvatar, avatarUrl, USER_AVATARS_KEY, AVATAR_BLOB_PREFIX,

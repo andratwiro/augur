@@ -2080,7 +2080,6 @@ const NAV_CSS = `
     .gvprof__cv { width: 15px; height: 15px; flex: none; color: #9aa0ab; }
     .gvprof__menu {
       position: absolute; top: calc(100% + 4px); left: 0; right: 0; z-index: 5;
-      background: #fff; border: 1px solid rgba(16,17,26,0.12); border-radius: 10px; padding: 5px;
       box-shadow: 0 1px 2px rgba(16,24,40,0.05), 0 12px 30px -16px rgba(16,24,40,0.30);
     }
     .gvprof__id { display: flex; align-items: center; gap: 9px; padding: 7px 8px 9px;
@@ -2135,8 +2134,6 @@ const NAV_CSS = `
     html.gv-spaces .gvspace { display: block; }
     .gvspace__row { display: flex; align-items: center; gap: 2px; }
     .gvspace__row .gvspace__btn { flex: 1 1 auto; min-width: 0; }
-    .gvspace__btn.is-static { cursor: default; }
-    .gvspace__btn.is-static:hover { background: none; border-color: transparent; }
     /* The cog shows only to an admin of the ACTIVE space — a per-space question, so
        it cannot ride the old instance-wide html.gv-admin reveal. */
     .gvspace__cog { flex: none; width: 26px; height: 26px; display: none; place-items: center;
@@ -2145,41 +2142,19 @@ const NAV_CSS = `
     .gvspace__cog:hover { background: rgba(16,17,26,0.06); color: #16171a; }
     .gvspace__cog:focus-visible { outline: 2px solid #5e6ad2; outline-offset: 1px; }
     html.gv-space-admin .gvspace__cog { display: grid; }
-    .gvspace__btn {
+    .gvspace__btn { display: flex; align-items: center; gap: 9px; flex: 1 1 auto; min-width: 0;
+                    padding: 7px 8px; border-radius: 8px; background: none; border: 0; }
       display: flex; align-items: center; gap: 8px; width: 100%; padding: 6px 8px;
       border: 1px solid rgba(16,17,26,0.10); border-radius: 8px; background: #fff; cursor: pointer;
       font: inherit; color: #16171a; text-align: left; transition: background .12s ease, border-color .12s ease;
     }
-    .gvspace__btn:hover { background: rgba(16,17,26,0.03); border-color: rgba(16,17,26,0.16); }
-    .gvspace__btn:focus-visible { outline: 2px solid #5e6ad2; outline-offset: 1px; }
-    .gvspace__btn[aria-expanded=true] { background: rgba(16,17,26,0.04); }
     .gvspace__icon { flex: none; width: 20px; height: 20px; border-radius: 5px; overflow: hidden; display: grid; place-items: center; background: #fff; }
     .gvspace__icon img { width: 100%; height: 100%; object-fit: cover; display: block; }
     .gvspace__name { flex: 1 1 auto; min-width: 0; font-weight: 600; font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .gvspace__cv { width: 15px; height: 15px; flex: none; color: #9aa0ab; }
-    .gvspace__badge { flex: none; font-size: 10px; font-weight: 700; letter-spacing: .02em; text-transform: capitalize;
       padding: 1px 6px; border-radius: 999px; background: rgba(16,17,26,0.07); color: #5b626e; }
-    .gvspace__badge.is-new { background: #2c2150; color: #fff; }
-    .gvspace__menu {
       position: absolute; top: calc(100% + 4px); left: 0; right: 0; z-index: 6;
-      background: #fff; border: 1px solid rgba(16,17,26,0.12); border-radius: 10px; padding: 5px;
       box-shadow: 0 1px 2px rgba(16,24,40,0.05), 0 12px 30px -16px rgba(16,24,40,0.30);
     }
-    .gvspace__item { display: flex; align-items: center; gap: 9px; padding: 7px 8px; border-radius: 7px; text-decoration: none; color: #16171a; font-size: 13px; font-weight: 500; }
-    /* MUST stay next to the rule above. A class rule setting display out-specifies
-       the UA's [hidden] { display: none }, so without this every space row renders
-       for everyone no matter what SPACE_JS sets — the membership filter silently
-       does nothing and the switcher lists spaces you cannot open. Exactly the
-       gotcha .gvprof__item[hidden] above already exists for. */
-    .gvspace__item[hidden] { display: none; }
-    .gvspace__item:hover { background: rgba(16,17,26,0.05); }
-    .gvspace__iname { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .gvspace__chk { width: 16px; height: 16px; flex: none; color: #5e6ad2; opacity: 0; }
-    .gvspace__item.is-active .gvspace__chk { opacity: 1; }
-    .gvspace__sep { height: 1px; background: rgba(16,17,26,0.08); margin: 4px 2px; }
-    .gvspace__create { display: flex; align-items: center; gap: 9px; width: 100%; padding: 7px 8px; border: 0; border-radius: 7px; background: none; cursor: pointer; font: inherit; font-size: 13px; font-weight: 500; color: #5b626e; }
-    .gvspace__create:hover { background: rgba(16,17,26,0.05); color: #16171a; }
-    .gvspace__create svg { width: 15px; height: 15px; flex: none; }
 
     /* Omni search — one field, filters whatever cards are on the right. Editor-style
        filled input that brightens to white on focus. */
@@ -2779,50 +2754,31 @@ function spaceSwitcher() {
   const spaces = NAV_STATE.spaces || [];
   if (!spaces.length) return "";
   const active = spaces.find((s) => s.id === NAV_STATE.activeSpace) || spaces[0];
-  // One space is still a workspace: nothing to SWITCH to, but something to administer.
-  // So the row always renders and only the dropdown drops away — a self-hosted Augur
-  // is exactly this case, and it must not lose its cog along with its switcher.
-  const many = spaces.length > 1;
-  const icon = `<span class="gvspace__icon"><img src="/space-icon.png" alt="" width="20" height="20" /></span>`;
-  const badge = (b) => (b ? `<span class="gvspace__badge${b === "new" ? " is-new" : ""}">${escAttr(b)}</span>` : "");
-  const rows = spaces
-    .map(
-      // `hidden` is not a default to be tidied away: the build cannot know who is
-      // looking, so a row that shipped visible would tell every stranger which spaces
-      // exist. SPACE_JS reveals the ones /__me names and nothing else.
-      (s) => `<a class="gvspace__item${s.id === active.id ? " is-active" : ""}" href="${s.base}/" role="menuitemradio" aria-checked="${s.id === active.id}" data-space-row="${escAttr(s.id)}" hidden>
-          ${icon}<span class="gvspace__iname">${escAttr(s.name)}</span>${badge(s.badge)}
-          <svg class="gvspace__chk" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>
-        </a>`
-    )
-    .join("");
-  // The cog is the workspace's own door — admin config belongs to the space, not to
-  // the person, which is why it left the profile menu. It carries the space id so the
-  // page opens already scoped, and SPACE_JS shows it only to an admin of THIS space.
+  // Nameplate + cog, and nothing else.
+  //
+  // No dropdown: nobody can belong to more than one workspace yet — that needs
+  // per-workspace origins and a central sign-in (plan items B-resolver-dynamic and
+  // B-cross-workspace-signin). A chevron opening a list of one is furniture, and a
+  // list built at BUILD time could only ever name spaces the viewer may not enter.
+  // When membership can genuinely span workspaces, the switcher comes back with rows
+  // rendered from /__me rather than baked in.
+  //
+  // No badge either: it labelled which space was "current" back when the switcher was
+  // a maintainer's tool for hopping between them. With one workspace it says nothing.
+  const iconSrc = "/space-icon.png";
+  const icon = `<span class="gvspace__icon"><img src="${iconSrc}" alt="" width="20" height="20" data-space-icon /></span>`;
+  // The cog is the workspace's own door — admin config belongs to the workspace, not
+  // to the person, which is why it left the profile menu. It carries the space id so
+  // the page opens already scoped; SPACE_JS shows it only to an admin of THIS one.
   const cog = `<a class="gvspace__cog" href="/admin/?space=${encodeURIComponent(active.id)}" data-space-admin aria-label="Workspace settings" title="Workspace settings">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9c.14.35.4.64.73.83H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
       </a>`;
-  const nameplate = many
-    ? `<button type="button" class="gvspace__btn" data-space-toggle aria-haspopup="true" aria-expanded="false" aria-label="Switch space">
-        ${icon}<span class="gvspace__name" data-space-name>${escAttr(active.name)}</span>${badge(active.badge)}
-        <svg class="gvspace__cv" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
-      </button>`
-    : `<span class="gvspace__btn is-static">
-        ${icon}<span class="gvspace__name" data-space-name>${escAttr(active.name)}</span>${badge(active.badge)}
-      </span>`;
-  const menu = many
-    ? `<div class="gvspace__menu" data-space-menu role="menu" hidden>
-        ${rows}
-        <div class="gvspace__sep"></div>
-        <button type="button" class="gvspace__create" data-space-create>
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
-          <span>Create new</span>
-        </button>
-      </div>`
-    : "";
   return `<div class="gvspace" data-space>
-      <div class="gvspace__row">${nameplate}${cog}</div>
-      ${menu}
+      <div class="gvspace__row">
+        <span class="gvspace__btn">
+          ${icon}<span class="gvspace__name" data-space-name>${escAttr(active.name)}</span>
+        </span>${cog}
+      </div>
     </div>`;
 }
 
@@ -4720,50 +4676,34 @@ const NEWCANVAS_JS = `
 const SPACE_JS = `(function(){
   var box = document.querySelector('[data-space]');
   if(!box) return;
+  // The row names a workspace, so it stays dark until /__me confirms you are in one.
+  // There is no list to filter any more (see spaceSwitcher) — just: do you belong
+  // here, and do you administer it.
   fetch('/__me', {headers:{'Accept':'application/json'}}).then(function(r){
     return r.ok ? r.json() : null;
   }).then(function(d){
     if(!d) return;
     var mine = (d && d.spaces) || [];
-    // No accounts at all (open/offline build) → everyone is the operator: show the
-    // whole rail rather than blanking it, which is how every other surface degrades.
+    // No accounts at all (open/offline build) → everyone is the operator, so show it
+    // rather than blanking the rail. Same degradation as every other surface.
     var open = d && d.accounts === false;
-    var byId = {};
-    mine.forEach(function(s){ byId[s.id] = s; });
-    var rows = box.querySelectorAll('[data-space-row]');
-    var shown = 0;
-    rows.forEach(function(row){
-      var id = row.getAttribute('data-space-row');
-      var ok = open || Object.prototype.hasOwnProperty.call(byId, id);
-      if(ok){ row.hidden = false; shown++; } else { row.hidden = true; }
-    });
-    // The row itself appears once you belong to something. A one-space instance has
-    // no rows to reveal, so the presence of an active space is enough.
     var active = box.querySelector('[data-space-admin]');
-    var activeId = active ? (active.getAttribute('href')||'').split('space=')[1] : '';
-    activeId = activeId ? decodeURIComponent(activeId) : '';
-    if(open || shown || byId[activeId]){
-      document.documentElement.classList.add('gv-spaces');
+    var id = active ? (active.getAttribute('href')||'').split('space=')[1] : '';
+    id = id ? decodeURIComponent(id) : '';
+    var here = null;
+    for(var i=0;i<mine.length;i++){ if(mine[i].id === id) here = mine[i]; }
+    if(!open && !here) return;
+    document.documentElement.classList.add('gv-spaces');
+    if(here){
+      var nm = box.querySelector('[data-space-name]');
+      if(nm && here.name) nm.textContent = here.name;
+      var ic = box.querySelector('[data-space-icon]');
+      if(ic && here.icon) ic.src = here.icon;
     }
-    // The cog is a per-space question — admin HERE, not admin anywhere.
-    var here = byId[activeId];
     if(open || (here && here.role === 'admin')){
       document.documentElement.classList.add('gv-space-admin');
     }
   }).catch(function(){});
-  var btn = box.querySelector('[data-space-toggle]');
-  var menu = box.querySelector('[data-space-menu]');
-  function open(o){ if(!menu) return; menu.hidden = !o; if(btn) btn.setAttribute('aria-expanded', o ? 'true' : 'false'); }
-  if(btn && menu){
-    btn.addEventListener('click', function(e){ e.stopPropagation(); open(menu.hidden); });
-    document.addEventListener('click', function(e){ if(!box.contains(e.target)) open(false); });
-    document.addEventListener('keydown', function(e){ if(e.key === 'Escape') open(false); });
-  }
-  var create = box.querySelector('[data-space-create]');
-  if(create) create.addEventListener('click', function(e){
-    e.stopPropagation();
-    alert('Spaces are repos: to add one, create a new GitHub repo templated from the default space (space.json + DS assets at its root), mount it in Augur as a submodule at spaces/<id>, and give it the deploy-trigger workflow. Ask the instance maintainer.');
-  });
 })();
 `;
 
@@ -5150,10 +5090,20 @@ const ADMIN_SECTIONS_JS = `(function(){
     for(var i=0;i<mine.length;i++){ if(mine[i].id === space) here = mine[i]; }
     if(!here && mine.length === 1) here = mine[0];
     if(!here) return;
+    space = here.id; // so the icon API always names a real workspace
     var label = nav.querySelector('[data-admin-space-name]');
     if(label) label.textContent = here.name;
     var back = nav.querySelector('[data-admin-back]');
     if(back) back.setAttribute('href', (here.base || '') + '/');
+    // Settings shows the same name, and the icon it currently has.
+    var nameEl = document.querySelector('[data-set-name]');
+    if(nameEl) nameEl.value = here.name || '';
+    if(here.icon){
+      var i2 = document.querySelector('[data-set-icon-img]');
+      if(i2) i2.src = here.icon;
+      var c2 = document.querySelector('[data-set-icon-clear]');
+      if(c2) c2.hidden = false;
+    }
   }).catch(function(){});
 
   // Sections are plain show/hide — three small panels, no routing worth the name.
@@ -5211,6 +5161,69 @@ const ADMIN_SECTIONS_JS = `(function(){
   // says something true rather than sitting empty next to a promise.
   var oEl = document.querySelector('[data-set-origin]');
   if(oEl) oEl.textContent = location.host;
+
+  // ---- workspace icon ------------------------------------------------------
+  // Same bargain as a profile photo: the workspace repo's /space-icon.png is the seed,
+  // this overrides it, removing restores it. Downscaled to 256px before posting so the
+  // stored data URI stays small — the rail draws it at 20px, settings at 56px.
+  var pick = document.querySelector('[data-set-icon-pick]');
+  var file = document.querySelector('[data-set-icon-file]');
+  var img  = document.querySelector('[data-set-icon-img]');
+  var clr  = document.querySelector('[data-set-icon-clear]');
+  var msg  = document.querySelector('[data-set-icon-msg]');
+  function say(t){ if(msg) msg.textContent = t || ''; }
+  function send(method, body){
+    return fetch('/__admin/space-icon', {
+      method: method, headers: {'Content-Type':'application/json'},
+      body: JSON.stringify(Object.assign({space: space}, body || {})),
+    }).then(function(r){ return r.json().then(function(d){ return {ok:r.ok, d:d}; }); });
+  }
+  if(pick && file){
+    pick.addEventListener('click', function(){ file.click(); });
+    file.addEventListener('change', function(){
+      var f = file.files && file.files[0];
+      if(!f) return;
+      say('Uploading…');
+      var fr = new FileReader();
+      fr.onload = function(){
+        var im = new Image();
+        im.onload = function(){
+          // Square-crop from the centre, then draw at 256 — a rectangular source would
+          // otherwise stretch, and object-fit only fixes the display, not the bytes.
+          var side = Math.min(im.width, im.height), S = 256;
+          var c = document.createElement('canvas'); c.width = S; c.height = S;
+          c.getContext('2d').drawImage(im, (im.width-side)/2, (im.height-side)/2, side, side, 0, 0, S, S);
+          var q = 0.9, uri = c.toDataURL('image/jpeg', q);
+          while(uri.length > 60000 && q > 0.4){ q -= 0.1; uri = c.toDataURL('image/jpeg', q); }
+          send('POST', {icon: uri}).then(function(res){
+            if(!res.ok){ say((res.d && res.d.error) || 'Upload failed'); return; }
+            if(img) img.src = res.d.icon;
+            var rail = document.querySelector('[data-space-icon]');
+            if(rail) rail.src = res.d.icon;
+            if(clr) clr.hidden = false;
+            say('Saved');
+          }).catch(function(){ say('Upload failed'); });
+        };
+        im.onerror = function(){ say('That file is not an image'); };
+        im.src = fr.result;
+      };
+      fr.readAsDataURL(f);
+      file.value = '';
+    });
+  }
+  if(clr){
+    clr.addEventListener('click', function(){
+      say('Removing…');
+      send('DELETE').then(function(res){
+        if(!res.ok){ say((res.d && res.d.error) || 'Could not remove'); return; }
+        if(img) img.src = '/space-icon.png';
+        var rail = document.querySelector('[data-space-icon]');
+        if(rail) rail.src = '/space-icon.png';
+        clr.hidden = true;
+        say('Removed');
+      }).catch(function(){ say('Could not remove'); });
+    });
+  }
 })();
 `;
 
@@ -5232,6 +5245,13 @@ function renderAdminPage() {
     .auset__note{ margin:7px 0 0; font-size:12.5px; line-height:1.5; color:#5b626e; }
     .auset__gauge{ height:6px; border-radius:999px; background:rgba(16,17,26,0.08); overflow:hidden; }
     .auset__gauge span{ display:block; height:100%; width:0; border-radius:999px; background:#4f46e5; }
+    .auset__icon{ display:flex; align-items:center; gap:16px; }
+    .auset__iconimg{ flex:none; width:56px; height:56px; border-radius:12px; overflow:hidden;
+                     display:grid; place-items:center; background:#fff;
+                     border:1px solid rgba(16,17,26,0.10); }
+    .auset__iconimg img{ width:100%; height:100%; object-fit:cover; display:block; }
+    .auset__iconacts{ display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+    .auset__msg{ font-size:12.5px; color:#5b626e; }
     .autbl{ width:100%; max-width:820px; border-collapse:collapse; }
     .autbl th{ text-align:left; padding:0 12px 9px; font-size:12px; font-weight:600; color:#5b626e;
                border-bottom:1px solid rgba(16,17,26,0.10); cursor:pointer; user-select:none; white-space:nowrap; }
@@ -5398,6 +5418,21 @@ function adminSections() {
     <h1 class="folderbar__title">Settings</h1>
     <span class="folderbar__rule"></span>
   </header>
+
+  <div class="auset__row">
+    <label class="auset__label">Workspace icon</label>
+    <div class="auset__icon">
+      <span class="auset__iconimg"><img src="/space-icon.png" alt="" width="56" height="56" data-set-icon-img /></span>
+      <div class="auset__iconacts">
+        <button type="button" class="aubtn" data-set-icon-pick>Upload image</button>
+        <button type="button" class="aubtn" data-set-icon-clear hidden>Remove</button>
+        <input type="file" accept="image/png,image/jpeg,image/webp" hidden data-set-icon-file />
+        <span class="auset__msg" data-set-icon-msg aria-live="polite"></span>
+      </div>
+    </div>
+    <p class="auset__note">Shown next to the workspace name in the sidebar. Square
+      images work best. Removing it restores the one this workspace ships.</p>
+  </div>
 
   <div class="auset__row">
     <label class="auset__label">Workspace name</label>

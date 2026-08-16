@@ -62,40 +62,37 @@ test("the workspace row carries a cog linking to that space's admin", () => {
     "the cog names the space it administers, so the page opens already scoped");
 });
 
-test("the cog survives a one-space instance, even though the switcher does not", () => {
-  // A self-hosted Augur is one workspace. It has nothing to switch to, but it still
-  // has a workspace to administer — so the row renders and only the dropdown drops.
-  const html = makeSwitcher(ONE, "alpha");
-  assert.notEqual(html, "", "the row must not vanish with the switcher");
-  assert.match(html, /gvspace__cog/);
-  assert.equal(/data-space-toggle/.test(html), false, "nothing to switch to, so no chevron");
-  assert.equal(/data-space-menu/.test(html), false);
-});
-
-test("with two spaces the dropdown is back", () => {
+test("there is no dropdown — nobody can belong to more than one workspace yet", () => {
+  // A chevron opening a list of one is furniture, and a list built at BUILD time could
+  // only ever name spaces the viewer may not enter. It returns with per-workspace
+  // origins + central sign-in, rendered from /__me rather than baked in.
   const html = makeSwitcher(TWO, "alpha");
-  assert.match(html, /data-space-toggle/);
-  assert.match(html, /data-space-menu/);
-});
-
-test("every switcher row ships hidden — the build cannot know the viewer", () => {
-  const html = makeSwitcher(TWO, "alpha");
-  const rows = html.match(/<a class="gvspace__item[^>]*>/g) || [];
-  assert.equal(rows.length, 2);
-  for (const row of rows) {
-    assert.match(row, /data-space-row/);
-    assert.match(row, /hidden/, "a row visible before /__me answers leaks the site's structure");
+  for (const gone of ["data-space-toggle", "data-space-menu", "data-space-row",
+                      "gvspace__chk", "gvspace__cv", "Create new", "data-space-create"]) {
+    assert.equal(html.includes(gone), false, `${gone} should be gone`);
   }
 });
 
-test("each row names its space, so the client can match it against /__me", () => {
+test("the row names only the ACTIVE workspace — never the others", () => {
   const html = makeSwitcher(TWO, "alpha");
-  assert.match(html, /data-space-row="alpha"/);
-  assert.match(html, /data-space-row="beta"/);
+  assert.match(html, /Alpha/);
+  assert.equal(html.includes("Beta"), false,
+    "listing a workspace the viewer may not enter is exactly the leak the rows caused");
 });
 
-test("Create new stays the maintainer-only stub it already was", () => {
-  assert.match(makeSwitcher(TWO, "alpha"), /data-space-create/);
+test("no badge — it labelled which space was current back when there were several", () => {
+  assert.equal(/gvspace__badge/.test(makeSwitcher(TWO, "alpha")), false);
+});
+
+test("the icon is addressable so the client can swap it after an upload", () => {
+  assert.match(makeSwitcher(TWO, "alpha"), /data-space-icon/);
+});
+
+test("a one-space instance renders exactly the same row", () => {
+  const html = makeSwitcher(ONE, "alpha");
+  assert.notEqual(html, "");
+  assert.match(html, /gvspace__cog/);
+  assert.match(html, /Alpha/);
 });
 
 // ---- the workspace admin surface --------------------------------------------
@@ -160,4 +157,22 @@ test("Content and Settings ship hidden; People is the landing section", () => {
   assert.match(adminPage, /data-admin-sec="people"(?![^>]*hidden)/);
   assert.match(adminPage, /data-admin-sec="content"[^>]*hidden/);
   assert.match(adminPage, /data-admin-sec="settings"[^>]*hidden/);
+});
+
+// ---- workspace icon ----------------------------------------------------------
+
+test("Settings offers a workspace icon with upload and remove", () => {
+  assert.match(adminPage, /data-set-icon-pick/);
+  assert.match(adminPage, /data-set-icon-file/);
+  assert.match(adminPage, /data-set-icon-img/);
+  assert.match(adminPage, /data-set-icon-clear/);
+});
+
+test("the icon picker accepts only the raster formats the worker will serve", () => {
+  const input = /<input[^>]*data-set-icon-file[^>]*>/.exec(adminPage);
+  assert.ok(input, "the file input exists");
+  for (const mime of ["image/png", "image/jpeg", "image/webp"]) {
+    assert.ok(input[0].includes(mime), `${mime} accepted`);
+  }
+  assert.equal(/image\/svg/.test(input[0]), false, "SVG is script-bearing — never accepted");
 });

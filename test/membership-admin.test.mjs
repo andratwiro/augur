@@ -144,3 +144,70 @@ test("an admin reading their own space's roster is answered", async () => {
   assert.equal(body.users.find((u) => u.email === "ed@example.test").role, "editor",
     "the role reported is the one in THIS space");
 });
+
+// ---- workspace icon ---------------------------------------------------------
+// Same shape as a profile photo, one authority level up: the workspace's admin sets
+// it, not the person. The two rules worth guarding are that authority is per
+// workspace, and that an ungated serve route cannot be turned into a KV probe.
+
+const iconEnv = (kv, users, index) => ({ COMMENTS: kv });
+
+test("only an admin of THAT workspace may set its icon", async () => {
+  const kv = memKV();
+  const users = withSpaces([BOSS, ED], {
+    "boss@example.test": { alpha: "admin" },
+    "ed@example.test": { alpha: "editor", beta: "admin" },
+  });
+  // PNG magic + padding: parseAvatarDataUri rejects anything under 16 bytes.
+  const png = "data:image/png;base64," +
+    Buffer.concat([Buffer.from([0x89,0x50,0x4e,0x47,13,10,26,10]), Buffer.alloc(24)]).toString("base64");
+  const req = (email, space) => new Request("https://example.test/__admin/space-icon", {
+    method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ space, icon: png }),
+  });
+  const boss = users[0], ed = users[1];
+
+  let res = await W.spaceIconApi(req(boss.email, "beta"), iconEnv(kv), boss, SPACES);
+  assert.equal(res.status, 403, "boss administers alpha, not beta");
+
+  res = await W.spaceIconApi(req(ed.email, "alpha"), iconEnv(kv), ed, SPACES);
+  assert.equal(res.status, 403, "ed is only an editor in alpha");
+
+  res = await W.spaceIconApi(req(ed.email, "beta"), iconEnv(kv), ed, SPACES);
+  assert.equal(res.status, 200, "ed administers beta");
+});
+
+test("an unknown workspace is refused before any authority check", async () => {
+  const users = withSpaces([BOSS], { "boss@example.test": { alpha: "admin" } });
+  const req = new Request("https://example.test/__admin/space-icon", {
+    method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ space: "nope", icon: "data:image/png;base64,iVBORw0KGgo=" }),
+  });
+  const res = await W.spaceIconApi(req, iconEnv(memKV()), users[0], SPACES);
+  assert.equal(res.status, 400);
+});
+
+test("a payload whose bytes do not match its declared type is refused", async () => {
+  const users = withSpaces([BOSS], { "boss@example.test": { alpha: "admin" } });
+  // Declared PNG, actually not — parseAvatarDataUri checks magic bytes, not the label,
+  // because the serve route echoes the mime back on an ungated response.
+  const req = new Request("https://example.test/__admin/space-icon", {
+    method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ space: "alpha", icon: "data:image/png;base64," + Buffer.from("<svg/>").toString("base64") }),
+  });
+  const res = await W.spaceIconApi(req, iconEnv(memKV()), users[0], SPACES);
+  assert.equal(res.status, 400);
+});
+
+test("applySpaceIcons stamps a URL and vouches for only the hashes it stamped", () => {
+  const out = W.applySpaceIcons(SPACES, { alpha: { k: "abc123" } });
+  assert.equal(out[0].icon, "/__space-icon/abc123");
+  assert.equal("icon" in out[1], false, "a workspace with no icon keeps its repo seed");
+  assert.notEqual(out, SPACES, "copies, never in-place — the overlay must not outlive itself");
+});
+
+test("the serve route refuses a hash the index never vouched for", async () => {
+  W.applySpaceIcons(SPACES, { alpha: { k: "known" } });
+  const res = await W.serveSpaceIcon({ COMMENTS: memKV() }, "guessed");
+  assert.equal(res.status, 404, "an ungated route must not become a KV read amplifier");
+});
