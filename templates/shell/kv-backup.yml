@@ -1,0 +1,131 @@
+name: KV backup (review archive)
+
+# Nightly export of the production KV namespace — the comment/annotation threads,
+# dev statuses, pins, renames and canvas state that make up the team's review
+# decision record. KV is the ONLY copy (Cloudflare has no point-in-time restore
+# for KV), so a bad write / bulk delete / account mishap would be unrecoverable
+# without this.
+#
+# This is the OTHER half of the backup story, and it does not overlap with
+# store-backup.yml: that one copies published CONTENT out of the bundle store
+# (R2); this one copies the mutable state the worker accumulates around it.
+# A shell needs both. Neither covers the other.
+#
+# The export lists every key (paginated), GETs each raw value, assembles one JSON
+# object {key: value} (values stored as raw strings — most are JSON, but we never
+# re-parse them), and commits it to the orphan `kv-backups` branch as
+# backup-YYYY-MM-DD.json plus latest.json, pruning dated files older than 30 days.
+# The branch is created by this workflow on first run. Restore = read the JSON,
+# PUT each pair back via the same API.
+#
+# ⚠️ THE SHELL REPO MUST BE PRIVATE. This export is the whole namespace, and the
+# namespace holds `users:secrets` (PBKDF2 password hashes, and the tombstones that
+# hold reset passwords out of service) and `publish:tokens` (live bearer tokens
+# that can overwrite published content). Committing that to a public repo hands
+# over the instance. Do not enable this workflow on a public shell.
+#
+# Secrets: CLOUDFLARE_API_TOKEN + CLOUDFLARE_ACCOUNT_ID (the same ones deploy.yml
+# uses) + AUGUR_KV_NS (the KV namespace id this instance's worker is bound to).
+
+on:
+  schedule:
+    - cron: "0 3 * * *" # nightly, 03:00 UTC
+  workflow_dispatch: # allow manual runs from the Actions tab
+
+permissions:
+  contents: write # push the backup commit to the kv-backups branch
+
+concurrency:
+  group: kv-backup
+  cancel-in-progress: false
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4 # main — the kv-backups branch is fetched/created below
+
+      # Export the whole namespace to one JSON object. The namespace is small
+      # (hundreds of keys), so a plain sequential loop is fine — no rate-limit
+      # dance needed.
+      - name: Export KV namespace
+        env:
+          CF_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CF_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CF_KV_NS: ${{ secrets.AUGUR_KV_NS }}
+        run: |
+          set -euo pipefail
+          if [ -z "${CF_KV_NS:-}" ]; then
+            echo "::error::AUGUR_KV_NS is not configured — set it to this instance's KV namespace id."; exit 1
+          fi
+          BASE="https://api.cloudflare.com/client/v4/accounts/${CF_ACCOUNT_ID}/storage/kv/namespaces/${CF_KV_NS}"
+          AUTH=(-H "Authorization: Bearer ${CF_API_TOKEN}")
+          WORK="${RUNNER_TEMP}/kv"
+          mkdir -p "$WORK/objs"
+
+          # 1) List all keys (cursor-paginated, 1000/page).
+          : > "$WORK/keys.txt"
+          CURSOR=""
+          while :; do
+            URL="${BASE}/keys?limit=1000"
+            [ -n "$CURSOR" ] && URL="${URL}&cursor=${CURSOR}"
+            RESP="$(curl -fsS --max-time 60 "${AUTH[@]}" "$URL")"
+            printf '%s' "$RESP" | jq -e .success >/dev/null # hard-fail on an API error envelope
+            printf '%s' "$RESP" | jq -r '.result[].name' >> "$WORK/keys.txt"
+            CURSOR="$(printf '%s' "$RESP" | jq -r '.result_info.cursor // empty')"
+            [ -z "$CURSOR" ] && break
+          done
+          COUNT="$(wc -l < "$WORK/keys.txt" | tr -d ' ')"
+          echo "Listed $COUNT keys."
+          if [ "$COUNT" -eq 0 ]; then
+            echo "::error::namespace listed ZERO keys — wrong namespace id, or the data is gone; refusing to write an empty backup."; exit 1
+          fi
+
+          # 2) GET each raw value, wrap it as a single-pair object, then merge all pairs.
+          I=0
+          while IFS= read -r KEY; do
+            ENC="$(jq -rn --arg k "$KEY" '$k|@uri')"
+            if ! curl -fsS --max-time 60 "${AUTH[@]}" -o "$WORK/value" "${BASE}/values/${ENC}"; then
+              echo "::warning::key vanished/failed mid-export, skipped: $KEY"; continue
+            fi
+            jq -n --arg k "$KEY" --rawfile v "$WORK/value" '{($k): $v}' > "$WORK/objs/$(printf '%08d' "$I").json"
+            I=$((I+1))
+          done < "$WORK/keys.txt"
+          jq -s 'add' "$WORK"/objs/*.json > "$WORK/backup.json"
+          echo "Exported $(jq 'length' "$WORK/backup.json") key/value pairs."
+
+      # Commit to the orphan kv-backups branch (created here on first run), pruning
+      # dated backups older than 30 days. latest.json always mirrors today's file.
+      - name: Commit to kv-backups branch
+        run: |
+          set -euo pipefail
+          WORK="${RUNNER_TEMP}/kv"
+          git config user.name "augur-bot"
+          git config user.email "augur-bot@users.noreply.github.com"
+          if git fetch origin kv-backups 2>/dev/null; then
+            git checkout -B kv-backups FETCH_HEAD
+          else
+            echo "No kv-backups branch yet — creating the orphan."
+            git checkout --orphan kv-backups
+            git rm -rfq .
+            git clean -fdq
+          fi
+          TODAY="$(date -u +%F)"
+          cp "$WORK/backup.json" "backup-${TODAY}.json"
+          cp "$WORK/backup.json" latest.json
+          git add "backup-${TODAY}.json" latest.json
+          # Prune dated files older than 30 days (lexicographic compare works on YYYY-MM-DD).
+          CUTOFF="$(date -u -d '30 days ago' +%F)"
+          for F in backup-*.json; do
+            D="${F#backup-}"; D="${D%.json}"
+            if [[ "$D" < "$CUTOFF" ]]; then
+              git rm -q "$F"
+              echo "Pruned $F (older than $CUTOFF)"
+            fi
+          done
+          if git diff --cached --quiet; then
+            echo "Nothing changed since the last backup — no commit."
+            exit 0
+          fi
+          git commit -m "KV backup ${TODAY} ($(jq 'length' latest.json) keys)"
+          git push origin kv-backups

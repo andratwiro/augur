@@ -13,6 +13,7 @@ templates/shell/          → <shell-repo>/.github/workflows/
 ├── engine-bump.yml       # REQUIRED in practice. Take engine updates on your own schedule.
 ├── health.yml            # Canary: pushed-but-never-published drift, stale dirty publishes.
 ├── store-backup.yml      # Weekly + monthly off-Cloudflare copies of the bundle store.
+├── kv-backup.yml         # Nightly copy of KV — the half store-backup does not cover.
 ├── space-preflight.yml   # Probe that CI's PAT can read a space repo before you add it.
 └── roster-update.yml     # Commit Admin-panel invites/removals back to identity.json.
 ```
@@ -20,6 +21,19 @@ templates/shell/          → <shell-repo>/.github/workflows/
 Each file carries its own header explaining what it does and what it needs. Three of them
 have an instance value to fill in before first use — the Pages project name and site
 origin in `deploy.yml`, the site origin in `health.yml` and `store-backup.yml`.
+
+**The two backups do not overlap, and a shell needs both.** `store-backup.yml` copies
+published *content* out of the bundle store (R2). `kv-backup.yml` copies the mutable
+*state* the worker keeps alongside it — comment threads, statuses, pins, renames,
+canvases, and the identity records below. Neither store has point-in-time restore, and
+neither backup covers the other, so running only one is being half-backed-up while
+reading as backed-up.
+
+⚠️ `kv-backup.yml` commits the **whole** namespace to a branch on the shell repo, and
+that includes `users:secrets` (password hashes, and the tombstones that hold reset
+passwords out of service) and `publish:tokens` (live bearer tokens that can overwrite
+published content). **Do not enable it on a public shell.** Everything else here is
+safe on one; this is not.
 
 **There is no template for a space repo, and that is deliberate.** Space content reaches
 the live site through `augur publish` and through nothing else, so a space repo needs no

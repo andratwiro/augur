@@ -259,8 +259,15 @@ Workflows — copy from [templates/shell/](./templates/shell/) into
 | `engine-bump.yml` | take engine updates on your schedule. Required in practice. |
 | `health.yml` | canary: pushed-but-never-published drift, stale dirty publishes. |
 | `store-backup.yml` | off-Cloudflare copies of the store, weekly + monthly. |
+| `kv-backup.yml` | nightly copy of KV — comments, statuses, pins, canvases, identity. |
 | `space-preflight.yml` | probe that CI's PAT can read a space repo before you add it. |
 | `roster-update.yml` | commit Admin-panel invites/removals back to `identity.json`. |
+
+Take **both** backups. `store-backup.yml` covers published content in R2;
+`kv-backup.yml` covers the state the worker keeps beside it. Neither store has
+point-in-time restore and neither backup covers the other. Because the KV export
+includes password hashes and live publish tokens, keep the shell repo private —
+that is the one workflow here that is unsafe on a public one.
 
 Commit and create the repo:
 
@@ -275,6 +282,7 @@ git add . && git commit -m "shell: initial" \
 gh secret set CLOUDFLARE_API_TOKEN  -R <owner>/<shell> --body "$CF_TOKEN"
 gh secret set CLOUDFLARE_ACCOUNT_ID -R <owner>/<shell> --body "$CF_ACCOUNT"
 gh secret set SUBMODULE_PAT         -R <owner>/<shell> --body "$GH_TOKEN"
+gh secret set AUGUR_KV_NS           -R <owner>/<shell> --body "<kv-id>"   # kv-backup.yml
 gh workflow run deploy.yml -R <owner>/<shell> && sleep 90 && curl -s <site>/_build.json
 ```
 

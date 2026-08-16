@@ -23,8 +23,25 @@ the admin panel shows a red chip, and the deploy canary complains once one
 outlives its grace window — because the right response to a dirty publish is to
 commit and republish, not to rely on a backup catching it.
 
-Note also what is NOT at risk: KV. Comment threads, pins, dev statuses and renames
-live there, backed up separately by the shell's `kv-backup.yml`.
+## KV is a separate loss, with a separate backup
+
+Comment threads, pins, dev statuses, renames and canvas state live in KV, not in
+the store. Losing the bucket does not touch them — and nothing in this document
+recovers them either. Treat it as a second, independent durability problem: KV
+has no point-in-time restore any more than R2 does.
+
+The backup for that half is the shell's `kv-backup.yml`
+([template](../templates/shell/kv-backup.yml)) — a nightly full-namespace export
+committed to an orphan `kv-backups` branch on the shell repo, keeping 30 days of
+dated files plus `latest.json`. Restore is a read of that JSON and a `PUT` of each
+pair back through the Cloudflare KV API.
+
+**Check that your own shell runs it before relying on that sentence.** It is
+per-instance, and it was hand-authored per shell long before it was templated, so
+an older shell can be missing it entirely while looking complete: `ls
+.github/workflows/` and confirm `AUGUR_KV_NS` is set alongside the `CLOUDFLARE_*`
+secrets. A shell with `store-backup.yml` and no `kv-backup.yml` is backing up half
+its state.
 
 ## In-store recovery: rollback
 
