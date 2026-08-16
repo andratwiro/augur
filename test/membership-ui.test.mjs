@@ -192,3 +192,14 @@ test("the icon picker accepts only the raster formats the worker will serve", ()
   }
   assert.equal(/image\/svg/.test(input[0]), false, "SVG is script-bearing — never accepted");
 });
+
+test("the design system is named for what it is, not called a Library", () => {
+  // "Library" was ambiguous next to Projects — a library of what? The engine already
+  // calls this a design system (space.json's `designSystem`, the package description),
+  // so the rail uses the same word. The internal key stays `library`.
+  const home = join(DIST, "index.html");
+  if (!existsSync(home)) return;
+  const html = readFileSync(home, "utf8");
+  assert.match(html, />Design system</);
+  assert.equal(/>Library</.test(html), false, "the old label is gone from the rail");
+});
