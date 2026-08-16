@@ -1549,7 +1549,7 @@ const PAGE_CSS = `
     .proto-date { color: var(--faint); font-weight: 450; font-size: 13px; margin-top: 1px; }
     /* Last-editor face — git's last-commit author for the prototype, mapped to a user. */
     .proto-editor {
-      flex: none; width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center;
+      flex: none; width: 20px; height: 20px; border-radius: 50%; display: grid; place-items: center;
       color: #fff; font-size: 9.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .02em;
       background-size: cover; background-position: center; box-shadow: 0 0 0 2px var(--card);
     }
@@ -2062,15 +2062,15 @@ const NAV_CSS = `
        PROFILE_JS confirms a logged-in user (open/no-identity builds show nothing). */
     .gvprof { position: relative; margin: 0 0 6px; }
     .gvprof__btn {
-      display: flex; align-items: center; gap: 8px; width: 100%; padding: 5px 8px;
-      border: 1px solid transparent; border-radius: 8px; background: none; cursor: pointer;
+      display: flex; align-items: center; gap: 10px; width: 100%; padding: 6px 8px;
+      border: 0; border-radius: 7px; background: none; cursor: pointer;
       font: inherit; color: #16171a; text-align: left; transition: background .12s ease;
     }
     .gvprof__btn:hover { background: rgba(16,17,26,0.05); }
     .gvprof__btn:focus-visible { outline: 2px solid #5e6ad2; outline-offset: 1px; }
     .gvprof__btn[aria-expanded=true] { background: rgba(16,17,26,0.06); }
     .gvprof__av {
-      flex: none; width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center;
+      flex: none; width: 20px; height: 20px; border-radius: 50%; display: grid; place-items: center;
       background: var(--gvprof-color, #4f46e5); color: #fff; font-size: 10px; font-weight: 700;
       letter-spacing: .02em; text-transform: uppercase; background-size: cover; background-position: center;
     }
@@ -2116,10 +2116,11 @@ const NAV_CSS = `
 
     /* Workspace-settings rail (adminRail): back link + the three sections. Reuses
        .gvside__act so a tab sits at exactly the rail's own rhythm. */
-    .gvadmin__back { display: flex; align-items: center; gap: 7px; margin: 2px 1px 10px;
-                     padding: 7px 8px; border-radius: 8px; text-decoration: none;
+    .gvadmin__back { display: flex; align-items: center; gap: 10px; margin: 2px 0 10px;
+                     padding: 6px 8px; border-radius: 7px; text-decoration: none;
                      color: #16171a; font-weight: 600; font-size: 13.5px; }
-    .gvadmin__back svg { width: 15px; height: 15px; flex: none; color: #9aa0ab; }
+    .gvadmin__back svg { width: 20px; height: 20px; padding: 3px; box-sizing: border-box;
+                         flex: none; color: #9aa0ab; }
     .gvadmin__back:hover { background: rgba(16,17,26,0.05); }
     .gvadmin__tab { font-weight: 500; }
     .gvadmin__tab.is-on { background: #eef2ff; color: #4f46e5; font-weight: 600; }
@@ -2130,7 +2131,7 @@ const NAV_CSS = `
        The workspace row. Hidden until SPACE_JS confirms you belong to something —
        it is no longer an admin-only maintainer tool (that was html.gv-admin), it is
        everyone's, and it names spaces, so it must stay dark to a signed-out visitor. */
-    .gvspace { display: none; position: relative; margin: 2px 1px 8px; }
+    .gvspace { display: none; position: relative; margin: 2px 0 8px; }
     html.gv-spaces .gvspace { display: block; }
     .gvspace__row { display: flex; align-items: center; gap: 2px; }
     /* Admin is a rail destination, revealed only to an admin of THIS workspace —
@@ -2138,8 +2139,8 @@ const NAV_CSS = `
     .gvside__admin { display: none !important; }
     html.gv-space-admin .gvside__admin { display: flex !important; }
     .gvspace__row .gvspace__btn { flex: 1 1 auto; min-width: 0; }
-    .gvspace__btn { display: flex; align-items: center; gap: 9px; flex: 1 1 auto; min-width: 0;
-                    padding: 7px 8px; border-radius: 8px; background: none; border: 0; }
+    .gvspace__btn { display: flex; align-items: center; gap: 10px; flex: 1 1 auto; min-width: 0;
+                    padding: 6px 8px; border-radius: 7px; background: none; border: 0; }
     .gvspace__icon { flex: none; width: 20px; height: 20px; border-radius: 5px; overflow: hidden; display: grid; place-items: center; background: #fff; }
     .gvspace__icon img { width: 100%; height: 100%; object-fit: cover; display: block; }
     .gvspace__name { flex: 1 1 auto; min-width: 0; font-weight: 600; font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -2239,9 +2240,15 @@ const NAV_CSS = `
     .gvside a > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
     .gvside__ver { margin-left: auto; flex: none; font-size: 10px; font-weight: 600; letter-spacing: .02em; color: #9aa0ab; font-variant-numeric: tabular-nums; }
     .gvic { width: 16px; height: 16px; flex: none; color: #565a63; }
+    /* Rail marks share ONE slot so every icon edge and every label edge lines up.
+       The glyph still draws at 16px; the padding widens its box to 20px without
+       scaling the artwork (box-sizing keeps the outer size fixed). */
+    .gvside a > .gvic, .gvside__act > .gvic {
+      width: 20px; height: 20px; padding: 2px; box-sizing: border-box;
+    }
     .gvside a[aria-current="page"] .gvic { color: #16171a; }
     /* Pinned rows: the leading emoji sits in the same slot a nav icon would. */
-    .gvpin-ic { width: 16px; flex: none; display: inline-flex; align-items: center; justify-content: center; font-size: 14px; line-height: 1; }
+    .gvpin-ic { width: 20px; flex: none; display: inline-flex; align-items: center; justify-content: center; font-size: 14px; line-height: 1; }
     .gvside__pinhint { color: #6b7280; font-size: 12px; line-height: 1.45; margin: 2px 8px 2px; }
     .gvside [data-pinned-list] a { cursor: grab; }
     .gvside [data-pinned-list] a.gv-dragging { opacity: .45; cursor: grabbing; }

@@ -77,3 +77,45 @@ for (const page of PAGES) {
       `declarations outside any rule — leftovers from editing a multi-line rule:\n  ${orphans.join("\n  ")}`);
   });
 }
+
+// ---- the rail's marks share one slot ----------------------------------------
+// Three different systems were in play before this: nav glyphs in a 16px box, a 20px
+// workspace icon nudged 1px right by a stray margin, and a 22px avatar pushed another
+// pixel by a transparent border. Nothing lined up down the left edge. Measured in a
+// browser the fix is exact (every mark at x=18, every label at x=48); what this test
+// can cheaply hold is the CSS contract that produces it.
+test("the rail's leading marks share one padding, gap and box", () => {
+  const file = join(DIST, "index.html");
+  if (!existsSync(file)) return;
+  const css = strip(styleText(readFileSync(file, "utf8")));
+  // Escape the selector once, here — passing pre-escaped strings in and escaping
+  // again produced patterns that matched nothing and a test that "passed" vacuously.
+  const rule = (sel) => {
+    const esc = sel.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const m = new RegExp(`(^|[},])\\s*${esc}\\s*\\{([^}]*)\\}`).exec(css);
+    return m ? m[2].replace(/\s+/g, " ").trim() : null;
+  };
+  const decl = (body, prop) => {
+    const m = new RegExp(`(?:^|;)\\s*${prop}\\s*:\\s*([^;]+)`).exec(body || "");
+    return m ? m[1].trim() : null;
+  };
+
+  const nav = rule(".gvside a");
+  const chip = rule(".gvprof__btn");
+  const space = rule(".gvspace__btn");
+  assert.ok(nav && chip && space, "all three rules exist");
+
+  // Guard against a vacuous pass: if the selectors stop matching, fail loudly.
+  assert.ok(nav.length && chip.length && space.length, 'rule bodies are non-empty');
+  for (const [name, body] of [["nav row", nav], ["profile chip", chip], ["workspace row", space]]) {
+    assert.equal(decl(body, "padding"), "6px 8px", `${name} shares the rail's padding`);
+    assert.equal(decl(body, "gap"), "10px", `${name} shares the rail's gap`);
+  }
+  // A transparent border still occupies a pixel — that is what pushed the avatar right.
+  assert.equal(/border\s*:\s*1px/.test(chip), false,
+    "the profile chip must not carry a border the nav rows lack");
+  // And the marks themselves are one 20px box.
+  assert.match(rule(".gvprof__av") || "", /width: 20px/);
+  assert.match(rule(".gvspace__icon") || "", /width: 20px/);
+  assert.match(rule(".gvside a > .gvic, .gvside__act > .gvic") || "", /width: 20px/);
+});

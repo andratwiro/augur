@@ -600,6 +600,30 @@ const roleIn = (u, spaceId) => {
 
 const spacesFor = (u, spaces) => (spaces || []).filter((s) => isMemberOf(u, s.id));
 
+// A viewer can look around; it cannot change what everyone else sees. Returns a 403
+// Response for a write a viewer may not make, or null to let the request through.
+// GETs always pass — reading a status or a name is looking, not changing.
+//
+// The role is resolved against the space that owns the TARGET path (?path=), so this
+// stays correct once one person can hold different roles in different workspaces. An
+// unowned or missing path falls back to the global role rather than failing open.
+function viewerWriteRefusal(request, url, me, what, spaces = SPACES) {
+  if (!me || request.method === "GET" || request.method === "HEAD") return null;
+  const target = url.searchParams.get("path") || url.pathname;
+  const sid = spaceIdForPath(target, spaces);
+  const role = sid ? roleIn(me, sid) : roleOf(me);
+  if (role !== "viewer") return null;
+  return jsonResponse({
+    error: "viewer-role",
+    message: {
+      name: "This account can look around but not rename prototypes.",
+      status: "This account can look around but not change a prototype's status.",
+      canvas: "This account can look around but not create canvases.",
+      asset: "This account can look around but not upload images.",
+    }[what] || "This account can look around but not change things.",
+  }, 403);
+}
+
 // ---- Workspace icons --------------------------------------------------------
 async function readSpaceIcons(env) {
   const kv = kvFor(env);
@@ -4445,8 +4469,15 @@ export default {
 
     // Overlay APIs — gated by the same rule as the site (open in legacy no-gate mode
     // so raw/local builds keep working). Pins are scoped to the signed-in user.
+    // Prototype status and prototype names are CONTENT, shared with everyone who
+    // opens the site — so a viewer may read them and may not write them. Reads stay
+    // open to any signed-in user; writes ask the role IN THE SPACE that owns the
+    // path being changed, not the global role, because the same person can be a
+    // viewer in one workspace and an editor in another.
     if (url.pathname === "/__status") {
       if (!authed) return jsonResponse({ error: "unauthorized" }, 401);
+      const denied = viewerWriteRefusal(request, url, me, "status");
+      if (denied) return denied;
       return statusApi(request, url, env);
     }
     if (url.pathname === "/__pins") {
@@ -4455,6 +4486,8 @@ export default {
     }
     if (url.pathname === "/__name") {
       if (!authed) return jsonResponse({ error: "unauthorized" }, 401);
+      const denied = viewerWriteRefusal(request, url, me, "name");
+      if (denied) return denied;
       return nameApi(request, url, env);
     }
     // The shipped space list (id/name/badge/base/adminOnly) for shell UI — gated
@@ -4469,6 +4502,10 @@ export default {
     // registers are public (served past the gate in the fetch fallthrough below).
     if (url.pathname === "/__canvases") {
       if (!authed) return jsonResponse({ error: "unauthorized" }, 401);
+      // Creating a canvas is creating content. A viewer looks and comments; it does
+      // not add things other people will find in the gallery.
+      const denied = viewerWriteRefusal(request, url, me, "canvas");
+      if (denied) return denied;
       return canvasesApi(request, url, env, me);
     }
     // Prototype deletion — DESTRUCTIVE (repo write). Admin-only in identity mode; in
@@ -4488,6 +4525,10 @@ export default {
     // image store can't be filled by anonymous callers.
     if (url.pathname.startsWith("/__asset")) {
       if (request.method === "POST" && usersActive && !authed) return jsonResponse({ error: "unauthorized" }, 401);
+      // A viewer's canvas rights stop where an anonymous visitor's do, and an
+      // anonymous visitor cannot upload (the check above). So neither can a viewer.
+      const denied = viewerWriteRefusal(request, url, me, "asset");
+      if (denied) return denied;
       return assetApi(request, url, env);
     }
     // Canvas multiplayer: same-origin WebSocket proxied to the augur-realtime worker (one
@@ -4600,6 +4641,7 @@ export const __testables = {
   ROLES, roleOf, readRoles, applyRoles, clearRole, USER_ROLES_KEY,
   USER_SPACES_KEY, readSpaces, applySpaces, membershipOf, isMemberOf, roleIn,
   spacesFor, clearSpaces, meSpaces, spaceIdForPath, administersAny, lastAdminOf, mayResetPassword,
+  viewerWriteRefusal,
   SPACE_ICONS_KEY, SPACE_ICON_BLOB_PREFIX, readSpaceIcons, applySpaceIcons, serveSpaceIcon, spaceIconApi,
   mergeRoster, readRoster, revokeSecret, revokeInvitesFor,
   applyAvatars, readAvatars, parseAvatarDataUri, avatarHash, clearAvatar,

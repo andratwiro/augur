@@ -211,3 +211,78 @@ test("the serve route refuses a hash the index never vouched for", async () => {
   const res = await W.serveSpaceIcon({ COMMENTS: memKV() }, "guessed");
   assert.equal(res.status, 404, "an ungated route must not become a KV read amplifier");
 });
+
+// ---- a viewer may look, not change -------------------------------------------
+// The role existed but two content endpoints never asked about it: /__name renames a
+// prototype for everyone, and /__status changes its state for everyone. Both only
+// checked "is anyone signed in", so a viewer could do both.
+
+const req = (method, path) => new Request("https://example.test" + path, { method });
+
+test("a viewer cannot rename a prototype or change its status", () => {
+  const [v] = withSpaces([{ email: "v@example.test", role: "viewer" }],
+    { "v@example.test": { alpha: "viewer" } });
+  for (const [p, what] of [["/__name?path=/proj/proto/", "name"], ["/__status?path=/proj/proto/", "status"]]) {
+    const res = W.viewerWriteRefusal(req("POST", p), new URL("https://example.test" + p), v, what, SPACES);
+    assert.ok(res, `${what} write refused`);
+    assert.equal(res.status, 403);
+  }
+});
+
+test("a viewer may still READ names and statuses", () => {
+  const [v] = withSpaces([{ email: "v@example.test", role: "viewer" }],
+    { "v@example.test": { alpha: "viewer" } });
+  const p = "/__name?path=/proj/proto/";
+  assert.equal(W.viewerWriteRefusal(req("GET", p), new URL("https://example.test" + p), v, "name", SPACES), null,
+    "reading is looking, not changing");
+});
+
+test("an editor and an admin write freely", () => {
+  const users = withSpaces([ED, BOSS], {
+    "ed@example.test": { alpha: "editor" }, "boss@example.test": { alpha: "admin" },
+  });
+  const p = "/__name?path=/proj/proto/";
+  for (const u of users) {
+    assert.equal(W.viewerWriteRefusal(req("POST", p), new URL("https://example.test" + p), u, "name", SPACES), null);
+  }
+});
+
+test("the role is taken from the space that owns the path, not the global role", () => {
+  // Viewer in alpha, editor in beta — the same person, two answers.
+  const [u] = withSpaces([{ email: "x@example.test", role: "editor" }],
+    { "x@example.test": { alpha: "viewer", beta: "editor" } });
+  const inAlpha = "/__name?path=/proj/proto/";        // default space → alpha
+  const inBeta = "/__name?path=/beta/proj/proto/";
+  assert.ok(W.viewerWriteRefusal(req("POST", inAlpha), new URL("https://example.test" + inAlpha), u, "name", SPACES),
+    "refused where they are a viewer");
+  assert.equal(W.viewerWriteRefusal(req("POST", inBeta), new URL("https://example.test" + inBeta), u, "name", SPACES), null,
+    "allowed where they are an editor");
+});
+
+test("a signed-out caller is not this gate's problem", () => {
+  const p = "/__name?path=/x/";
+  assert.equal(W.viewerWriteRefusal(req("POST", p), new URL("https://example.test" + p), null, "name", SPACES), null,
+    "the auth check ahead of it already answered 401");
+});
+
+test("a viewer cannot create a canvas or upload an image", () => {
+  // Their canvas rights stop where an anonymous visitor's do, and anonymous cannot
+  // upload. Commenting is the one thing a viewer adds.
+  const [v] = withSpaces([{ email: "v@example.test", role: "viewer" }],
+    { "v@example.test": { alpha: "viewer" } });
+  for (const [p, what] of [["/__canvases", "canvas"], ["/__asset", "asset"]]) {
+    const res = W.viewerWriteRefusal(req("POST", p), new URL("https://example.test" + p), v, what, SPACES);
+    assert.ok(res && res.status === 403, `${what} refused`);
+  }
+});
+
+test("every viewer refusal explains what the account can do instead", async () => {
+  const [v] = withSpaces([{ email: "v@example.test", role: "viewer" }],
+    { "v@example.test": { alpha: "viewer" } });
+  for (const what of ["name", "status", "canvas", "asset"]) {
+    const res = W.viewerWriteRefusal(req("POST", "/__x"), new URL("https://example.test/__x"), v, what, SPACES);
+    const body = await res.json();
+    assert.equal(body.error, "viewer-role");
+    assert.match(body.message, /look around/, `${what} says what the account CAN do`);
+  }
+});
