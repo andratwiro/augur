@@ -16,6 +16,35 @@ The date is the day the update went live. The page works out "Today / 3 days ago
 
 ---
 
+## 2026-08-16 — Workspace settings, and a sidebar that says what it is
+The gear that used to sit under your own face is gone. Admin is now its own place
+in the sidebar, and it opens onto your workspace: the people in it, what's live,
+and its settings — including a workspace icon you can change like a profile photo.
+The Library is now called the Design system, because that's what it is.
+
+## 2026-08-16 — Roles you can change from the table
+Change someone's role right where you see it, from a dropdown on their row. Each
+role has its own mark, so admin, editor and viewer read apart at a glance.
+
+## 2026-08-16 — A viewer really can only look
+A viewer could rename a prototype, change its status, start a canvas and upload
+images. Now it can't do any of those. It reads and it comments — that's the role.
+
+## 2026-08-16 — The admin panel works again
+For a few hours the whole people panel silently did nothing: it never finished
+loading, and invites, role changes and removals all failed without saying so.
+Fixed, with a check that catches this kind of break before it ships.
+
+## 2026-08-16 — Your galleries use the whole window
+Prototype and project grids stopped at a fixed width and left a wide screen half
+empty. They now add columns as the window grows, so a big screen shows more work
+rather than more background.
+
+## 2026-08-16 — Instances keep themselves up to date
+Every Augur checks for engine updates every six hours instead of once a week, so
+fixes reach a site nobody is watching. If you're running your own copy and would
+rather stay put, you still can — it's a switch you flip, not the default.
+
 ## 2026-08-14 — Faces stay right after you change your photo
 Change your photo and it now updates everywhere at once — on cards, comments and
 canvases, on pages that were published long before. Until now those pages kept

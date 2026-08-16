@@ -2775,7 +2775,7 @@ function spaceSwitcher() {
 }
 
 // The persistent left rail: brand → omni search → Playground → Opportunities → Pinned
-// (the user's starred prototypes/projects, rendered client-side by PINS_JS) → Library
+// (the user's starred prototypes/projects, rendered client-side by PINS_JS) → Design system
 // (collapsible, pinned to the bottom). `active` is a single key: 'prototypes' |
 // 'playground' | <opportunity name> | 'primitives' | 'components' | 'pages'.
 // The library's own sections — used both to build its rail and to know when the rail
@@ -2793,10 +2793,12 @@ function sideRail(active) {
   const adminItem = `<a class="gvside__admin" href="/admin/" data-space-admin${
     NAV_STATE.activeSpace ? ` data-space-id="${escAttr(NAV_STATE.activeSpace)}"` : ""
   }>${IC_GEAR}<span>Admin</span></a>`;
-  // Library is a destination like the others now, not a disclosure wedged in the foot.
+  // The design system is a destination like the others now, not a disclosure wedged in
+  // the foot. `library` stays the internal key — renaming it would churn every
+  // aria-current match and the LIB_KEYS list for no user-visible gain.
   // Everyone sees it; opening it swaps the rail for its own sections, the same shape
   // Admin uses — one nav column at a time, never two.
-  const libraryItem = item("/tokens/", "Library", "library", IC_LIBRARY);
+  const libraryItem = item("/tokens/", "Design system", "library", IC_LIBRARY);
   // Pinned is rendered live from the KV pins map (PINS_JS fills [data-pinned-list] and
   // toggles the empty hint); nothing is server-rendered here.
   const pinned = `<p class="gvside__label">Pinned</p>
@@ -3033,7 +3035,7 @@ function appChrome(active) {
   </header>`;
   // Workspace admin REPLACES the rail rather than adding a second nav column beside
   // it. You are in one workspace's settings, not browsing its content, so the rail's
-  // Projects / Pinned / Library are noise — and two nav columns side by side read as
+  // Projects / Pinned / Design system are noise — and two nav columns side by side read as
   // two levels of hierarchy when there is only one.
   const rail = active === "admin" ? adminRail()
     : LIB_KEYS.includes(active) ? libraryRail(active)
@@ -3041,17 +3043,17 @@ function appChrome(active) {
   return `${top}${rail}<div class="gvscrim" data-side-scrim></div>${helpDrawer()}${settingsModal()}`;
 }
 
-// The rail while you are inside the Library. Same shape as workspace settings: profile
+// The rail while you are inside the design system. Same shape as workspace settings: profile
 // chip, a way back, then this section's own destinations — one nav column, never two.
 function libraryRail(active) {
   const item = (href, label, key, icon) =>
     `<a href="${S(href)}"${active === key ? ' aria-current="page"' : ""}>${icon}<span>${label}</span></a>`;
-  return `<aside class="gvside" id="gvside" aria-label="Library">
+  return `<aside class="gvside" id="gvside" aria-label="Design system">
     ${profileChip()}
     <div class="gvside__rule"></div>
     <a class="gvadmin__back" href="${S("/")}">
       <svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M10 3L5 8l5 5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
-      <span>Library</span>
+      <span>Design system</span>
     </a>
     <div class="gvside__scroll">
       <div class="gvside__group">

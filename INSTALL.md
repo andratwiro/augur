@@ -445,8 +445,11 @@ for whatever is reachable from the edge. Hence three explicit lists.
 
 ## Operating it
 
-**Engine updates.** `engine-bump.yml` runs weekly and on demand
-(`gh workflow run engine-bump.yml -R <owner>/<shell>`). On the default `release` track it
+**Engine updates.** `engine-bump.yml` runs every 6 hours and on demand
+(`gh workflow run engine-bump.yml -R <owner>/<shell>`), so an instance picks up fixes
+without anyone watching it. It also updates the moment the engine moves if the engine
+maintainer has your shell on their dispatch list; the schedule is what covers everyone
+else. Detaching is deliberate — disable the workflow, or pin `TRACK` to a tag. On the default `release` track it
 opens a PR moving the pin to the latest engine release with the notes in the body —
 nothing lands unread. `TRACK: main` follows the bleeding edge instead. The pin is your
 release valve: skip an update by not merging, roll back by reverting the pin commit.

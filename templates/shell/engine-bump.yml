@@ -31,14 +31,20 @@ name: Bump engine pin
 on:
   # The engine's own deploy-trigger.yml dispatches `engine-updated` the moment its main
   # moves, to every shell named in its SHELL_REPO variable. Listening for it is what
-  # makes a shell update immediately instead of waiting for the weekly sweep — and
+  # makes a shell update immediately instead of waiting for the next sweep — and
   # without this trigger the dispatch arrives and does nothing, silently, which reads
-  # exactly like an instance that simply lags. The cron below stays as the safety net
+  # exactly like an instance that simply lags. The cron below stays as the fallback
   # for whenever the dispatch does not arrive (token scope, fork, shell not in the list).
   repository_dispatch:
     types: [engine-updated]
   schedule:
-    - cron: "17 6 * * 1" # Mondays 06:17 UTC — weekly engine refresh
+    # Every 6 hours, not weekly. For an instance on the engine's SHELL_REPO list this
+    # is only a safety net — but a SELF-HOSTED instance is never on that list, so this
+    # cron is its ONLY automatic update, and a weekly sweep meant a security patch
+    # could sit unapplied for six days. Auto-update is the default because it is how
+    # fixes reach instances nobody is watching; detaching is a deliberate act (disable
+    # this workflow, or pin TRACK to a tag), never an accident of scheduling.
+    - cron: "17 */6 * * *" # 06:17 past every 6th hour UTC
   workflow_dispatch:
 
 env:
