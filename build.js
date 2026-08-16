@@ -6793,6 +6793,37 @@ async function main() {
       ...(m.space.default ? { publicSkillPrefixes: gateExempt } : {}),
     };
   }
+  // A space that HAS a design system must ship it. This is the one silent failure the
+  // whole publish path could not detect: the skill inventory is either declared in
+  // skill.json or matched against a fixed default list, so a renamed asset, a typo in
+  // the manifest or a moved directory drops the stylesheet without dropping a single
+  // page. The site still builds, still publishes, still exports — and every prototype
+  // renders unstyled, which nobody sees until they open one.
+  //
+  // Prototypes and the design system ARE the content worth protecting; comments,
+  // canvases and rosters are recoverable conveniences. So this fails the build rather
+  // than warning, in the same spirit as the ENGINE_CHROME assertion above.
+  for (const sp of spaces) {
+    // detectUiSkill is pure and is what setSpaceContext used per space, so re-deriving
+    // beats stashing module state that would drift.
+    const ds = detectUiSkill(sp);
+    if (!ds.dirName) continue; // no design system to lose
+    const m = manifests[sp.id];
+    const prefix = `${sp.default ? "" : "/" + sp.id}/skills/${ds.dirName}/`;
+    // Specifically a STYLESHEET, not merely "some file". graph.js is emitted by the
+    // build rather than copied from the skill, so the prefix is never empty — checking
+    // for any file at all is a guard that cannot fire. The CSS is what carries the
+    // design system, and it is what a broken inventory actually drops.
+    const css = m ? Object.keys(m.files).filter((f) => f.startsWith(prefix) && f.endsWith(".css")) : [];
+    if (!css.length) {
+      throw new Error(
+        `[build] space "${sp.id}" has a design system at skills/${ds.dirName}/ but shipped NO stylesheet from it.\n` +
+        `  Every prototype in this space would render unstyled — the site would still build,\n` +
+        `  still publish and still export, and nobody would notice until they opened a page.\n` +
+        `  Check that skills/${ds.dirName}/skill.json "assets" names files that exist (agents/ui-skill.md).`);
+    }
+  }
+
   await fs.mkdir(path.join(DIST, "__manifests"), { recursive: true });
   for (const [id, m] of Object.entries(manifests))
     await fs.writeFile(path.join(DIST, "__manifests", id + ".json"), JSON.stringify(m), "utf8");
