@@ -36,6 +36,24 @@ committed to an orphan `kv-backups` branch on the shell repo, keeping 30 days of
 dated files plus `latest.json`. Restore is a read of that JSON and a `PUT` of each
 pair back through the Cloudflare KV API.
 
+There is also an in-engine copy of the same thing, for when you want one now rather
+than tonight:
+
+```
+curl -fsS https://<origin>/__admin/backup -b "<your session cookie>" -o kv-backup.json
+```
+
+`GET /__admin/backup` is admin-gated and streams the whole namespace as
+`{format, at, data:{key:value}, expirations, vanished, count, bytes, complete}`.
+Values are raw strings, never re-parsed, so a restore is a `PUT` of each pair back.
+It needs a **login**, not account credentials — which is the difference that matters
+when you are away from the machine that holds the Cloudflare token.
+
+Check `complete: true`. A read failure mid-export tears the stream down rather than
+closing the document, so a failed backup does not parse at all — but `vanished` is
+the softer case worth reading: keys that were listed and then expired before they
+could be read (rate-limit keys carry TTLs), named rather than dropped.
+
 **Check that your own shell runs it before relying on that sentence.** It is
 per-instance, and it was hand-authored per shell long before it was templated, so
 an older shell can be missing it entirely while looking complete: `ls

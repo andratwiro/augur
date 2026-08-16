@@ -2273,6 +2273,91 @@ async function adminStorageApi(env, me) {
   return jsonResponse(data);
 }
 
+// GET /__admin/backup — the whole KV namespace as one JSON document.
+//
+// The store's own backup (`augur export`) copies published CONTENT. This copies the
+// other half: the mutable state the worker accumulates around it — password hashes,
+// invites, roster overlay, publish tokens, comment threads, boards, statuses, pins,
+// renames, canvases, avatars. KV has no point-in-time restore, so without a copy of
+// this an account mishap or a bad bulk write is unrecoverable.
+//
+// A shell workflow (templates/shell/kv-backup.yml) already does this nightly over the
+// Cloudflare API. This endpoint exists because that route needs ACCOUNT credentials —
+// an API token, the account id, the namespace id — which is a much heavier thing to
+// hand someone than a login. An admin can take a copy from anywhere with this.
+//
+// NO PREFIX FILTER, deliberately. Enumerating the key classes we know about is how a
+// backup silently stops covering the class someone adds next; `list()` with no prefix
+// cannot go stale that way.
+//
+// Values are copied as RAW STRINGS and never re-parsed. Most are JSON, but a backup
+// that parses is a backup that can fail on something it did not expect, and re-encoding
+// would not round-trip byte-for-byte.
+async function adminBackupApi(env, me) {
+  if (!me || me.role !== "admin") return jsonResponse({ error: "forbidden" }, 403);
+  const kv = kvFor(env);
+  if (!kv) return jsonResponse({ error: "no-kv-binding" }, 501);
+  if (typeof kv.list !== "function") return jsonResponse({ error: "kv-list-unsupported" }, 501);
+
+  const enc = new TextEncoder();
+  const stream = new ReadableStream({
+    async start(controller) {
+      const push = (s) => controller.enqueue(enc.encode(s));
+      // A namespace can be far larger than an isolate's memory, so the document is
+      // written out as it is read rather than assembled and then serialized.
+      try {
+        push(`{"format":1,"at":${JSON.stringify(new Date().toISOString())},"data":{`);
+        const expirations = {};
+        const vanished = [];
+        let count = 0, bytes = 0, first = true, cursor;
+        do {
+          const page = await kv.list({ cursor, limit: 1000 });
+          for (const k of page.keys || []) {
+            // A throw here is a genuine read failure — permissions, transport, a broken
+            // namespace. It must NOT become a quietly shorter file: rethrow, and the
+            // catch below tears the stream down so the document never closes.
+            const v = await kv.get(k.name, "text");
+            if (v === null) {
+              // Listed, then gone before it could be read. Real and expected — rate-limit
+              // keys carry TTLs — but recorded by name rather than dropped, so a restore
+              // can tell "this key was not in the namespace" from "this backup lost it".
+              vanished.push(k.name);
+              continue;
+            }
+            if (k.expiration) expirations[k.name] = k.expiration;
+            push(`${first ? "" : ","}${JSON.stringify(k.name)}:${JSON.stringify(v)}`);
+            first = false;
+            count++;
+            bytes += v.length;
+          }
+          cursor = page.list_complete ? undefined : page.cursor;
+        } while (cursor);
+        // Trailers last, so they can report on the walk that produced them. `complete`
+        // is the flag a consumer should check — though it barely needs to, because the
+        // failure path below never writes this object at all.
+        push(`},"expirations":${JSON.stringify(expirations)}`);
+        push(`,"vanished":${JSON.stringify(vanished)}`);
+        push(`,"count":${count},"bytes":${bytes},"complete":true}`);
+        controller.close();
+      } catch (e) {
+        // The status line is long gone by now — a 200 is already on the wire — so the
+        // only honest way to fail is to make the bytes unusable. Erroring the stream
+        // leaves the JSON unterminated, so every parser rejects it and nobody stores a
+        // truncated file believing it is a backup.
+        controller.error(e);
+      }
+    },
+  });
+
+  return new Response(stream, {
+    headers: {
+      "Content-Type": "application/json; charset=utf-8",
+      "Cache-Control": "no-store",
+      "Content-Disposition": `attachment; filename="kv-backup-${new Date().toISOString().slice(0, 10)}.json"`,
+    },
+  });
+}
+
 function loginPage(redirect, error) {
   const safeRedirect = String(redirect).replace(/"/g, "&quot;");
   return `<!doctype html>
@@ -3772,6 +3857,9 @@ export default {
     // Admin bundle-store gauge — bytes/objects vs the free-tier ceiling.
     if (url.pathname === "/__admin/storage") return adminStorageApi(env, me);
 
+    // Admin KV export — the other half of durability, next to `augur export`.
+    if (url.pathname === "/__admin/backup") return adminBackupApi(env, me);
+
     // Engine version + update-available nudge (the profile chip's fetch).
     if (url.pathname === "/__admin/version") return adminVersionApi(env, me);
 
@@ -3996,7 +4084,7 @@ export const __testables = {
   loginPage, RESET_NOTICE,
   PBKDF2_ITERATIONS,
   INVITE_TTL_MS,
-  adminUsersApi,
+  adminUsersApi, adminBackupApi,
   mergeRoster, readRoster, revokeSecret, revokeInvitesFor,
   applyAvatars, readAvatars, parseAvatarDataUri, avatarHash, clearAvatar,
   meAvatarApi, serveKvAvatar, avatarUrl, USER_AVATARS_KEY, AVATAR_BLOB_PREFIX,
