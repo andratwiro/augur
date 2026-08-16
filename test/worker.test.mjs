@@ -918,6 +918,35 @@ test("sanitizeMsg stamps `by` from the session, never from the request body", ()
   assert.equal(anon.by, null, "an unauthenticated write can never carry an identity");
 });
 
+// A stored message keeps `by` and nothing else that identifies its author — the
+// display name beside it is a snapshot, and renaming the roster entry changes it.
+// So `by` is the ONLY durable handle an erasure sweep has: given an address, it
+// recomputes the id and finds every message that address ever wrote, however the
+// person has been renamed since. That is also why the address itself must never be
+// stamped onto the message — the id is one-way, and /__people leans on that to stay
+// safely ungated on public prototypes.
+test("`by` survives a rename, so an erasure sweep keyed on the address still finds the message", () => {
+  const before = { email: "ben@example.test", name: "Ben" };
+  const stored = W.sanitizeMsg({ body: "my comment" }, before);
+
+  const after = { email: "ben@example.test", name: "Benedetta Ruiz" };
+  const later = W.sanitizeMsg({ body: "and another" }, after);
+
+  assert.notEqual(stored.author, later.author, "the display name did change");
+  assert.equal(stored.by, later.by, "the durable id did not");
+
+  // What purgeUser(email) would do: derive the key, match the stored messages.
+  const key = W.personId("  BEN@Example.Test  ");
+  const mine = [stored, later, W.sanitizeMsg({ body: "hers" }, { email: "ana@example.test", name: "Ana" })]
+    .filter((m) => m.by === key);
+  assert.equal(mine.length, 2, "both of Ben's messages, none of Ana's");
+
+  for (const m of [stored, later]) {
+    assert.equal(m.email, undefined, "no address is stamped onto a stored message");
+    assert.ok(!JSON.stringify(m).includes("@"), "nor anywhere else in its shape");
+  }
+});
+
 test("publicUser exposes the person id but never a password", () => {
   const u = { email: "ben@example.test", name: "Ben", pass: "secret", role: "admin" };
   const p = W.publicUser(u);
