@@ -58,7 +58,11 @@ const ENGINE_ONLY = process.env.GV_ENGINE_ONLY === "1";
 // `augur dev`). It gates the one folder whose contents are NOT ours to put on the web:
 // a space's session music (see the tracks/ block in buildSpace).
 const LOCAL_BUILD = process.env.GV_LOCAL === "1";
-const DIST = path.join(ROOT, "dist");
+// GV_DIST redirects the output tree. Only tests set it: a test that needs a real build
+// must not write into the shared dist/ that other tests and the publish scripts read —
+// node --test runs files in parallel, so that is a race, and it is one that shows up in
+// CI rather than locally.
+const DIST = process.env.GV_DIST ? path.resolve(process.env.GV_DIST) : path.join(ROOT, "dist");
 const SRC_WORKER = path.join(ROOT, "src", "_worker.js");
 
 // ── Per-space build context. (Re)assigned by setSpaceContext() at the top of each

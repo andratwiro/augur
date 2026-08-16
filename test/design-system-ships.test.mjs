@@ -42,15 +42,20 @@ function makeSpace({ assets }) {
   return dir;
 }
 
+// Each build writes into its OWN output tree (GV_DIST). Writing to the repo's shared
+// dist/ would race every other test file — node --test runs them in parallel, and
+// publish-cwd-wins reads dist/ — which fails in CI and passes locally, the worst shape
+// a test can have.
 function build(spacesRoot) {
+  const out = path.join(spacesRoot, "__dist");
   try {
-    execFileSync(process.execPath, ["build.js"], {
+    const stdout = execFileSync(process.execPath, ["build.js"], {
       cwd: ROOT,
-      env: { ...process.env, GV_SPACES_ROOT: spacesRoot },
+      env: { ...process.env, GV_SPACES_ROOT: spacesRoot, GV_DIST: out },
       encoding: "utf8",
       stdio: ["ignore", "pipe", "pipe"],
     });
-    return { ok: true, out: "" };
+    return { ok: true, out: stdout || "" };
   } catch (e) {
     return { ok: false, out: `${e.stdout || ""}${e.stderr || ""}` };
   }
@@ -59,7 +64,8 @@ function build(spacesRoot) {
 test("a space whose skill inventory is intact builds", () => {
   const dir = makeSpace({ assets: ["acme-ui.css", "acme-tokens.css"] });
   try {
-    assert.equal(build(dir).ok, true, "a healthy design system must not trip the guard");
+    const r = build(dir);
+    assert.equal(r.ok, true, `a healthy design system must not trip the guard:\n${r.out}`);
   } finally { rmSync(dir, { recursive: true, force: true }); }
 });
 
@@ -93,6 +99,7 @@ test("a space with NO design system at all still builds", () => {
     mkdirSync(proto, { recursive: true });
     writeFileSync(path.join(proto, "index.html"), "<!doctype html><title>Hello</title><p>hi</p>\n");
     writeFileSync(path.join(dir, "space.json"), JSON.stringify({ id: "bare", name: "Bare", default: true }));
-    assert.equal(build(dir).ok, true);
+    const r = build(dir);
+    assert.equal(r.ok, true, r.out);
   } finally { rmSync(dir, { recursive: true, force: true }); }
 });
