@@ -4924,9 +4924,9 @@ const ADMIN_JS = `(function(){
       // Demoting yourself is the one change that can lock you out of this panel, so it
       // is the one that asks. The server refuses the LAST admin outright either way.
       var warn = (was === 'admin')
-        ? 'Remove admin from ' + who + '?\n\nThey lose the Admin panel and any all-space publish token.'
+        ? 'Remove admin from ' + who + '?\\n\\nThey lose the Admin panel and any all-space publish token.'
         : (want === 'viewer'
-          ? 'Make ' + who + ' a viewer?\n\nThey can still sign in, comment and use boards, but cannot publish. Any publish token they hold stops working.'
+          ? 'Make ' + who + ' a viewer?\\n\\nThey can still sign in, comment and use boards, but cannot publish. Any publish token they hold stops working.'
           : 'Make ' + who + ' an ' + roleLabel(want).toLowerCase() + '?');
       if(!window.confirm(warn)){ rolesel.value = was; return; }
       closeMenu();
