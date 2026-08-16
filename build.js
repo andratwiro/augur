@@ -3032,7 +3032,7 @@ function settingsModal() {
             <div>
               <h3 class="gvset__label">Password</h3>
               <p class="gvset__value">&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;</p>
-              <button type="button" class="gvset__link" disabled title="Changing your password isn't available yet — ask an admin to reset it">${IC_LOCK}Change password</button>
+              <button type="button" class="gvset__link" disabled title="Changing your own password isn't built yet — ask an admin of every workspace you belong to, or the instance admin, to reset it">${IC_LOCK}Change password</button>
             </div>
             <div><h3 class="gvset__label">Role</h3><p class="gvset__value" data-set-role></p></div>
           </div>
@@ -4883,6 +4883,17 @@ const ADMIN_JS = `(function(){
     // Can't remove yourself (the API refuses it) — hide the option on your own row.
     var rm = menu.querySelector('[data-menu-remove]');
     if(rm) rm.style.display = (current && current.toLowerCase() === myEmail) ? 'none' : 'block';
+    // A reset hands over the ACCOUNT, not a workspace, so the API refuses it when the
+    // target belongs to a space you don't administer. Hide it rather than offer an
+    // action that 403s — see mayResetPassword in the worker.
+    var rs = menu.querySelector('[data-menu-reset]');
+    if(rs){
+      var may = true;
+      for(var i=0;i<people.length;i++) if(people[i].email === current){
+        may = people[i].mayReset !== false;
+      }
+      rs.style.display = may ? 'block' : 'none';
+    }
     menu.hidden = false;
     var r = tr.getBoundingClientRect();
     var mh = menu.offsetHeight, mw = menu.offsetWidth;
