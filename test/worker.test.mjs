@@ -1545,3 +1545,38 @@ test("a viewer can never trade its public credentials for a publish token", asyn
 
   W.applyInstance({ users: [] });
 });
+
+// The build stamp has to distinguish two engine facts that look like one.
+//
+// `engine.sha` is the last chrome + worker deploy. `spaces.<id>.builtWithEngine` is the
+// engine that COMPOSED that space's pages. They diverge silently and expensively: page
+// chrome (rail, profile menu, overlays) is baked into each page at build time, so an
+// engine deploy alone never changes it — a space that has not republished keeps serving
+// old UI while the stamp reports a current engine. That cost real debugging time before
+// the field existed: one instance showed a new profile menu and another did not, both
+// reporting the same engine sha.
+test("the build stamp says which engine BUILT each space, not just which one is deployed", () => {
+  const manifests = {
+    _engine: { version: 3, publishedAt: "2026-08-16T16:00:00Z", builtWith: { engine: "n".repeat(40) } },
+    alpha: {
+      version: 9, publishedAt: "2026-08-13T19:00:00Z",
+      space: { id: "alpha", default: true },
+      source: { sha: "abc" },
+      builtWith: { engine: "o".repeat(40) }, // built by an older engine
+    },
+  };
+  const stamp = W.synthBuildStamp(manifests);
+  assert.equal(stamp.spaces.alpha.builtWithEngine, "o".repeat(40),
+    "a space must report the engine that composed its pages");
+  assert.notEqual(stamp.spaces.alpha.builtWithEngine, stamp.engine.sha,
+    "and that must be readable as different from the deployed engine");
+});
+
+test("a manifest with no builtWith omits the field rather than reporting a false one", () => {
+  // Every space published before this field existed has no builtWith. Reporting null or
+  // the current engine would both be lies — absent is the only honest answer.
+  const stamp = W.synthBuildStamp({
+    alpha: { version: 1, space: { id: "alpha", default: true }, source: { sha: "abc" } },
+  });
+  assert.equal("builtWithEngine" in stamp.spaces.alpha, false);
+});

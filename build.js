@@ -6833,6 +6833,17 @@ async function main() {
     }
   }
 
+  // Stamp each manifest with the engine that BUILT these pages. This is not the same
+  // fact as /_build.json's `engine.sha`, which is the last chrome+worker deploy — and
+  // the difference is invisible in a way that costs real time: an instance can report a
+  // current engine while every page it serves was composed by a much older one, because
+  // page-level chrome (the rail, the profile menu, the overlays) is baked into each page
+  // at build time and only changes when that SPACE republishes. An engine deploy alone
+  // never touches it. Recording it here is what makes the drift detectable at all.
+  for (const m of Object.values(manifests)) {
+    m.builtWith = { engine: engineSha, ...(ENGINE_VERSION ? { version: ENGINE_VERSION } : {}) };
+  }
+
   await fs.mkdir(path.join(DIST, "__manifests"), { recursive: true });
   for (const [id, m] of Object.entries(manifests))
     await fs.writeFile(path.join(DIST, "__manifests", id + ".json"), JSON.stringify(m), "utf8");

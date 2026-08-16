@@ -1664,6 +1664,12 @@ function synthBuildStamp(manifests) {
     ...(m.version ? { version: m.version } : {}),
     ...(m.publishedAt ? { publishedAt: m.publishedAt } : {}),
     ...(m.publishedBy ? { publishedBy: byName(m.publishedBy) } : {}),
+    // The engine that COMPOSED these pages, which is not the engine now deployed.
+    // Page-level chrome is baked in at build time, so a space that has not republished
+    // keeps serving whatever the engine looked like when it last did — while the
+    // top-level `engine.sha` below reports the current chrome deploy and looks fine.
+    // Publishing both is what lets anyone see the gap.
+    ...(m.builtWith && m.builtWith.engine ? { builtWithEngine: m.builtWith.engine } : {}),
   });
   for (const id in manifests) {
     const m = manifests[id];
