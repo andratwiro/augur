@@ -63,6 +63,11 @@ const ENGINE_ONLY = flag("--engine");
 // --no-self-update: keep a stale engine rather than fast-forwarding it. Off by default
 // (see selfUpdate below) because the alternative is telling a person to run git.
 const NO_SELF_UPDATE = flag("--no-self-update") || process.env.AUGUR_NO_SELF_UPDATE === "1";
+// Declared here, not beside selfUpdate: `function` declarations hoist but `let` does
+// not, and maybeRefreshEngine calls selfUpdate from earlier in the file. Leaving it
+// below the callers is a ReferenceError that only fires on a clone that is behind —
+// i.e. exactly the case the whole mechanism exists for.
+let selfUpdateTried = false;
 
 function readEnvFile(p) {
   const out = {};
@@ -459,7 +464,6 @@ function dieUnpublish(id, removed, count) {
 //     guard so a server that still outranks us cannot loop)
 // Anything else falls through to the caller's message, which addresses the AGENT.
 // Returns true only if it re-executed (in which case this process has already exited).
-let selfUpdateTried = false;
 function selfUpdate(why) {
   if (NO_SELF_UPDATE || selfUpdateTried || process.env.AUGUR_SELF_UPDATED === "1") return false;
   selfUpdateTried = true;
