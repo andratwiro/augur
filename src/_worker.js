@@ -1824,6 +1824,10 @@ function lookupBundleFile(manifests, pathname) {
   }
   return null;
 }
+// What an un-versioned store asset is served with. Not a tuning knob: see the
+// assetFetch() header below for why the empty string this replaces was a bug.
+const ASSET_REVALIDATE = "public, no-cache";
+
 function resolveBundlePath(manifests, pathname) {
   let p;
   try { p = decodeURIComponent(pathname); } catch (e) { return { miss: true }; }
@@ -1836,8 +1840,30 @@ function resolveBundlePath(manifests, pathname) {
 
 // The env.ASSETS.fetch drop-in: identical contract (a plain 404 Response means
 // "not found" — callers brand it / try virtual canvases), plus ETag/304 and
-// byte ranges (audio scrubbing) in bundle mode. Edge-cache layering is a later
-// optimization; R2 reads are fine at internal traffic.
+// byte ranges (audio scrubbing) in bundle mode.
+//
+// ⚠️ Every response here MUST carry an explicit Cache-Control, and it must be one
+// that revalidates. Sending none does NOT mean "not cached": a response with no
+// cache header gets the CDN's own default TTL, which is keyed on the file
+// EXTENSION and is four hours for the static ones (.png/.svg/.js/.css/…). Bundle
+// mode is exactly where that bites, because these bytes never pass through the
+// assets platform whose `max-age=0, must-revalidate` default withAssetCache()
+// below was written against — the worker answers from R2 directly, so "the
+// default" is the CDN's, not that one.
+//
+// The symptom is silent and lopsided, which is why it survived: HTML is not in
+// the default extension list, so a republished page went live instantly while the
+// un-versioned image/script/stylesheet it loads served the PREVIOUS publish's
+// bytes for up to four hours. New markup against old assets, with no way to bust
+// it — the URLs carry no version — and `augur publish` reporting success the
+// whole time. A space icon changed in settings had the same four-hour lie.
+//
+// `no-cache` is "store it, but revalidate before every use", not "do not store":
+// the ETag above is the content hash, so a repeat visit costs one conditional
+// request answered by the 304 a few lines down, and a publish is visible at once.
+// Versioned URLs (?v=, /fonts/) are promoted back to a year + immutable by
+// withAssetCache(), which runs downstream of this — so the hot path keeps its
+// zero-revalidation caching and only the un-versioned ones pay.
 async function assetFetch(env, request) {
   if (!bundleMode(env)) return env.ASSETS.fetch(request);
   const url = new URL(request.url);
@@ -1848,9 +1874,14 @@ async function assetFetch(env, request) {
   const f = r.f;
   const inm = request.headers.get("If-None-Match");
   if (inm && inm.replace(/W\/|"/g, "") === f.h) {
-    return new Response(null, { status: 304, headers: { ETag: `"${f.h}"` } });
+    // The 304 carries it too: it is what refreshes the client's freshness record,
+    // so omitting it here lets a previously-cached copy age back into staleness.
+    return new Response(null, { status: 304, headers: { ETag: `"${f.h}"`, "Cache-Control": ASSET_REVALIDATE } });
   }
-  const headers = { "Content-Type": f.ct, ETag: `"${f.h}"`, "Accept-Ranges": "bytes" };
+  const headers = {
+    "Content-Type": f.ct, ETag: `"${f.h}"`, "Accept-Ranges": "bytes",
+    "Cache-Control": ASSET_REVALIDATE,
+  };
   const rm = /^bytes=(\d*)-(\d*)$/.exec(request.headers.get("Range") || "");
   if (rm && (rm[1] || rm[2])) {
     let start = rm[1] ? parseInt(rm[1], 10) : Math.max(0, f.s - parseInt(rm[2], 10));
@@ -2929,11 +2960,17 @@ function liveReloadSnippet(token, fast) {
 }
 
 // Long-cache versioned/static assets so repeat navigations cost zero revalidation.
-// Cloudflare's default for assets is `max-age=0, must-revalidate` (a 304 round-trip
-// every visit); we override to a year + immutable, but ONLY for assets whose URL
-// changes when their content does — anything carrying a ?v= cache-buster, or fonts
-// (served from versioned /fonts/ paths). HTML and un-versioned assets (posters,
-// per-prototype CSS) are left on the default so they still revalidate via ETag/304.
+// This UPGRADES, and only ever upgrades: a year + immutable, but ONLY for assets
+// whose URL changes when their content does — anything carrying a ?v= cache-buster,
+// or fonts (served from versioned /fonts/ paths).
+//
+// ⚠️ Everything else is left alone, which is safe ONLY because the response already
+// carries a revalidating Cache-Control by the time it gets here. Do not read the
+// untouched branch as "leave it to the platform default" — that was the original
+// reading, written when this only ever saw the assets platform (whose default is
+// `max-age=0, must-revalidate`), and it is what let bundle-mode responses reach the
+// CDN header-less and pick up a four-hour extension-keyed TTL instead. assetFetch()
+// sets ASSET_REVALIDATE; the long comment there is the full story.
 function withAssetCache(res, url) {
   // The infinite-canvas engine (canvas.js/.css/catalog.json) is loaded by absolute path
   // with no ?v= cache-buster and is actively iterated. `no-cache` forces a REVALIDATION
@@ -4544,6 +4581,7 @@ export const __testables = {
   AVATAR_MAX_CHARS,
   isEmailish, nameFromEmail, initialsFor,
   applyDerivedRouting, canvasAggregate, synthBuildStamp,
+  assetFetch, withAssetCache, ASSET_REVALIDATE,
   deleteUrlPrefix, removeFromStore,
   revokePublishTokens, loginThrottled, loginSlowed, loginFail, DUMMY_HASH,
   pathOwnedBySpace, isPublishablePublicPrefix, removedPublicPrefixes, publishApi, LOGIN_MAX_FAILS,
