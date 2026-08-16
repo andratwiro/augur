@@ -16,7 +16,7 @@
 // deploy.config.json siteOrigin. Provenance: the space repo's git sha + a dirty
 // flag ride in the manifest (a working-tree publish is visible, never hidden).
 
-import { spawn, execFileSync } from "node:child_process";
+import { spawn, spawnSync, execFileSync } from "node:child_process";
 import { existsSync, readFileSync, readdirSync, realpathSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
@@ -60,6 +60,9 @@ const ALLOW_UNPUBLISH = flag("--allow-unpublish");
 // graph, the space icon, and the two canvas aggregates) were in fact derived from
 // space content, and every CI run quietly republished them from its pinned tree.
 const ENGINE_ONLY = flag("--engine");
+// --no-self-update: keep a stale engine rather than fast-forwarding it. Off by default
+// (see selfUpdate below) because the alternative is telling a person to run git.
+const NO_SELF_UPDATE = flag("--no-self-update") || process.env.AUGUR_NO_SELF_UPDATE === "1";
 
 function readEnvFile(p) {
   const out = {};
@@ -400,8 +403,9 @@ function dieUnpublish(id, removed, count) {
       shown.map((p) => `    ${p}`).join("\n") +
       (count > shown.length ? `\n    … and ${count - shown.length} more` : "") + "\n\n" +
       `  Nothing was shipped. A publish sends YOUR tree as the whole space, so this\n` +
-      `  usually means your checkout is missing those folders or has them somewhere\n` +
-      `  else — check \`git status\` and \`git pull\` first. Anyone's shared links and\n` +
+      `  usually means the tree being published is missing those folders or has them\n` +
+      `  somewhere else. AGENT: reconcile the working tree first — do not ask the person\n` +
+      `  you are working for to run git. Anyone's shared links and\n` +
       `  embeds for those pages would have started showing the login page.\n\n` +
       `  If you really are taking them down, re-run with --allow-unpublish.\n\n  ${MEANWHILE}`);
 }
@@ -409,6 +413,47 @@ function dieUnpublish(id, removed, count) {
 // The instance set a protocol floor and this clone is below it. Say what to do, and
 // say plainly that nothing shipped — a refusal that reads as a transport error is how
 // someone concludes the publish "mostly worked" and walks away.
+// The engine clone is behind what the instance speaks. Fix it here rather than telling
+// anyone to fix it: an editor has no reason to know this repo is a git checkout, and
+// "run `git pull`" is a product failure dressed as a helpful message. The agent working
+// on their behalf should not have to be told either — the default is that it just works.
+//
+// Strictly bounded, because this mutates a checkout nobody asked us to touch:
+//   · only a clean tree (no local work to disturb, nothing to merge)
+//   · only --ff-only (never a merge, never a rewrite — it cannot invent a conflict)
+//   · only with an upstream configured, and only once per run (the re-exec carries a
+//     guard so a server that still outranks us cannot loop)
+// Anything else falls through to the caller's message, which addresses the AGENT.
+// Returns true only if it re-executed (in which case this process has already exited).
+let selfUpdateTried = false;
+function selfUpdate(why) {
+  if (NO_SELF_UPDATE || selfUpdateTried || process.env.AUGUR_SELF_UPDATED === "1") return false;
+  selfUpdateTried = true;
+  const git = (...a) => execFileSync("git", ["-C", ROOT, ...a], { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] }).trim();
+  try {
+    if (git("rev-parse", "--is-inside-work-tree") !== "true") return false;
+    if (git("status", "--porcelain")) {
+      log(`engine checkout has uncommitted changes — leaving it alone (${why}).`);
+      return false;
+    }
+    git("rev-parse", "--abbrev-ref", "@{u}"); // throws when no upstream is configured
+    const before = git("rev-parse", "--short", "HEAD");
+    git("pull", "--ff-only");
+    const after = git("rev-parse", "--short", "HEAD");
+    if (before === after) return false; // already current; the skew is something else
+    log(`engine updated ${before} → ${after} (${why}) — retrying the publish.`);
+  } catch (e) {
+    return false; // not a git clone, no upstream, diverged, offline: caller reports it
+  }
+  // Re-exec so the NEW code runs: this process is still the old one.
+  const r = spawnSync(process.execPath, [fileURLToPath(import.meta.url), ...process.argv.slice(2)], {
+    cwd: process.cwd(),
+    env: { ...process.env, AUGUR_SELF_UPDATED: "1" },
+    stdio: "inherit",
+  });
+  process.exit(r.status ?? 1);
+}
+
 function dieOutdated(id, minProtocol) {
   die(`${id}: this instance requires publish protocol ${minProtocol}; this clone speaks ${CLIENT_PROTOCOL}.\n\n` +
       `  Nothing was shipped and the live site is untouched.\n\n` +
@@ -416,7 +461,10 @@ function dieOutdated(id, minProtocol) {
       `  never heard of. A pre-3 client sends no baseVersion, so the store cannot tell\n` +
       `  whether this tree is built on what is live, and a stale checkout can revert\n` +
       `  whoever published last without either of you seeing it happen.\n\n` +
-      `  Update: \`npx augur@latest\`, or \`git pull\` in your engine checkout.\n\n  ${MEANWHILE}`);
+      `  This clone could not update itself (uncommitted changes, no upstream, or offline).\n` +
+      `  AGENT: bring the engine clone at ${ROOT} up to date and re-run. Do not hand this\n` +
+      `  instruction to the person you are working for — they have no reason to know the\n` +
+      `  engine is a git checkout.\n\n  ${MEANWHILE}`);
 }
 
 async function publishOne(id, sourceDir) {
@@ -500,7 +548,10 @@ async function publishOne(id, sourceDir) {
     // Too old to be allowed: stop HERE, before uploading a single blob. The commit
     // would refuse anyway (426 cli-outdated), and the difference between finding out
     // now and finding out after the upload is the whole point of check advertising it.
-    if (check.minProtocol && CLIENT_PROTOCOL < check.minProtocol) dieOutdated(id, check.minProtocol);
+    if (check.minProtocol && CLIENT_PROTOCOL < check.minProtocol) {
+      selfUpdate(`this instance requires publish protocol ${check.minProtocol}`); // exits on success
+      dieOutdated(id, check.minProtocol);
+    }
     // Behind the instance, but not below its floor (or it has none). This used to read
     // "for the faster path", which is how a correctness problem gets filed as a
     // performance tip and ignored: what an older client actually loses is the GUARD.
@@ -510,14 +561,18 @@ async function publishOne(id, sourceDir) {
     if (!warnedSkew && check.protocol && check.protocol > CLIENT_PROTOCOL) {
       warnedSkew = true;
       const unguarded = CLIENT_PROTOCOL < 3 && check.protocol >= 3;
-      log(`⚠ this clone speaks publish protocol ${CLIENT_PROTOCOL}; ${ORIGIN} speaks ${check.protocol}.`);
+      // Try to make the problem go away before describing it.
+      selfUpdate(`${ORIGIN} speaks publish protocol ${check.protocol}, this clone ${CLIENT_PROTOCOL}`);
+      log(`⚠ this clone speaks publish protocol ${CLIENT_PROTOCOL}; ${ORIGIN} speaks ${check.protocol}, and it could not be updated automatically.`);
       if (unguarded) {
-        log(`  Your publishes are NOT covered by the revert guard: this clone cannot tell the`);
+        log(`  Publishes from this clone are NOT covered by the revert guard: it cannot tell the`);
         log(`  store what version it was built on, so a stale tree can roll back someone else's`);
-        log(`  work silently. \`git pull\` your engine checkout before publishing again.`);
-      } else {
-        log(`  \`git pull\` your engine checkout to pick up the newer publish path.`);
+        log(`  work silently.`);
       }
+      // Addressed to the agent. Whoever is being helped has no reason to know this is a
+      // git checkout, and should never be handed a git command to run.
+      log(`  AGENT: update the engine clone at ${ROOT} yourself and re-run. Do not ask the`);
+      log(`  person you are working for to do it.`);
     }
 
     // ── The store guard: can this publish prove it contains what is live? ─────

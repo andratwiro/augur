@@ -132,7 +132,11 @@ test("publish stops at check when it is below the floor, before uploading anythi
   // And the refusal has to say nothing shipped, or it reads as a transport hiccup.
   const die = src.slice(src.indexOf("function dieOutdated"), src.indexOf("async function publishOne"));
   assert.match(die, /Nothing was shipped/);
-  assert.match(die, /npx augur@latest/);
+  // It must NOT hand a git command to the person being helped — the refusal is aimed at
+  // the agent, which is the thing that can act on it. An editor has no reason to know
+  // the engine is a checkout at all.
+  assert.match(die, /AGENT:/, "the instruction addresses the agent");
+  assert.doesNotMatch(die, /^(?!.*AGENT).*`\s*git pull/m, "no bare git instruction to a person");
 });
 
 test("the skew warning names the lost GUARD, not a lost optimisation", () => {
@@ -148,5 +152,8 @@ test("the skew warning names the lost GUARD, not a lost optimisation", () => {
   assert.doesNotMatch(block, /faster path/i, "must not read as a performance tip");
   assert.match(block, /revert guard/i, "must name what protection is missing");
   assert.match(block, /roll back|revert/i, "must say what can actually happen");
-  assert.match(block, /git pull/, "must still say how to fix it");
+  // How it gets fixed is no longer the reader's problem: the CLI tries to fast-forward
+  // the engine itself, and only when it cannot does it ask — the AGENT, not a person.
+  assert.match(block, /selfUpdate\(/, "must try to fix it before describing it");
+  assert.match(block, /AGENT:/, "the fallback instruction addresses the agent");
 });
