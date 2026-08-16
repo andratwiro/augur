@@ -155,6 +155,10 @@ textually merged. Conflicts outside a prototype folder abort the merge for a
 human.
 
 **Local commands** (`augur <cmd>` via the bin entry, or `node scripts/<cmd>.mjs`):
+`augur init [--id] [--name] [--origin] [--project] [--prototype]` (scaffold a new
+space in the current dir: `space.json` + one starter prototype at
+`<project>/prototypes/<name>/`, the nesting `discoverSpaces()` actually looks in;
+refuses to overwrite) ·
 `augur dev` (standalone shell — single space folder, dev identity fallback) ·
 `npm run offline` (multi-space workspace) · `augur login` (trade web credentials for a
 publish token, once per instance) · `npm run deploy` (build + direct upload to Pages;

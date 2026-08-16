@@ -21,6 +21,7 @@ const SCRIPTS = path.dirname(fileURLToPath(import.meta.url));
 const sub = process.argv[2];
 const rest = process.argv.slice(3);
 const map = {
+  init: "init.mjs",
   dev: "dev.mjs",
   offline: "offline.mjs",
   deploy: "deploy.mjs",
@@ -33,7 +34,7 @@ const map = {
   build: path.join("..", "build.js"),
 };
 if (!map[sub]) {
-  console.error("usage: augur <ship|dev|offline|build|deploy|publish|status|export|restore|login> [options]");
+  console.error("usage: augur <init|ship|dev|offline|build|deploy|publish|status|export|restore|login> [options]");
   process.exit(sub ? 1 : 0);
 }
 const child = spawn(process.execPath, [path.join(SCRIPTS, map[sub]), ...rest], { stdio: "inherit" });
