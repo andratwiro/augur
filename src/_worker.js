@@ -590,6 +590,26 @@ const spacesFor = (u, spaces) => (spaces || []).filter((s) => isMemberOf(u, s.id
 // embedded in PUBLIC prototypes for the comment overlay, and a space list there would
 // hand the whole site's structure to anyone holding a prototype link — the same reason
 // /__people refuses to enumerate the roster.
+// Which space serves this path. Non-default spaces own "/<id>" and everything under
+// it; the default space owns whatever is left. The boundary check is load-bearing:
+// "/betamax" must not read as the "beta" space. With no default space configured an
+// unowned path belongs to NOBODY (null) rather than falling to an arbitrary space —
+// the caller then leaves it alone rather than gating it on a guess.
+function spaceIdForPath(pathname, spaces) {
+  const p = typeof pathname === "string" ? pathname : "/";
+  for (const s of spaces || []) {
+    if (s.default) continue;
+    if (p === "/" + s.id || p.startsWith("/" + s.id + "/")) return s.id;
+  }
+  const def = (spaces || []).find((s) => s.default);
+  return def ? def.id : null;
+}
+
+// Does this person administer ANY space? The /admin door asks this rather than the
+// global role: with per-space roles, the admin of one space is an ordinary member
+// elsewhere, and the page itself scopes to a space they actually administer.
+const administersAny = (u, spaces) => (spaces || []).some((s) => roleIn(u, s.id) === "admin");
+
 const meSpaces = (u, spaces) =>
   spacesFor(u, spaces).map((s) => ({
     id: s.id, name: s.name, base: s.base || "", badge: s.badge || "", role: roleIn(u, s.id),
@@ -4306,7 +4326,13 @@ export default {
     // the only one.
     if (url.pathname === "/admin" || url.pathname.startsWith("/admin/")) {
       if (!authed) return htmlResponse(loginPage(url.pathname + url.search, false), 200);
-      if (usersActive && (!me || me.role !== "admin")) return Response.redirect(new URL("/", url).toString(), 303);
+      // Admin of ANY space is enough to reach the page — it scopes itself to a space
+      // the caller actually administers, and the /__admin APIs re-check per space. A
+      // global admin with no membership recorded administers everything, so this is
+      // the same door it has always been on an instance that never set memberships.
+      if (usersActive && (!me || !administersAny(me, SPACES))) {
+        return Response.redirect(new URL("/", url).toString(), 303);
+      }
       const asset = await assetFetch(env, request);
       if (asset.status === 404) return notFoundResponse();
       return withAssetCache(withLiveReload(asset, url), url);
@@ -4322,6 +4348,18 @@ export default {
       const out = new Response(res.body, res);
       out.headers.set("X-Robots-Tag", "noindex, nofollow, noarchive");
       return out;
+    }
+
+    // Membership gate. Layered ABOVE the admin-only-space seal, never replacing it:
+    // that seal is still the hard gate, and this narrows what is left.
+    //
+    // 404, not 403 or a redirect — a space you are not a member of must not be
+    // confirmable from the outside, and "forbidden" confirms it. Placed AFTER the
+    // public-prototype door on purpose: share links stay open, so a signed-in
+    // non-member never fares worse than a signed-out stranger looking at the same URL.
+    if (usersActive && me) {
+      const sid = spaceIdForPath(url.pathname, SPACES);
+      if (sid && !isMemberOf(me, sid)) return notFoundResponse();
     }
 
     // Past the gate (or nothing gates the site) → serve. A 404 gets one more chance
@@ -4366,7 +4404,7 @@ export const __testables = {
   adminUsersApi, adminBackupApi,
   ROLES, roleOf, readRoles, applyRoles, clearRole, USER_ROLES_KEY,
   USER_SPACES_KEY, readSpaces, applySpaces, membershipOf, isMemberOf, roleIn,
-  spacesFor, clearSpaces, meSpaces,
+  spacesFor, clearSpaces, meSpaces, spaceIdForPath, administersAny,
   mergeRoster, readRoster, revokeSecret, revokeInvitesFor,
   applyAvatars, readAvatars, parseAvatarDataUri, avatarHash, clearAvatar,
   meAvatarApi, serveKvAvatar, avatarUrl, USER_AVATARS_KEY, AVATAR_BLOB_PREFIX,
