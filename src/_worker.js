@@ -488,6 +488,10 @@ async function clearAvatar(env, email) {
 // POST /__me/avatar {avatar: "data:image/jpeg;base64,…"} — set MY photo.
 // DELETE /__me/avatar — drop it (falling back to a config-baked seed, or initials).
 // Signed-in users only, and only ever their own row: there is no email parameter.
+//
+// NOTE: nothing in the shell calls DELETE any more — the account settings modal
+// deliberately ships no "remove photo" affordance. The route stays live and tested
+// on purpose (a later UI, or a script, still needs it); it is not dead code.
 async function meAvatarApi(request, env, me) {
   if (!me) return jsonResponse({ error: "unauthorized" }, 401);
   const kv = kvFor(env);

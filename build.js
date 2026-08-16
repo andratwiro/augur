@@ -2090,11 +2090,10 @@ const NAV_CSS = `
     }
     .gvprof__item:hover { background: rgba(16,17,26,0.05); }
     .gvprof__item .gvic { width: 15px; height: 15px; color: #5b626e; }
-    /* The photo actions are buttons, not links — same row, none of the UA button chrome. */
+    /* Settings opens a dialog rather than navigating, so it's a button — same row,
+       none of the UA button chrome. */
     button.gvprof__item { width: 100%; border: 0; background: none; font: inherit;
       font-size: 13px; font-weight: 500; text-align: left; cursor: pointer; }
-    .gvprof__item--sub { color: #5b626e; font-weight: 400; }
-    .gvprof__item[aria-busy=true] { opacity: .55; pointer-events: none; }
     /* Reveal-on-demand rail bits carry the hidden attribute, but their own rules set
        display (grid/flex), which out-specifies the UA [hidden] rule — without these
        they show for everyone, always (same gotcha as the brand and the admin item). */
@@ -2353,8 +2352,96 @@ const NAV_CSS = `
     .gvhelp__themes td:first-child { width: 104px; }
     .gvhelp__sw { display: inline-block; width: 12px; height: 12px; border-radius: 3px; margin-right: 7px; vertical-align: -1px; box-shadow: inset 0 0 0 1px rgba(0,0,0,0.12); }
 
+    /* ── Account settings modal ────────────────────────────────────────────────
+       Same skeleton as the help drawer (fixed inset / scrim / [hidden] + .is-open),
+       centred instead of slid in from the edge. Sits one z-index band above the
+       drawer so it can never open behind it. */
+    .gvset { position: fixed; inset: 0; z-index: 2147483210; display: grid; place-items: center; padding: 20px; }
+    .gvset[hidden] { display: none; }
+    .gvset__scrim { position: absolute; inset: 0; background: rgba(16,17,26,0.34); opacity: 0; transition: opacity .18s ease; }
+    .gvset.is-open .gvset__scrim { opacity: 1; }
+    .gvset__panel {
+      position: relative; width: min(720px, 100%); max-height: min(80vh, 720px);
+      display: flex; flex-direction: column; background: #fff; border-radius: 14px;
+      box-shadow: 0 1px 2px rgba(16,24,40,0.06), 0 32px 70px -28px rgba(16,24,40,0.45);
+      opacity: 0; transform: translateY(6px) scale(.99); transition: opacity .18s ease, transform .18s ease;
+      font: 500 13px/1.5 "Inter", "Inter Variable", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      color: #2c2f36;
+    }
+    .gvset.is-open .gvset__panel { opacity: 1; transform: none; }
+    .gvset__head { display: flex; align-items: center; gap: 8px; padding: 12px 14px; border-bottom: 1px solid rgba(16,17,26,0.08); }
+    /* One tab today. The tablist exists so a second is additive — see the Account tab. */
+    .gvset__tabs { display: flex; gap: 4px; flex: 1 1 auto; min-width: 0; overflow-x: auto; }
+    .gvset__tab { padding: 7px 12px; border: 0; border-radius: 8px; background: none; cursor: pointer; white-space: nowrap;
+      font: 600 13px/1 "Inter", "Inter Variable", sans-serif; color: #5b626e; transition: background .12s ease, color .12s ease; }
+    .gvset__tab:hover { background: rgba(16,17,26,0.05); color: #16171a; }
+    .gvset__tab.is-active { background: rgba(16,17,26,0.07); color: #16171a; }
+    .gvset__tab:focus-visible { outline: 2px solid #5e6ad2; outline-offset: 1px; }
+    .gvset__x { flex: none; display: grid; place-items: center; width: 30px; height: 30px; border: 0; border-radius: 8px; background: none; color: #5b626e; cursor: pointer; }
+    .gvset__x:hover { background: rgba(16,17,26,0.06); color: #16171a; }
+    .gvset__x:focus-visible { outline: 2px solid #5e6ad2; outline-offset: 1px; }
+    .gvset__x .gvic { width: 18px; height: 18px; }
+    .gvset__body { flex: 1 1 auto; overflow-y: auto; overscroll-behavior: contain; padding: 26px 30px 30px; }
+    .gvset__cols { display: flex; align-items: flex-start; gap: 40px; }
+    .gvset__avcol { flex: none; display: flex; flex-direction: column; align-items: center; gap: 12px; }
+    /* The big circle carries data-prof-av, so PROFILE_JS fills it with the photo or
+       initials-on-colour along with every other face on the page. */
+    .gvset__av { width: 128px; height: 128px; border-radius: 50%; display: grid; place-items: center;
+      background: #4f46e5; color: #fff; font: 700 34px/1 "Inter", "Inter Variable", sans-serif;
+      letter-spacing: .02em; text-transform: uppercase; background-size: cover; background-position: center; }
+    .gvset__edit { padding: 6px 14px; border: 0; border-radius: 8px; background: rgba(16,17,26,0.06);
+      font: 500 13px/1.4 "Inter", "Inter Variable", sans-serif; color: #16171a; cursor: pointer; transition: background .12s ease; }
+    .gvset__edit:hover { background: rgba(16,17,26,0.10); }
+    .gvset__edit:focus-visible { outline: 2px solid #5e6ad2; outline-offset: 1px; }
+    .gvset__err { max-width: 128px; text-align: center; font-size: 12px; color: #b42318; }
+    .gvset__err[hidden] { display: none; }
+    .gvset__fields { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 22px; }
+    .gvset__label { margin: 0 0 6px; font: 600 17px/1.3 "Inter", "Inter Variable", sans-serif; color: #16171a; }
+    .gvset__value { margin: 0; font-size: 14px; color: #2c2f36; overflow-wrap: anywhere; }
+    @media (max-width: 640px) {
+      .gvset__body { padding: 22px 18px 26px; }
+      .gvset__cols { flex-direction: column; align-items: center; gap: 24px; }
+      .gvset__fields { align-self: stretch; }
+    }
+
+    /* ── Photo crop dialog ─────────────────────────────────────────────────────
+       Opens on top of the settings panel. The circle is a mask over a canvas, so
+       what you frame and what gets saved are one transform at two resolutions. */
+    .gvcrop { position: fixed; inset: 0; z-index: 2147483220; display: grid; place-items: center; padding: 20px; }
+    .gvcrop[hidden] { display: none; }
+    .gvcrop__scrim { position: absolute; inset: 0; background: rgba(16,17,26,0.34); }
+    .gvcrop__panel { position: relative; width: min(420px, 100%); background: #fff; border-radius: 14px;
+      padding: 14px 18px 22px; box-shadow: 0 1px 2px rgba(16,24,40,0.06), 0 32px 70px -28px rgba(16,24,40,0.45);
+      font: 500 13px/1.5 "Inter", "Inter Variable", sans-serif; color: #2c2f36; }
+    .gvcrop__x { position: absolute; top: 12px; right: 12px; display: grid; place-items: center; width: 30px; height: 30px;
+      border: 0; border-radius: 8px; background: none; color: #5b626e; cursor: pointer; }
+    .gvcrop__x:hover { background: rgba(16,17,26,0.06); color: #16171a; }
+    .gvcrop__x:focus-visible { outline: 2px solid #5e6ad2; outline-offset: 1px; }
+    .gvcrop__x .gvic { width: 18px; height: 18px; }
+    .gvcrop__stage { display: grid; place-items: center; margin: 34px 0 20px; }
+    .gvcrop__canvas { width: 288px; height: 288px; max-width: 100%; border-radius: 50%;
+      background: #f1f2f5; cursor: grab; touch-action: none; }
+    .gvcrop__canvas:active { cursor: grabbing; }
+    .gvcrop__zoom { display: flex; align-items: center; gap: 12px; }
+    .gvcrop__step { flex: none; width: 26px; height: 26px; display: grid; place-items: center; border: 0; border-radius: 7px;
+      background: none; color: #16171a; font: 500 20px/1 "Inter", "Inter Variable", sans-serif; cursor: pointer; }
+    .gvcrop__step:hover { background: rgba(16,17,26,0.06); }
+    .gvcrop__step:focus-visible { outline: 2px solid #5e6ad2; outline-offset: 1px; }
+    .gvcrop__range { flex: 1 1 auto; min-width: 0; accent-color: #5e6ad2; }
+    .gvcrop__foot { display: flex; flex-direction: column; align-items: center; gap: 8px; margin-top: 20px; }
+    .gvcrop__save { padding: 9px 20px; border: 0; border-radius: 8px; background: #2563eb; color: #fff;
+      font: 600 14px/1.2 "Inter", "Inter Variable", sans-serif; cursor: pointer; transition: background .12s ease; }
+    .gvcrop__save:hover { background: #1d4ed8; }
+    .gvcrop__save:focus-visible { outline: 2px solid #5e6ad2; outline-offset: 2px; }
+    .gvcrop__msg { font-size: 12px; color: #b42318; }
+    .gvcrop__msg[hidden] { display: none; }
+    /* The rail's dim-and-inert rule is scoped to .gvprof__item, so the dialog carries
+       its own rather than widening a rail selector to reach across the page. */
+    .gvset__edit[aria-busy=true], .gvcrop__save[aria-busy=true] { opacity: .55; pointer-events: none; }
+
     @media (prefers-reduced-motion: reduce) {
-      .gvside, .gvscrim, .gvburger__bars span, .gvside__caret, .gvhelp__scrim, .gvhelp__panel { transition: none; }
+      .gvside, .gvscrim, .gvburger__bars span, .gvside__caret, .gvhelp__scrim, .gvhelp__panel,
+      .gvset__scrim, .gvset__panel { transition: none; }
     }`;
 
 // Magnifier glyph — used by the rail's omni-search field (railSearch).
@@ -2405,8 +2492,7 @@ const IC_CHANGELOG = ic(`<path d="M12 8v4l3 2"/><path d="M3.05 11a9 9 0 1 1 .5 4
 const IC_CHEV = ic(`<path d="m9 18 6-6-6-6"/>`); // chevron-right (rotates open via CSS)
 const IC_GEAR = ic(`<path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/>`); // settings
 const IC_SIGNOUT = ic(`<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" x2="9" y1="12" y2="12"/>`); // log-out
-const IC_CAMERA = ic(`<path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3z"/><circle cx="12" cy="13" r="3"/>`); // camera
-const IC_TRASH = ic(`<path d="M3 6h18"/><path d="M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/>`); // trash-2
+const IC_SLIDERS = ic(`<line x1="4" x2="4" y1="21" y2="14"/><line x1="4" x2="4" y1="10" y2="3"/><line x1="12" x2="12" y1="21" y2="12"/><line x1="12" x2="12" y1="8" y2="3"/><line x1="20" x2="20" y1="21" y2="16"/><line x1="20" x2="20" y1="12" y2="3"/><line x1="2" x2="6" y1="14" y2="14"/><line x1="10" x2="14" y1="8" y2="8"/><line x1="18" x2="22" y1="16" y2="16"/>`); // sliders-vertical (account settings)
 const IC_HELP = ic(`<circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/>`); // circle-help
 const IC_CLOSE = ic(`<path d="M18 6 6 18"/><path d="m6 6 12 12"/>`); // x
 const IC_TOKEN = ic(`<circle cx="13.5" cy="6.5" r=".5" fill="currentColor"/><circle cx="17.5" cy="10.5" r=".5" fill="currentColor"/><circle cx="8.5" cy="7.5" r=".5" fill="currentColor"/><circle cx="6.5" cy="12.5" r=".5" fill="currentColor"/><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z"/>`); // palette (tokens)
@@ -2610,9 +2696,7 @@ function profileChip() {
           <span class="gvprof__av lg" data-prof-av aria-hidden="true"></span>
           <span class="gvprof__idtext"><span class="gvprof__name" data-prof-name></span><span class="gvprof__email" data-prof-email></span></span>
         </div>
-        <button type="button" class="gvprof__item" role="menuitem" data-prof-photo>${IC_CAMERA}<span data-prof-photo-label>Add photo</span></button>
-        <button type="button" class="gvprof__item gvprof__item--sub" role="menuitem" data-prof-photo-rm hidden>${IC_TRASH}<span>Remove photo</span></button>
-        <input type="file" accept="image/*" data-prof-file hidden />
+        <button type="button" class="gvprof__item" role="menuitem" data-prof-settings>${IC_SLIDERS}<span>Settings</span></button>
         <a class="gvprof__item" href="/admin/" role="menuitem" data-prof-admin hidden>${IC_GEAR}<span>Admin settings</span></a>
         <a class="gvprof__item" href="/__logout" role="menuitem" data-prof-signout>${IC_SIGNOUT}<span>Sign out</span></a>
         <div class="gvprof__ver" data-prof-ver hidden>
@@ -2833,6 +2917,63 @@ function helpDrawer() {
   </div>`;
 }
 
+// Account settings — a centred modal opened from the profile menu ([data-prof-settings]),
+// rendered at body level rather than inside the rail so it escapes the rail's stacking
+// and overflow context (same reason the help drawer sits out here).
+//
+// Only the photo is editable; name, email and role render read-only until each is wired,
+// because a "Change" link that opens nothing is worse than no link. The tab bar ships
+// with one tab on purpose — Notifications/Security later is one <button role=tab> plus
+// one <section role=tabpanel>, with nothing existing having to move.
+//
+// The avatar carries data-prof-av, so PROFILE_JS's paint() fills it (photo, or
+// initials on the person's colour) from the same /__me fetch that fills the chip;
+// data-prof-name and data-prof-email fill the same way. Role is the one new hook.
+function settingsModal() {
+  return `<div class="gvset" data-set hidden>
+    <div class="gvset__scrim" data-set-scrim></div>
+    <div class="gvset__panel" role="dialog" aria-modal="true" aria-label="Settings">
+      <div class="gvset__head">
+        <div class="gvset__tabs" role="tablist" aria-label="Settings sections">
+          <button type="button" class="gvset__tab is-active" data-set-tab="account" role="tab" aria-selected="true">Account</button>
+        </div>
+        <button type="button" class="gvset__x" data-set-close aria-label="Close settings">${IC_CLOSE}</button>
+      </div>
+      <div class="gvset__body">
+        <section class="gvset__cols" data-set-panel="account" role="tabpanel" aria-label="Account">
+          <div class="gvset__avcol">
+            <span class="gvset__av" data-prof-av aria-hidden="true"></span>
+            <button type="button" class="gvset__edit" data-set-edit>Edit</button>
+            <p class="gvset__err" data-set-err hidden></p>
+            <input type="file" accept="image/*" data-set-file hidden />
+          </div>
+          <div class="gvset__fields">
+            <div><h3 class="gvset__label">Name</h3><p class="gvset__value" data-prof-name></p></div>
+            <div><h3 class="gvset__label">Email</h3><p class="gvset__value" data-prof-email></p></div>
+            <div><h3 class="gvset__label">Role</h3><p class="gvset__value" data-set-role></p></div>
+          </div>
+        </section>
+      </div>
+    </div>
+  </div>
+  <div class="gvcrop" data-crop hidden>
+    <div class="gvcrop__scrim" data-crop-scrim></div>
+    <div class="gvcrop__panel" role="dialog" aria-modal="true" aria-label="Crop photo">
+      <button type="button" class="gvcrop__x" data-crop-close aria-label="Cancel">${IC_CLOSE}</button>
+      <div class="gvcrop__stage"><canvas class="gvcrop__canvas" data-crop-canvas width="576" height="576"></canvas></div>
+      <div class="gvcrop__zoom">
+        <button type="button" class="gvcrop__step" data-crop-out aria-label="Zoom out">&minus;</button>
+        <input type="range" class="gvcrop__range" data-crop-range min="1" max="3" step="0.01" value="1" aria-label="Zoom" />
+        <button type="button" class="gvcrop__step" data-crop-in aria-label="Zoom in">+</button>
+      </div>
+      <div class="gvcrop__foot">
+        <button type="button" class="gvcrop__save" data-crop-save>Save image</button>
+        <p class="gvcrop__msg" data-crop-msg hidden></p>
+      </div>
+    </div>
+  </div>`;
+}
+
 // Full chrome injected at the top of <body>: slim mobile top bar + the rail + the
 // drawer scrim (the last two are off-canvas / hidden on desktop via CSS).
 function appChrome(active) {
@@ -2840,7 +2981,7 @@ function appChrome(active) {
     <button type="button" class="gvburger" data-side-toggle aria-expanded="false" aria-controls="gvside" aria-label="Open navigation"><span class="gvburger__bars" aria-hidden="true"><span></span><span></span><span></span></span></button>
     <a class="gvtop__brand" href="${S("/")}">${GV_MARK}<span>augur</span></a>
   </header>`;
-  return `${top}${sideRail(active)}<div class="gvscrim" data-side-scrim></div>${helpDrawer()}`;
+  return `${top}${sideRail(active)}<div class="gvscrim" data-side-scrim></div>${helpDrawer()}${settingsModal()}`;
 }
 
 /** Shared chrome script: real-time in-page filter + the mobile rail drawer. */
@@ -3100,7 +3241,7 @@ function injectNav(html, active) {
   if (!m) return html;
   return html.replace(
     m[0],
-    `${m[0]}\n  <style>${NAV_CSS}</style>\n  ${appChrome(active)}\n  <script>${chromeScript()}</script>\n  <script>${spaceContextScript()}</script>\n  <script>${PINS_JS}</script>\n  <script>${PROFILE_JS}</script>\n  <script>${SPACE_JS}</script>`
+    `${m[0]}\n  <style>${NAV_CSS}</style>\n  ${appChrome(active)}\n  <script>${chromeScript()}</script>\n  <script>${spaceContextScript()}</script>\n  <script>${PINS_JS}</script>\n  <script>${PROFILE_JS}</script>\n  <script>${SETTINGS_JS}</script>\n  <script>${SPACE_JS}</script>`
   );
 }
 
@@ -3927,85 +4068,39 @@ const PROFILE_JS = `(function(){
   if(!box) return;
   var ME = null;
   function initials(u){ return (u.initials || (u.name||'?').slice(0,2)).toUpperCase(); }
+  // Identity paints PAGE-WIDE, not just inside the chip: the settings modal renders at
+  // body level (outside [data-prof]) and its avatar / name / email carry the same hooks,
+  // so one paint fills both surfaces off the single /__me fetch. Chip-only concerns
+  // (revealing the box, the admin link) stay scoped to the box.
   function paint(u){
     ME = u;
-    var avs = box.querySelectorAll('[data-prof-av]');
+    var avs = document.querySelectorAll('[data-prof-av]');
     for(var i=0;i<avs.length;i++){
       var a = avs[i];
       if(u.avatar){ a.style.backgroundImage = 'url("'+u.avatar+'")'; a.textContent=''; }
-      else { a.style.background = u.color || '#4f46e5'; a.textContent = initials(u); }
+      else { a.style.backgroundImage = 'none'; a.style.background = u.color || '#4f46e5'; a.textContent = initials(u); }
     }
-    var names = box.querySelectorAll('[data-prof-name]');
+    var names = document.querySelectorAll('[data-prof-name]');
     for(var j=0;j<names.length;j++) names[j].textContent = u.name || u.email;
-    var em = box.querySelector('[data-prof-email]'); if(em) em.textContent = u.email || '';
+    var ems = document.querySelectorAll('[data-prof-email]');
+    for(var k=0;k<ems.length;k++) ems[k].textContent = u.email || '';
     // style.display, not [hidden]: .gvprof__item sets display:flex and out-specifies
     // the [hidden] rule (same gotcha as the brand), so non-admins kept seeing this.
     var adm = box.querySelector('[data-prof-admin]'); if(adm) adm.style.display = u.admin ? 'flex' : 'none';
-    var lab = box.querySelector('[data-prof-photo-label]'); if(lab) lab.textContent = u.avatar ? 'Change photo' : 'Add photo';
-    var rm = box.querySelector('[data-prof-photo-rm]'); if(rm) rm.hidden = !u.avatar;
     // Admin-only surfaces (e.g. the Pitis paw) reveal via html.gv-admin.
     document.documentElement.classList.toggle('gv-admin', !!u.admin);
     box.hidden = false;
     if(u.admin){ version(); storage(); }
+    // SETTINGS_JS listens for this instead of fetching /__me a second time. Fired on
+    // every paint, so it also carries a fresh photo back to an already-open modal.
+    document.dispatchEvent(new CustomEvent('gv:me', {detail: u}));
   }
-  // Profile photo — pick a file, square-crop and downscale it HERE (workers have no
-  // image library, so the browser is the only place a 4MB phone photo can become the
-  // ~10KB the roster overlay stores), then POST the data URI to /__me/avatar.
-  function photo(){
-    var btn = box.querySelector('[data-prof-photo]');
-    var rm = box.querySelector('[data-prof-photo-rm]');
-    var file = box.querySelector('[data-prof-file]');
-    var lab = box.querySelector('[data-prof-photo-label]');
-    if(!btn || !file) return;
-    var SIZE = 192; // 2x the largest place a face renders, so retina stays crisp
-    function say(msg){ if(lab) lab.textContent = msg; }
-    function busy(on){ btn.setAttribute('aria-busy', on ? 'true' : 'false'); }
-    function send(method, body){
-      busy(true);
-      return fetch('/__me/avatar', {
-        method: method,
-        headers: {'Content-Type':'application/json'},
-        body: body ? JSON.stringify(body) : null
-      }).then(function(r){ return r.json().catch(function(){ return {}; }).then(function(d){
-        if(!r.ok || !d.ok) throw new Error(d.error || 'failed');
-        // Repaint from the URL the worker just minted (content-hashed, so it never
-        // collides with the cached previous photo).
-        if(ME){ ME.avatar = d.avatar || null; paint(ME); }
-      }); }).catch(function(){ say('Could not save photo'); })
-        .then(function(){ busy(false); });
-    }
-    // Cover-crop to a centred square: the whole frame, never a tight face cut-out.
-    function square(img){
-      var w = img.width, h = img.height, s = Math.min(w, h);
-      var c = document.createElement('canvas');
-      c.width = c.height = SIZE;
-      var g = c.getContext('2d');
-      g.fillStyle = '#fff'; g.fillRect(0, 0, SIZE, SIZE); // PNG transparency → white, not black
-      g.drawImage(img, (w - s) / 2, (h - s) / 2, s, s, 0, 0, SIZE, SIZE);
-      return c.toDataURL('image/jpeg', 0.82);
-    }
-    function load(f){
-      // from-image applies the EXIF orientation, so portraits off a phone aren't sideways.
-      if(window.createImageBitmap) return createImageBitmap(f, {imageOrientation:'from-image'});
-      return new Promise(function(res, rej){
-        var img = new Image(), url = URL.createObjectURL(f);
-        img.onload = function(){ URL.revokeObjectURL(url); res(img); };
-        img.onerror = function(){ URL.revokeObjectURL(url); rej(new Error('decode')); };
-        img.src = url;
-      });
-    }
-    btn.addEventListener('click', function(e){ e.stopPropagation(); file.click(); });
-    file.addEventListener('change', function(){
-      var f = file.files && file.files[0];
-      file.value = ''; // so picking the same file twice still fires
-      if(!f) return;
-      busy(true);
-      load(f).then(function(img){ return send('POST', {avatar: square(img)}); })
-        .catch(function(){ say('Could not read that image'); busy(false); });
-    });
-    if(rm) rm.addEventListener('click', function(e){ e.stopPropagation(); send('DELETE'); });
-  }
-  photo();
+  // …and the way back: the settings modal saved a new photo, so repaint every face.
+  document.addEventListener('gv:avatar', function(e){
+    if(!ME) return;
+    ME.avatar = (e.detail && e.detail.avatar) || null;
+    paint(ME);
+  });
   // Bundle-store fill gauge in the rail foot — admins only (the worker 403s everyone
   // else) and only on instances that actually have a store.
   function storage(){
@@ -4060,6 +4155,221 @@ const PROFILE_JS = `(function(){
     document.addEventListener('click', function(e){ if(!box.contains(e.target)) open(false); });
     document.addEventListener('keydown', function(e){ if(e.key === 'Escape') open(false); });
   }
+})();
+`;
+
+// Account settings behaviour: open the modal from the profile menu, and run the photo
+// flow — pick a file, frame it over a circular mask (zoom + pan), then POST the result
+// to /__me/avatar. The crop happens HERE because workers have no image library, so the
+// browser is the only place a 4MB phone photo can become the ~10KB the roster stores.
+//
+// Identity is NOT fetched here. PROFILE_JS owns /__me and paints the avatar, name and
+// email in this modal along with every other face; the two talk through one event each
+// (gv:me down, gv:avatar up), so there is no second fetch and no script-order dependency.
+const SETTINGS_JS = `(function(){
+  var el = document.querySelector('[data-set]');
+  var crop = document.querySelector('[data-crop]');
+  if(!el || !crop) return;
+  var SIZE = 192; // 2x the largest place a face renders, so retina stays crisp
+  var ME = null, last = null, hideT = null;
+
+  // ── Who is signed in ───────────────────────────────────────────────────────
+  // All this needs from PROFILE_JS is the role (the chip never showed it) and the
+  // fact that a real user exists — without one there is nothing to open.
+  var roleEl = el.querySelector('[data-set-role]');
+  document.addEventListener('gv:me', function(e){
+    ME = e.detail || null;
+    if(roleEl) roleEl.textContent = ME && ME.admin ? 'Admin' : 'User';
+  });
+
+  // ── The modal ──────────────────────────────────────────────────────────────
+  var errEl = el.querySelector('[data-set-err]');
+  function err(t){ if(!errEl) return; errEl.textContent = t || ''; errEl.hidden = !t; }
+  function open(){
+    if(!ME) return;
+    if(hideT){ clearTimeout(hideT); hideT = null; }
+    // Restore focus to the chip, not to the menu item — that is hidden by then.
+    last = document.querySelector('[data-prof-toggle]') || document.activeElement;
+    el.hidden = false;
+    requestAnimationFrame(function(){ el.classList.add('is-open'); });
+    var x = el.querySelector('[data-set-close]'); if(x) x.focus();
+  }
+  function close(){
+    err('');
+    el.classList.remove('is-open');
+    // Hide after the fade; a timeout backstops reduced-motion (no transitionend).
+    hideT = setTimeout(function(){ el.hidden = true; hideT = null; }, 220);
+    if(last && last.focus) last.focus();
+  }
+  [].forEach.call(document.querySelectorAll('[data-prof-settings]'), function(o){
+    o.addEventListener('click', function(e){
+      e.preventDefault(); e.stopPropagation();
+      // The click never reaches PROFILE_JS's outside-click handler (and wouldn't
+      // close the menu anyway, being inside it), so dismiss the menu here.
+      var pm = document.querySelector('[data-prof-menu]'); if(pm) pm.hidden = true;
+      var pt = document.querySelector('[data-prof-toggle]'); if(pt) pt.setAttribute('aria-expanded','false');
+      open();
+    });
+  });
+  [].forEach.call(el.querySelectorAll('[data-set-close], [data-set-scrim]'), function(c){
+    c.addEventListener('click', close);
+  });
+  // One tab today; wired generically so a second needs markup only, no JS.
+  [].forEach.call(el.querySelectorAll('[data-set-tab]'), function(b){
+    b.addEventListener('click', function(){
+      var t = b.getAttribute('data-set-tab');
+      [].forEach.call(el.querySelectorAll('[data-set-tab]'), function(o){
+        var on = o.getAttribute('data-set-tab') === t;
+        o.classList.toggle('is-active', on);
+        o.setAttribute('aria-selected', on ? 'true' : 'false');
+      });
+      [].forEach.call(el.querySelectorAll('[data-set-panel]'), function(s){
+        s.hidden = s.getAttribute('data-set-panel') !== t;
+      });
+    });
+  });
+
+  // ── The crop dialog ────────────────────────────────────────────────────────
+  // One handler for both dialogs, so the order is guaranteed: the crop closes
+  // first, the modal second. Capturing + stopPropagation keeps the rail's own
+  // Escape handlers from also firing.
+  document.addEventListener('keydown', function(e){
+    if((e.key || '').toLowerCase() !== 'escape') return;
+    if(!crop.hidden){ e.preventDefault(); e.stopPropagation(); cropClose(); return; }
+    if(!el.hidden){ e.preventDefault(); e.stopPropagation(); close(); }
+  }, true);
+
+  var CV = crop.querySelector('[data-crop-canvas]');
+  var G = CV.getContext('2d');
+  var range = crop.querySelector('[data-crop-range]');
+  var saveBtn = crop.querySelector('[data-crop-save]');
+  var msgEl = crop.querySelector('[data-crop-msg]');
+  var D = CV.width;              // 576 backing px behind a 288px CSS box — retina-crisp
+  var img = null, scale = 1, ox = 0, oy = 0, frame = 0;
+  function msg(t){ if(!msgEl) return; msgEl.textContent = t || ''; msgEl.hidden = !t; }
+
+  // scale 1 = the image's SHORT side exactly fills the circle (a cover fit — the
+  // framing the old silent centre-crop produced). Everything else scales off this.
+  function base(){ return D / Math.min(img.width, img.height); }
+  // Keep the drawn image covering the circle in both axes: the mask can never show a gap.
+  function clamp(){
+    var b = base();
+    ox = Math.min(0, Math.max(D - img.width * b * scale, ox));
+    oy = Math.min(0, Math.max(D - img.height * b * scale, oy));
+  }
+  // One transform, two resolutions: the preview (D) and the saved photo (SIZE) are the
+  // same draw scaled by k, so what you frame is exactly what gets stored.
+  function paintTo(g, size){
+    var k = size / D, b = base() * scale * k;
+    g.imageSmoothingQuality = 'high';
+    g.fillStyle = '#fff'; g.fillRect(0, 0, size, size); // PNG transparency → white, not black
+    g.drawImage(img, ox * k, oy * k, img.width * b, img.height * b);
+  }
+  function draw(){ frame = 0; if(img) paintTo(G, D); }
+  function schedule(){ if(!frame) frame = requestAnimationFrame(draw); }
+  // Zoom about the centre of the circle, so the face you framed stays framed.
+  function zoom(next){
+    next = Math.max(1, Math.min(3, next));
+    if(next === scale) return;
+    var half = D / 2, k = next / scale;
+    ox = half - (half - ox) * k;
+    oy = half - (half - oy) * k;
+    scale = next;
+    if(range) range.value = String(scale);
+    clamp(); schedule();
+  }
+
+  var edit = el.querySelector('[data-set-edit]');
+  var file = el.querySelector('[data-set-file]');
+  function load(f){
+    // from-image applies the EXIF orientation, so portraits off a phone aren't sideways.
+    if(window.createImageBitmap) return createImageBitmap(f, {imageOrientation:'from-image'});
+    return new Promise(function(res, rej){
+      var i = new Image(), url = URL.createObjectURL(f);
+      i.onload = function(){ URL.revokeObjectURL(url); res(i); };
+      i.onerror = function(){ URL.revokeObjectURL(url); rej(new Error('decode')); };
+      i.src = url;
+    });
+  }
+  function cropOpen(){
+    msg('');
+    crop.hidden = false;
+    if(saveBtn) saveBtn.focus();
+    schedule();
+  }
+  function cropClose(){
+    crop.hidden = true;
+    if(img && img.close) img.close(); // release the decoded bitmap
+    img = null;
+    if(edit && edit.focus) edit.focus();
+  }
+  if(edit && file){
+    edit.addEventListener('click', function(){ err(''); file.click(); });
+    file.addEventListener('change', function(){
+      var f = file.files && file.files[0];
+      file.value = ''; // so picking the same file twice still fires
+      if(!f) return;
+      edit.setAttribute('aria-busy', 'true');
+      load(f).then(function(bmp){
+        img = bmp; scale = 1;
+        var b = base();
+        ox = (D - img.width * b) / 2;   // start centred — where the old crop landed
+        oy = (D - img.height * b) / 2;
+        if(range) range.value = '1';
+        cropOpen();
+      }).catch(function(){ err('Could not read that image'); })
+        .then(function(){ edit.setAttribute('aria-busy', 'false'); });
+    });
+  }
+  [].forEach.call(crop.querySelectorAll('[data-crop-close], [data-crop-scrim]'), function(c){
+    c.addEventListener('click', cropClose);
+  });
+  if(range) range.addEventListener('input', function(){ zoom(parseFloat(range.value)); });
+  var zoomOut = crop.querySelector('[data-crop-out]');
+  var zoomIn = crop.querySelector('[data-crop-in]');
+  if(zoomOut) zoomOut.addEventListener('click', function(){ zoom(scale - 0.2); });
+  if(zoomIn) zoomIn.addEventListener('click', function(){ zoom(scale + 0.2); });
+
+  // Drag to pan. Pointer deltas are CSS px; the canvas is backed at D, so scale them.
+  var drag = null;
+  CV.addEventListener('pointerdown', function(e){
+    if(!img) return;
+    drag = {x: e.clientX, y: e.clientY};
+    CV.setPointerCapture(e.pointerId);
+  });
+  CV.addEventListener('pointermove', function(e){
+    if(!drag || !img) return;
+    var k = D / (CV.clientWidth || D);
+    ox += (e.clientX - drag.x) * k;
+    oy += (e.clientY - drag.y) * k;
+    drag.x = e.clientX; drag.y = e.clientY;
+    clamp(); schedule();
+  });
+  function endDrag(e){ if(drag){ drag = null; try { CV.releasePointerCapture(e.pointerId); } catch(_){} } }
+  CV.addEventListener('pointerup', endDrag);
+  CV.addEventListener('pointercancel', endDrag);
+
+  if(saveBtn) saveBtn.addEventListener('click', function(){
+    if(!img) return;
+    saveBtn.setAttribute('aria-busy', 'true'); msg('');
+    var c = document.createElement('canvas');
+    c.width = c.height = SIZE;
+    paintTo(c.getContext('2d'), SIZE);
+    fetch('/__me/avatar', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({avatar: c.toDataURL('image/jpeg', 0.82)})
+    }).then(function(r){ return r.json().catch(function(){ return {}; }).then(function(d){
+      if(!r.ok || !d.ok) throw new Error(d.error || 'failed');
+      // The worker mints a content-hashed URL, so it never collides with the cached
+      // previous photo. PROFILE_JS owns every face on the page — hand it over.
+      document.dispatchEvent(new CustomEvent('gv:avatar', {detail: {avatar: d.avatar || null}}));
+      cropClose();
+    }); })
+      // Keep the dialog open with the framing intact, so a retry needs no re-pick.
+      .catch(function(){ msg('Could not save photo'); })
+      .then(function(){ saveBtn.setAttribute('aria-busy', 'false'); });
+  });
 })();
 `;
 
@@ -4737,6 +5047,8 @@ function shell({ title, body, back, activeTab = "prototypes", wrapClass = "" }) 
   <script>${PINS_JS}
   </script>
   <script>${PROFILE_JS}
+  </script>
+  <script>${SETTINGS_JS}
   </script>
   <script>${NEWCANVAS_JS}
   </script>
