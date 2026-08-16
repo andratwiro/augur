@@ -18,6 +18,11 @@ templates/shell/          → <shell-repo>/.github/workflows/
 └── roster-update.yml     # Commit Admin-panel invites/removals back to identity.json.
 ```
 
+Drift between a shell and these files is caught by `shell-lint` — run it from a shell
+(`node engine/scripts/shell-lint.mjs`), where the engine submodule IS that shell's
+pinned engine. `health.yml` runs it on every canary pass. Filled-in placeholders and
+reworded comments stay quiet; changed behaviour fails.
+
 Each file carries its own header explaining what it does and what it needs. Three of them
 have an instance value to fill in before first use — the Pages project name and site
 origin in `deploy.yml`, the site origin in `health.yml` and `store-backup.yml`.

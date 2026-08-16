@@ -16,6 +16,11 @@ name: Health canary
 #   c. is AUGUR_PIN_TOKEN alive, if this shell uses one (roster-update.yml pushes
 #      with it)? Skipped when the secret is unset.
 #   d. is the site up at all? (implicit in (a)'s stamp fetch.)
+#   e. is this shell RUNNING what the engine's templates say it should be running?
+#      Same question as (a), one layer up — a fix that lands in templates/shell/ and
+#      never reaches the shells that already had a copy is invisible exactly the way
+#      publish drift is. Compared against the engine submodule, i.e. this shell's own
+#      pinned engine.
 #
 # On any failure the run exits non-zero (GitHub emails the owner) AND maintains a
 # single open issue labelled `health`; a green run closes it.
@@ -48,7 +53,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          submodules: false # the roster is deploy.config.json; no checkout needed
+          # The engine submodule is here for check (e) only — the roster is
+          # deploy.config.json and needs no checkout. It is the shell's OWN pinned
+          # engine, which is exactly the version its workflows should be compared to.
+          submodules: true
+          token: ${{ secrets.SUBMODULE_PAT }}
           fetch-depth: 1
 
       # (a)+(b) Live /_build.json sha vs each space repo's main HEAD. The stamp is
@@ -109,6 +118,22 @@ jobs:
             echo "AUGUR_PIN_TOKEN is dead/expired — workflows that push cannot retrigger CI (regenerate the PAT and update the secret)" >> "$FAILS"
           else
             echo "OK: AUGUR_PIN_TOKEN authenticates"
+          fi
+
+      # (e) Template drift. Same shape as (a): compare what is RUNNING against what the
+      # source of truth says. Only behavioural divergence fails — a reworded comment or
+      # a filled-in placeholder is expected and stays quiet.
+      - name: Check workflows against the engine's templates
+        run: |
+          set -uo pipefail
+          if [ ! -f engine/scripts/shell-lint.mjs ]; then
+            echo "pinned engine predates shell-lint — skipping (bump the engine to enable)"; exit 0
+          fi
+          if ! OUT="$(node engine/scripts/shell-lint.mjs 2>&1)"; then
+            echo "$OUT"
+            echo "workflow drift: this shell is not running what its pinned engine's templates/shell/ says it should — see the run log for the diverging lines" >> "$FAILS"
+          else
+            echo "$OUT"
           fi
 
       # Report — one issue, not a pile: create-or-comment on the single open

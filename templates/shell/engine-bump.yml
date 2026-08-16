@@ -29,11 +29,28 @@ name: Bump engine pin
 #     -f default_workflow_permissions=write -F can_approve_pull_request_reviews=true).
 
 on:
+  # The engine's own deploy-trigger.yml dispatches `engine-updated` the moment its main
+  # moves, to every shell named in its SHELL_REPO variable. Listening for it is what
+  # makes a shell update immediately instead of waiting for the weekly sweep — and
+  # without this trigger the dispatch arrives and does nothing, silently, which reads
+  # exactly like an instance that simply lags. The cron below stays as the safety net
+  # for whenever the dispatch does not arrive (token scope, fork, shell not in the list).
+  repository_dispatch:
+    types: [engine-updated]
   schedule:
     - cron: "17 6 * * 1" # Mondays 06:17 UTC — weekly engine refresh
   workflow_dispatch:
 
 env:
+  # SET BEFORE USE — this is an instance choice, not a default to leave alone:
+  #   release  follow tagged releases. A human cuts the tag, so an update never
+  #            lands unread. Costs a lag, and it fails QUIETLY if tagging stops:
+  #            an instance once followed tags, none were cut for months, and its
+  #            pin drifted 87 commits behind the engine while looking healthy.
+  #   main     follow the engine's main. Always current, nothing to remember to
+  #            cut, no silent stall — at the price of taking changes unread.
+  # Pick deliberately, and if you pick `release`, make sure something actually
+  # cuts tags (see the engine's own release cadence).
   TRACK: release
 
 permissions:
