@@ -2080,6 +2080,7 @@ const NAV_CSS = `
     .gvprof__cv { width: 15px; height: 15px; flex: none; color: #9aa0ab; }
     .gvprof__menu {
       position: absolute; top: calc(100% + 4px); left: 0; right: 0; z-index: 5;
+      background: #fff; border: 1px solid rgba(16,17,26,0.12); border-radius: 10px; padding: 5px;
       box-shadow: 0 1px 2px rgba(16,24,40,0.05), 0 12px 30px -16px rgba(16,24,40,0.30);
     }
     .gvprof__id { display: flex; align-items: center; gap: 9px; padding: 7px 8px 9px;

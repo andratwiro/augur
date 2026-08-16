@@ -119,3 +119,31 @@ test("the rail's leading marks share one padding, gap and box", () => {
   assert.match(rule(".gvspace__icon") || "", /width: 20px/);
   assert.match(rule(".gvside a > .gvic, .gvside__act > .gvic") || "", /width: 20px/);
 });
+
+// ---- floating surfaces must be opaque ----------------------------------------
+// A dropdown that loses its `background` does not disappear — it goes transparent,
+// and the rail behind it reads straight through the menu items. That is what
+// happened to the profile menu when a cleanup regex matched its background line
+// instead of the one it was aimed at, and nothing failed: the markup was fine, the
+// braces balanced, the menu simply had no surface.
+//
+// The rule of thumb this encodes: if it is positioned out of flow AND carries a
+// drop shadow, it is a panel floating over content, so it needs something to float ON.
+test("every floating panel declares a background", () => {
+  const file = join(DIST, "index.html");
+  if (!existsSync(file)) return;
+  const css = strip(styleText(readFileSync(file, "utf8")));
+  const naked = [];
+  for (const m of css.matchAll(/([^{}]+)\{([^}]*)\}/g)) {
+    const sel = m[1].replace(/\s+/g, " ").trim();
+    const body = m[2];
+    if (sel.startsWith("@") || !sel.startsWith(".")) continue;
+    const floats = /position\s*:\s*(absolute|fixed)/.test(body) && /box-shadow\s*:/.test(body);
+    if (!floats) continue;
+    // `background` or `background-color`, and not the no-op `background: none`.
+    const bg = /(?:^|;)\s*background(?:-color)?\s*:\s*([^;]+)/.exec(body);
+    if (!bg || /^\s*none\s*$/.test(bg[1])) naked.push(sel);
+  }
+  assert.deepEqual(naked, [],
+    `these panels float over content with no surface of their own:\n  ${naked.join("\n  ")}`);
+});
