@@ -2113,13 +2113,26 @@ const NAV_CSS = `
     .gvprof__ver a { color: #b45309; font-weight: 600; text-decoration: none; }
     .gvprof__ver a:hover { text-decoration: underline; }
 
-    /* Space switcher — active space icon+name+badge with a dropdown of all spaces.
-       Server-rendered from the build-time space list; SPACE_JS only toggles the menu.
-       Admin-only: switching spaces is a maintainer concern, so the switcher is hidden by
-       default and revealed once /__me confirms an admin (html.gv-admin) — same reveal
-       mechanism as the other admin surfaces. Regular users never see it. */
+    /* Space switcher — active space icon+name+badge with a dropdown of the spaces you
+       belong to. Server-rendered from the build-time space list, which is every space;
+       SPACE_JS hides the rows /__me does not name.
+       The workspace row. Hidden until SPACE_JS confirms you belong to something —
+       it is no longer an admin-only maintainer tool (that was html.gv-admin), it is
+       everyone's, and it names spaces, so it must stay dark to a signed-out visitor. */
     .gvspace { display: none; position: relative; margin: 2px 1px 8px; }
-    html.gv-admin .gvspace { display: block; }
+    html.gv-spaces .gvspace { display: block; }
+    .gvspace__row { display: flex; align-items: center; gap: 2px; }
+    .gvspace__row .gvspace__btn { flex: 1 1 auto; min-width: 0; }
+    .gvspace__btn.is-static { cursor: default; }
+    .gvspace__btn.is-static:hover { background: none; border-color: transparent; }
+    /* The cog shows only to an admin of the ACTIVE space — a per-space question, so
+       it cannot ride the old instance-wide html.gv-admin reveal. */
+    .gvspace__cog { flex: none; width: 26px; height: 26px; display: none; place-items: center;
+                    border-radius: 7px; color: #9aa0ab; text-decoration: none; }
+    .gvspace__cog svg { width: 15px; height: 15px; }
+    .gvspace__cog:hover { background: rgba(16,17,26,0.06); color: #16171a; }
+    .gvspace__cog:focus-visible { outline: 2px solid #5e6ad2; outline-offset: 1px; }
+    html.gv-space-admin .gvspace__cog { display: grid; }
     .gvspace__btn {
       display: flex; align-items: center; gap: 8px; width: 100%; padding: 6px 8px;
       border: 1px solid rgba(16,17,26,0.10); border-radius: 8px; background: #fff; cursor: pointer;
@@ -2726,7 +2739,6 @@ function profileChip() {
           <span class="gvprof__idtext"><span class="gvprof__name" data-prof-name></span><span class="gvprof__email" data-prof-email></span></span>
         </div>
         <button type="button" class="gvprof__item" role="menuitem" data-prof-settings>${IC_SLIDERS}<span>Settings</span></button>
-        <a class="gvprof__item" href="/admin/" role="menuitem" data-prof-admin hidden>${IC_GEAR}<span>Admin settings</span></a>
         <a class="gvprof__item" href="/__logout" role="menuitem" data-prof-signout>${IC_SIGNOUT}<span>Sign out</span></a>
         <div class="gvprof__ver" data-prof-ver hidden>
           <span data-prof-vercur></span>
@@ -2745,31 +2757,52 @@ function profileChip() {
 // exists (nothing to switch to) — the chip would be noise.
 function spaceSwitcher() {
   const spaces = NAV_STATE.spaces || [];
-  if (spaces.length < 2) return "";
+  if (!spaces.length) return "";
   const active = spaces.find((s) => s.id === NAV_STATE.activeSpace) || spaces[0];
+  // One space is still a workspace: nothing to SWITCH to, but something to administer.
+  // So the row always renders and only the dropdown drops away — a self-hosted Augur
+  // is exactly this case, and it must not lose its cog along with its switcher.
+  const many = spaces.length > 1;
   const icon = `<span class="gvspace__icon"><img src="/space-icon.png" alt="" width="20" height="20" /></span>`;
   const badge = (b) => (b ? `<span class="gvspace__badge${b === "new" ? " is-new" : ""}">${escAttr(b)}</span>` : "");
   const rows = spaces
     .map(
-      (s) => `<a class="gvspace__item${s.id === active.id ? " is-active" : ""}" href="${s.base}/" role="menuitemradio" aria-checked="${s.id === active.id}">
+      // `hidden` is not a default to be tidied away: the build cannot know who is
+      // looking, so a row that shipped visible would tell every stranger which spaces
+      // exist. SPACE_JS reveals the ones /__me names and nothing else.
+      (s) => `<a class="gvspace__item${s.id === active.id ? " is-active" : ""}" href="${s.base}/" role="menuitemradio" aria-checked="${s.id === active.id}" data-space-row="${escAttr(s.id)}" hidden>
           ${icon}<span class="gvspace__iname">${escAttr(s.name)}</span>${badge(s.badge)}
           <svg class="gvspace__chk" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>
         </a>`
     )
     .join("");
-  return `<div class="gvspace" data-space>
-      <button type="button" class="gvspace__btn" data-space-toggle aria-haspopup="true" aria-expanded="false" aria-label="Switch space">
-        ${icon}<span class="gvspace__name">${escAttr(active.name)}</span>${badge(active.badge)}
+  // The cog is the workspace's own door — admin config belongs to the space, not to
+  // the person, which is why it left the profile menu. It carries the space id so the
+  // page opens already scoped, and SPACE_JS shows it only to an admin of THIS space.
+  const cog = `<a class="gvspace__cog" href="/admin/?space=${encodeURIComponent(active.id)}" data-space-admin aria-label="Workspace settings" title="Workspace settings">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9c.14.35.4.64.73.83H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+      </a>`;
+  const nameplate = many
+    ? `<button type="button" class="gvspace__btn" data-space-toggle aria-haspopup="true" aria-expanded="false" aria-label="Switch space">
+        ${icon}<span class="gvspace__name" data-space-name>${escAttr(active.name)}</span>${badge(active.badge)}
         <svg class="gvspace__cv" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
-      </button>
-      <div class="gvspace__menu" data-space-menu role="menu" hidden>
+      </button>`
+    : `<span class="gvspace__btn is-static">
+        ${icon}<span class="gvspace__name" data-space-name>${escAttr(active.name)}</span>${badge(active.badge)}
+      </span>`;
+  const menu = many
+    ? `<div class="gvspace__menu" data-space-menu role="menu" hidden>
         ${rows}
         <div class="gvspace__sep"></div>
         <button type="button" class="gvspace__create" data-space-create>
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
           <span>Create new</span>
         </button>
-      </div>
+      </div>`
+    : "";
+  return `<div class="gvspace" data-space>
+      <div class="gvspace__row">${nameplate}${cog}</div>
+      ${menu}
     </div>`;
 }
 
@@ -4137,8 +4170,11 @@ const PROFILE_JS = `(function(){
     for(var k=0;k<ems.length;k++) ems[k].textContent = u.email || '';
     // style.display, not [hidden]: .gvprof__item sets display:flex and out-specifies
     // the [hidden] rule (same gotcha as the brand), so non-admins kept seeing this.
-    var adm = box.querySelector('[data-prof-admin]'); if(adm) adm.style.display = u.admin ? 'flex' : 'none';
-    // Admin-only surfaces (e.g. the Pitis paw) reveal via html.gv-admin.
+    // The admin link left this menu: workspace config belongs to the workspace, and it
+    // now hangs off the cog on the space row (see spaceSwitcher/SPACE_JS). What stays
+    // here is only what is genuinely personal.
+    // Instance-wide admin surfaces (the Pitis paw, Delete forever) still reveal via
+    // html.gv-admin — those are not per-space questions.
     document.documentElement.classList.toggle('gv-admin', !!u.admin);
     box.hidden = false;
     if(u.admin){ version(); storage(); }
@@ -4629,9 +4665,45 @@ const NEWCANVAS_JS = `
 // each row a plain <a> to the space's base URL, so switching is just navigation). The
 // Create-new entry is a stub: spaces are REPOS (one repo per space, mounted as Augur
 // submodules at spaces/<id>), so creating one is a maintainer act, not an in-app feature.
+//
+// Membership is applied HERE rather than at build time, because the build has no viewer.
+// Every row ships hidden; /__me names the ones you belong to and this reveals only those.
+// The worker gates the same paths server-side (spaceIdForPath + isMemberOf) — this half
+// is what stops a space you cannot reach from appearing in your switcher at all.
 const SPACE_JS = `(function(){
   var box = document.querySelector('[data-space]');
   if(!box) return;
+  fetch('/__me', {headers:{'Accept':'application/json'}}).then(function(r){
+    return r.ok ? r.json() : null;
+  }).then(function(d){
+    if(!d) return;
+    var mine = (d && d.spaces) || [];
+    // No accounts at all (open/offline build) → everyone is the operator: show the
+    // whole rail rather than blanking it, which is how every other surface degrades.
+    var open = d && d.accounts === false;
+    var byId = {};
+    mine.forEach(function(s){ byId[s.id] = s; });
+    var rows = box.querySelectorAll('[data-space-row]');
+    var shown = 0;
+    rows.forEach(function(row){
+      var id = row.getAttribute('data-space-row');
+      var ok = open || Object.prototype.hasOwnProperty.call(byId, id);
+      if(ok){ row.hidden = false; shown++; } else { row.hidden = true; }
+    });
+    // The row itself appears once you belong to something. A one-space instance has
+    // no rows to reveal, so the presence of an active space is enough.
+    var active = box.querySelector('[data-space-admin]');
+    var activeId = active ? (active.getAttribute('href')||'').split('space=')[1] : '';
+    activeId = activeId ? decodeURIComponent(activeId) : '';
+    if(open || shown || byId[activeId]){
+      document.documentElement.classList.add('gv-spaces');
+    }
+    // The cog is a per-space question — admin HERE, not admin anywhere.
+    var here = byId[activeId];
+    if(open || (here && here.role === 'admin')){
+      document.documentElement.classList.add('gv-space-admin');
+    }
+  }).catch(function(){});
   var btn = box.querySelector('[data-space-toggle]');
   var menu = box.querySelector('[data-space-menu]');
   function open(o){ if(!menu) return; menu.hidden = !o; if(btn) btn.setAttribute('aria-expanded', o ? 'true' : 'false'); }
