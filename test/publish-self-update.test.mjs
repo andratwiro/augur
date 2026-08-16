@@ -194,8 +194,17 @@ test("a clean clone that is behind its upstream updates itself and completes the
     cpSync(path.join(ENGINE, "scripts"), path.join(seed, "scripts"), { recursive: true });
     git(seed, "add", "-A", "scripts");
     try { git(seed, "commit", "-qm", "overlay working tree"); } catch (e) { /* identical already */ }
-    const branch = git(seed, "rev-parse", "--abbrev-ref", "HEAD").trim();
-    git(seed, "push", "-q", "origin", "HEAD:" + branch);
+    // `--abbrev-ref HEAD` answers the literal "HEAD" on a DETACHED checkout, and
+    // `push HEAD:HEAD` is not a valid refspec. CI builds a detached merge commit for
+    // every pull_request run, so this fixture died there while passing on push runs
+    // and locally — which is why main stayed green and no PR could. Put the seed on a
+    // real branch in that case, and point the bare origin at it so the clone below
+    // checks out the same ref.
+    let branch = git(seed, "rev-parse", "--abbrev-ref", "HEAD").trim();
+    const detached = branch === "HEAD";
+    if (detached) { branch = "seed-main"; git(seed, "checkout", "-q", "-b", branch); }
+    git(seed, "push", "-q", "origin", "HEAD:refs/heads/" + branch);
+    if (detached) git(origin, "symbolic-ref", "HEAD", "refs/heads/" + branch);
 
     execFileSync("git", ["clone", "-q", origin, clone]);
     git(clone, "config", "user.email", "t@example.test");
@@ -305,8 +314,17 @@ test("the instance-ahead check alone updates the clone, with the timer sweep dis
     cpSync(path.join(ENGINE, "scripts"), path.join(seed, "scripts"), { recursive: true });
     git(seed, "add", "-A", "scripts");
     try { git(seed, "commit", "-qm", "overlay"); } catch (e) {}
-    const branch = git(seed, "rev-parse", "--abbrev-ref", "HEAD").trim();
-    git(seed, "push", "-q", "origin", "HEAD:" + branch);
+    // `--abbrev-ref HEAD` answers the literal "HEAD" on a DETACHED checkout, and
+    // `push HEAD:HEAD` is not a valid refspec. CI builds a detached merge commit for
+    // every pull_request run, so this fixture died there while passing on push runs
+    // and locally — which is why main stayed green and no PR could. Put the seed on a
+    // real branch in that case, and point the bare origin at it so the clone below
+    // checks out the same ref.
+    let branch = git(seed, "rev-parse", "--abbrev-ref", "HEAD").trim();
+    const detached = branch === "HEAD";
+    if (detached) { branch = "seed-main"; git(seed, "checkout", "-q", "-b", branch); }
+    git(seed, "push", "-q", "origin", "HEAD:refs/heads/" + branch);
+    if (detached) git(origin, "symbolic-ref", "HEAD", "refs/heads/" + branch);
     execFileSync("git", ["clone", "-q", origin, clone]);
     git(clone, "config", "user.email", "t@example.test"); git(clone, "config", "user.name", "T");
     wf(path.join(seed, "AHEAD-DRILL.md"), "x\n");
