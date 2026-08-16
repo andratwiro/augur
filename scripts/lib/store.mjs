@@ -97,3 +97,14 @@ export async function buildStamp(origin) {
 export const idsFromStamp = (stamp) => [...Object.keys(stamp.spaces || {}).sort(), "_engine"];
 
 export const ENGINE_ID = "_engine";
+
+// The publish protocol this CLI speaks, declared on every commit as `clientProtocol`.
+// One source for every client that commits (publish, restore) — two copies would drift,
+// and a client that MISDECLARES its protocol is worse than one that declares nothing:
+// the server would wave through guards it cannot actually honour.
+//
+// Bump this when the CLI learns a new commit-side guard, not when the worker does.
+//   1  the original digest protocol
+//   2  unpublish guard (`allowUnpublish`)
+//   3  revert guard (`baseVersion` + per-unit reconciliation)
+export const CLIENT_PROTOCOL = 3;

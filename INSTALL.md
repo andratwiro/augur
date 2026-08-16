@@ -239,7 +239,17 @@ field at all: invite them from the Admin panel and they choose their own.
 build input — the shell mounts no space submodules. Optional keys: `realtimeOrigin`
 (step 9), `sentinels`, `mcpHostSuffixes`, `mcpHostAllowlistUrl`, `vanityRedirects`,
 `builder`, `updateFeed`, `loginHint` (one line of plain text rendered under the
-login form — how a demo instance surfaces its test credentials).
+login form — how a demo instance surfaces its test credentials), and
+`minClientProtocol`.
+
+`minClientProtocol` is the oldest publish protocol this instance accepts a commit
+from; a client below it is refused `426 cli-outdated` before anything is written.
+Leave it unset on a single-operator instance — a floor nobody chose should never be
+why a publish fails. Set it (to `3`) once several people or agents publish here from
+clones you do not control, because an old client does not merely miss features: a
+pre-3 client sends no `baseVersion`, so the store cannot tell whether its tree is
+built on what is live, and a stale checkout can revert whoever published last with
+neither of them seeing it.
 
 `package.json` — so a local build reproduces CI's:
 

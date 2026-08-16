@@ -6442,6 +6442,8 @@ async function main() {
     builder: DEPLOY.builder || null,
     rtOrigin: DEPLOY.realtimeOrigin || "",
     sentinels: DEPLOY.sentinels || [],
+    // Oldest publish protocol this instance accepts a commit from. Absent = no floor.
+    minClientProtocol: DEPLOY.minClientProtocol || 0,
     loginHint: DEPLOY.loginHint || "",
   }), "utf8");
   await fs.writeFile(path.join(DIST, "__config", "routing.json"), JSON.stringify({

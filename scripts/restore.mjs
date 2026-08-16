@@ -22,7 +22,7 @@
 import { readFile, readdir } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import path from "node:path";
-import { target, apiClient, buildStamp } from "./lib/store.mjs";
+import { target, apiClient, buildStamp, CLIENT_PROTOCOL } from "./lib/store.mjs";
 
 const log = (msg) => console.error(`\x1b[36m[restore]\x1b[0m ${msg}`);
 const die = (msg) => { log(msg); process.exit(1); };
@@ -116,7 +116,9 @@ for (const id of ids) {
   const res = await (await req(`${id}/commit`, {
     method: "POST",
     headers: { "content-type": "application/json" },
-    body: JSON.stringify(body),
+    // Same protocol declaration a normal publish makes — a restore is an ordinary
+    // publish, so an instance with a floor must be able to judge this client too.
+    body: JSON.stringify({ ...body, clientProtocol: CLIENT_PROTOCOL }),
   })).json();
   log(`${id}: restored as v${res.version}`);
   restored++;

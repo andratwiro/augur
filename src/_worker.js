@@ -293,6 +293,11 @@ async function verifyPassword(password, stored) {
 // defaults, and a transient read failure never wipes a working gate.
 let SPACES = [];
 let INSTANCE_SENTINELS = [];
+// The oldest publish protocol this instance will accept a commit from
+// (deploy.config.json "minClientProtocol"). 0 = accept anything, which is the
+// default and the right one for a single-operator instance: a floor that nobody
+// set should never be the reason a publish fails.
+let MIN_CLIENT_PROTOCOL = 0;
 // Optional one-liner rendered on the login page (deploy.config.json "loginHint") —
 // how a demo instance surfaces its test credentials without opening the gate.
 let LOGIN_HINT = "";
@@ -313,6 +318,8 @@ function applyInstance(inst) {
   BUILDER_CONFIG = inst.builder || null;
   RT_ORIGIN = inst.rtOrigin || "";
   INSTANCE_SENTINELS = Array.isArray(inst.sentinels) ? inst.sentinels : [];
+  MIN_CLIENT_PROTOCOL = Number.isInteger(inst.minClientProtocol) && inst.minClientProtocol > 0
+    ? inst.minClientProtocol : 0;
   LOGIN_HINT = typeof inst.loginHint === "string" ? inst.loginHint : "";
   CONFIG_LOADED = true; // an instance document was actually applied this isolate
 }
@@ -1797,6 +1804,11 @@ async function publishApi(request, url, env) {
       liveSource: cur && cur.source
         ? { sha: cur.source.sha || null, dirty: !!cur.source.dirty } : null,
       protocol: PUBLISH_PROTOCOL,
+      // The floor, so a client can find out it is too old BEFORE it spends a blob
+      // upload finding out at commit. Advisory here, enforced there — same split as
+      // livePrefixes above, and for the same reason: commit is the only chokepoint the
+      // one-round-trip fast path also goes through.
+      minProtocol: MIN_CLIENT_PROTOCOL || undefined,
       engine: INSTANCE_ENGINE_VERSION || null,
     });
   }
@@ -1875,6 +1887,25 @@ async function publishApi(request, url, env) {
     try { m = await request.json(); } catch (e) { return jsonResponse({ error: "bad-json" }, 400); }
     if (!m || m.id !== spaceId || !m.files || typeof m.files !== "object") {
       return jsonResponse({ error: "bad-manifest" }, 400);
+    }
+    // ── Protocol floor. Off by default (see MIN_CLIENT_PROTOCOL) — a floor nobody set
+    // must never be why a publish fails. Where it IS set, refusing here beats accepting
+    // a write from a client too old to speak the guards it is about to walk past: a
+    // pre-protocol-3 CLI sends no `baseVersion`, so the stale-base check has nothing to
+    // compare and the revert guard silently degrades to "allowed". An old client cannot
+    // know that; it just sees a successful publish and someone else's work disappear.
+    // A client that omits `clientProtocol` entirely predates the field, so it is by
+    // definition below any floor above zero.
+    const clientProtocol = Number.isInteger(m.clientProtocol) ? m.clientProtocol : 0;
+    delete m.clientProtocol; // transport-only, like allowUnpublish — never persisted
+    if (MIN_CLIENT_PROTOCOL && clientProtocol < MIN_CLIENT_PROTOCOL) {
+      return jsonResponse({
+        error: "cli-outdated",
+        clientProtocol,
+        minProtocol: MIN_CLIENT_PROTOCOL,
+        protocol: PUBLISH_PROTOCOL,
+        upgrade: "npx augur@latest",
+      }, 426);
     }
     // Prune any publicPrefixes entry THIS manifest declares without backing it with
     // a file, before anything downstream — the ownership checks, the unpublish

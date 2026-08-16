@@ -23,6 +23,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { findShellDir, deployConfig } from "./lib/instance.mjs";
 import { isAncestor, resolvePublish, applyManifestPatches } from "./lib/publish-resolve.mjs";
+import { CLIENT_PROTOCOL } from "./lib/store.mjs";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const log = (msg) => console.error(`\x1b[32m[publish]\x1b[0m ${msg}`);
@@ -367,10 +368,10 @@ async function writePubCache(id, data) {
 }
 const INLINE_MAX_BLOBS = 16;
 const INLINE_MAX_BYTES = 900_000;
-// The publish-protocol version this CLI speaks; check responses echo the
-// worker's. Newer worker → nudge the operator to pull; older worker → the
-// fast path's failure fallback already degrades gracefully.
-const CLIENT_PROTOCOL = 3;
+// CLIENT_PROTOCOL (scripts/lib/store.mjs) is the version this CLI speaks; check
+// responses echo the worker's. Newer worker → nudge the operator to pull; older
+// worker → the fast path's failure fallback already degrades gracefully. An
+// instance that publishes a floor above ours refuses us outright — see dieOutdated.
 let warnedSkew = false;
 
 // ── the digest protocol, per target ──────────────────────────────────────────
@@ -403,6 +404,19 @@ function dieUnpublish(id, removed, count) {
       `  else — check \`git status\` and \`git pull\` first. Anyone's shared links and\n` +
       `  embeds for those pages would have started showing the login page.\n\n` +
       `  If you really are taking them down, re-run with --allow-unpublish.`);
+}
+
+// The instance set a protocol floor and this clone is below it. Say what to do, and
+// say plainly that nothing shipped — a refusal that reads as a transport error is how
+// someone concludes the publish "mostly worked" and walks away.
+function dieOutdated(id, minProtocol) {
+  die(`${id}: this instance requires publish protocol ${minProtocol}; this clone speaks ${CLIENT_PROTOCOL}.\n\n` +
+      `  Nothing was shipped and the live site is untouched.\n\n` +
+      `  An older client does not just miss features — it silently skips guards it has\n` +
+      `  never heard of. A pre-3 client sends no baseVersion, so the store cannot tell\n` +
+      `  whether this tree is built on what is live, and a stale checkout can revert\n` +
+      `  whoever published last without either of you seeing it happen.\n\n` +
+      `  Update: \`npx augur@latest\`, or \`git pull\` in your engine checkout.`);
 }
 
 async function publishOne(id, sourceDir) {
@@ -457,7 +471,7 @@ async function publishOne(id, sourceDir) {
           const res = await (await req(api(`${id}/commit`), {
             method: "POST",
             headers: { "content-type": "application/json" },
-            body: JSON.stringify({ ...(freshHashes.size ? { ...manifest, blobs } : manifest), baseVersion: cached.version }),
+            body: JSON.stringify({ ...(freshHashes.size ? { ...manifest, blobs } : manifest), baseVersion: cached.version, clientProtocol: CLIENT_PROTOCOL }),
           })).json();
           log(`${id}: ${total} files, ${freshHashes.size} blobs inline (${(bytes / 1e6).toFixed(1)} MB), v${res.version}${manifest.source.dirty ? " \x1b[33m[dirty]\x1b[0m" : ""}`);
           await writePubCache(id, { version: res.version, files, source: manifest.source, protocol: cached.protocol, unresolved: [] });
@@ -465,6 +479,7 @@ async function publishOne(id, sourceDir) {
         } catch (e) {
           // A refusal is a verdict, not a transport hiccup: the classic path would
           // upload blobs and then be told the same thing. Report it here.
+          if (e.info && e.info.error === "cli-outdated") dieOutdated(id, e.info.minProtocol);
           if (e.info && e.info.error === "unpublish-refused") {
             dieUnpublish(id, e.info.removed || [], e.info.count || (e.info.removed || []).length);
           }
@@ -482,6 +497,10 @@ async function publishOne(id, sourceDir) {
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ files }),
     })).json();
+    // Too old to be allowed: stop HERE, before uploading a single blob. The commit
+    // would refuse anyway (426 cli-outdated), and the difference between finding out
+    // now and finding out after the upload is the whole point of check advertising it.
+    if (check.minProtocol && CLIENT_PROTOCOL < check.minProtocol) dieOutdated(id, check.minProtocol);
     if (!warnedSkew && check.protocol && check.protocol > CLIENT_PROTOCOL) {
       warnedSkew = true;
       log(`⚠ the instance speaks publish protocol ${check.protocol} (this clone: ${CLIENT_PROTOCOL}) — \`git pull\` your engine checkout for the faster path.`);
@@ -574,11 +593,13 @@ async function publishOne(id, sourceDir) {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify((check.protocol || 0) >= 3
-          ? { ...manifest, baseVersion: check.liveVersion } : manifest),
+          ? { ...manifest, baseVersion: check.liveVersion, clientProtocol: CLIENT_PROTOCOL }
+          : { ...manifest, clientProtocol: CLIENT_PROTOCOL }),
       })).json();
     } catch (e) {
       // Reachable when the early check couldn't see it (an instance predating
       // `livePrefixes`, or someone else publishing in between).
+      if (e.info && e.info.error === "cli-outdated") dieOutdated(id, e.info.minProtocol);
       if (e.info && e.info.error === "unpublish-refused") {
         dieUnpublish(id, e.info.removed || [], e.info.count || (e.info.removed || []).length);
       }
