@@ -1641,9 +1641,7 @@ const PAGE_CSS = `
     .tok-row--ff .tok-body { flex: 0 0 260px; }
     /* Opportunity prototype grid: capped at 3 roomier cards per row on desktop,
        stepping down to 2 then 1 as width drops. */
-    .page-grid.is-3up { grid-template-columns: repeat(3, 1fr); }
-    @media (max-width: 760px) { .page-grid.is-3up { grid-template-columns: repeat(2, 1fr); } }
-    @media (max-width: 480px) { .page-grid.is-3up { grid-template-columns: 1fr; } }
+    .page-grid.is-3up { grid-template-columns: repeat(auto-fill, minmax(min(300px, 100%), 1fr)); }
     .page-grid .card-proto { transition: box-shadow .18s ease, transform .18s ease; }
     .page-grid .card-proto:hover { box-shadow: 0 12px 28px -14px rgba(16,24,40,0.28); border-color: var(--line-2); transform: translateY(-3px); }
     .page-grid .proto-meta { padding: 11px 13px; }
@@ -1833,11 +1831,14 @@ const PAGE_CSS = `
     /* ---- Listing grid ----
        The editor-style global left rail (NAV_CSS) is the nav now; listing pages are a
        single centered column. The wide variant gives the homepage card grid more room. */
-    .wrap--wide { max-width: 1280px; }
+    /* Gallery pages run the full width. A fixed cap left a third of a wide screen
+       empty while the cards stayed put; with auto-fill grids below, extra width
+       becomes extra columns instead of dead space. Padding still keeps them off
+       the edge, and the grids' own minmax() floor stops cards stretching. */
+    .wrap--wide { max-width: none; }
     /* Auto-fill grid: as many ~248px columns as fit, no carousel. */
-    .opp-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 22px; }
-    @media (max-width: 760px) { .opp-grid { grid-template-columns: repeat(2, 1fr); } }
-    @media (max-width: 480px) { .opp-grid { grid-template-columns: 1fr; } }
+    .opp-grid { display: grid; gap: 22px;
+                grid-template-columns: repeat(auto-fill, minmax(min(300px, 100%), 1fr)); }
 
     /* Opportunity card = a stretched cover link: the whole card opens the folder. */
     .card-opp { position: relative; }
