@@ -62,3 +62,24 @@ test("a global admin does not carry admin into a space they were kept out of", (
   assert.equal(W.roleIn(u, "beta"), "editor", "not a member of beta at all");
   assert.equal(W.roleOf(u), "admin", "the global role is untouched — only the per-space one differs");
 });
+
+// ---- what /__me hands the switcher ------------------------------------------
+
+test("/__me carries only the spaces you belong to, each with your role there", () => {
+  const [u] = W.applySpaces([EDITOR], { "e@example.test": { alpha: "admin", gamma: "viewer" } });
+  const out = W.meSpaces(u, SPACES);
+  assert.deepEqual(out.map((s) => s.id), ["alpha", "gamma"]);
+  assert.equal(out[0].role, "admin");
+  assert.equal(out[1].role, "viewer");
+  assert.equal(out[0].base, "", "the default space's base stays empty, not '/alpha'");
+});
+
+test("someone with no membership recorded gets the whole list, as today", () => {
+  assert.deepEqual(W.meSpaces(EDITOR, SPACES).map((s) => s.id), ["alpha", "beta", "gamma"]);
+});
+
+test("publicUser never carries a space list — it is embedded in public prototypes", () => {
+  const [u] = W.applySpaces([EDITOR], { "e@example.test": { alpha: "admin" } });
+  assert.equal("spaces" in W.publicUser(u), false,
+    "a space list here would hand the site's structure to anyone with a prototype link");
+});

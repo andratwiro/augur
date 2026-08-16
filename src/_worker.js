@@ -586,6 +586,15 @@ const roleIn = (u, spaceId) => {
 
 const spacesFor = (u, spaces) => (spaces || []).filter((s) => isMemberOf(u, s.id));
 
+// The switcher's payload. Deliberately NOT folded into publicUser: that object is
+// embedded in PUBLIC prototypes for the comment overlay, and a space list there would
+// hand the whole site's structure to anyone holding a prototype link — the same reason
+// /__people refuses to enumerate the roster.
+const meSpaces = (u, spaces) =>
+  spacesFor(u, spaces).map((s) => ({
+    id: s.id, name: s.name, base: s.base || "", badge: s.badge || "", role: roleIn(u, s.id),
+  }));
+
 // Drop someone's membership entry. Called when an address is removed, for the same
 // reason clearRole and clearName are: a re-invited address must not inherit the last
 // person's spaces, least of all one they administered.
@@ -4058,7 +4067,13 @@ export default {
     // with no user list, where everyone is the operator (accounts:false).
     if (url.pathname === "/__me") {
       if (me && ctx && ctx.waitUntil) ctx.waitUntil(touchLastSeen(env, me));
-      return jsonResponse({ user: publicUser(me), accounts: usersActive });
+      // `spaces` is the switcher's whole input. The rail ships every space's row in the
+      // HTML (build time cannot know the viewer), so the rows are hidden until this
+      // answer names them — which means a signed-out visitor is told nothing at all.
+      return jsonResponse({
+        user: publicUser(me), accounts: usersActive,
+        spaces: me ? meSpaces(me, SPACES) : [],
+      });
     }
 
     // My own profile photo — set or clear. Ahead of the gate for the same reason
@@ -4351,7 +4366,7 @@ export const __testables = {
   adminUsersApi, adminBackupApi,
   ROLES, roleOf, readRoles, applyRoles, clearRole, USER_ROLES_KEY,
   USER_SPACES_KEY, readSpaces, applySpaces, membershipOf, isMemberOf, roleIn,
-  spacesFor, clearSpaces,
+  spacesFor, clearSpaces, meSpaces,
   mergeRoster, readRoster, revokeSecret, revokeInvitesFor,
   applyAvatars, readAvatars, parseAvatarDataUri, avatarHash, clearAvatar,
   meAvatarApi, serveKvAvatar, avatarUrl, USER_AVATARS_KEY, AVATAR_BLOB_PREFIX,
