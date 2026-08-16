@@ -12,7 +12,7 @@ import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { deployConfig } from "./lib/instance.mjs";
+import { deployConfig, originHost } from "./lib/instance.mjs";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const log = (msg) => console.error(`\x1b[32m[login]\x1b[0m ${msg}`);
@@ -22,7 +22,8 @@ const cwdSpaceOrigin = (() => {
   try { return JSON.parse(readFileSync(path.join(process.cwd(), "space.json"), "utf8")).siteOrigin || ""; }
   catch (e) { return ""; }
 })();
-const ORIGIN = (opt("--origin") || process.env.AUGUR_ORIGIN || deployConfig(ROOT).siteOrigin || cwdSpaceOrigin || "").replace(/\/+$/, "");
+const ORIGIN = (opt("--origin") || process.env.AUGUR_ORIGIN ||
+  deployConfig(ROOT, originHost(cwdSpaceOrigin)).siteOrigin || cwdSpaceOrigin || "").replace(/\/+$/, "");
 if (!ORIGIN) { log("no origin — pass --origin https://<your instance> (or add \"siteOrigin\" to space.json)"); process.exit(1); }
 
 function ask(question, mute) {

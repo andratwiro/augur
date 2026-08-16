@@ -21,7 +21,7 @@ import { existsSync, readFileSync, readdirSync, realpathSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { findShellDir, deployConfig } from "./lib/instance.mjs";
+import { findShellDir, deployConfig, originHost } from "./lib/instance.mjs";
 import { isAncestor, resolvePublish, applyManifestPatches } from "./lib/publish-resolve.mjs";
 import { CLIENT_PROTOCOL, buildStamp } from "./lib/store.mjs";
 
@@ -88,7 +88,8 @@ const cwdSpaceOrigin = (() => {
   try { return JSON.parse(readFileSync(path.join(process.cwd(), "space.json"), "utf8")).siteOrigin || ""; }
   catch (e) { return ""; }
 })();
-const ORIGIN = (process.env.AUGUR_ORIGIN || DEPLOY_ENV.AUGUR_ORIGIN || deployConfig(ROOT).siteOrigin || cwdSpaceOrigin || "")
+const ORIGIN = (process.env.AUGUR_ORIGIN || DEPLOY_ENV.AUGUR_ORIGIN ||
+  deployConfig(ROOT, originHost(cwdSpaceOrigin)).siteOrigin || cwdSpaceOrigin || "")
   .replace(/\/+$/, "");
 if (!ORIGIN) die("no target origin — set AUGUR_ORIGIN, or add \"siteOrigin\" to space.json.");
 // Token: env/instance file, else the saved `augur login` credential for this origin.

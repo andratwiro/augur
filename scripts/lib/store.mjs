@@ -17,7 +17,7 @@ import { existsSync, readFileSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { deployConfig } from "./instance.mjs";
+import { deployConfig, originHost } from "./instance.mjs";
 
 export const ENGINE_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
 
@@ -38,7 +38,8 @@ export function resolveOrigin(root = ENGINE_ROOT) {
   try {
     cwdSpaceOrigin = JSON.parse(readFileSync(path.join(process.cwd(), "space.json"), "utf8")).siteOrigin || "";
   } catch (e) {}
-  return (process.env.AUGUR_ORIGIN || env.AUGUR_ORIGIN || deployConfig(root).siteOrigin || cwdSpaceOrigin || "")
+  return (process.env.AUGUR_ORIGIN || env.AUGUR_ORIGIN ||
+    deployConfig(root, originHost(cwdSpaceOrigin)).siteOrigin || cwdSpaceOrigin || "")
     .replace(/\/+$/, "");
 }
 

@@ -41,11 +41,31 @@ export function findShellDir(root = ENGINE_ROOT, originHost = "") {
   } catch { return null; }
 }
 
+// The host of an origin URL, or "" if it isn't one. Shared so every caller feeds
+// findShellDir the same shape.
+export function originHost(origin) {
+  try { return new URL(origin).host; } catch { return ""; }
+}
+
 // The instance's deploy.config.json (siteOrigin, realtimeOrigin, …) — the same file the
 // build injects into the worker. GV_DEPLOY_CONFIG_PATH wins, then the shell's, then one
 // at the engine root (a single-repo instance). Missing or unreadable → {}.
-export function deployConfig(root = ENGINE_ROOT) {
-  const shell = findShellDir(root);
+//
+// `preferHost` disambiguates when several instances share one parent folder. Without
+// it findShellDir falls back to the first shell BY NAME, so with two shells checked
+// out side by side the alphabetically-first one answered for every space in the
+// folder — and since this config's siteOrigin outranks the space's own in every
+// origin-resolving caller, `augur publish` and `augur login` from space B aimed
+// themselves at instance A. Which live instance a publish reached came down to
+// directory sort order.
+//
+// Callers pass the host of the space's OWN declared siteOrigin: the space repo names
+// the instance it belongs to, so it is the right tiebreak. It is only ever a
+// tiebreak — with one shell (the ordinary case, and anyone who cloned a starter
+// space to run their own instance) the answer is that shell either way, so a fork
+// still publishes to ITS shell rather than to the origin its space.json inherited.
+export function deployConfig(root = ENGINE_ROOT, preferHost = "") {
+  const shell = findShellDir(root, preferHost);
   const file = process.env.GV_DEPLOY_CONFIG_PATH
     || [shell && path.join(shell, "deploy.config.json"), path.join(root, "deploy.config.json")]
       .filter(Boolean).find((f) => existsSync(f));
