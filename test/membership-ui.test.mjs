@@ -9,9 +9,11 @@
 // for real (same technique as face-chip.test.mjs and publish-filter.test.mjs).
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { readFileSync, existsSync } from "node:fs";
+import { join } from "node:path";
 
 const SRC = readFileSync(new URL("../build.js", import.meta.url), "utf8");
+const DIST = new URL("../dist", import.meta.url).pathname;
 
 function lift(name) {
   const start = SRC.indexOf(`function ${name}(`);
@@ -54,12 +56,12 @@ test("the profile menu keeps the things that ARE personal", () => {
 
 // ---- the workspace row -------------------------------------------------------
 
-test("the workspace row carries a cog linking to that space's admin", () => {
+test("the workspace row is a nameplate only — Admin lives in the rail", () => {
   const html = makeSwitcher(TWO, "alpha");
-  assert.match(html, /gvspace__cog/);
-  assert.match(html, /data-space-admin/);
-  assert.match(html, /href="\/admin\/\?space=alpha"/,
-    "the cog names the space it administers, so the page opens already scoped");
+  assert.equal(/gvspace__cog|data-space-admin/.test(html), false,
+    "admin is a place you go, so it belongs with the rail's other destinations");
+  assert.match(html, /data-space-active="alpha"/,
+    "the row still names the active workspace so SPACE_JS can scope the Admin link");
 });
 
 test("there is no dropdown — nobody can belong to more than one workspace yet", () => {
@@ -91,8 +93,22 @@ test("the icon is addressable so the client can swap it after an upload", () => 
 test("a one-space instance renders exactly the same row", () => {
   const html = makeSwitcher(ONE, "alpha");
   assert.notEqual(html, "");
-  assert.match(html, /gvspace__cog/);
   assert.match(html, /Alpha/);
+  assert.match(html, /data-space-active="alpha"/);
+});
+
+test("the rail carries Admin, hidden until you administer this workspace", () => {
+  // Asserted against the BUILT page rather than a lifted function: sideRail pulls in
+  // most of the module, and what ships is the thing worth checking.
+  const home = join(DIST, "index.html");
+  if (!existsSync(home)) return;
+  const html = readFileSync(home, "utf8");
+  assert.match(html, /gvside__admin/);
+  assert.match(html, /data-space-admin/);
+  assert.match(html, />Admin</);
+  assert.ok(html.indexOf("Playground") < html.indexOf(">Admin<"), "Admin comes after Playground");
+  // Revealed only by the per-space class — never shipped visible.
+  assert.match(html, /html\.gv-space-admin \.gvside__admin/);
 });
 
 // ---- the workspace admin surface --------------------------------------------

@@ -2133,15 +2133,11 @@ const NAV_CSS = `
     .gvspace { display: none; position: relative; margin: 2px 1px 8px; }
     html.gv-spaces .gvspace { display: block; }
     .gvspace__row { display: flex; align-items: center; gap: 2px; }
+    /* Admin is a rail destination, revealed only to an admin of THIS workspace —
+       a per-space question, so it cannot ride the instance-wide html.gv-admin. */
+    .gvside__admin { display: none !important; }
+    html.gv-space-admin .gvside__admin { display: flex !important; }
     .gvspace__row .gvspace__btn { flex: 1 1 auto; min-width: 0; }
-    /* The cog shows only to an admin of the ACTIVE space — a per-space question, so
-       it cannot ride the old instance-wide html.gv-admin reveal. */
-    .gvspace__cog { flex: none; width: 26px; height: 26px; display: none; place-items: center;
-                    border-radius: 7px; color: #9aa0ab; text-decoration: none; }
-    .gvspace__cog svg { width: 15px; height: 15px; }
-    .gvspace__cog:hover { background: rgba(16,17,26,0.06); color: #16171a; }
-    .gvspace__cog:focus-visible { outline: 2px solid #5e6ad2; outline-offset: 1px; }
-    html.gv-space-admin .gvspace__cog { display: grid; }
     .gvspace__btn { display: flex; align-items: center; gap: 9px; flex: 1 1 auto; min-width: 0;
                     padding: 7px 8px; border-radius: 8px; background: none; border: 0; }
       display: flex; align-items: center; gap: 8px; width: 100%; padding: 6px 8px;
@@ -2767,17 +2763,11 @@ function spaceSwitcher() {
   // a maintainer's tool for hopping between them. With one workspace it says nothing.
   const iconSrc = "/space-icon.png";
   const icon = `<span class="gvspace__icon"><img src="${iconSrc}" alt="" width="20" height="20" data-space-icon /></span>`;
-  // The cog is the workspace's own door — admin config belongs to the workspace, not
-  // to the person, which is why it left the profile menu. It carries the space id so
-  // the page opens already scoped; SPACE_JS shows it only to an admin of THIS one.
-  const cog = `<a class="gvspace__cog" href="/admin/?space=${encodeURIComponent(active.id)}" data-space-admin aria-label="Workspace settings" title="Workspace settings">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9c.14.35.4.64.73.83H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
-      </a>`;
-  return `<div class="gvspace" data-space>
+  return `<div class="gvspace" data-space data-space-active="${escAttr(active.id)}">
       <div class="gvspace__row">
         <span class="gvspace__btn">
           ${icon}<span class="gvspace__name" data-space-name>${escAttr(active.name)}</span>
-        </span>${cog}
+        </span>
       </div>
     </div>`;
 }
@@ -2790,6 +2780,13 @@ function sideRail(active) {
   const item = (href, label, key, icon) =>
     `<a href="${S(href)}"${active === key ? ' aria-current="page"' : ""}>${icon}<span>${label}</span></a>`;
   const playground = NAV_STATE.hasPlayground ? item("/playground/", "Playground", "playground", IC_PLAY) : "";
+  // Workspace admin sits with the other destinations rather than as a cog beside the
+  // name — it IS a place you go, and the rail is where places live. Hidden until
+  // SPACE_JS confirms you administer this workspace (html.gv-space-admin); the href
+  // carries the space id so the page opens already scoped, filled in by SPACE_JS too.
+  const adminItem = `<a class="gvside__admin" href="/admin/" data-space-admin${
+    NAV_STATE.activeSpace ? ` data-space-id="${escAttr(NAV_STATE.activeSpace)}"` : ""
+  }>${IC_GEAR}<span>Admin</span></a>`;
   // Pinned is rendered live from the KV pins map (PINS_JS fills [data-pinned-list] and
   // toggles the empty hint); nothing is server-rendered here.
   const pinned = `<p class="gvside__label">Pinned</p>
@@ -2820,6 +2817,7 @@ function sideRail(active) {
       <div class="gvside__group">
         ${item("/", PROJECTS_LABEL, "prototypes", IC_HOME)}
         ${playground}
+        ${adminItem}
       </div>
       ${pinned}
     </div>
@@ -4687,9 +4685,7 @@ const SPACE_JS = `(function(){
     // No accounts at all (open/offline build) → everyone is the operator, so show it
     // rather than blanking the rail. Same degradation as every other surface.
     var open = d && d.accounts === false;
-    var active = box.querySelector('[data-space-admin]');
-    var id = active ? (active.getAttribute('href')||'').split('space=')[1] : '';
-    id = id ? decodeURIComponent(id) : '';
+    var id = box.getAttribute('data-space-active') || '';
     var here = null;
     for(var i=0;i<mine.length;i++){ if(mine[i].id === id) here = mine[i]; }
     if(!open && !here) return;
@@ -4702,6 +4698,9 @@ const SPACE_JS = `(function(){
     }
     if(open || (here && here.role === 'admin')){
       document.documentElement.classList.add('gv-space-admin');
+      // Scope the Admin link to this workspace so the page opens on the right one.
+      var link = document.querySelector('[data-space-admin]');
+      if(link && id) link.setAttribute('href', '/admin/?space=' + encodeURIComponent(id));
     }
   }).catch(function(){});
 })();
