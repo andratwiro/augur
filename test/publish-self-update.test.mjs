@@ -146,3 +146,93 @@ test("it respects the same opt-outs as selfUpdate, and never runs in the re-exec
   assert.match(REFRESH, /NO_SELF_UPDATE/);
   assert.match(REFRESH, /AUGUR_SELF_UPDATED/);
 });
+
+// ---- and now the kind of test that would have caught the bug -----------------
+//
+// Every check above reads the source. All of them passed against a version that
+// crashed the moment it ran: maybeRefreshEngine called selfUpdate from earlier in the
+// file than `let selfUpdateTried` was declared, so a clone that was BEHIND — the only
+// case the mechanism exists for — died with a ReferenceError. A current clone never
+// reached the call, so nothing local ever showed it.
+//
+// This one builds two real repositories, puts the CLI in one, moves the other forward,
+// and runs the actual command.
+test("a clean clone that is behind its upstream updates itself and completes the run", async () => {
+  const { createServer } = await import("node:http");
+  const { spawn } = await import("node:child_process");
+  const dir = mkdtempSync(path.join(tmpdir(), "refresh-e2e-"));
+  const git = (cwd, ...a) => execFileSync("git", ["-C", cwd, ...a], { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] });
+  const ENGINE = path.dirname(path.dirname(new URL(import.meta.url).pathname));
+
+  // An instance one protocol ahead, so the skew path is live too.
+  const server = await new Promise((res) => {
+    const s = createServer(async (req, r) => {
+      for await (const _ of req) {}
+      r.writeHead(200, { "content-type": "application/json" });
+      r.end(JSON.stringify(/\/check$/.test(req.url)
+        ? { missing: [], liveVersion: 1, filesUnchanged: false, protocol: 4 }
+        : { ok: true, version: 1 }));
+    });
+    s.listen(0, "127.0.0.1", () => res(s));
+  });
+
+  try {
+    const origin = path.join(dir, "origin.git");
+    const seed = path.join(dir, "seed");
+    const clone = path.join(dir, "clone");
+    execFileSync("git", ["clone", "-q", "--bare", ENGINE, origin]);
+
+    // Overlay the WORKING TREE's scripts/ before anything else clones. A plain clone
+    // carries the last COMMITTED code, so a test built on one silently exercises a
+    // different file than the one being edited — it would pass against a working tree
+    // that crashes. That is not hypothetical: it is how the ReferenceError above
+    // survived a green run.
+    execFileSync("git", ["clone", "-q", origin, seed]);
+    git(seed, "config", "user.email", "t@example.test");
+    git(seed, "config", "user.name", "T");
+    const { cpSync } = await import("node:fs");
+    cpSync(path.join(ENGINE, "scripts"), path.join(seed, "scripts"), { recursive: true });
+    git(seed, "add", "-A", "scripts");
+    try { git(seed, "commit", "-qm", "overlay working tree"); } catch (e) { /* identical already */ }
+    const branch = git(seed, "rev-parse", "--abbrev-ref", "HEAD").trim();
+    git(seed, "push", "-q", "origin", "HEAD:" + branch);
+
+    execFileSync("git", ["clone", "-q", origin, clone]);
+    git(clone, "config", "user.email", "t@example.test");
+    git(clone, "config", "user.name", "T");
+
+    // Move the upstream forward, so the clone is genuinely behind and clean.
+    writeFileSync(path.join(seed, "REFRESH-DRILL.md"), "moved\n");
+    git(seed, "add", "REFRESH-DRILL.md");
+    git(seed, "commit", "-qm", "advance upstream");
+    git(seed, "push", "-q", "origin", "HEAD:" + branch);
+    git(clone, "fetch", "-q", "origin");
+
+    const before = git(clone, "rev-parse", "HEAD").trim();
+    const behind = Number(git(clone, "rev-list", "--count", "HEAD..@{u}").trim());
+    assert.equal(behind, 1, "the clone must actually be behind for this to test anything");
+    assert.equal(git(clone, "status", "--porcelain").trim(), "", "and clean");
+
+    const out = await new Promise((res) => {
+      const child = spawn(process.execPath, [path.join(clone, "scripts", "publish.mjs"), "--engine"], {
+        cwd: clone,
+        env: {
+          PATH: process.env.PATH, HOME: mkdtempSync(path.join(tmpdir(), "h-")),
+          AUGUR_ORIGIN: `http://127.0.0.1:${server.address().port}`, AUGUR_TOKEN: "drill",
+        },
+      });
+      let o = "";
+      child.stdout.on("data", (d) => { o += d; });
+      child.stderr.on("data", (d) => { o += d; });
+      child.on("close", (code) => res({ code, o }));
+    });
+
+    assert.doesNotMatch(out.o, /ReferenceError|Cannot access/,
+      "the refresh must not crash the publish — this is the bug this test exists for");
+    assert.notEqual(git(clone, "rev-parse", "HEAD").trim(), before,
+      "a clean clone that is behind must have fast-forwarded itself");
+  } finally {
+    server.close();
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
