@@ -24,7 +24,11 @@ const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 // A minimal space: one prototype, one UI skill. `<prefix>-ui/` containing
 // `<prefix>-ui.css` is what detectUiSkill looks for.
 function makeSpace({ assets }) {
-  const dir = mkdtempSync(path.join(tmpdir(), "ds-ships-"));
+  return makeSpaceAt(mkdtempSync(path.join(tmpdir(), "ds-ships-")), { id: "acme", assets });
+}
+
+function makeSpaceAt(dir, { id, assets }) {
+  mkdirSync(dir, { recursive: true });
   const skill = path.join(dir, "skills", "acme-ui");
   mkdirSync(skill, { recursive: true });
   writeFileSync(path.join(skill, "acme-ui.css"), ":root{--acme:1}\n");
@@ -38,7 +42,7 @@ function makeSpace({ assets }) {
   writeFileSync(path.join(dir, "registry.json"), JSON.stringify({
     items: [{ name: "stat", type: "primitive", classes: ["acme-stat"], label: "Stat", description: "A number." }],
   }));
-  writeFileSync(path.join(dir, "space.json"), JSON.stringify({ id: "acme", name: "Acme", default: true }));
+  writeFileSync(path.join(dir, "space.json"), JSON.stringify({ id, name: id, default: true }));
   return dir;
 }
 
@@ -46,12 +50,12 @@ function makeSpace({ assets }) {
 // dist/ would race every other test file — node --test runs them in parallel, and
 // publish-cwd-wins reads dist/ — which fails in CI and passes locally, the worst shape
 // a test can have.
-function build(spacesRoot) {
+function build(spacesRoot, extraEnv = {}) {
   const out = path.join(spacesRoot, "__dist");
   try {
     const stdout = execFileSync(process.execPath, ["build.js"], {
       cwd: ROOT,
-      env: { ...process.env, GV_SPACES_ROOT: spacesRoot, GV_DIST: out },
+      env: { ...process.env, GV_SPACES_ROOT: spacesRoot, GV_DIST: out, ...extraEnv },
       encoding: "utf8",
       stdio: ["ignore", "pipe", "pipe"],
     });
@@ -59,6 +63,17 @@ function build(spacesRoot) {
   } catch (e) {
     return { ok: false, out: `${e.stdout || ""}${e.stderr || ""}` };
   }
+}
+
+// Two spaces side by side in one workspace, only one of which has a design system.
+function makeWorkspace() {
+  const ws = mkdtempSync(path.join(tmpdir(), "ds-ws-"));
+  const styled = makeSpaceAt(path.join(ws, "styled"), { id: "styled", assets: ["acme-ui.css"] });
+  const bare = path.join(ws, "bare", "demo", "prototypes", "hello");
+  mkdirSync(bare, { recursive: true });
+  writeFileSync(path.join(bare, "index.html"), "<!doctype html><title>Bare</title><p>hi</p>\n");
+  writeFileSync(path.join(ws, "bare", "space.json"), JSON.stringify({ id: "bare", name: "Bare", default: true }));
+  return { ws, styled };
 }
 
 test("a space whose skill inventory is intact builds", () => {
@@ -102,4 +117,16 @@ test("a space with NO design system at all still builds", () => {
     const r = build(dir);
     assert.equal(r.ok, true, r.out);
   } finally { rmSync(dir, { recursive: true, force: true }); }
+});
+
+test("GV_ONLY_SPACE must not assert on a sibling space this run never built", () => {
+  // What `augur publish --space <id>` actually runs: discovery still lists every
+  // sibling space, but only the target emits a manifest. The first version of this
+  // guard read the empty manifest of an unbuilt sibling as "shipped no stylesheet"
+  // and failed a real publish over a space it had not touched.
+  const { ws } = makeWorkspace();
+  try {
+    const r = build(ws, { GV_ONLY_SPACE: "bare" });
+    assert.equal(r.ok, true, `building only 'bare' must not fail over 'styled':\n${r.out}`);
+  } finally { rmSync(ws, { recursive: true, force: true }); }
 });

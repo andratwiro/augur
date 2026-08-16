@@ -6813,6 +6813,11 @@ async function main() {
     const ds = detectUiSkill(sp);
     if (!ds.dirName) continue; // no design system to lose
     const m = manifests[sp.id];
+    // GV_ONLY_SPACE (what `augur publish --space <id>` runs) builds ONE space while
+    // discovery still lists the siblings, so a space can be present here and emit no
+    // manifest at all. Asserting on it would fail a publish over a space this run never
+    // touched — which is exactly what it did the first time.
+    if (!m) continue;
     const prefix = `${sp.default ? "" : "/" + sp.id}/skills/${ds.dirName}/`;
     // Specifically a STYLESHEET, not merely "some file". graph.js is emitted by the
     // build rather than copied from the skill, so the prefix is never empty — checking
