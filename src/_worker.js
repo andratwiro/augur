@@ -3656,11 +3656,11 @@ function rtProxy(request, url, env) {
 
 // Admin surface: manage PEOPLE, not credentials. There is deliberately no path here
 // that sets, reads or recovers a password — reset re-issues an invite instead.
-async function adminUsersApi(request, url, env, me, users = USERS, configUsers = CONFIG_USERS) {
+async function adminUsersApi(request, url, env, me, users = USERS, configUsers = CONFIG_USERS, spaces = SPACES) {
   // Admin of ANY space gets in; every mutation below re-checks the SPECIFIC space it
   // touches. On an instance that never set memberships this is the old global check,
   // because a global admin administers everything by default.
-  if (!me || !administersAny(me, SPACES)) return jsonResponse({ error: "forbidden" }, 403);
+  if (!me || !administersAny(me, spaces)) return jsonResponse({ error: "forbidden" }, 403);
   const kv = kvFor(env);
   // A roster write lands in THIS isolate immediately (so the list the admin is looking
   // at is right) and everywhere else on the next config tick, which cfgAt=0 brings
@@ -3677,6 +3677,11 @@ async function adminUsersApi(request, url, env, me, users = USERS, configUsers =
     // role THERE. Without it the answer is the whole roster at global roles, which is
     // what every caller predating per-space admin expects.
     const scope = url.searchParams.get("space");
+    // Administering SOME space got you through the door; reading a space's roster
+    // requires administering THAT one. Without this, an admin of one workspace could
+    // enumerate the members of every other by editing the query string — which would
+    // make per-space roles decorative.
+    if (scope && roleIn(me, scope) !== "admin") return jsonResponse({ error: "forbidden" }, 403);
     const inScope = scope ? users.filter((u) => isMemberOf(u, scope)) : users;
     const out = [];
     for (const u of inScope) {
@@ -3691,7 +3696,7 @@ async function adminUsersApi(request, url, env, me, users = USERS, configUsers =
         lastSeen,
         // Whether THIS admin may reset THIS person — the panel hides the action rather
         // than offering one the API will refuse. See mayResetPassword.
-        mayReset: mayResetPassword(users, me.email, u.email),
+        mayReset: mayResetPassword(users, me.email, u.email, spaces),
       });
     }
     return jsonResponse({ users: out, space: scope || null });
@@ -3709,7 +3714,7 @@ async function adminUsersApi(request, url, env, me, users = USERS, configUsers =
       if (!u) return jsonResponse({ error: "unknown-user" }, 400);
       // A reset is an ACCOUNT action. Refuse it when the target reaches a space the
       // caller does not administer, or the reset becomes a door into that space.
-      if (!mayResetPassword(users, me.email, u.email)) {
+      if (!mayResetPassword(users, me.email, u.email, spaces)) {
         return jsonResponse({ error: "beyond-scope", message:
           "This person belongs to a space you don't administer. They can reset their own password from Settings." }, 403);
       }
@@ -3771,7 +3776,7 @@ async function adminUsersApi(request, url, env, me, users = USERS, configUsers =
       const u = userByEmail(op.email, users);
       if (!u) return jsonResponse({ error: "unknown-user" }, 400);
       const sid = String(op.space || "");
-      if (!SPACES.some((s) => s.id === sid)) return jsonResponse({ error: "unknown-space" }, 400);
+      if (!spaces.some((s) => s.id === sid)) return jsonResponse({ error: "unknown-space" }, 400);
       if (roleIn(me, sid) !== "admin") return jsonResponse({ error: "forbidden" }, 403);
       const role = op.role === null ? null : (ROLES.includes(op.role) ? op.role : null);
       if (op.role != null && role === null) {
@@ -3790,7 +3795,7 @@ async function adminUsersApi(request, url, env, me, users = USERS, configUsers =
       // one space silently removes every other.
       const current = index[email] && typeof index[email] === "object" && !Array.isArray(index[email])
         ? index[email]
-        : Object.fromEntries(SPACES.map((s) => [s.id, roleOf(u)]));
+        : Object.fromEntries(spaces.map((s) => [s.id, roleOf(u)]));
       const next = { ...current };
       if (role === null) delete next[sid]; else next[sid] = role;
       index[email] = next;

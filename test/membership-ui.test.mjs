@@ -97,3 +97,41 @@ test("each row names its space, so the client can match it against /__me", () =>
 test("Create new stays the maintainer-only stub it already was", () => {
   assert.match(makeSwitcher(TWO, "alpha"), /data-space-create/);
 });
+
+// ---- the workspace admin surface --------------------------------------------
+
+const adminPage = new Function(
+  `${STUBS}
+   const NAV_STATE = { spaces: ${JSON.stringify(TWO)}, activeSpace: "alpha" };
+   ${lift("escAttr")}
+   ${lift("adminSections")}
+   return adminSections();`,
+)();
+
+test("the admin page has a left nav — People, Content, Settings", () => {
+  assert.match(adminPage, /data-admin-nav/);
+  for (const s of ["People", "Content", "Settings"]) {
+    assert.match(adminPage, new RegExp(`data-admin-tab="${s.toLowerCase()}"`), `${s} tab`);
+  }
+});
+
+test("the nav offers a way back out of admin", () => {
+  assert.match(adminPage, /data-admin-back/);
+});
+
+test("Settings offers a custom URL field that is visibly a stub", () => {
+  assert.match(adminPage, /data-custom-url/);
+  const row = adminPage.slice(adminPage.indexOf("data-custom-url"));
+  assert.match(row.slice(0, 600), /disabled/, "the field must not look operable");
+});
+
+test("there is no delete-workspace action", () => {
+  assert.equal(/Delete workspace|data-space-delete/.test(adminPage), false,
+    "creation is a maintainer act, so deletion is too — it is a control-plane verb");
+});
+
+test("Content and Settings ship hidden; People is the landing section", () => {
+  assert.match(adminPage, /data-admin-sec="people"(?![^>]*hidden)/);
+  assert.match(adminPage, /data-admin-sec="content"[^>]*hidden/);
+  assert.match(adminPage, /data-admin-sec="settings"[^>]*hidden/);
+});

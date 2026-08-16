@@ -4854,7 +4854,12 @@ const ADMIN_JS = `(function(){
   }
 
   function load(){
-    return fetch('/__admin/users',{headers:{'Accept':'application/json'}}).then(function(r){
+    // ?space= scopes the answer to this workspace's members, at their role HERE.
+    // Without it the API answers the whole roster at global roles — which is what a
+    // caller predating per-space admin expects, so the parameter is the only difference.
+    var sp = new URLSearchParams(location.search).get('space');
+    return fetch('/__admin/users' + (sp ? '?space=' + encodeURIComponent(sp) : ''),
+      {headers:{'Accept':'application/json'}}).then(function(r){
       if(r.status === 403){ host.innerHTML = '<tr><td colspan="4" class="empty">Admins only.</td></tr>'; return null; }
       return r.json();
     }).then(function(d){
@@ -5067,11 +5072,116 @@ function renderNotFoundPage() {
 </html>`;
 }
 
+// Section switching + the Settings readouts. Kept out of ADMIN_JS because that script
+// is about PEOPLE — this one is about the page they sit on.
+//
+// The storage gauge and engine version used to live wedged in the rail foot, revealed
+// by html.gv-admin on every page. They belong in one workspace's Settings, which is
+// also the only place their scope reads correctly.
+const ADMIN_SECTIONS_JS = `(function(){
+  var nav = document.querySelector('[data-admin-nav]');
+  if(!nav) return;
+  var space = new URLSearchParams(location.search).get('space') || '';
+
+  // Name the workspace in the nav, and point "back" at it rather than always at "/".
+  fetch('/__me', {headers:{'Accept':'application/json'}}).then(function(r){
+    return r.ok ? r.json() : null;
+  }).then(function(d){
+    var mine = (d && d.spaces) || [];
+    var here = null;
+    for(var i=0;i<mine.length;i++){ if(mine[i].id === space) here = mine[i]; }
+    if(!here && mine.length === 1) here = mine[0];
+    if(!here) return;
+    var label = nav.querySelector('[data-admin-space-name]');
+    if(label) label.textContent = here.name;
+    var back = nav.querySelector('[data-admin-back]');
+    if(back) back.setAttribute('href', (here.base || '') + '/');
+  }).catch(function(){});
+
+  // Sections are plain show/hide — three small panels, no routing worth the name.
+  // The hash keeps a reload (and a browser back) on the section you were reading.
+  function show(name){
+    var tabs = nav.querySelectorAll('[data-admin-tab]');
+    tabs.forEach(function(t){
+      t.classList.toggle('is-on', t.getAttribute('data-admin-tab') === name);
+    });
+    document.querySelectorAll('[data-admin-sec]').forEach(function(s){
+      s.hidden = s.getAttribute('data-admin-sec') !== name;
+    });
+  }
+  nav.querySelectorAll('[data-admin-tab]').forEach(function(t){
+    t.addEventListener('click', function(){
+      var name = t.getAttribute('data-admin-tab');
+      show(name);
+      history.replaceState(null, '', location.pathname + location.search + '#' + name);
+    });
+  });
+  var want = (location.hash || '').replace('#','');
+  if(want && document.querySelector('[data-admin-sec="'+want+'"]')) show(want);
+
+  // Storage — the same /__admin/storage the rail foot used to read.
+  var sEl = document.querySelector('[data-set-storage]');
+  var sBar = document.querySelector('[data-set-storage-bar]');
+  if(sEl){
+    fetch('/__admin/storage', {headers:{'Accept':'application/json'}}).then(function(r){
+      return r.ok ? r.json() : null;
+    }).then(function(d){
+      if(!d){ sEl.textContent = 'Unavailable.'; return; }
+      var mb = function(b){ return (b/1048576).toFixed(1) + ' MB'; };
+      var pct = d.limit ? Math.min(100, (d.bytes / d.limit) * 100) : 0;
+      if(sBar) sBar.style.width = pct.toFixed(1) + '%';
+      sEl.textContent = mb(d.bytes) + (d.limit ? ' of ' + mb(d.limit) : '')
+        + (d.objects != null ? ' · ' + d.objects + ' objects' : '');
+    }).catch(function(){ sEl.textContent = 'Unavailable.'; });
+  }
+
+  // Engine version + the update nudge.
+  var vEl = document.querySelector('[data-set-version]');
+  if(vEl){
+    fetch('/__admin/version', {headers:{'Accept':'application/json'}}).then(function(r){
+      return r.ok ? r.json() : null;
+    }).then(function(d){
+      if(!d){ vEl.textContent = 'Unavailable.'; return; }
+      vEl.textContent = (d.current ? d.current : 'unknown')
+        + (d.latest && d.latest !== d.current ? ' — ' + d.latest + ' available' : ' — up to date');
+    }).catch(function(){ vEl.textContent = 'Unavailable.'; });
+  }
+
+  // The address this workspace is actually served at, so the disabled Custom URL field
+  // says something true rather than sitting empty next to a promise.
+  var oEl = document.querySelector('[data-set-origin]');
+  if(oEl) oEl.textContent = location.host;
+})();
+`;
+
 function renderAdminPage() {
   const body = `<style>
     /* People table — name + email, role, last active (the default sort, newest first).
        Row click opens the per-person menu; everything credential-related ends in a link. */
     .folderbar{ max-width:820px; } /* so the Invite button lands on the table's right edge */
+    /* Workspace admin: a left nav beside the sections, the shape Figma's admin uses.
+       The nav is what makes the scope legible — you are administering ONE workspace,
+       named at the top, with a way back to it. */
+    .auwrap{ display:flex; align-items:flex-start; gap:38px; }
+    .aunav{ flex:none; width:170px; position:sticky; top:24px; display:flex; flex-direction:column; gap:2px; }
+    .aunav__back{ display:flex; align-items:center; gap:7px; margin-bottom:14px; padding:6px 8px;
+                  border-radius:7px; text-decoration:none; color:#16171a; font-weight:600; font-size:13.5px; }
+    .aunav__back svg{ width:15px; height:15px; flex:none; color:#9aa0ab; }
+    .aunav__back:hover{ background:rgba(16,17,26,0.05); }
+    .aunav__item{ text-align:left; padding:7px 9px; border:0; border-radius:7px; background:none;
+                  font:inherit; font-size:13.5px; font-weight:500; color:#5b626e; cursor:pointer; }
+    .aunav__item:hover{ background:rgba(16,17,26,0.05); color:#16171a; }
+    .aunav__item.is-on{ background:#eef2ff; color:#4f46e5; font-weight:600; }
+    .aunav__item:focus-visible{ outline:2px solid #5e6ad2; outline-offset:1px; }
+    .aumain{ flex:1 1 auto; min-width:0; }
+    .auset__row{ max-width:560px; margin:0 0 30px; }
+    .auset__label{ display:block; margin:0 0 7px; font-size:13px; font-weight:600; color:#16171a; }
+    .auset__row input{ width:100%; padding:8px 11px; border:1px solid rgba(16,17,26,0.16);
+                       border-radius:8px; font:inherit; font-size:13.5px; background:#fff; }
+    .auset__row input:disabled{ background:rgba(16,17,26,0.03); color:#9aa0ab; cursor:not-allowed; }
+    .auset__note{ margin:7px 0 0; font-size:12.5px; line-height:1.5; color:#5b626e; }
+    .auset__gauge{ height:6px; border-radius:999px; background:rgba(16,17,26,0.08); overflow:hidden; }
+    .auset__gauge span{ display:block; height:100%; width:0; border-radius:999px; background:#4f46e5; }
     .autbl{ width:100%; max-width:820px; border-collapse:collapse; }
     .autbl th{ text-align:left; padding:0 12px 9px; font-size:12px; font-weight:600; color:#5b626e;
                border-bottom:1px solid rgba(16,17,26,0.10); cursor:pointer; user-select:none; white-space:nowrap; }
@@ -5155,8 +5265,33 @@ function renderAdminPage() {
     .aulive__dirty{ display:inline-block; margin-left:8px; font-size:12px; padding:2px 8px; border-radius:999px;
                     background:#fee2e2; color:#b42318; font-weight:600; white-space:nowrap; }
   </style>
+  ${adminSections()}
+  <script>${ADMIN_JS}</script>
+  <script>${LIVE_CONTENT_JS}</script>
+  <script>${ADMIN_SECTIONS_JS}</script>`;
+  return shell({ title: "Admin · Augur", activeTab: "admin", body });
+}
+
+// The workspace admin surface: one space's People, Content and Settings behind a left
+// nav. It is one space's, not the instance's — which is the whole point of the cog that
+// opens it. ADMIN_JS reads ?space= to know which, and asks /__admin/users for that
+// space's members; the worker re-checks that the caller administers it.
+function adminSections() {
+  return `<div class="auwrap">
+    <nav class="aunav" data-admin-nav>
+      <a class="aunav__back" href="/" data-admin-back>
+        <svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M10 3L5 8l5 5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <span data-admin-space-name>Workspace</span>
+      </a>
+      <button type="button" class="aunav__item is-on" data-admin-tab="people">People</button>
+      <button type="button" class="aunav__item" data-admin-tab="content">Content</button>
+      <button type="button" class="aunav__item" data-admin-tab="settings">Settings</button>
+    </nav>
+    <div class="aumain">
+
+    <section data-admin-sec="people">
   <header class="folderbar">
-    <h1 class="folderbar__title">Admin</h1>
+    <h1 class="folderbar__title">People</h1>
     <span class="folderbar__rule"></span>
     <button type="button" class="aubtn aubtn--primary" data-invite-open>Invite</button>
   </header>
@@ -5197,11 +5332,14 @@ function renderAdminPage() {
     <button type="button" role="menuitem" class="is-danger" data-menu-remove>Remove user</button>
   </div>
 
-  <header class="folderbar aulive__bar">
-    <h2 class="folderbar__title">Live content</h2>
+    </section>
+
+    <section data-admin-sec="content" hidden>
+  <header class="folderbar">
+    <h1 class="folderbar__title">Content</h1>
     <span class="folderbar__rule"></span>
   </header>
-  <p class="aulive__hint">What the site is serving right now, per space. Content
+  <p class="aulive__hint">What this workspace is serving right now. Content
     reaches production only by publishing — a redeploy ships chrome and worker code,
     never this — so this table is the whole answer to “is my work live?”.</p>
   <table class="autbl">
@@ -5210,9 +5348,43 @@ function renderAdminPage() {
     </tr></thead>
     <tbody data-live-content><tr><td colspan="4" class="empty">Loading…</td></tr></tbody>
   </table>
-  <script>${ADMIN_JS}</script>
-  <script>${LIVE_CONTENT_JS}</script>`;
-  return shell({ title: "Admin · Augur", activeTab: "admin", body });
+    </section>
+
+    <section data-admin-sec="settings" hidden>
+  <header class="folderbar">
+    <h1 class="folderbar__title">Settings</h1>
+    <span class="folderbar__rule"></span>
+  </header>
+
+  <div class="auset__row">
+    <label class="auset__label">Workspace name</label>
+    <input type="text" data-set-name value="" disabled />
+    <p class="auset__note">Set in this workspace's <code>space.json</code>. Changing it
+      is a commit, not a click — the file stays the durable record.</p>
+  </div>
+
+  <div class="auset__row" data-custom-url>
+    <label class="auset__label" for="auset-url">Custom URL</label>
+    <input type="text" id="auset-url" data-set-url value="" placeholder="prototypes.yourdomain.com"
+           disabled aria-describedby="auset-url-note" />
+    <p class="auset__note" id="auset-url-note">Not available yet. This workspace is
+      served at <b data-set-origin>its built-in address</b>.</p>
+  </div>
+
+  <div class="auset__row">
+    <label class="auset__label">Storage</label>
+    <div class="auset__gauge"><span data-set-storage-bar></span></div>
+    <p class="auset__note" data-set-storage>Loading…</p>
+  </div>
+
+  <div class="auset__row">
+    <label class="auset__label">Engine</label>
+    <p class="auset__note" data-set-version>Loading…</p>
+  </div>
+    </section>
+
+    </div>
+  </div>`;
 }
 
 // Research chip disclosure — toggles the filename popover on the opportunity page.

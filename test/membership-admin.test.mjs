@@ -111,3 +111,36 @@ test("on an instance that never set memberships, every admin may reset anyone â€
   const users = [GLOBAL, ED];
   assert.equal(W.mayResetPassword(users, "g@example.test", "ed@example.test", SPACES), true);
 });
+
+// ---- reading a roster is scoped too -----------------------------------------
+
+test("administering SOME space is not authority to read ANOTHER space's roster", async () => {
+  // The door check is administersAny; the read check must be per space, or an admin of
+  // one workspace enumerates every other workspace's members by editing the query string.
+  const users = withSpaces([BOSS, ED], {
+    "boss@example.test": { alpha: "admin" },
+    "ed@example.test": { beta: "editor" },
+  });
+  const [boss] = users;
+  assert.equal(W.administersAny(boss, SPACES), true, "gets through the door");
+  assert.equal(W.roleIn(boss, "beta"), "editor", "but has no authority in beta");
+
+  const req = new Request("https://example.test/__admin/users?space=beta");
+  const res = await W.adminUsersApi(req, new URL(req.url), envWith(memKV()), boss, users, [], SPACES);
+  assert.equal(res.status, 403);
+});
+
+test("an admin reading their own space's roster is answered", async () => {
+  const users = withSpaces([BOSS, ED], {
+    "boss@example.test": { alpha: "admin" },
+    "ed@example.test": { alpha: "editor" },
+  });
+  const req = new Request("https://example.test/__admin/users?space=alpha");
+  const res = await W.adminUsersApi(req, new URL(req.url), envWith(memKV()), users[0], users, [], SPACES);
+  assert.equal(res.status, 200);
+  const body = await res.json();
+  assert.equal(body.space, "alpha");
+  assert.deepEqual(body.users.map((u) => u.email).sort(), ["boss@example.test", "ed@example.test"]);
+  assert.equal(body.users.find((u) => u.email === "ed@example.test").role, "editor",
+    "the role reported is the one in THIS space");
+});
