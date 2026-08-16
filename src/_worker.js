@@ -99,6 +99,20 @@ const USER_NAMES_KEY = "users:names";
 // the next request, not on the next deploy), which is the same shape users:names and
 // users:avatars already use for the same reason.
 const USER_ROLES_KEY = "users:roles";
+// KV {email: {spaceId: role}} — WHICH spaces someone belongs to, and their role in
+// each. Same overlay shape and the same precedence as users:roles above.
+//
+// An ABSENT entry means "every space, at the global role". That default is what makes
+// this invisible to an instance that has never set a membership, and it is the only
+// safe direction: membership can narrow access below the one-login-opens-every-space
+// baseline, never widen it past that. An entry that is present but EMPTY is a member of
+// nothing — "all" and "none" must never share a spelling, or a deliberate removal reads
+// as a grant of everything.
+//
+// This layers ABOVE the adminOnly/RESTRICTED_BASES seal rather than replacing it: that
+// seal is the hard gate and stays the hard gate. A KV failure here returns the old
+// baseline, which is why readSpaces swallows errors into {} the way its siblings do.
+const USER_SPACES_KEY = "users:spaces";
 // The three roles, and the one rule that turns a stored value into one of them.
 //
 // `user` is the legacy spelling of `editor` — it was the only non-admin value the
@@ -450,10 +464,13 @@ function mergeRoster(configUsers, roster) {
 
 async function applyRoster(env) {
   try {
-    const [roster, avatars, names, roles] = await Promise.all([
-      readRoster(env), readAvatars(env), readNames(env), readRoles(env),
+    const [roster, avatars, names, roles, spaces] = await Promise.all([
+      readRoster(env), readAvatars(env), readNames(env), readRoles(env), readSpaces(env),
     ]);
-    USERS = applyRoles(applyAvatars(applyNames(mergeRoster(CONFIG_USERS, roster), names), avatars), roles);
+    USERS = applySpaces(
+      applyRoles(applyAvatars(applyNames(mergeRoster(CONFIG_USERS, roster), names), avatars), roles),
+      spaces,
+    );
   } catch (e) { USERS = CONFIG_USERS; }
 }
 
@@ -520,6 +537,66 @@ async function clearRole(env, email) {
     if (!(lcEmail(email) in index)) return;
     delete index[lcEmail(email)];
     await kv.put(USER_ROLES_KEY, JSON.stringify(index));
+  } catch (e) {}
+}
+
+// ---- Per-space membership ---------------------------------------------------
+// See USER_SPACES_KEY for the absent-vs-empty rule these all turn on.
+async function readSpaces(env) {
+  const kv = kvFor(env);
+  if (!kv) return {};
+  try {
+    const doc = JSON.parse((await kv.get(USER_SPACES_KEY)) || "null");
+    return doc && typeof doc === "object" && !Array.isArray(doc) ? doc : {};
+  } catch (e) { return {}; }
+}
+
+// Stamp the membership map onto each user. A non-object entry is DROPPED rather than
+// coerced to {}: a corrupt or hand-edited overlay must not be able to lock someone out
+// of everything. Copies, never in-place mutation — same reason as applyAvatars.
+function applySpaces(users, index) {
+  return (users || []).map((u) => {
+    const want = index && index[lcEmail(u.email)];
+    if (!want || typeof want !== "object" || Array.isArray(want)) return u;
+    return { ...u, spaces: { ...want } };
+  });
+}
+
+// null = "every space". Callers MUST branch on null and must never treat it as an
+// empty map; that conflation is the one bug this whole cluster is shaped to prevent.
+const membershipOf = (u) => {
+  const m = u && u.spaces;
+  return m && typeof m === "object" && !Array.isArray(m) ? m : null;
+};
+
+const isMemberOf = (u, spaceId) => {
+  const m = membershipOf(u);
+  return m ? Object.prototype.hasOwnProperty.call(m, spaceId) : true;
+};
+
+// A role is only meaningful where you are a member. A non-member reads as `editor` —
+// the floor — and never as their global role: otherwise a global admin would carry
+// admin rights straight into a space they were deliberately kept out of.
+const roleIn = (u, spaceId) => {
+  const m = membershipOf(u);
+  if (!m) return roleOf(u);
+  if (!Object.prototype.hasOwnProperty.call(m, spaceId)) return "editor";
+  return roleOf({ role: m[spaceId] });
+};
+
+const spacesFor = (u, spaces) => (spaces || []).filter((s) => isMemberOf(u, s.id));
+
+// Drop someone's membership entry. Called when an address is removed, for the same
+// reason clearRole and clearName are: a re-invited address must not inherit the last
+// person's spaces, least of all one they administered.
+async function clearSpaces(env, email) {
+  const kv = kvFor(env);
+  if (!kv) return;
+  try {
+    const index = await readSpaces(env);
+    if (!(lcEmail(email) in index)) return;
+    delete index[lcEmail(email)];
+    await kv.put(USER_SPACES_KEY, JSON.stringify(index));
   } catch (e) {}
 }
 
@@ -4273,6 +4350,8 @@ export const __testables = {
   INVITE_TTL_MS,
   adminUsersApi, adminBackupApi,
   ROLES, roleOf, readRoles, applyRoles, clearRole, USER_ROLES_KEY,
+  USER_SPACES_KEY, readSpaces, applySpaces, membershipOf, isMemberOf, roleIn,
+  spacesFor, clearSpaces,
   mergeRoster, readRoster, revokeSecret, revokeInvitesFor,
   applyAvatars, readAvatars, parseAvatarDataUri, avatarHash, clearAvatar,
   meAvatarApi, serveKvAvatar, avatarUrl, USER_AVATARS_KEY, AVATAR_BLOB_PREFIX,
