@@ -2100,7 +2100,7 @@ const NAV_CSS = `
     /* Reveal-on-demand rail bits carry the hidden attribute, but their own rules set
        display (grid/flex), which out-specifies the UA [hidden] rule — without these
        they show for everyone, always (same gotcha as the brand and the admin item). */
-    .gvprof__dot[hidden], .gvprof__ver[hidden], .gvsearch__clear[hidden], .gvside__store[hidden],
+    .gvprof__dot[hidden], .gvprof__ver[hidden], .gvsearch__clear[hidden],
     .gvprof__item[hidden] { display: none; }
 
     /* Engine version footer (admins only) + the update-available "!" on the chip. */
@@ -2295,11 +2295,6 @@ const NAV_CSS = `
 
     /* Bundle-store fill gauge — admins only, revealed by PROFILE_JS once /__admin/storage
        answers (instances with no store never show it). Sits in the rail foot above Library. */
-    .gvside__store { display: block; padding: 7px 8px 9px; }
-    .gvside__storeT { font-size: 12px; font-weight: 600; color: #2c2f36; }
-    .gvside__storeS { margin-top: 1px; font-size: 11.5px; font-weight: 500; color: #6b7280; }
-    .gvside__storeBar { margin-top: 7px; height: 5px; border-radius: 3px; background: rgba(16,17,26,0.09); overflow: hidden; }
-    .gvside__storeBar > span { display: block; height: 100%; border-radius: 3px; background: #5e6ad2; transition: width .3s ease; }
 
     /* Mobile drawer scrim. */
     .gvscrim { display: none; position: fixed; inset: 0; z-index: 2147483099; background: rgba(16,17,26,0.34); opacity: 0; transition: opacity .2s ease; }
@@ -2823,11 +2818,6 @@ function sideRail(active) {
     </div>
     <div class="gvside__foot">
       <div class="gvside__rule"></div>
-      <div class="gvside__store" data-store hidden>
-        <div class="gvside__storeT">Storage space</div>
-        <div class="gvside__storeS" data-store-line></div>
-        <div class="gvside__storeBar"><span data-store-bar style="width:0%"></span></div>
-      </div>
       ${library}
       <div class="gvside__group" style="margin-top:6px">
         <button type="button" class="gvside__act" data-help-open>${IC_HELP}<span>Help</span></button>
@@ -4178,7 +4168,7 @@ const PROFILE_JS = `(function(){
     // html.gv-admin — those are not per-space questions.
     document.documentElement.classList.toggle('gv-admin', !!u.admin);
     box.hidden = false;
-    if(u.admin){ version(); storage(); }
+    if(u.admin){ version(); }
     // SETTINGS_JS listens for this instead of fetching /__me a second time. Fired on
     // every paint, so it also carries a fresh photo back to an already-open modal.
     document.dispatchEvent(new CustomEvent('gv:me', {detail: u}));
@@ -4199,24 +4189,7 @@ const PROFILE_JS = `(function(){
   });
   // Bundle-store fill gauge in the rail foot — admins only (the worker 403s everyone
   // else) and only on instances that actually have a store.
-  function storage(){
-    var el = document.querySelector('[data-store]');
-    if(!el) return;
-    fetch('/__admin/storage', {headers:{'Accept':'application/json'}})
-      .then(function(r){ return r.ok ? r.json() : null; })
-      .then(function(d){
-        if(!d || !d.enabled) return;
-        var gb = function(n){ return n / 1073741824; };
-        var used = gb(d.bytes), cap = gb(d.limitBytes);
-        el.querySelector('[data-store-line]').textContent =
-          used.toFixed(2) + ' GB of ' + (Math.round(cap * 10) / 10) + ' GB used';
-        var bar = el.querySelector('[data-store-bar]');
-        bar.style.width = Math.max(1, Math.min(100, d.pct)) + '%';
-        if(d.pct >= 80) bar.style.background = '#b42318';
-        else if(d.pct >= 50) bar.style.background = '#b45309';
-        el.hidden = false;
-      }).catch(function(){});
-  }
+
   // Engine version footer + update nudge — admins only (the worker 403s everyone
   // else). One cheap fetch per page view; the release-feed check itself is
   // KV-cached server-side, so this never hits the network feed directly.
