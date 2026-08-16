@@ -16,17 +16,37 @@ once the instance config is redeployed/published (build re-emits
   "email": "person@example.org",   // login id
   "emails": ["alias@example.org"], // optional extra addresses that also log in
   "name": "Person Name",
-  "role": "admin",                 // "admin", "viewer", or omit for a regular user.
-                                   // A viewer signs in, comments and drives boards but
-                                   // can never mint a publish token — the role for an
-                                   // account whose password is public (a demo
-                                   // instance's loginHint credentials)
+  "role": "admin",                 // "admin" | "editor" | "viewer". Omit for editor.
+                                   // (`user` is the legacy spelling of "editor" and
+                                   // still reads as one — never a flag day — but
+                                   // nothing new should be written wearing it.)
   "passHash": "pbkdf2$…",          // FIRST ADMIN ONLY — everyone else is invited
   "initials": "PN",                // presence chip fallback
   "color": "#7A5AF8",              // presence chip color
   "avatar": "data:image/webp;base64,…"  // optional SEED photo; served at /__avatar/<key>
 }
 ```
+
+### The three roles
+
+| | Sign in, comment, drive boards | Publish | Admin panel, tokens, delete |
+|---|---|---|---|
+| `viewer` | ✅ | ❌ | ❌ |
+| `editor` | ✅ | ✅ (default space) | ❌ |
+| `admin`  | ✅ | ✅ (every space) | ✅ |
+
+`viewer` is the role for an account whose password is public knowledge — a demo
+instance's `loginHint` credentials. It is refused a publish token at mint time, and
+any token it already holds stops resolving, so a demotion cannot leave the old
+privilege alive in a credential.
+
+**Changing a role** is a per-person control in the Admin panel (click a row →
+Role). It takes effect on the next request via a KV overlay, and the panel asks the
+deploy shell to commit the change to `identity.json` so the file stays the durable
+record — at which point the overlay entry drains itself. The one refusal: the **last
+admin cannot be demoted**, because an instance with no admin cannot be repaired from
+inside it (every admin route, the panel and the all-space token all require one).
+Promote someone else first.
 
 - **The panel can add and remove people without a commit.** The Admin page lists
   everyone as a table (name + email, role, last active) with an **Invite** action

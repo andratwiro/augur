@@ -43,7 +43,7 @@ jobs:
           BY: ${{ github.event.client_payload.by }}
         run: |
           set -euo pipefail
-          case "$ACTION" in add|remove) ;; *) echo "::error::bad action '$ACTION'"; exit 1;; esac
+          case "$ACTION" in add|remove|role) ;; *) echo "::error::bad action '$ACTION'"; exit 1;; esac
           if ! printf '%s' "$EMAIL" | grep -Eq '^[^[:space:]@]+@[^[:space:]@]+\.[^[:space:]@]+$'; then
             echo "::error::client_payload does not carry a valid email"; exit 1
           fi
@@ -56,6 +56,11 @@ jobs:
           const users = JSON.parse(fs.readFileSync("identity.json", "utf8"));
           const known = (u) => lc(u.email) === lc(EMAIL) || (u.emails || []).some((e) => lc(e) === lc(EMAIL));
           let out = users, changed = false;
+          // `user` is the legacy spelling of `editor` and both mean the same thing, so
+          // neither is written out: an absent role IS an editor, and storing one would
+          // only give the file two ways to say the same thing.
+          const ROLES = ["admin", "editor", "viewer"];
+          const wanted = ROLES.includes(USER_ROLE) ? USER_ROLE : "editor";
           if (ACTION === "add" && !users.some(known)) {
             const entry = {
               email: EMAIL,
@@ -64,13 +69,25 @@ jobs:
               emails: [],
               color: USER_COLOR || "#4f46e5",
             };
-            if (USER_ROLE === "admin") entry.role = "admin";
+            if (wanted !== "editor") entry.role = wanted;
             out = [...users, entry];
             changed = true;
           }
           if (ACTION === "remove") {
             out = users.filter((u) => !known(u));
             changed = out.length !== users.length;
+          }
+          // A role change from the Admin panel. The KV overlay already made it true;
+          // this is what makes it durable, and what lets the overlay entry drain.
+          if (ACTION === "role") {
+            out = users.map((u) => {
+              if (!known(u)) return u;
+              const current = u.role === "admin" || u.role === "viewer" ? u.role : "editor";
+              if (current === wanted) return u;
+              changed = true;
+              const { role, ...rest } = u;
+              return wanted === "editor" ? rest : { ...rest, role: wanted };
+            });
           }
           if (changed) fs.writeFileSync("identity.json", JSON.stringify(out, null, 2) + "\n");
           console.log(changed ? "identity.json updated" : "already in the desired state");
@@ -83,7 +100,7 @@ jobs:
             if git diff --quiet identity.json; then
               echo "nothing to commit — the file already agrees"; exit 0
             fi
-            git commit -q -m "[roster] $ACTION $EMAIL (via Augur Admin${BY:+, by $BY})" identity.json
+            git commit -q -m "[roster] $ACTION $EMAIL${USER_ROLE:+ → $USER_ROLE} (via Augur Admin${BY:+, by $BY})" identity.json
             if git push origin HEAD; then exit 0; fi
             echo "push rejected (concurrent commit) — refetching and reapplying"
             git fetch origin main

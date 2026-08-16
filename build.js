@@ -4741,10 +4741,23 @@ const ADMIN_JS = `(function(){
       + '<td class="au__who">'+av+'<span class="au__id">'
       +   '<span class="au__name">'+esc(u.name)+'</span>'
       +   '<span class="au__email">'+esc(u.email)+'</span></span></td>'
-      + '<td class="au__role'+(u.role === 'admin' ? ' is-admin' : '')+'">'+(u.role === 'admin' ? 'Admin' : 'User')+'</td>'
+      + '<td class="au__role'+(u.role === 'admin' ? ' is-admin' : '')+'">'+roleLabel(u.role)+'</td>'
       + '<td class="au__last">'+seen+'</td>'
       + '<td class="au__go" aria-hidden="true">&rsaquo;</td>'
       + '</tr>';
+  }
+
+  // "user" is the legacy spelling of "editor"; an absent role means the same. The
+  // panel never shows the old word — it would read as a fourth thing.
+  function roleLabel(r){
+    return r === 'admin' ? 'Admin' : (r === 'viewer' ? 'Viewer' : 'Editor');
+  }
+  function roleOf(email){
+    for(var i=0;i<people.length;i++) if(people[i].email === email){
+      var r = people[i].role;
+      return r === 'admin' || r === 'viewer' ? r : 'editor';
+    }
+    return 'editor';
   }
 
   function render(){
@@ -4792,6 +4805,8 @@ const ADMIN_JS = `(function(){
     menu.hidden = false;
     var r = tr.getBoundingClientRect();
     var mh = menu.offsetHeight, mw = menu.offsetWidth;
+    var rolesel = menu.querySelector('[data-menu-role]');
+    if(rolesel) rolesel.value = roleOf(current);
     menu.style.left = Math.max(10, r.right - mw) + 'px';
     menu.style.top = Math.max(10, Math.min(window.innerHeight - mh - 10, r.bottom - 4)) + 'px';
   }
@@ -4810,6 +4825,26 @@ const ADMIN_JS = `(function(){
   document.addEventListener('keydown', function(e){ if(e.key === 'Escape'){ closeMenu(); if(invite) invite.hidden = true; } });
 
   if(menu){
+    var rolesel = menu.querySelector('[data-menu-role]');
+    if(rolesel) rolesel.addEventListener('change', function(){
+      var who = current, want = rolesel.value, was = roleOf(who);
+      if(!who || want === was) return;
+      // Demoting yourself is the one change that can lock you out of this panel, so it
+      // is the one that asks. The server refuses the LAST admin outright either way.
+      var warn = (was === 'admin')
+        ? 'Remove admin from ' + who + '?\n\nThey lose the Admin panel and any all-space publish token.'
+        : (want === 'viewer'
+          ? 'Make ' + who + ' a viewer?\n\nThey can still sign in, comment and use boards, but cannot publish. Any publish token they hold stops working.'
+          : 'Make ' + who + ' an ' + roleLabel(want).toLowerCase() + '?');
+      if(!window.confirm(warn)){ rolesel.value = was; return; }
+      closeMenu();
+      post({ op:'role', email: who, role: want }).then(function(d){
+        if(d && d.ok) load();
+        else window.alert(d && d.error === 'last-admin'
+          ? (d.message || 'This is the only admin.')
+          : 'Could not change role: ' + ((d && d.error) || 'error'));
+      }).catch(function(){ window.alert('Could not change role.'); });
+    });
     menu.querySelector('[data-menu-reset]').addEventListener('click', function(){
       var who = current;
       if(!who) return;
@@ -5018,6 +5053,11 @@ function renderAdminPage() {
     .aumenu[hidden]{ display:none; }
     .aumenu__hd{ margin:0; padding:5px 9px 7px; font-size:11.5px; color:#9aa0ab;
                  overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:240px; }
+    .aumenu__role{ display:flex; align-items:center; justify-content:space-between; gap:10px;
+                   padding:4px 9px 8px; margin-bottom:4px; border-bottom:1px solid rgba(16,17,26,0.08); }
+    .aumenu__role span{ font-size:13px; color:#16171a; }
+    .aumenu__role select{ font:inherit; font-size:13px; padding:3px 6px; border-radius:6px;
+                          border:1px solid rgba(16,17,26,0.18); background:#fff; color:#16171a; cursor:pointer; }
     .aumenu button{ display:block; width:100%; padding:7px 9px; border:0; border-radius:7px; background:none;
                     font:inherit; font-size:13px; color:#16171a; text-align:left; cursor:pointer; }
     .aumenu button:hover{ background:rgba(16,17,26,0.05); }
@@ -5048,7 +5088,7 @@ function renderAdminPage() {
   <form class="auinvite" data-invite hidden>
     <input type="email" data-invite-email placeholder="name@example.org" aria-label="Email address" required />
     <input type="text" data-invite-name placeholder="Name (optional)" aria-label="Name" />
-    <select data-invite-role aria-label="Role"><option value="user">User</option><option value="admin">Admin</option></select>
+    <select data-invite-role aria-label="Role"><option value="editor">Editor</option><option value="viewer">Viewer</option><option value="admin">Admin</option></select>
     <button type="submit" class="aubtn aubtn--primary">Create link</button>
     <button type="button" class="aubtn" data-invite-cancel>Cancel</button>
     <span class="auinvite__msg" data-invite-msg aria-live="polite"></span>
@@ -5074,6 +5114,9 @@ function renderAdminPage() {
 
   <div class="aumenu" data-menu hidden role="menu">
     <p class="aumenu__hd" data-menu-who></p>
+    <label class="aumenu__role"><span>Role</span>
+      <select data-menu-role aria-label="Change role"><option value="admin">Admin</option><option value="editor">Editor</option><option value="viewer">Viewer</option></select>
+    </label>
     <button type="button" role="menuitem" data-menu-reset>Reset password</button>
     <button type="button" role="menuitem" class="is-danger" data-menu-remove>Remove user</button>
   </div>

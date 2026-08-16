@@ -690,7 +690,10 @@ test("invite adds the address to the overlay and returns its single-use link", a
   assert.equal(body.email, "new.person@example.test", "stored lowercased");
   const roster = JSON.parse(await kv.get("users:roster"));
   assert.equal(roster.add["new.person@example.test"].name, "New Person", "name derived from the address");
-  assert.equal(roster.add["new.person@example.test"].role, "user", "no silent admin escalation");
+  // `editor` is the current spelling of what used to be written as `user`. The
+  // assertion that matters is unchanged: an invite with no role asked for must never
+  // come out admin.
+  assert.equal(roster.add["new.person@example.test"].role, "editor", "no silent admin escalation");
   const token = new URL(body.url).searchParams.get("t");
   assert.equal(await W.readInvite(env, token), "new.person@example.test");
 });

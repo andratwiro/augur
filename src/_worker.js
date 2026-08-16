@@ -92,6 +92,25 @@ const AVATAR_MAX_CHARS = 64 * 1024;
 // `name` for them alone. Names are small and read on every config tick, so unlike the
 // photos they live in the document itself with no blob indirection.
 const USER_NAMES_KEY = "users:names";
+// Role overlay — see applyRoles. Separate from users:roster because the roster
+// overlay CANNOT express a change to a config user: mergeRoster lets identity.json
+// win over an `add` of the same address, deliberately, so the file stays the durable
+// record. Roles need the opposite precedence (an admin's change must take effect on
+// the next request, not on the next deploy), which is the same shape users:names and
+// users:avatars already use for the same reason.
+const USER_ROLES_KEY = "users:roles";
+// The three roles, and the one rule that turns a stored value into one of them.
+//
+// `user` is the legacy spelling of `editor` — it was the only non-admin value the
+// panel could produce, so every existing roster and identity.json is full of it.
+// Read-through, never a flag day: a stored `user` IS an editor, and so is an absent
+// role. Anything unrecognised also lands on editor, because the alternative is an
+// account that silently loses or gains privileges on a typo.
+const ROLES = ["admin", "editor", "viewer"];
+const roleOf = (u) => {
+  const r = u && u.role;
+  return r === "admin" || r === "viewer" ? r : "editor";
+};
 const NAME_MAX_CHARS = 60;
 // Raster formats only, and each one is checked against its magic bytes before storage:
 // /__avatar/ is ungated and echoes this mime back, so "trust the label" would let a
@@ -431,10 +450,10 @@ function mergeRoster(configUsers, roster) {
 
 async function applyRoster(env) {
   try {
-    const [roster, avatars, names] = await Promise.all([
-      readRoster(env), readAvatars(env), readNames(env),
+    const [roster, avatars, names, roles] = await Promise.all([
+      readRoster(env), readAvatars(env), readNames(env), readRoles(env),
     ]);
-    USERS = applyAvatars(applyNames(mergeRoster(CONFIG_USERS, roster), names), avatars);
+    USERS = applyRoles(applyAvatars(applyNames(mergeRoster(CONFIG_USERS, roster), names), avatars), roles);
   } catch (e) { USERS = CONFIG_USERS; }
 }
 
@@ -469,6 +488,41 @@ function cleanName(s) {
 // name (they show wherever there's no photo), so keeping "RA" against a name changed
 // to "Bee" would make one person read as two. Dropping it lets initialsFor derive
 // from the new name; publicUser and peopleApi already fall back that way.
+async function readRoles(env) {
+  const kv = kvFor(env);
+  if (!kv) return {};
+  try {
+    const doc = JSON.parse((await kv.get(USER_ROLES_KEY)) || "null");
+    return doc && typeof doc === "object" && !Array.isArray(doc) ? doc : {};
+  } catch (e) { return {}; }
+}
+
+// Overlay an admin's role changes onto the merged roster. Only recognised roles are
+// applied — a corrupt or hand-edited overlay entry must not be able to invent a fourth
+// role, nor to blank someone's existing one.
+function applyRoles(users, index) {
+  return (users || []).map((u) => {
+    const want = index && index[lcEmail(u.email)];
+    if (!ROLES.includes(want)) return u;
+    return { ...u, role: want };
+  });
+}
+
+// Drop someone's overlay entry, so identity.json's role takes over again. Called when
+// the file has caught up (the change drains itself, exactly like the roster overlay)
+// and when an address is removed — a re-invited address must not inherit the last
+// person's role, least of all `admin`.
+async function clearRole(env, email) {
+  const kv = kvFor(env);
+  if (!kv) return;
+  try {
+    const index = await readRoles(env);
+    if (!(lcEmail(email) in index)) return;
+    delete index[lcEmail(email)];
+    await kv.put(USER_ROLES_KEY, JSON.stringify(index));
+  } catch (e) {}
+}
+
 function applyNames(users, index) {
   return (users || []).map((u) => {
     const rec = index && index[lcEmail(u.email)];
@@ -798,7 +852,7 @@ function publicUser(u) {
     email: u.email, name: u.name,
     initials: u.initials || initialsFor(u.name || nameFromEmail(u.email)),
     color: u.color || colorFor(u.email),
-    avatar: avatarUrl(u), admin: u.role === "admin",
+    avatar: avatarUrl(u), admin: roleOf(u) === "admin", role: roleOf(u),
   } : null;
 }
 
@@ -1653,7 +1707,16 @@ async function publishAuth(request, env, spaceId, anySpace) {
     // — "ci", "backup" — match no roster user and are unaffected.
     if (e.space === "*" && e.label) {
       const u = userByEmail(e.label);
-      if (u && u.role !== "admin") return null;
+      if (u && roleOf(u) !== "admin") return null;
+    }
+    // The same reasoning one rung down, and the reason it is here rather than only at
+    // mint time: a viewer may not hold ANY publish token, but a demotion happens to an
+    // account that already has one. The role op revokes on demotion; this catches the
+    // paths that never go through it — a hand-edited identity.json, a config push that
+    // lands before the revoke, a token minted while the overlay was mid-write.
+    if (e.label) {
+      const u = userByEmail(e.label);
+      if (u && roleOf(u) === "viewer") return null;
     }
     if (!anySpace && e.space !== "*" && e.space !== spaceId) return null;
     return e;
@@ -1703,10 +1766,10 @@ async function publishApi(request, url, env) {
     // hold a publish token — the role for accounts whose password is public knowledge
     // (a demo instance's loginHint). Checked after credential verification so an
     // unknown email and a viewer stay indistinguishable in timing.
-    if (u.role === "viewer") {
+    if (roleOf(u) === "viewer") {
       return jsonResponse({ error: "viewer-role", message: "This account can look around but not publish." }, 403);
     }
-    const space = u.role === "admin" ? "*" : (SPACES.find((s) => s.default) || { id: null }).id;
+    const space = roleOf(u) === "admin" ? "*" : (SPACES.find((s) => s.default) || { id: null }).id;
     if (!space) return jsonResponse({ error: "no-default-space" }, 500);
     const bytes = new Uint8Array(32);
     crypto.getRandomValues(bytes);
@@ -3473,7 +3536,7 @@ async function adminUsersApi(request, url, env, me, users = USERS, configUsers =
       try { lastSeen = kv ? await kv.get(LASTSEEN_PREFIX + u.email) : null; } catch (e) {}
       const secret = await effectiveSecret(env, u);
       out.push({
-        email: u.email, name: u.name, role: u.role || "user",
+        email: u.email, name: u.name, role: roleOf(u),
         initials: u.initials || "", color: u.color || "#4f46e5",
         avatar: avatarUrl(u),
         state: secret ? "accepted" : "pending",
@@ -3506,7 +3569,10 @@ async function adminUsersApi(request, url, env, me, users = USERS, configUsers =
       const email = lcEmail(op.email);
       if (!isEmailish(email)) return jsonResponse({ error: "bad-email" }, 400);
       if (userByEmail(email, users)) return jsonResponse({ error: "already-a-user" }, 409);
-      const role = op.role === "admin" ? "admin" : "user";
+      // All three roles, not the old admin-or-nothing coercion. `editor` is written
+      // out in full — the legacy `user` spelling still READS as editor, but nothing
+      // new should be created wearing it.
+      const role = ROLES.includes(op.role) ? op.role : "editor";
       const name = clamp(op.name, 80).trim() || nameFromEmail(email);
       const roster = await readRoster(env);
       if (Object.keys(roster.add).length >= ROSTER_ADD_MAX) {
@@ -3537,6 +3603,88 @@ async function adminUsersApi(request, url, env, me, users = USERS, configUsers =
       return jsonResponse({ ok: true, email, url: link(token), fileSync });
     }
 
+    // Change someone's role. The thing an operator actually reaches for, and the thing
+    // that did not exist: until now the only way was remove-and-re-invite, which loses
+    // their password and their history, and still could not produce a viewer.
+    if (kind === "role") {
+      const u = userByEmail(op.email, users);
+      if (!u) return jsonResponse({ error: "unknown-user" }, 400);
+      const role = op.role;
+      if (!ROLES.includes(role)) return jsonResponse({ error: "bad-role", roles: ROLES }, 400);
+      const email = lcEmail(u.email);
+      // The overlay is what takes effect, so it — not the caller's user list — is what
+      // "their current role" means. Those two disagree for a whole config tick after
+      // any change, and reading the stale one would report a real change as a no-op and
+      // skip the write (and the token revocation that rides with it).
+      const overlay = await readRoles(env);
+      const from = ROLES.includes(overlay[email]) ? overlay[email] : roleOf(u);
+      if (from === role) return jsonResponse({ ok: true, email, role, unchanged: true });
+
+      // The lockout an instance cannot recover from in-app. There is no break-glass:
+      // every admin route, the panel itself and the star-scope token all require an
+      // admin, so an instance with none needs a redeploy of identity.json to come back.
+      // Counted over the LIVE roster, so it sees config users and overlay users alike.
+      if (from === "admin") {
+        const effective = (x) => {
+          const o = overlay[lcEmail(x.email)];
+          return ROLES.includes(o) ? o : roleOf(x);
+        };
+        const admins = users.filter((x) => effective(x) === "admin").length;
+        if (admins <= 1) {
+          return jsonResponse({
+            error: "last-admin",
+            message: "This is the only admin. Promote someone else first — an instance with no admin cannot be fixed from inside it.",
+          }, 409);
+        }
+      }
+
+      // Write the overlay, or DRAIN it when identity.json already agrees: a change back
+      // to what the file says needs no overlay entry, and leaving one behind would
+      // quietly override the file forever after.
+      const configRole = (() => {
+        const c = userByEmail(email, configUsers);
+        return c ? roleOf(c) : null;
+      })();
+      if (configRole === role) {
+        await clearRole(env, email);
+      } else {
+        overlay[email] = role;
+        await kv.put(USER_ROLES_KEY, JSON.stringify(overlay));
+      }
+      // Keep the roster overlay honest too, for an invited (non-config) user — the
+      // roles overlay is what takes effect, but two records disagreeing about the same
+      // person is how the next reader gets it wrong.
+      const roster = await readRoster(env);
+      if (roster.add[email]) {
+        roster.add[email].role = role;
+        await kv.put(USER_ROSTER_KEY, JSON.stringify(roster));
+      }
+
+      // A demotion must not leave the privilege behind in a token. Losing admin drops
+      // the star-scope token; becoming a viewer drops every publish token they hold,
+      // because a viewer may hold none at all. publishAuth re-checks both at resolve
+      // time as well — this is the immediate half, that one is the durable half.
+      if (role === "viewer") await revokePublishTokens(env, email);
+      else if (from === "admin") await revokePublishTokens(env, email);
+
+      // USERS in this isolate, then everywhere on the next tick — same as invite/remove.
+      const nextRoles = await readRoles(env);
+      if (users === USERS) {
+        USERS = applyRoles(mergeRoster(configUsers, roster), nextRoles);
+      }
+      cfgAt = 0;
+
+      // identity.json stays the durable record: ask the shell to commit the new role,
+      // and the config push its deploy sends back drains the overlay entry above.
+      // Best-effort, like invite and remove — the change already took effect.
+      const fileSync = await shellDispatch(env, "roster-update", {
+        action: "role",
+        user: { email, name: u.name, initials: u.initials || "", color: u.color || "", role },
+        email, role, by: me.email,
+      });
+      return jsonResponse({ ok: true, email, role, from, fileSync });
+    }
+
     // Remove = drop from the overlay AND revoke the credential (see the roster notes:
     // the tombstone, not the list, is what actually keeps them out).
     if (kind === "remove") {
@@ -3560,6 +3708,8 @@ async function adminUsersApi(request, url, env, me, users = USERS, configUsers =
       await revokeInvitesFor(env, email);   // an outstanding link must not let them back in
       try { await clearAvatar(env, email); } catch (e) {} // their face leaves the index too
       try { await clearName(env, email); } catch (e) {}   // …and so does their chosen name
+      // A re-invited address must not inherit the last person's role — least of all admin.
+      try { await clearRole(env, email); } catch (e) {}
       try { await kv.delete(LASTSEEN_PREFIX + u.email); } catch (e) {}
       commitRoster(roster);
       // Symmetric to invite: the identity file should stop naming them too. The
@@ -4116,6 +4266,7 @@ export const __testables = {
   PBKDF2_ITERATIONS,
   INVITE_TTL_MS,
   adminUsersApi, adminBackupApi,
+  ROLES, roleOf, readRoles, applyRoles, clearRole, USER_ROLES_KEY,
   mergeRoster, readRoster, revokeSecret, revokeInvitesFor,
   applyAvatars, readAvatars, parseAvatarDataUri, avatarHash, clearAvatar,
   meAvatarApi, serveKvAvatar, avatarUrl, USER_AVATARS_KEY, AVATAR_BLOB_PREFIX,
