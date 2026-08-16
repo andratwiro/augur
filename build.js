@@ -2140,17 +2140,9 @@ const NAV_CSS = `
     .gvspace__row .gvspace__btn { flex: 1 1 auto; min-width: 0; }
     .gvspace__btn { display: flex; align-items: center; gap: 9px; flex: 1 1 auto; min-width: 0;
                     padding: 7px 8px; border-radius: 8px; background: none; border: 0; }
-      display: flex; align-items: center; gap: 8px; width: 100%; padding: 6px 8px;
-      border: 1px solid rgba(16,17,26,0.10); border-radius: 8px; background: #fff; cursor: pointer;
-      font: inherit; color: #16171a; text-align: left; transition: background .12s ease, border-color .12s ease;
-    }
     .gvspace__icon { flex: none; width: 20px; height: 20px; border-radius: 5px; overflow: hidden; display: grid; place-items: center; background: #fff; }
     .gvspace__icon img { width: 100%; height: 100%; object-fit: cover; display: block; }
     .gvspace__name { flex: 1 1 auto; min-width: 0; font-weight: 600; font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-      padding: 1px 6px; border-radius: 999px; background: rgba(16,17,26,0.07); color: #5b626e; }
-      position: absolute; top: calc(100% + 4px); left: 0; right: 0; z-index: 6;
-      box-shadow: 0 1px 2px rgba(16,24,40,0.05), 0 12px 30px -16px rgba(16,24,40,0.30);
-    }
 
     /* Omni search — one field, filters whatever cards are on the right. Editor-style
        filled input that brightens to white on focus. */
@@ -2491,6 +2483,12 @@ const GV_MARK = `<img class="gvmark" src="/augur-eye.svg" alt="" aria-hidden="tr
 // apps use. Verbatim official paths, rendered at a refined 1.75 stroke for that crisp
 // Linear weight; 24px viewBox, currentColor, tinted/sized via .gvic.
 const ic = (inner) => `<svg class="gvic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${inner}</svg>`;
+// Role icons, one per role — the People table shows the role as icon + label, so the
+// three must read apart at a glance and not just by their word. Lucide, same set and
+// stroke as the rail's.
+const IC_ROLE_ADMIN = ic(`<path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/>`); // shield
+const IC_ROLE_EDITOR = ic(`<path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z"/><path d="m15 5 4 4"/>`); // pencil
+const IC_ROLE_VIEWER = ic(`<path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0"/><circle cx="12" cy="12" r="3"/>`); // eye
 const IC_HOME = ic(`<rect width="7" height="7" x="3" y="3" rx="1"/><rect width="7" height="7" x="14" y="3" rx="1"/><rect width="7" height="7" x="14" y="14" rx="1"/><rect width="7" height="7" x="3" y="14" rx="1"/>`); // layout-grid
 const IC_PLAY = ic(`<path d="M14 2v6a2 2 0 0 0 .245.96l5.51 10.08A2 2 0 0 1 18 22H6a2 2 0 0 1-1.755-2.96l5.51-10.08A2 2 0 0 0 10 8V2"/><path d="M6.453 15h11.094"/><path d="M8.5 2h7"/>`); // flask-conical
 const IC_FOLDER = ic(`<path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/>`); // folder
@@ -2771,6 +2769,10 @@ function spaceSwitcher() {
 // (the user's starred prototypes/projects, rendered client-side by PINS_JS) → Library
 // (collapsible, pinned to the bottom). `active` is a single key: 'prototypes' |
 // 'playground' | <opportunity name> | 'primitives' | 'components' | 'pages'.
+// The library's own sections — used both to build its rail and to know when the rail
+// should BE the library's (see appChrome).
+const LIB_KEYS = ["tokens", "base", "components", "patterns", "pages", "primitives"];
+
 function sideRail(active) {
   const item = (href, label, key, icon) =>
     `<a href="${S(href)}"${active === key ? ' aria-current="page"' : ""}>${icon}<span>${label}</span></a>`;
@@ -2782,6 +2784,10 @@ function sideRail(active) {
   const adminItem = `<a class="gvside__admin" href="/admin/" data-space-admin${
     NAV_STATE.activeSpace ? ` data-space-id="${escAttr(NAV_STATE.activeSpace)}"` : ""
   }>${IC_GEAR}<span>Admin</span></a>`;
+  // Library is a destination like the others now, not a disclosure wedged in the foot.
+  // Everyone sees it; opening it swaps the rail for its own sections, the same shape
+  // Admin uses — one nav column at a time, never two.
+  const libraryItem = item("/tokens/", "Library", "library", IC_LIBRARY);
   // Pinned is rendered live from the KV pins map (PINS_JS fills [data-pinned-list] and
   // toggles the empty hint); nothing is server-rendered here.
   const pinned = `<p class="gvside__label">Pinned</p>
@@ -2791,18 +2797,6 @@ function sideRail(active) {
   // collapsed by default, auto-opens when you're on one of its pages. Its own icon
   // leads; the disclosure chevron sits on the right.
   // Layered design system: Tokens → Base → Components → Patterns → Pages.
-  const LIB_KEYS = ["tokens", "base", "components", "patterns", "pages", "primitives"];
-  const libOpen = LIB_KEYS.includes(active);
-  const library = `<details class="gvside__sect"${libOpen ? " open" : ""}>
-      <summary class="gvside__sum"><span>Library</span><span class="gvside__caret" aria-hidden="true">${IC_CHEV}</span></summary>
-      <div class="gvside__group">
-        ${item("/tokens/", "Tokens", "tokens", IC_TOKEN)}
-        ${item("/base/", "Base", "base", IC_PRIM)}
-        ${item("/components/", "Components", "components", IC_COMP)}
-        ${item("/patterns/", "Patterns", "patterns", IC_PATTERN)}
-        ${item("/pages/", "Pages", "pages", IC_PAGE)}
-      </div>
-    </details>`;
   return `<aside class="gvside" id="gvside" aria-label="Augur">
     ${profileChip()}
     ${railSearch()}
@@ -2812,15 +2806,14 @@ function sideRail(active) {
       <div class="gvside__group">
         ${item("/", PROJECTS_LABEL, "prototypes", IC_HOME)}
         ${playground}
+        ${libraryItem}
         ${adminItem}
       </div>
       ${pinned}
     </div>
     <div class="gvside__foot">
       <div class="gvside__rule"></div>
-      ${library}
       <div class="gvside__group" style="margin-top:6px">
-        <button type="button" class="gvside__act" data-help-open>${IC_HELP}<span>Help</span></button>
         <a href="/changelog/"${active === "changelog" ? ' aria-current="page"' : ""}>${IC_CHANGELOG}<span>Changelog</span><span class="gvside__ver">v${UI_VERSION}</span></a>
       </div>
     </div>
@@ -3033,8 +3026,34 @@ function appChrome(active) {
   // it. You are in one workspace's settings, not browsing its content, so the rail's
   // Projects / Pinned / Library are noise — and two nav columns side by side read as
   // two levels of hierarchy when there is only one.
-  const rail = active === "admin" ? adminRail() : sideRail(active);
+  const rail = active === "admin" ? adminRail()
+    : LIB_KEYS.includes(active) ? libraryRail(active)
+    : sideRail(active);
   return `${top}${rail}<div class="gvscrim" data-side-scrim></div>${helpDrawer()}${settingsModal()}`;
+}
+
+// The rail while you are inside the Library. Same shape as workspace settings: profile
+// chip, a way back, then this section's own destinations — one nav column, never two.
+function libraryRail(active) {
+  const item = (href, label, key, icon) =>
+    `<a href="${S(href)}"${active === key ? ' aria-current="page"' : ""}>${icon}<span>${label}</span></a>`;
+  return `<aside class="gvside" id="gvside" aria-label="Library">
+    ${profileChip()}
+    <div class="gvside__rule"></div>
+    <a class="gvadmin__back" href="${S("/")}">
+      <svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M10 3L5 8l5 5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <span>Library</span>
+    </a>
+    <div class="gvside__scroll">
+      <div class="gvside__group">
+        ${item("/tokens/", "Tokens", "tokens", IC_TOKEN)}
+        ${item("/base/", "Base", "base", IC_PRIM)}
+        ${item("/components/", "Components", "components", IC_COMP)}
+        ${item("/patterns/", "Patterns", "patterns", IC_PATTERN)}
+        ${item("/pages/", "Pages", "pages", IC_PAGE)}
+      </div>
+    </div>
+  </aside>`;
 }
 
 // The rail while you are inside workspace settings: the profile chip stays (it is
@@ -4729,6 +4748,12 @@ const LIVE_CONTENT_JS = `(function(){
 })();`;
 
 const ADMIN_JS = `(function(){
+  // Injected at build time so the client has the same icon set the rail uses.
+  var ROLE_ICONS = {
+    admin: ${JSON.stringify(IC_ROLE_ADMIN)},
+    editor: ${JSON.stringify(IC_ROLE_EDITOR)},
+    viewer: ${JSON.stringify(IC_ROLE_VIEWER)}
+  };
   var host = document.querySelector('[data-admin-users]');
   if(!host) return;
   var menu = document.querySelector('[data-menu]');
@@ -4776,7 +4801,7 @@ const ADMIN_JS = `(function(){
       + '<td class="au__who">'+av+'<span class="au__id">'
       +   '<span class="au__name">'+esc(u.name)+'</span>'
       +   '<span class="au__email">'+esc(u.email)+'</span></span></td>'
-      + '<td class="au__role'+(u.role === 'admin' ? ' is-admin' : '')+'">'+roleLabel(u.role)+'</td>'
+      + '<td class="au__role">'+roleControl(u)+'</td>'
       + '<td class="au__last">'+seen+'</td>'
       + '<td class="au__go" aria-hidden="true">&rsaquo;</td>'
       + '</tr>';
@@ -4786,6 +4811,28 @@ const ADMIN_JS = `(function(){
   // panel never shows the old word — it would read as a fourth thing.
   function roleLabel(r){
     return r === 'admin' ? 'Admin' : (r === 'viewer' ? 'Viewer' : 'Editor');
+  }
+  // Icon + label per role, so the three read apart at a glance rather than by word
+  // alone. ROLE_ICONS is injected by the build (see ADMIN_JS's caller).
+  function roleIcon(r){
+    return ROLE_ICONS[r === 'admin' ? 'admin' : (r === 'viewer' ? 'viewer' : 'editor')] || '';
+  }
+  // A <select> rather than a bespoke popover: it is a value the row OWNS, it is
+  // keyboard- and screen-reader-correct for free, and it puts the change one click
+  // away instead of behind a row menu. Your own row is disabled — the server refuses
+  // a self-demotion anyway (you would be locking yourself out), so offering it would
+  // only ever produce an error.
+  function roleControl(u){
+    var mine = u.email && u.email.toLowerCase() === myEmail;
+    var cur = roleOf(u.email);
+    var opts = ['admin','editor','viewer'].map(function(r){
+      return '<option value="'+r+'"'+(r === cur ? ' selected' : '')+'>'+roleLabel(r)+'</option>';
+    }).join('');
+    return '<span class="au__rolewrap'+(cur === 'admin' ? ' is-admin' : '')+'">'
+      + '<span class="au__roleic" aria-hidden="true">'+roleIcon(cur)+'</span>'
+      + '<select class="au__rolesel" data-role-for="'+esc(u.email)+'" aria-label="Role for '+esc(u.name || u.email)+'"'
+      +   (mine ? ' disabled title="You cannot change your own role"' : '')+'>'+opts+'</select>'
+      + '</span>';
   }
   function roleOf(email){
     for(var i=0;i<people.length;i++) if(people[i].email === email){
@@ -4861,7 +4908,46 @@ const ADMIN_JS = `(function(){
     menu.style.left = Math.max(10, r.right - mw) + 'px';
     menu.style.top = Math.max(10, Math.min(window.innerHeight - mh - 10, r.bottom - 4)) + 'px';
   }
+  // Changing a role from the table. Posts {op:"space"} when the page is scoped to a
+  // workspace (roles are per workspace), falling back to the instance-wide {op:"role"}
+  // on a build that has no space context. A refusal — last admin, beyond your
+  // authority — puts the select back where it was rather than leaving a lie on screen.
+  host.addEventListener('change', function(e){
+    var sel = e.target && e.target.closest ? e.target.closest('[data-role-for]') : null;
+    if(!sel) return;
+    var email = sel.getAttribute('data-role-for');
+    var want = sel.value;
+    var was = roleOf(email);
+    if(want === was) return;
+    var sp = new URLSearchParams(location.search).get('space');
+    var body = sp ? {op:'space', email:email, space:sp, role:want} : {op:'role', email:email, role:want};
+    sel.disabled = true;
+    fetch('/__admin/users', { method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify(body) })
+      .then(function(r){ return r.json().catch(function(){ return {}; })
+        .then(function(d){ return {ok:r.ok, d:d}; }); })
+      .then(function(res){
+        sel.disabled = false;
+        if(!res.ok){
+          sel.value = was;
+          window.alert((res.d && res.d.message) || (res.d && res.d.error === 'last-admin'
+            ? 'This is the only admin of this workspace.'
+            : 'Could not change role.'));
+          return;
+        }
+        for(var i=0;i<people.length;i++) if(people[i].email === email) people[i].role = want;
+        var wrap = sel.closest('.au__rolewrap');
+        if(wrap){
+          wrap.classList.toggle('is-admin', want === 'admin');
+          var ic = wrap.querySelector('.au__roleic');
+          if(ic) ic.innerHTML = roleIcon(want);
+        }
+      })
+      .catch(function(){ sel.disabled = false; sel.value = was; window.alert('Could not change role.'); });
+  });
   host.addEventListener('click', function(e){
+    // The role select lives inside the row; clicking it must not also open the menu.
+    if(e.target.closest && e.target.closest('[data-role-for]')) return;
     var tr = e.target.closest ? e.target.closest('tr.au') : null;
     if(tr) openMenu(tr);
   });
@@ -5063,9 +5149,9 @@ const ADMIN_SECTIONS_JS = `(function(){
     if(!here && mine.length === 1) here = mine[0];
     if(!here) return;
     space = here.id; // so the icon API always names a real workspace
-    var label = nav.querySelector('[data-admin-space-name]');
+    var label = document.querySelector('[data-admin-space-name]');
     if(label) label.textContent = here.name;
-    var back = nav.querySelector('[data-admin-back]');
+    var back = document.querySelector('[data-admin-back]');
     if(back) back.setAttribute('href', (here.base || '') + '/');
     // Settings shows the same name, and the icon it currently has.
     var nameEl = document.querySelector('[data-set-name]');
@@ -5108,12 +5194,16 @@ const ADMIN_SECTIONS_JS = `(function(){
     fetch('/__admin/storage', {headers:{'Accept':'application/json'}}).then(function(r){
       return r.ok ? r.json() : null;
     }).then(function(d){
-      if(!d){ sEl.textContent = 'Unavailable.'; return; }
-      var mb = function(b){ return (b/1048576).toFixed(1) + ' MB'; };
-      var pct = d.limit ? Math.min(100, (d.bytes / d.limit) * 100) : 0;
-      if(sBar) sBar.style.width = pct.toFixed(1) + '%';
-      sEl.textContent = mb(d.bytes) + (d.limit ? ' of ' + mb(d.limit) : '')
-        + (d.objects != null ? ' · ' + d.objects + ' objects' : '');
+      // No bar without a number to put in it — an empty track reads as "0 used".
+      function hideBar(){ var g = sBar && sBar.parentNode; if(g) g.style.display = 'none'; }
+      if(!d || d.enabled === false){ sEl.textContent = 'Not in use on this instance.'; hideBar(); return; }
+      if(d.error){ sEl.textContent = 'Unavailable.'; hideBar(); return; }
+      var gb = function(b){ return (b/1073741824).toFixed(2) + ' GB'; };
+      var pct = typeof d.pct === 'number' ? d.pct
+        : (d.limitBytes ? (d.bytes / d.limitBytes) * 100 : 0);
+      if(sBar) sBar.style.width = Math.min(100, pct).toFixed(1) + '%';
+      sEl.textContent = gb(d.bytes) + (d.limitBytes ? ' of ' + gb(d.limitBytes) : '')
+        + ' used' + (d.objects != null ? ' · ' + d.objects + ' objects' : '');
     }).catch(function(){ sEl.textContent = 'Unavailable.'; });
   }
 
@@ -5243,7 +5333,22 @@ function renderAdminPage() {
     .au__name{ font-weight:600; font-size:14px; color:#16171a; }
     .au__email{ font-size:12.5px; color:#5b626e; }
     .au__role{ font-size:13.5px; color:#5b626e; white-space:nowrap; }
-    .au__role.is-admin{ color:#4f46e5; font-weight:600; }
+    /* Role as icon + select. The icon sits UNDER the select rather than beside it so
+       the whole cell is one target; the select is transparent and sized to its text. */
+    .au__rolewrap{ display:inline-flex; align-items:center; gap:8px; border-radius:7px;
+                   padding:3px 4px 3px 6px; }
+    .au__rolewrap:hover{ background:rgba(16,17,26,0.05); }
+    .au__roleic{ display:grid; place-items:center; width:24px; height:24px; flex:none;
+                 border-radius:6px; background:rgba(16,17,26,0.05); color:#5b626e; }
+    .au__roleic .gvic{ width:14px; height:14px; }
+    .au__rolewrap.is-admin .au__roleic{ background:#eef2ff; color:#4f46e5; }
+    .au__rolesel{ appearance:none; -webkit-appearance:none; border:0; background:transparent;
+                  font:inherit; font-size:13.5px; color:#5b626e; cursor:pointer; padding:2px 16px 2px 0;
+                  background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%239aa0ab' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='m6 9 6 6 6-6'/></svg>");
+                  background-repeat:no-repeat; background-position:right 0 center; background-size:13px; }
+    .au__rolewrap.is-admin .au__rolesel{ color:#4f46e5; font-weight:600; }
+    .au__rolesel:focus-visible{ outline:2px solid #5e6ad2; outline-offset:2px; border-radius:4px; }
+    .au__rolesel:disabled{ cursor:default; background-image:none; padding-right:0; opacity:.75; }
     .au__last{ white-space:nowrap; }
     .au__seen{ font-size:13.5px; color:#5b626e; }
     .au__seen--never{ color:#9aa0ab; }
@@ -6160,6 +6265,17 @@ const CHANGELOG_JS = `(function(){
   }
 })();`;
 
+// Help lives here now rather than costing a permanent line in the rail — the drawer
+// itself is still chrome and still opens from anywhere that carries [data-help-open].
+const CHANGELOG_HELP_CSS = `
+  .folderbar .aubtn{ display:inline-flex; align-items:center; gap:7px; font:inherit; font-size:13px;
+                     font-weight:500; padding:6px 12px; border-radius:8px;
+                     border:1px solid rgba(16,17,26,0.14); background:#fff; color:#16171a;
+                     cursor:pointer; white-space:nowrap; }
+  .folderbar .aubtn:hover{ background:rgba(16,17,26,0.04); }
+  .folderbar .aubtn .gvic{ width:15px; height:15px; }
+`;
+
 function renderChangelogPage(entries) {
   const cards = entries
     .map((e) => {
@@ -6172,11 +6288,11 @@ function renderChangelogPage(entries) {
     })
     .join("");
   const body = entries.length
-    ? `<header class="folderbar"><h1 class="folderbar__title">Changelog</h1><span class="folderbar__count">${entries.length}</span><span class="folderbar__rule"></span></header>` +
+    ? `<header class="folderbar"><h1 class="folderbar__title">Changelog</h1><span class="folderbar__count">${entries.length}</span><span class="folderbar__rule"></span><button type="button" class="aubtn" data-help-open>${IC_HELP}Help</button></header>` +
       `<div data-fgroup><div class="cl-list">${cards}</div></div>${filterEmpty()}` +
-      `<style>${CHANGELOG_CSS}</style><script>${CHANGELOG_JS}</script>`
-    : `<header class="folderbar"><h1 class="folderbar__title">Changelog</h1><span class="folderbar__rule"></span></header>` +
-      `<p class="empty">No updates yet. Add one to <code>changelog.md</code> and rebuild.</p>`;
+      `<style>${CHANGELOG_CSS}${CHANGELOG_HELP_CSS}</style><script>${CHANGELOG_JS}</script>`
+    : `<header class="folderbar"><h1 class="folderbar__title">Changelog</h1><span class="folderbar__rule"></span><button type="button" class="aubtn" data-help-open>${IC_HELP}Help</button></header>` +
+      `<p class="empty">No updates yet. Add one to <code>changelog.md</code> and rebuild.</p><style>${CHANGELOG_HELP_CSS}</style>`;
   return shell({ title: "Changelog", activeTab: "changelog", body });
 }
 
