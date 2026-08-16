@@ -2107,11 +2107,23 @@ const NAV_CSS = `
     /* Engine version footer (admins only) + the update-available "!" on the chip. */
     .gvprof__dot { flex: none; width: 15px; height: 15px; border-radius: 50%; display: grid; place-items: center;
       background: #b45309; color: #fff; font-size: 10px; font-weight: 800; line-height: 1; }
+    /* [hidden] override: the display below would otherwise beat the UA rule. */
+    .gvprof__ver[hidden] { display: none; }
     .gvprof__ver { display: flex; align-items: center; justify-content: space-between; gap: 8px;
       margin-top: 4px; padding: 6px 8px 3px; border-top: 1px solid rgba(16,17,26,0.08);
       font-size: 11px; color: #9aa0ab; }
     .gvprof__ver a { color: #b45309; font-weight: 600; text-decoration: none; }
     .gvprof__ver a:hover { text-decoration: underline; }
+
+    /* Workspace-settings rail (adminRail): back link + the three sections. Reuses
+       .gvside__act so a tab sits at exactly the rail's own rhythm. */
+    .gvadmin__back { display: flex; align-items: center; gap: 7px; margin: 2px 1px 10px;
+                     padding: 7px 8px; border-radius: 8px; text-decoration: none;
+                     color: #16171a; font-weight: 600; font-size: 13.5px; }
+    .gvadmin__back svg { width: 15px; height: 15px; flex: none; color: #9aa0ab; }
+    .gvadmin__back:hover { background: rgba(16,17,26,0.05); }
+    .gvadmin__tab { font-weight: 500; }
+    .gvadmin__tab.is-on { background: #eef2ff; color: #4f46e5; font-weight: 600; }
 
     /* Space switcher — active space icon+name+badge with a dropdown of the spaces you
        belong to. Server-rendered from the build-time space list, which is every space;
@@ -2154,6 +2166,12 @@ const NAV_CSS = `
       box-shadow: 0 1px 2px rgba(16,24,40,0.05), 0 12px 30px -16px rgba(16,24,40,0.30);
     }
     .gvspace__item { display: flex; align-items: center; gap: 9px; padding: 7px 8px; border-radius: 7px; text-decoration: none; color: #16171a; font-size: 13px; font-weight: 500; }
+    /* MUST stay next to the rule above. A class rule setting display out-specifies
+       the UA's [hidden] { display: none }, so without this every space row renders
+       for everyone no matter what SPACE_JS sets — the membership filter silently
+       does nothing and the switcher lists spaces you cannot open. Exactly the
+       gotcha .gvprof__item[hidden] above already exists for. */
+    .gvspace__item[hidden] { display: none; }
     .gvspace__item:hover { background: rgba(16,17,26,0.05); }
     .gvspace__iname { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .gvspace__chk { width: 16px; height: 16px; flex: none; color: #5e6ad2; opacity: 0; }
@@ -2176,6 +2194,8 @@ const NAV_CSS = `
     .gvsearch input::placeholder { color: #8a9098; }
     .gvsearch input:hover { background: #e6e8ec; }
     .gvsearch input:focus { background: #fff; border-color: rgba(94,106,210,0.55); box-shadow: 0 0 0 3px rgba(94,106,210,0.13); }
+    /* [hidden] override: the display below would otherwise beat the UA rule. */
+    .gvsearch__clear[hidden] { display: none; }
     .gvsearch__clear {
       position: absolute; right: 7px; top: 50%; transform: translateY(-50%);
       width: 22px; height: 22px; padding: 0; display: grid; place-items: center;
@@ -3065,7 +3085,34 @@ function appChrome(active) {
     <button type="button" class="gvburger" data-side-toggle aria-expanded="false" aria-controls="gvside" aria-label="Open navigation"><span class="gvburger__bars" aria-hidden="true"><span></span><span></span><span></span></span></button>
     <a class="gvtop__brand" href="${S("/")}">${GV_MARK}<span>augur</span></a>
   </header>`;
-  return `${top}${sideRail(active)}<div class="gvscrim" data-side-scrim></div>${helpDrawer()}${settingsModal()}`;
+  // Workspace admin REPLACES the rail rather than adding a second nav column beside
+  // it. You are in one workspace's settings, not browsing its content, so the rail's
+  // Projects / Pinned / Library are noise — and two nav columns side by side read as
+  // two levels of hierarchy when there is only one.
+  const rail = active === "admin" ? adminRail() : sideRail(active);
+  return `${top}${rail}<div class="gvscrim" data-side-scrim></div>${helpDrawer()}${settingsModal()}`;
+}
+
+// The rail while you are inside workspace settings: the profile chip stays (it is
+// yours, everywhere), then a back link naming the workspace, then the sections.
+function adminRail() {
+  const tab = (key, label) =>
+    `<button type="button" class="gvside__act gvadmin__tab" data-admin-tab="${key}">${label}</button>`;
+  return `<aside class="gvside" id="gvside" aria-label="Workspace settings">
+    ${profileChip()}
+    <div class="gvside__rule"></div>
+    <a class="gvadmin__back" href="/" data-admin-back>
+      <svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M10 3L5 8l5 5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <span data-admin-space-name>Workspace</span>
+    </a>
+    <div class="gvside__scroll">
+      <div class="gvside__group" data-admin-nav>
+        ${tab("people", "People")}
+        ${tab("content", "Content")}
+        ${tab("settings", "Settings")}
+      </div>
+    </div>
+  </aside>`;
 }
 
 /** Shared chrome script: real-time in-page filter + the mobile rail drawer. */
@@ -5114,7 +5161,9 @@ const ADMIN_SECTIONS_JS = `(function(){
   function show(name){
     var tabs = nav.querySelectorAll('[data-admin-tab]');
     tabs.forEach(function(t){
-      t.classList.toggle('is-on', t.getAttribute('data-admin-tab') === name);
+      var on = t.getAttribute('data-admin-tab') === name;
+      t.classList.toggle('is-on', on);
+      if(on) t.setAttribute('aria-current','page'); else t.removeAttribute('aria-current');
     });
     document.querySelectorAll('[data-admin-sec]').forEach(function(s){
       s.hidden = s.getAttribute('data-admin-sec') !== name;
@@ -5128,7 +5177,7 @@ const ADMIN_SECTIONS_JS = `(function(){
     });
   });
   var want = (location.hash || '').replace('#','');
-  if(want && document.querySelector('[data-admin-sec="'+want+'"]')) show(want);
+  show(want && document.querySelector('[data-admin-sec="'+want+'"]') ? want : 'people');
 
   // Storage — the same /__admin/storage the rail foot used to read.
   var sEl = document.querySelector('[data-set-storage]');
@@ -5173,18 +5222,8 @@ function renderAdminPage() {
     /* Workspace admin: a left nav beside the sections, the shape Figma's admin uses.
        The nav is what makes the scope legible — you are administering ONE workspace,
        named at the top, with a way back to it. */
-    .auwrap{ display:flex; align-items:flex-start; gap:38px; }
-    .aunav{ flex:none; width:170px; position:sticky; top:24px; display:flex; flex-direction:column; gap:2px; }
-    .aunav__back{ display:flex; align-items:center; gap:7px; margin-bottom:14px; padding:6px 8px;
-                  border-radius:7px; text-decoration:none; color:#16171a; font-weight:600; font-size:13.5px; }
-    .aunav__back svg{ width:15px; height:15px; flex:none; color:#9aa0ab; }
-    .aunav__back:hover{ background:rgba(16,17,26,0.05); }
-    .aunav__item{ text-align:left; padding:7px 9px; border:0; border-radius:7px; background:none;
-                  font:inherit; font-size:13.5px; font-weight:500; color:#5b626e; cursor:pointer; }
-    .aunav__item:hover{ background:rgba(16,17,26,0.05); color:#16171a; }
-    .aunav__item.is-on{ background:#eef2ff; color:#4f46e5; font-weight:600; }
-    .aunav__item:focus-visible{ outline:2px solid #5e6ad2; outline-offset:1px; }
-    .aumain{ flex:1 1 auto; min-width:0; }
+    .auwrap{ display:block; }
+    .aumain{ min-width:0; }
     .auset__row{ max-width:560px; margin:0 0 30px; }
     .auset__label{ display:block; margin:0 0 7px; font-size:13px; font-weight:600; color:#16171a; }
     .auset__row input{ width:100%; padding:8px 11px; border:1px solid rgba(16,17,26,0.16);
@@ -5288,16 +5327,9 @@ function renderAdminPage() {
 // opens it. ADMIN_JS reads ?space= to know which, and asks /__admin/users for that
 // space's members; the worker re-checks that the caller administers it.
 function adminSections() {
+  // No nav here — adminRail() IS the navigation (see appChrome). This is only the
+  // sections it switches between.
   return `<div class="auwrap">
-    <nav class="aunav" data-admin-nav>
-      <a class="aunav__back" href="/" data-admin-back>
-        <svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M10 3L5 8l5 5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
-        <span data-admin-space-name>Workspace</span>
-      </a>
-      <button type="button" class="aunav__item is-on" data-admin-tab="people">People</button>
-      <button type="button" class="aunav__item" data-admin-tab="content">Content</button>
-      <button type="button" class="aunav__item" data-admin-tab="settings">Settings</button>
-    </nav>
     <div class="aumain">
 
     <section data-admin-sec="people">

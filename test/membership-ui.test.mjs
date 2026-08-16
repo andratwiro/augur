@@ -108,15 +108,41 @@ const adminPage = new Function(
    return adminSections();`,
 )();
 
-test("the admin page has a left nav — People, Content, Settings", () => {
-  assert.match(adminPage, /data-admin-nav/);
+// The nav lives in the RAIL, not inside the content — workspace settings replaces the
+// sidebar rather than adding a second nav column beside it (Figma's shape). So the
+// sections markup must carry no nav of its own.
+const adminRail = new Function(
+  `${STUBS}
+   ${lift("profileChip")}
+   ${lift("adminRail")}
+   return adminRail();`,
+)();
+
+test("the rail becomes the workspace-settings nav — People, Content, Settings", () => {
+  assert.match(adminRail, /data-admin-nav/);
   for (const s of ["People", "Content", "Settings"]) {
-    assert.match(adminPage, new RegExp(`data-admin-tab="${s.toLowerCase()}"`), `${s} tab`);
+    assert.match(adminRail, new RegExp(`data-admin-tab="${s.toLowerCase()}"`), `${s} tab`);
   }
 });
 
-test("the nav offers a way back out of admin", () => {
-  assert.match(adminPage, /data-admin-back/);
+test("the sections carry no nav of their own", () => {
+  assert.equal(/data-admin-nav|data-admin-tab=/.test(adminPage), false,
+    "two nav columns side by side read as two levels of hierarchy when there is one");
+});
+
+test("the rail offers a way back to the workspace", () => {
+  assert.match(adminRail, /data-admin-back/);
+  assert.match(adminRail, /data-admin-space-name/);
+});
+
+test("the profile chip stays in the admin rail — it is yours, everywhere", () => {
+  assert.match(adminRail, /data-prof/);
+});
+
+test("the admin rail drops content navigation entirely", () => {
+  for (const gone of ["data-pinned-list", "Library", "Changelog"]) {
+    assert.equal(adminRail.includes(gone), false, `${gone} has no place in workspace settings`);
+  }
 });
 
 test("Settings offers a custom URL field that is visibly a stub", () => {
