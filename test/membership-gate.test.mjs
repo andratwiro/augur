@@ -62,3 +62,11 @@ test("a member of a space they do not administer cannot reach that space's admin
   assert.equal(W.roleIn(u, "beta"), "editor");
   assert.equal(W.administersAny(u, [{ id: "beta", name: "Beta", base: "/beta" }]), false);
 });
+
+test("with no space list known, administersAny degenerates to the global role", () => {
+  // A raw engine build, or any request landing before routing.json has loaded. Answering
+  // "false" here would lock every admin out of the admin API with no way back in.
+  assert.equal(W.administersAny({ email: "g@example.test", role: "admin" }, []), true);
+  assert.equal(W.administersAny({ email: "e@example.test", role: "editor" }, []), false);
+  assert.equal(W.administersAny({ email: "g@example.test", role: "admin" }, undefined), true);
+});

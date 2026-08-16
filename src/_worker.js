@@ -608,7 +608,35 @@ function spaceIdForPath(pathname, spaces) {
 // Does this person administer ANY space? The /admin door asks this rather than the
 // global role: with per-space roles, the admin of one space is an ordinary member
 // elsewhere, and the page itself scopes to a space they actually administer.
-const administersAny = (u, spaces) => (spaces || []).some((s) => roleIn(u, s.id) === "admin");
+//
+// With NO space list known — a raw engine build, or any request that lands before
+// routing.json has loaded — the question degenerates to the global role. That is the
+// check this replaced, so an instance with no spaces configured behaves exactly as it
+// did. Returning false there would lock every admin out of the admin API with no way
+// back in, which is the one failure mode this whole file is careful about.
+const administersAny = (u, spaces) =>
+  (spaces || []).length ? spaces.some((s) => roleIn(u, s.id) === "admin") : roleOf(u) === "admin";
+
+// The per-space twin of the instance-wide last-admin guard: a space with no admin
+// cannot be recovered from inside the product, exactly like an instance with none.
+// Asks roleIn rather than reading the overlay directly, so a global admin with no
+// membership recorded correctly counts as an admin of every space.
+function lastAdminOf(users, spaceId, email) {
+  const me = lcEmail(email);
+  return !(users || []).some((u) => lcEmail(u.email) !== me && roleIn(u, spaceId) === "admin");
+}
+
+// A password reset hands over the ACCOUNT, not one space — so it is only offered when
+// every space the target belongs to is one the actor already administers. Otherwise
+// resetting is a route into a space the actor was never given, which is exactly the
+// boundary per-space roles exist to draw. A target with no membership recorded belongs
+// to every space, so only someone who administers all of them may reset it.
+function mayResetPassword(users, actorEmail, targetEmail, spaces = SPACES) {
+  const actor = (users || []).find((u) => lcEmail(u.email) === lcEmail(actorEmail));
+  const target = (users || []).find((u) => lcEmail(u.email) === lcEmail(targetEmail));
+  if (!actor || !target) return false;
+  return spacesFor(target, spaces).every((s) => roleIn(actor, s.id) === "admin");
+}
 
 const meSpaces = (u, spaces) =>
   spacesFor(u, spaces).map((s) => ({
@@ -3629,7 +3657,10 @@ function rtProxy(request, url, env) {
 // Admin surface: manage PEOPLE, not credentials. There is deliberately no path here
 // that sets, reads or recovers a password — reset re-issues an invite instead.
 async function adminUsersApi(request, url, env, me, users = USERS, configUsers = CONFIG_USERS) {
-  if (!me || me.role !== "admin") return jsonResponse({ error: "forbidden" }, 403);
+  // Admin of ANY space gets in; every mutation below re-checks the SPECIFIC space it
+  // touches. On an instance that never set memberships this is the old global check,
+  // because a global admin administers everything by default.
+  if (!me || !administersAny(me, SPACES)) return jsonResponse({ error: "forbidden" }, 403);
   const kv = kvFor(env);
   // A roster write lands in THIS isolate immediately (so the list the admin is looking
   // at is right) and everywhere else on the next config tick, which cfgAt=0 brings
@@ -3642,20 +3673,28 @@ async function adminUsersApi(request, url, env, me, users = USERS, configUsers =
   };
 
   if (request.method === "GET") {
+    // ?space=<id> scopes the list to that space's members and reports each person's
+    // role THERE. Without it the answer is the whole roster at global roles, which is
+    // what every caller predating per-space admin expects.
+    const scope = url.searchParams.get("space");
+    const inScope = scope ? users.filter((u) => isMemberOf(u, scope)) : users;
     const out = [];
-    for (const u of users) {
+    for (const u of inScope) {
       let lastSeen = null;
       try { lastSeen = kv ? await kv.get(LASTSEEN_PREFIX + u.email) : null; } catch (e) {}
       const secret = await effectiveSecret(env, u);
       out.push({
-        email: u.email, name: u.name, role: roleOf(u),
+        email: u.email, name: u.name, role: scope ? roleIn(u, scope) : roleOf(u),
         initials: u.initials || "", color: u.color || "#4f46e5",
         avatar: avatarUrl(u),
         state: secret ? "accepted" : "pending",
         lastSeen,
+        // Whether THIS admin may reset THIS person — the panel hides the action rather
+        // than offering one the API will refuse. See mayResetPassword.
+        mayReset: mayResetPassword(users, me.email, u.email),
       });
     }
-    return jsonResponse({ users: out });
+    return jsonResponse({ users: out, space: scope || null });
   }
 
   if (request.method === "POST") {
@@ -3668,6 +3707,12 @@ async function adminUsersApi(request, url, env, me, users = USERS, configUsers =
     if (kind === "reset") {
       const u = userByEmail(op.email, users);
       if (!u) return jsonResponse({ error: "unknown-user" }, 400);
+      // A reset is an ACCOUNT action. Refuse it when the target reaches a space the
+      // caller does not administer, or the reset becomes a door into that space.
+      if (!mayResetPassword(users, me.email, u.email)) {
+        return jsonResponse({ error: "beyond-scope", message:
+          "This person belongs to a space you don't administer. They can reset their own password from Settings." }, 403);
+      }
       // Clearing the secret and minting the link are ONE action: there is never a state
       // where a known password is still live alongside a pending invite.
       await revokeSecret(env, u.email);
@@ -3718,6 +3763,42 @@ async function adminUsersApi(request, url, env, me, users = USERS, configUsers =
     // Change someone's role. The thing an operator actually reaches for, and the thing
     // that did not exist: until now the only way was remove-and-re-invite, which loses
     // their password and their history, and still could not produce a viewer.
+    // Membership: add someone to a space, change their role there, or drop them from
+    // it. {op:"space", email, space, role}; role:null removes them from that space.
+    // Authority is checked against the SPACE being changed, never the global role —
+    // per-space roles are worth nothing if the power to set them is not scoped too.
+    if (kind === "space") {
+      const u = userByEmail(op.email, users);
+      if (!u) return jsonResponse({ error: "unknown-user" }, 400);
+      const sid = String(op.space || "");
+      if (!SPACES.some((s) => s.id === sid)) return jsonResponse({ error: "unknown-space" }, 400);
+      if (roleIn(me, sid) !== "admin") return jsonResponse({ error: "forbidden" }, 403);
+      const role = op.role === null ? null : (ROLES.includes(op.role) ? op.role : null);
+      if (op.role != null && role === null) {
+        return jsonResponse({ error: "bad-role", roles: ROLES }, 400);
+      }
+      const email = lcEmail(u.email);
+      // Losing this space's last admin is the lockout nobody can undo from in-app —
+      // the same trap roles.test.mjs guards instance-wide, one level down.
+      const demoting = roleIn(u, sid) === "admin" && role !== "admin";
+      if (demoting && lastAdminOf(users, sid, email)) {
+        return jsonResponse({ error: "last-admin", message: "This is the only admin of this space." }, 409);
+      }
+      const index = await readSpaces(env);
+      // An absent entry means "every space" (see USER_SPACES_KEY), so the first write
+      // for someone must SPELL OUT the spaces they already had — otherwise granting
+      // one space silently removes every other.
+      const current = index[email] && typeof index[email] === "object" && !Array.isArray(index[email])
+        ? index[email]
+        : Object.fromEntries(SPACES.map((s) => [s.id, roleOf(u)]));
+      const next = { ...current };
+      if (role === null) delete next[sid]; else next[sid] = role;
+      index[email] = next;
+      await kv.put(USER_SPACES_KEY, JSON.stringify(index));
+      cfgAt = 0; // the next request re-reads, so the panel sees its own write
+      return jsonResponse({ ok: true, email, space: sid, role });
+    }
+
     if (kind === "role") {
       const u = userByEmail(op.email, users);
       if (!u) return jsonResponse({ error: "unknown-user" }, 400);
@@ -3822,6 +3903,8 @@ async function adminUsersApi(request, url, env, me, users = USERS, configUsers =
       try { await clearName(env, email); } catch (e) {}   // …and so does their chosen name
       // A re-invited address must not inherit the last person's role — least of all admin.
       try { await clearRole(env, email); } catch (e) {}
+      // …nor their spaces, least of all one they administered.
+      try { await clearSpaces(env, email); } catch (e) {}
       try { await kv.delete(LASTSEEN_PREFIX + u.email); } catch (e) {}
       commitRoster(roster);
       // Symmetric to invite: the identity file should stop naming them too. The
@@ -4404,7 +4487,7 @@ export const __testables = {
   adminUsersApi, adminBackupApi,
   ROLES, roleOf, readRoles, applyRoles, clearRole, USER_ROLES_KEY,
   USER_SPACES_KEY, readSpaces, applySpaces, membershipOf, isMemberOf, roleIn,
-  spacesFor, clearSpaces, meSpaces, spaceIdForPath, administersAny,
+  spacesFor, clearSpaces, meSpaces, spaceIdForPath, administersAny, lastAdminOf, mayResetPassword,
   mergeRoster, readRoster, revokeSecret, revokeInvitesFor,
   applyAvatars, readAvatars, parseAvatarDataUri, avatarHash, clearAvatar,
   meAvatarApi, serveKvAvatar, avatarUrl, USER_AVATARS_KEY, AVATAR_BLOB_PREFIX,
