@@ -1826,6 +1826,17 @@ function lookupBundleFile(manifests, pathname) {
 }
 // What an un-versioned store asset is served with. Not a tuning knob: see the
 // assetFetch() header below for why the empty string this replaces was a bug.
+//
+// ⚠️ On Cloudflare you will NOT see this on the wire. A zone's Browser Cache TTL
+// defaults to 4 hours and rewrites the downstream header, so `curl -I` reports
+// `public, max-age=14400` no matter what is set here — which reads exactly like the
+// bug still being present. It is not: the rewrite is downstream-only, the EDGE obeys
+// the `no-cache` it was given and revalidates, so a publish reaches every visitor at
+// once. What survives is a returning browser holding its own copy for up to the zone
+// TTL. Closing that last gap is a zone setting, not a code change: set Browser Cache
+// TTL to "Respect Existing Headers" (per zone — Caching → Configuration). Do not
+// chase it from here by reaching for `no-store`; that is honoured, but it also
+// forbids storage outright and throws away the ETag/304 economy this relies on.
 const ASSET_REVALIDATE = "public, no-cache";
 
 function resolveBundlePath(manifests, pathname) {
