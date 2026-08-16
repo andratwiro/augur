@@ -2361,7 +2361,7 @@ const NAV_CSS = `
     .gvset__scrim { position: absolute; inset: 0; background: rgba(16,17,26,0.34); opacity: 0; transition: opacity .18s ease; }
     .gvset.is-open .gvset__scrim { opacity: 1; }
     .gvset__panel {
-      position: relative; width: min(720px, 100%); max-height: min(80vh, 720px);
+      position: relative; width: min(600px, 100%); max-height: min(80vh, 720px);
       display: flex; flex-direction: column; background: #fff; border-radius: 14px;
       box-shadow: 0 1px 2px rgba(16,24,40,0.06), 0 32px 70px -28px rgba(16,24,40,0.45);
       opacity: 0; transform: translateY(6px) scale(.99); transition: opacity .18s ease, transform .18s ease;
@@ -2369,38 +2369,62 @@ const NAV_CSS = `
       color: #2c2f36;
     }
     .gvset.is-open .gvset__panel { opacity: 1; transform: none; }
-    .gvset__head { display: flex; align-items: center; gap: 8px; padding: 12px 14px; border-bottom: 1px solid rgba(16,17,26,0.08); }
+    .gvset__head { display: flex; align-items: center; gap: 8px; padding: 9px 11px; border-bottom: 1px solid rgba(16,17,26,0.08); }
     /* One tab today. The tablist exists so a second is additive — see the Account tab. */
     .gvset__tabs { display: flex; gap: 4px; flex: 1 1 auto; min-width: 0; overflow-x: auto; }
-    .gvset__tab { padding: 7px 12px; border: 0; border-radius: 8px; background: none; cursor: pointer; white-space: nowrap;
-      font: 600 13px/1 "Inter", "Inter Variable", sans-serif; color: #5b626e; transition: background .12s ease, color .12s ease; }
+    .gvset__tab { padding: 5px 10px; border: 0; border-radius: 7px; background: none; cursor: pointer; white-space: nowrap;
+      font: 600 12.5px/1.2 "Inter", "Inter Variable", sans-serif; color: #5b626e; transition: background .12s ease, color .12s ease; }
     .gvset__tab:hover { background: rgba(16,17,26,0.05); color: #16171a; }
     .gvset__tab.is-active { background: rgba(16,17,26,0.07); color: #16171a; }
     .gvset__tab:focus-visible { outline: 2px solid #5e6ad2; outline-offset: 1px; }
-    .gvset__x { flex: none; display: grid; place-items: center; width: 30px; height: 30px; border: 0; border-radius: 8px; background: none; color: #5b626e; cursor: pointer; }
+    .gvset__x { flex: none; display: grid; place-items: center; width: 26px; height: 26px; border: 0; border-radius: 7px; background: none; color: #5b626e; cursor: pointer; }
     .gvset__x:hover { background: rgba(16,17,26,0.06); color: #16171a; }
     .gvset__x:focus-visible { outline: 2px solid #5e6ad2; outline-offset: 1px; }
-    .gvset__x .gvic { width: 18px; height: 18px; }
-    .gvset__body { flex: 1 1 auto; overflow-y: auto; overscroll-behavior: contain; padding: 26px 30px 30px; }
-    .gvset__cols { display: flex; align-items: flex-start; gap: 40px; }
-    .gvset__avcol { flex: none; display: flex; flex-direction: column; align-items: center; gap: 12px; }
+    .gvset__x .gvic { width: 16px; height: 16px; }
+    .gvset__body { flex: 1 1 auto; overflow-y: auto; overscroll-behavior: contain; padding: 22px 26px 26px; }
+    .gvset__cols { display: flex; align-items: flex-start; gap: 30px; }
+    .gvset__avcol { flex: none; display: flex; flex-direction: column; align-items: center; gap: 9px; }
     /* The big circle carries data-prof-av, so PROFILE_JS fills it with the photo or
-       initials-on-colour along with every other face on the page. */
-    .gvset__av { width: 128px; height: 128px; border-radius: 50%; display: grid; place-items: center;
-      background: #4f46e5; color: #fff; font: 700 34px/1 "Inter", "Inter Variable", sans-serif;
+       initials-on-colour along with every other face on the page. 96px CSS is 192-288
+       device px, which is why the crop stores 320 — see SIZE in SETTINGS_JS. */
+    .gvset__av { width: 96px; height: 96px; border-radius: 50%; display: grid; place-items: center;
+      background: #4f46e5; color: #fff; font: 700 26px/1 "Inter", "Inter Variable", sans-serif;
       letter-spacing: .02em; text-transform: uppercase; background-size: cover; background-position: center; }
-    .gvset__edit { padding: 6px 14px; border: 0; border-radius: 8px; background: rgba(16,17,26,0.06);
+    /* Plain text, not a pill — the reference puts nothing but the word under the face. */
+    .gvset__edit { padding: 2px 6px; border: 0; border-radius: 6px; background: none;
       font: 500 13px/1.4 "Inter", "Inter Variable", sans-serif; color: #16171a; cursor: pointer; transition: background .12s ease; }
-    .gvset__edit:hover { background: rgba(16,17,26,0.10); }
+    .gvset__edit:hover { background: rgba(16,17,26,0.06); }
     .gvset__edit:focus-visible { outline: 2px solid #5e6ad2; outline-offset: 1px; }
-    .gvset__err { max-width: 128px; text-align: center; font-size: 12px; color: #b42318; }
+    .gvset__err { max-width: 110px; text-align: center; font-size: 11.5px; color: #b42318; }
     .gvset__err[hidden] { display: none; }
-    .gvset__fields { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 22px; }
-    .gvset__label { margin: 0 0 6px; font: 600 17px/1.3 "Inter", "Inter Variable", sans-serif; color: #16171a; }
-    .gvset__value { margin: 0; font-size: 14px; color: #2c2f36; overflow-wrap: anywhere; }
+    .gvset__fields { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 18px; }
+    .gvset__label { margin: 0 0 4px; font: 600 15px/1.3 "Inter", "Inter Variable", sans-serif; color: #16171a; }
+    .gvset__value { margin: 0; font-size: 13px; color: #2c2f36; overflow-wrap: anywhere; }
+    /* "Change …" affordances. A live one is a blue link-button; a locked one keeps its
+       place in the layout but reads as unavailable rather than pretending to work. */
+    .gvset__link { display: inline-flex; align-items: center; gap: 5px; margin-top: 5px; padding: 0;
+      border: 0; background: none; font: 500 13px/1.4 "Inter", "Inter Variable", sans-serif;
+      color: #2563eb; cursor: pointer; }
+    .gvset__link:hover { text-decoration: underline; }
+    .gvset__link:focus-visible { outline: 2px solid #5e6ad2; outline-offset: 2px; border-radius: 4px; }
+    .gvset__link[disabled] { color: #9aa0ab; cursor: default; text-decoration: none; }
+    .gvset__link .gvic { width: 12px; height: 12px; }
+    .gvset__form { display: flex; flex-wrap: wrap; align-items: center; gap: 7px; margin-top: 2px; }
+    .gvset__form[hidden] { display: none; }
+    .gvset__input { flex: 1 1 180px; min-width: 0; font: inherit; font-size: 13px; padding: 6px 9px;
+      border: 1px solid rgba(16,17,26,0.18); border-radius: 7px; color: #16171a; background: #fff; }
+    .gvset__input:focus-visible { outline: 2px solid #5e6ad2; outline-offset: 0; border-color: transparent; }
+    .gvset__btn { flex: none; padding: 6px 12px; border: 0; border-radius: 7px; background: #2563eb; color: #fff;
+      font: 600 12.5px/1.2 "Inter", "Inter Variable", sans-serif; cursor: pointer; }
+    .gvset__btn:hover { background: #1d4ed8; }
+    .gvset__btn--ghost { background: rgba(16,17,26,0.06); color: #16171a; }
+    .gvset__btn--ghost:hover { background: rgba(16,17,26,0.10); }
+    .gvset__btn:focus-visible { outline: 2px solid #5e6ad2; outline-offset: 2px; }
+    .gvset__msg { flex-basis: 100%; font-size: 11.5px; color: #b42318; }
+    .gvset__msg:empty { display: none; }
     @media (max-width: 640px) {
-      .gvset__body { padding: 22px 18px 26px; }
-      .gvset__cols { flex-direction: column; align-items: center; gap: 24px; }
+      .gvset__body { padding: 20px 16px 24px; }
+      .gvset__cols { flex-direction: column; align-items: center; gap: 22px; }
       .gvset__fields { align-self: stretch; }
     }
 
@@ -2437,7 +2461,7 @@ const NAV_CSS = `
     .gvcrop__msg[hidden] { display: none; }
     /* The rail's dim-and-inert rule is scoped to .gvprof__item, so the dialog carries
        its own rather than widening a rail selector to reach across the page. */
-    .gvset__edit[aria-busy=true], .gvcrop__save[aria-busy=true] { opacity: .55; pointer-events: none; }
+    .gvset__edit[aria-busy=true], .gvcrop__save[aria-busy=true], .gvset__btn[aria-busy=true] { opacity: .55; pointer-events: none; }
 
     @media (prefers-reduced-motion: reduce) {
       .gvside, .gvscrim, .gvburger__bars span, .gvside__caret, .gvhelp__scrim, .gvhelp__panel,
@@ -2492,6 +2516,7 @@ const IC_CHANGELOG = ic(`<path d="M12 8v4l3 2"/><path d="M3.05 11a9 9 0 1 1 .5 4
 const IC_CHEV = ic(`<path d="m9 18 6-6-6-6"/>`); // chevron-right (rotates open via CSS)
 const IC_GEAR = ic(`<path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/>`); // settings
 const IC_SIGNOUT = ic(`<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" x2="9" y1="12" y2="12"/>`); // log-out
+const IC_LOCK = ic(`<rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>`); // lock — marks a "Change …" that isn't wired yet
 const IC_SLIDERS = ic(`<line x1="4" x2="4" y1="21" y2="14"/><line x1="4" x2="4" y1="10" y2="3"/><line x1="12" x2="12" y1="21" y2="12"/><line x1="12" x2="12" y1="8" y2="3"/><line x1="20" x2="20" y1="21" y2="16"/><line x1="20" x2="20" y1="12" y2="3"/><line x1="2" x2="6" y1="14" y2="14"/><line x1="10" x2="14" y1="8" y2="8"/><line x1="18" x2="22" y1="16" y2="16"/>`); // sliders-vertical (account settings)
 const IC_HELP = ic(`<circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/>`); // circle-help
 const IC_CLOSE = ic(`<path d="M18 6 6 18"/><path d="m6 6 12 12"/>`); // x
@@ -2948,8 +2973,30 @@ function settingsModal() {
             <input type="file" accept="image/*" data-set-file hidden />
           </div>
           <div class="gvset__fields">
-            <div><h3 class="gvset__label">Name</h3><p class="gvset__value" data-prof-name></p></div>
-            <div><h3 class="gvset__label">Email</h3><p class="gvset__value" data-prof-email></p></div>
+            <div>
+              <h3 class="gvset__label">Name</h3>
+              <div data-set-name-view>
+                <p class="gvset__value" data-prof-name></p>
+                <button type="button" class="gvset__link" data-set-rename>Change name</button>
+              </div>
+              <form class="gvset__form" data-set-name-form hidden>
+                <input type="text" class="gvset__input" data-set-name-input maxlength="60"
+                  autocomplete="name" aria-label="Your name" />
+                <button type="submit" class="gvset__btn" data-set-name-save>Save</button>
+                <button type="button" class="gvset__btn gvset__btn--ghost" data-set-name-cancel>Cancel</button>
+                <span class="gvset__msg" data-set-name-msg aria-live="polite"></span>
+              </form>
+            </div>
+            <div>
+              <h3 class="gvset__label">Email</h3>
+              <p class="gvset__value" data-prof-email></p>
+              <button type="button" class="gvset__link" disabled title="Changing your email isn't available yet">${IC_LOCK}Change email</button>
+            </div>
+            <div>
+              <h3 class="gvset__label">Password</h3>
+              <p class="gvset__value">&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;</p>
+              <button type="button" class="gvset__link" disabled title="Changing your password isn't available yet — ask an admin to reset it">${IC_LOCK}Change password</button>
+            </div>
             <div><h3 class="gvset__label">Role</h3><p class="gvset__value" data-set-role></p></div>
           </div>
         </section>
@@ -4095,10 +4142,18 @@ const PROFILE_JS = `(function(){
     // every paint, so it also carries a fresh photo back to an already-open modal.
     document.dispatchEvent(new CustomEvent('gv:me', {detail: u}));
   }
-  // …and the way back: the settings modal saved a new photo, so repaint every face.
+  // …and the way back: the settings modal saved something, so repaint. Both events
+  // carry the values the WORKER returned, never what the client sent — a name is
+  // cleaned server-side and its initials re-derived there.
   document.addEventListener('gv:avatar', function(e){
     if(!ME) return;
     ME.avatar = (e.detail && e.detail.avatar) || null;
+    paint(ME);
+  });
+  document.addEventListener('gv:name', function(e){
+    if(!ME || !e.detail || !e.detail.name) return;
+    ME.name = e.detail.name;
+    ME.initials = e.detail.initials || null; // null, so initials() re-derives from the name
     paint(ME);
   });
   // Bundle-store fill gauge in the rail foot — admins only (the worker 403s everyone
@@ -4170,7 +4225,10 @@ const SETTINGS_JS = `(function(){
   var el = document.querySelector('[data-set]');
   var crop = document.querySelector('[data-crop]');
   if(!el || !crop) return;
-  var SIZE = 192; // 2x the largest place a face renders, so retina stays crisp
+  // 3.3x the 96px circle the modal draws, so the face is sharp at 2x and 3x device
+  // pixel ratios. MAX mirrors AVATAR_MAX_CHARS in the worker — encode() steps down
+  // until it fits rather than posting something the worker would 400.
+  var SIZE = 320, MAX_CHARS = 64 * 1024;
   var ME = null, last = null, hideT = null;
 
   // ── Who is signed in ───────────────────────────────────────────────────────
@@ -4196,6 +4254,7 @@ const SETTINGS_JS = `(function(){
   }
   function close(){
     err('');
+    if(nameForm && !nameForm.hidden) nameEdit(false); // never reopen onto a half-finished rename
     el.classList.remove('is-open');
     // Hide after the fade; a timeout backstops reduced-motion (no transitionend).
     hideT = setTimeout(function(){ el.hidden = true; hideT = null; }, 220);
@@ -4229,13 +4288,60 @@ const SETTINGS_JS = `(function(){
     });
   });
 
+  // ── Change name ────────────────────────────────────────────────────────────
+  // Inline rather than a third stacked dialog: one field with Save/Cancel in the row
+  // it belongs to. On success PROFILE_JS repaints every name and every set of initials
+  // on the page (gv:name), so the chip agrees with the modal without a reload.
+  var nameView = el.querySelector('[data-set-name-view]');
+  var nameForm = el.querySelector('[data-set-name-form]');
+  var nameInput = el.querySelector('[data-set-name-input]');
+  var nameSave = el.querySelector('[data-set-name-save]');
+  var nameMsg = el.querySelector('[data-set-name-msg]');
+  var rename = el.querySelector('[data-set-rename]');
+  function nameEdit(on){
+    if(!nameView || !nameForm) return;
+    if(nameMsg) nameMsg.textContent = '';
+    nameView.hidden = on;
+    nameForm.hidden = !on;
+    if(on && nameInput){
+      nameInput.value = (ME && ME.name) || '';
+      nameInput.focus(); nameInput.select();
+    } else if(rename) rename.focus();
+  }
+  if(rename) rename.addEventListener('click', function(){ nameEdit(true); });
+  var nameCancel = el.querySelector('[data-set-name-cancel]');
+  if(nameCancel) nameCancel.addEventListener('click', function(){ nameEdit(false); });
+  if(nameForm) nameForm.addEventListener('submit', function(e){
+    e.preventDefault();
+    var next = (nameInput && nameInput.value || '').trim();
+    if(!next){ if(nameMsg) nameMsg.textContent = 'A name cannot be blank'; return; }
+    if(ME && next === ME.name){ nameEdit(false); return; } // nothing to save
+    if(nameSave) nameSave.setAttribute('aria-busy', 'true');
+    if(nameMsg) nameMsg.textContent = '';
+    fetch('/__me/name', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({name: next})
+    }).then(function(r){ return r.json().catch(function(){ return {}; }).then(function(d){
+      if(!r.ok || !d.ok) throw new Error(d.error || 'failed');
+      // The server cleans the name (whitespace, control characters) and re-derives the
+      // initials, so take BOTH from the response — never from what was typed.
+      document.dispatchEvent(new CustomEvent('gv:name', {detail: {name: d.name, initials: d.initials}}));
+      nameEdit(false);
+    }); })
+      .catch(function(){ if(nameMsg) nameMsg.textContent = 'Could not save that name'; })
+      .then(function(){ if(nameSave) nameSave.setAttribute('aria-busy', 'false'); });
+  });
   // ── The crop dialog ────────────────────────────────────────────────────────
-  // One handler for both dialogs, so the order is guaranteed: the crop closes
-  // first, the modal second. Capturing + stopPropagation keeps the rail's own
-  // Escape handlers from also firing.
+  // ONE handler for every layer, so the order is guaranteed: crop dialog, then an open
+  // name field, then the modal itself — innermost first, never two at once. It has to
+  // live here rather than on each element: this listener CAPTURES (which is what keeps
+  // the rail's own Escape handlers from also firing), so a listener on the name input
+  // would never get its turn.
   document.addEventListener('keydown', function(e){
     if((e.key || '').toLowerCase() !== 'escape') return;
     if(!crop.hidden){ e.preventDefault(); e.stopPropagation(); cropClose(); return; }
+    if(nameForm && !nameForm.hidden){ e.preventDefault(); e.stopPropagation(); nameEdit(false); return; }
     if(!el.hidden){ e.preventDefault(); e.stopPropagation(); close(); }
   }, true);
 
@@ -4349,16 +4455,30 @@ const SETTINGS_JS = `(function(){
   CV.addEventListener('pointerup', endDrag);
   CV.addEventListener('pointercancel', endDrag);
 
+  // Encode the framed circle, stepping quality (then size) down until the data URI
+  // fits what the worker stores. A dense photo at full quality can clear the ceiling,
+  // and a 400 after all that framing would be the worst possible moment to fail.
+  function encode(){
+    var tries = [[SIZE, 0.82], [SIZE, 0.7], [SIZE, 0.58], [256, 0.7], [192, 0.7]];
+    for(var i = 0; i < tries.length; i++){
+      var c = document.createElement('canvas');
+      c.width = c.height = tries[i][0];
+      paintTo(c.getContext('2d'), tries[i][0]);
+      var uri = c.toDataURL('image/jpeg', tries[i][1]);
+      if(uri.length <= MAX_CHARS) return uri;
+    }
+    return null;
+  }
+
   if(saveBtn) saveBtn.addEventListener('click', function(){
     if(!img) return;
     saveBtn.setAttribute('aria-busy', 'true'); msg('');
-    var c = document.createElement('canvas');
-    c.width = c.height = SIZE;
-    paintTo(c.getContext('2d'), SIZE);
+    var uri = encode();
+    if(!uri){ msg('That image is too detailed to store'); saveBtn.setAttribute('aria-busy', 'false'); return; }
     fetch('/__me/avatar', {
       method: 'POST',
       headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({avatar: c.toDataURL('image/jpeg', 0.82)})
+      body: JSON.stringify({avatar: uri})
     }).then(function(r){ return r.json().catch(function(){ return {}; }).then(function(d){
       if(!r.ok || !d.ok) throw new Error(d.error || 'failed');
       // The worker mints a content-hashed URL, so it never collides with the cached

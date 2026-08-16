@@ -81,10 +81,18 @@ const AVATAR_BLOB_PREFIX = "avatar:";       // KV <prefix><hash> → the data: U
 // handler). The hash is of the content, so a new photo is a new URL and the immutable
 // caching downstream stays honest.
 const AVATAR_KV_PREFIX = "u/";
-// The client crops and re-encodes to 96px before it posts, which lands around 5KB; this
-// ceiling is generous enough for a retina-ish 192px JPEG and small enough that neither
-// the KV value nor the ungated response is a lever. Chars of data: URI, not bytes.
+// The client crops and re-encodes to 320px before it posts (3x the 96px the settings
+// modal draws, so the face stays sharp on a retina screen), which lands around 20KB of
+// data: URI. This ceiling leaves headroom above that and is small enough that neither
+// the KV value nor the ungated response is a lever. The client steps its own quality
+// down until it fits rather than posting something this would reject. Chars, not bytes.
 const AVATAR_MAX_CHARS = 64 * 1024;
+// KV {email: {name, at}} — self-set display names, the same shape and the same rules as
+// the photo index above: written only by that person, overriding the config roster's
+// `name` for them alone. Names are small and read on every config tick, so unlike the
+// photos they live in the document itself with no blob indirection.
+const USER_NAMES_KEY = "users:names";
+const NAME_MAX_CHARS = 60;
 // Raster formats only, and each one is checked against its magic bytes before storage:
 // /__avatar/ is ungated and echoes this mime back, so "trust the label" would let a
 // signed-in user park arbitrary bytes behind an image content-type.
@@ -416,9 +424,86 @@ function mergeRoster(configUsers, roster) {
 
 async function applyRoster(env) {
   try {
-    const [roster, avatars] = await Promise.all([readRoster(env), readAvatars(env)]);
-    USERS = applyAvatars(mergeRoster(CONFIG_USERS, roster), avatars);
+    const [roster, avatars, names] = await Promise.all([
+      readRoster(env), readAvatars(env), readNames(env),
+    ]);
+    USERS = applyAvatars(applyNames(mergeRoster(CONFIG_USERS, roster), names), avatars);
   } catch (e) { USERS = CONFIG_USERS; }
+}
+
+// ---- Self-set display names -------------------------------------------------
+// Same bargain as the photo below: who you are is a deploy decision, what you are
+// CALLED is yours. A config-baked name is the seed someone sees until they change it.
+async function readNames(env) {
+  const kv = kvFor(env);
+  if (!kv) return {};
+  try {
+    const doc = JSON.parse((await kv.get(USER_NAMES_KEY)) || "null");
+    return doc && typeof doc === "object" && !Array.isArray(doc) ? doc : {};
+  } catch (e) { return {}; }
+}
+
+// Trim, collapse runs of whitespace, drop control characters, clamp. Returns null for
+// anything that isn't a usable name — the caller turns that into a 400 rather than
+// storing a blank that would render as an empty chip.
+function cleanName(s) {
+  if (typeof s !== "string") return null;
+  // Control characters and the bidi overrides go first: a name is rendered as text in
+  // the chip, the admin table and on comments, and RLO/LRO in particular can reorder
+  // everything drawn after it. Then collapse whitespace runs and trim.
+  const out = s.replace(/[\u0000-\u001f\u007f\u200e\u200f\u202a-\u202e\u2066-\u2069]/g, " ")
+    .replace(/\s+/g, " ").trim();
+  return out && out.length <= NAME_MAX_CHARS ? out : null;
+}
+
+// Copies, never in-place mutation — same reason as applyAvatars.
+//
+// The override also DROPS a config-set `initials`. Initials are a stand-in for the
+// name (they show wherever there's no photo), so keeping "RA" against a name changed
+// to "Bee" would make one person read as two. Dropping it lets initialsFor derive
+// from the new name; publicUser and peopleApi already fall back that way.
+function applyNames(users, index) {
+  return (users || []).map((u) => {
+    const rec = index && index[lcEmail(u.email)];
+    const name = rec && typeof rec.name === "string" ? rec.name : null;
+    if (!name) return u;
+    const { initials, ...rest } = u;
+    return { ...rest, name };
+  });
+}
+
+// Drop someone's chosen name, so the config roster's own name takes over again. Called
+// when an admin removes them: a re-invited address must not inherit the last person's
+// chosen name, and there is no UI for clearing it yourself.
+async function clearName(env, email) {
+  const kv = kvFor(env);
+  if (!kv) return false;
+  const index = await readNames(env);
+  const key = lcEmail(email);
+  if (!index[key]) return false;
+  delete index[key];
+  await kv.put(USER_NAMES_KEY, JSON.stringify(index));
+  return true;
+}
+
+// POST /__me/name {name} — set MY display name. Signed-in users only, and only ever
+// their own row: there is no email parameter, the same rule the photo route follows.
+// A rename propagates everywhere a name is read (chip, admin table, comment authors),
+// because comments store a person id, never a name snapshot.
+async function meNameApi(request, env, me) {
+  if (!me) return jsonResponse({ error: "unauthorized" }, 401);
+  if (request.method !== "POST") return jsonResponse({ error: "method-not-allowed" }, 405);
+  const kv = kvFor(env);
+  if (!kv) return jsonResponse({ error: "no-kv-binding" }, 500);
+  let body;
+  try { body = await request.json(); } catch (e) { return jsonResponse({ error: "bad-json" }, 400); }
+  const name = cleanName(body && body.name);
+  if (!name) return jsonResponse({ error: "bad-name" }, 400);
+  const index = await readNames(env);
+  index[lcEmail(me.email)] = { name, at: new Date().toISOString() };
+  await kv.put(USER_NAMES_KEY, JSON.stringify(index));
+  cfgAt = 0; // this isolate re-reads on the next request; others within ~1.5s
+  return jsonResponse({ ok: true, name, initials: initialsFor(name) });
 }
 
 // ---- Self-set profile photos ------------------------------------------------
@@ -3358,6 +3443,7 @@ async function adminUsersApi(request, url, env, me, users = USERS, configUsers =
       await revokePublishTokens(env, email); // and any publish token they minted via `augur login`
       await revokeInvitesFor(env, email);   // an outstanding link must not let them back in
       try { await clearAvatar(env, email); } catch (e) {} // their face leaves the index too
+      try { await clearName(env, email); } catch (e) {}   // …and so does their chosen name
       try { await kv.delete(LASTSEEN_PREFIX + u.email); } catch (e) {}
       commitRoster(roster);
       // Symmetric to invite: the identity file should stop naming them too. The
@@ -3630,6 +3716,10 @@ export default {
     // /__me is: the profile chip is chrome, and it must work on every page a signed-in
     // person can already see. meAvatarApi re-checks the session (401 without one).
     if (url.pathname === "/__me/avatar") return meAvatarApi(request, env, me);
+
+    // My own display name — same placement and the same reasoning as the photo route
+    // above: chrome, ahead of the gate, re-checks the session itself (401 without one).
+    if (url.pathname === "/__me/name") return meNameApi(request, env, me);
 
     // Comment-author faces, same deal as /__me and /__avatar/ above: this route must
     // stay here, ahead of the auth gate, because intercepting first is what makes it
@@ -3910,6 +4000,7 @@ export const __testables = {
   mergeRoster, readRoster, revokeSecret, revokeInvitesFor,
   applyAvatars, readAvatars, parseAvatarDataUri, avatarHash, clearAvatar,
   meAvatarApi, serveKvAvatar, avatarUrl, USER_AVATARS_KEY, AVATAR_BLOB_PREFIX,
+  meNameApi, applyNames, cleanName, readNames, clearName, USER_NAMES_KEY, NAME_MAX_CHARS,
   AVATAR_MAX_CHARS,
   isEmailish, nameFromEmail, initialsFor,
   applyDerivedRouting, canvasAggregate, synthBuildStamp,

@@ -1395,6 +1395,100 @@ test("removing a user takes their face out of the index too", async () => {
   assert.deepEqual(JSON.parse(await kv.get(W.USER_AVATARS_KEY)), {});
 });
 
+// ---- Self-set display names -------------------------------------------------
+// Same bargain as the photo above: who you are is a deploy decision, what you are
+// CALLED is yours, and a config-baked name is the seed until you change it.
+
+const meNamePost = (name) => new Request("https://example.test/__me/name", {
+  method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name }),
+});
+
+test("cleanName trims, collapses whitespace and strips control + bidi characters", () => {
+  assert.equal(W.cleanName("  Bee   Wilson  "), "Bee Wilson");
+  assert.equal(W.cleanName("Bee Wilson"), "Bee Wilson");
+  assert.equal(W.cleanName("Bee\tWilson\n"), "Bee Wilson");
+  // RLO would reorder everything drawn after the name — in the chip, the admin table
+  // and on every comment. It must never survive into storage.
+  assert.equal(W.cleanName("Bee‮Wilson"), "Bee Wilson");
+});
+
+test("cleanName rejects blanks and anything over the ceiling", () => {
+  for (const bad of [null, undefined, 42, "", "   ", "  ", "‪‬"])
+    assert.equal(W.cleanName(bad), null, `rejected: ${JSON.stringify(bad)}`);
+  assert.equal(W.cleanName("a".repeat(W.NAME_MAX_CHARS)), "a".repeat(W.NAME_MAX_CHARS));
+  assert.equal(W.cleanName("a".repeat(W.NAME_MAX_CHARS + 1)), null);
+});
+
+test("applyNames: a self-set name beats the config one, and never mutates the config object", () => {
+  const config = { email: "a@example.test", name: "Config Name", initials: "CN" };
+  const other = { email: "b@example.test", name: "B" };
+  const users = W.applyNames([config, other], { "a@example.test": { name: "Chosen" } });
+  assert.equal(users[0].name, "Chosen");
+  assert.equal(users[1], other, "an untouched user is passed through as-is");
+  assert.equal(config.name, "Config Name", "the config entry itself is unchanged");
+  assert.equal(W.applyNames([config], {})[0].name, "Config Name", "dropping the entry restores the seed");
+});
+
+test("a renamed person loses their config initials, so the face never contradicts the name", () => {
+  // "CN" against a name changed to "Chosen" would read as two different people
+  // wherever there is no photo. publicUser re-derives from the name once it's gone.
+  const config = { email: "a@example.test", name: "Config Name", initials: "CN" };
+  const renamed = W.applyNames([config], { "a@example.test": { name: "Chosen" } })[0];
+  assert.equal(renamed.initials, undefined);
+  assert.equal(W.publicUser(renamed).initials, "CH", "derived from the new name, not the old letters");
+  assert.equal(W.publicUser(config).initials, "CN", "an un-renamed person keeps theirs");
+});
+
+test("applyNames matches addresses case-insensitively and ignores malformed entries", () => {
+  const out = W.applyNames(
+    [{ email: "Mixed@Example.test", name: "seed" }, { email: "junk@example.test", name: "seed" }],
+    { "mixed@example.test": { name: "Chosen" }, "junk@example.test": { name: 42 } });
+  assert.equal(out[0].name, "Chosen");
+  assert.equal(out[1].name, "seed");
+});
+
+test("POST /__me/name stores the cleaned name and answers with it plus fresh initials", async () => {
+  const kv = memKV();
+  const env = envWith(kv);
+  const res = await W.meNameApi(meNamePost("  Bee   Wilson "), env, PLAIN);
+  const body = await res.json();
+  assert.equal(body.ok, true);
+  assert.equal(body.name, "Bee Wilson");
+  assert.equal(body.initials, "BW");
+  const index = JSON.parse(await kv.get(W.USER_NAMES_KEY));
+  assert.deepEqual(Object.keys(index), ["u@example.test"]);
+  assert.equal(index["u@example.test"].name, "Bee Wilson");
+});
+
+test("/__me/name refuses a signed-out caller, a blank name and the wrong method", async () => {
+  const kv = memKV();
+  const env = envWith(kv);
+  assert.equal((await W.meNameApi(meNamePost("Bee"), env, null)).status, 401);
+  assert.equal((await W.meNameApi(meNamePost("   "), env, PLAIN)).status, 400);
+  assert.equal((await W.meNameApi(meNamePost(null), env, PLAIN)).status, 400);
+  assert.equal((await W.meNameApi(new Request("https://example.test/__me/name"), env, PLAIN)).status, 405);
+  assert.equal(kv.store.size, 0, "nothing written");
+});
+
+test("a user can only ever set their OWN name — there is no email parameter", async () => {
+  const kv = memKV();
+  const req = new Request("https://example.test/__me/name", {
+    method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ name: "Impostor", email: ADMIN.email }),
+  });
+  await W.meNameApi(req, envWith(kv), PLAIN);
+  assert.deepEqual(Object.keys(JSON.parse(await kv.get(W.USER_NAMES_KEY))), ["u@example.test"]);
+});
+
+test("removing a user takes their chosen name out too, so a re-invite doesn't inherit it", async () => {
+  const kv = memKV();
+  const env = envWith(kv);
+  await W.meNameApi(meNamePost("Bee Wilson"), env, PLAIN);
+  const res = await callAdmin(adminPost({ op: "remove", email: PLAIN.email }), env, [ADMIN, PLAIN], [ADMIN, PLAIN]);
+  assert.equal(res.status, 200);
+  assert.deepEqual(JSON.parse(await kv.get(W.USER_NAMES_KEY)), {});
+});
+
 test("avatarUrl passes a self-set URL through untouched (only data URIs get hashed)", () => {
   assert.equal(W.avatarUrl({ email: "a@example.test", avatar: "/__avatar/u/abc" }), "/__avatar/u/abc");
   assert.equal(W.avatarUrl({ email: "a@example.test" }), null);
