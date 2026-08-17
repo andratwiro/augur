@@ -2023,25 +2023,6 @@ const NAV_CSS = `
       border-bottom: 1px solid rgba(16,17,26,0.09);
       font: 600 14.5px/1 "Inter", "Inter Variable", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
     }
-    .gvtop__brand { display: inline-flex; align-items: center; gap: 9px; color: #16171a; text-decoration: none; letter-spacing: 0; }
-    .gvtop__brand span { font-family: var(--font-display); font-weight: 800; font-size: 16px; }
-    .gvburger {
-      width: 36px; height: 34px; flex: none; padding: 0; cursor: pointer;
-      display: inline-flex; align-items: center; justify-content: center;
-      border-radius: 9px; border: 1px solid rgba(16,17,26,0.12); background: rgba(16,17,26,0.03); color: #16171a;
-      transition: background .12s ease, border-color .12s ease;
-    }
-    .gvburger:hover { background: rgba(16,17,26,0.06); border-color: rgba(16,17,26,0.20); }
-    .gvburger:focus-visible { outline: 2px solid #5e6ad2; outline-offset: 1px; }
-    .gvburger__bars { position: relative; display: block; width: 16px; height: 12px; }
-    .gvburger__bars span { position: absolute; left: 0; right: 0; height: 2px; border-radius: 2px; background: currentColor; transition: transform .18s ease, opacity .12s ease, top .18s ease; }
-    .gvburger__bars span:nth-child(1) { top: 0; }
-    .gvburger__bars span:nth-child(2) { top: 5px; }
-    .gvburger__bars span:nth-child(3) { top: 10px; }
-    .gvburger[aria-expanded="true"] .gvburger__bars span:nth-child(1) { top: 5px; transform: rotate(45deg); }
-    .gvburger[aria-expanded="true"] .gvburger__bars span:nth-child(2) { opacity: 0; }
-    .gvburger[aria-expanded="true"] .gvburger__bars span:nth-child(3) { top: 5px; transform: rotate(-45deg); }
-
     /* ── The rail ─────────────────────────────────────────────────────────────── */
     .gvside {
       position: fixed; top: 0; left: 0; bottom: 0; z-index: 2147483100; width: var(--rail);
@@ -2057,7 +2038,7 @@ const NAV_CSS = `
     /* Brand mark (falcon) — still used by the mobile top bar. The signed-in profile
        chip owns the desktop rail's top-left spot; there's no Augur wordmark there. */
     .gvmark { display: block; flex: none; object-fit: contain; }
-    .gvtop__brand .gvmark { width: 22px; height: 22px; }
+    .gvtop__center-brand .gvmark { width: 22px; height: 22px; }
 
     /* Profile chip — the signed-in face + dropdown, in the brand spot. Hidden until
        PROFILE_JS confirms a logged-in user (open/no-identity builds show nothing). */
@@ -2468,7 +2449,7 @@ const NAV_CSS = `
     .gvset__edit[aria-busy=true], .gvcrop__save[aria-busy=true], .gvset__btn[aria-busy=true] { opacity: .55; pointer-events: none; }
 
     @media (prefers-reduced-motion: reduce) {
-      .gvside, .gvscrim, .gvburger__bars span, .gvside__caret, .gvhelp__scrim, .gvhelp__panel,
+      .gvside, .gvscrim, .gvside__caret, .gvhelp__scrim, .gvhelp__panel,
       .gvset__scrim, .gvset__panel { transition: none; }
     }`;
 
@@ -3295,11 +3276,19 @@ function adminRail() {
 function chromeScript() {
   return `(function(){
   // ── In-page real-time filter ─────────────────────────────────────────────
-  var input = document.querySelector('[data-filter]');
+  // Wrapped per-input: there can now be two [data-filter] boxes on the page (the
+  // header's and the sidebar's, one hidden per viewport via CSS) — each gets its own
+  // fully independent copy of the filter + fuzzy-finder below, closured over its own
+  // input. clear/kbd are scoped to THIS input's own .gvsearch wrapper (each search
+  // box has its own clear button and "/" hint); emptyMsg stays page-wide — the
+  // "No matches" message is a single page-level element, not part of railSearch()'s
+  // own markup.
+  [].forEach.call(document.querySelectorAll('[data-filter]'), function(input){
   if (input && !input.dataset.wired) {
     input.dataset.wired = '1';
-    var clear = document.querySelector('[data-filter-clear]');
-    var kbd = document.querySelector('[data-filter-kbd]');
+    var searchBox = input.closest('.gvsearch');
+    var clear = searchBox && searchBox.querySelector('[data-filter-clear]');
+    var kbd = searchBox && searchBox.querySelector('[data-filter-kbd]');
     var emptyMsg = document.querySelector('[data-filter-empty]');
     var items = [].slice.call(document.querySelectorAll('[data-fitem]'));
     var groups = [].slice.call(document.querySelectorAll('[data-fgroup]'));
@@ -3478,20 +3467,7 @@ function chromeScript() {
     input.addEventListener('focus', function(){ var q=input.value.trim(); if(q.length>=2){ gload().then(function(){ grender(q); }); } });
     if(clear) clear.addEventListener('click', ghide);
   }
-
-  // ── Mobile rail drawer (hamburger + scrim) ───────────────────────────────
-  var sideToggle = document.querySelector('[data-side-toggle]');
-  var side = document.getElementById('gvside');
-  var scrim = document.querySelector('[data-side-scrim]');
-  if(sideToggle && side){
-    function closeSide(){ sideToggle.setAttribute('aria-expanded','false'); side.classList.remove('is-open'); if(scrim) scrim.classList.remove('is-open'); }
-    function openSide(){ sideToggle.setAttribute('aria-expanded','true'); side.classList.add('is-open'); if(scrim) scrim.classList.add('is-open'); }
-    sideToggle.addEventListener('click', function(e){ e.stopPropagation(); side.classList.contains('is-open') ? closeSide() : openSide(); });
-    if(scrim) scrim.addEventListener('click', closeSide);
-    side.addEventListener('click', function(e){ if(e.target.closest('a')) closeSide(); });
-    document.addEventListener('keydown', function(e){ if((e.key||'').toLowerCase() === 'escape') closeSide(); });
-    window.addEventListener('resize', function(){ if(window.innerWidth > 860) closeSide(); });
-  }
+  });
 
   // ── Help drawer (footer button → right-side panel, two tracks) ────────────
   var helpEl = document.querySelector('[data-help]');
@@ -3548,7 +3524,7 @@ function injectNav(html, active) {
   if (!m) return html;
   return html.replace(
     m[0],
-    `${m[0]}\n  <style>${NAV_CSS}</style>\n  ${appChrome(active)}\n  <script>${chromeScript()}</script>\n  <script>${spaceContextScript()}</script>\n  <script>${PINS_JS}</script>\n  <script>${PROFILE_JS}</script>\n  <script>${SETTINGS_JS}</script>\n  <script>${SPACE_JS}</script>`
+    `${m[0]}\n  <style>${NAV_CSS}${TABBAR_CSS}</style>\n  ${appChrome(active)}\n  <script>${chromeScript()}</script>\n  <script>${spaceContextScript()}</script>\n  <script>${PINS_JS}</script>\n  <script>${PROFILE_JS}</script>\n  <script>${SETTINGS_JS}</script>\n  <script>${SPACE_JS}</script>\n  <script>${TABBAR_JS()}</script>`
   );
 }
 
@@ -5814,7 +5790,7 @@ function shell({ title, body, back, activeTab = "prototypes", wrapClass = "" }) 
   <link rel="manifest" href="/manifest.webmanifest" />
   <meta name="theme-color" content="#2C2150" />
   <link rel="preload" href="/fonts/inter-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin />
-  <style>${FONT_CSS}${PAGE_CSS}${NAV_CSS}${addon ? addon.css() : ""}
+  <style>${FONT_CSS}${PAGE_CSS}${NAV_CSS}${TABBAR_CSS}${addon ? addon.css() : ""}
   </style>
 </head>
 <body>
@@ -5845,6 +5821,8 @@ function shell({ title, body, back, activeTab = "prototypes", wrapClass = "" }) 
   <script>${NEWCANVAS_JS}
   </script>
   <script>${SPACE_JS}
+  </script>
+  <script>${TABBAR_JS()}
   </script>
   <script>${RESEARCH_JS}
   </script>
