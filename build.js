@@ -2018,7 +2018,7 @@ const NAV_CSS = `
     /* ── Slim top bar — only when the rail collapses (mobile) ─────────────────── */
     .gvtop {
       display: none; position: fixed; top: 0; left: 0; right: 0; z-index: 2147483100; height: 52px;
-      align-items: center; gap: 12px; padding: 0 14px;
+      align-items: center; gap: 12px; padding: 0 calc(14px + env(safe-area-inset-right)) 0 calc(14px + env(safe-area-inset-left));
       background: rgba(255,255,255,0.82); -webkit-backdrop-filter: blur(14px) saturate(180%); backdrop-filter: blur(14px) saturate(180%);
       border-bottom: 1px solid rgba(16,17,26,0.09);
       font: 600 14.5px/1 "Inter", "Inter Variable", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
@@ -2282,11 +2282,15 @@ const NAV_CSS = `
     .gvscrim { display: none; position: fixed; inset: 0; z-index: 2147483099; background: rgba(16,17,26,0.34); opacity: 0; transition: opacity .2s ease; }
 
     @media (max-width: 860px) {
-      body { padding-left: 0; padding-top: 52px; }
+      body { padding-left: 0; padding-top: 52px; padding-bottom: calc(90px + env(safe-area-inset-bottom)); }
       .gvtop { display: flex; }
-      .gvside { transform: translateX(-100%); transition: transform .22s ease; box-shadow: 0 24px 60px -20px rgba(16,24,40,0.40); }
-      .gvside.is-open { transform: translateX(0); }
-      .gvscrim.is-open { display: block; opacity: 1; }
+      /* The desktop rail has no toggle left on mobile (the hamburger and its JS are
+         gone — the floating tab bar/sheets replace it) — display:none, not just
+         off-canvas, so it drops out of tab order and VoiceOver's swipe order instead
+         of sitting there permanently reachable-but-invisible. querySelector-based
+         lookups elsewhere (PINS_JS, PROFILE_JS, ADMIN_SECTIONS_JS) still find it fine
+         — display:none removes an element from rendering/focus, not from the DOM. */
+      .gvside, .gvscrim { display: none !important; }
     }
     /* Rail footer action button (Help) — styled to match the rail's <a> rows. */
     .gvside__act {
@@ -2511,7 +2515,7 @@ const TABBAR_CSS = `
 
       /* ── Floating pill tab bar ────────────────────────────────────────────── */
       .gvtabbar {
-        position: fixed; left: 12px; right: 12px;
+        position: fixed; left: calc(12px + env(safe-area-inset-left)); right: calc(12px + env(safe-area-inset-right));
         bottom: calc(10px + env(safe-area-inset-bottom));
         z-index: 2147483100;
         height: 64px; border-radius: 32px;
@@ -2529,6 +2533,10 @@ const TABBAR_CSS = `
       .gvtab .gvic, .gvtab .pin-star { width: 24px; height: 24px; display: block; }
       .gvtab span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
       .gvtab[aria-current="page"] { color: #16171a; background: rgba(16,17,26,0.08); }
+      /* .gvic hardcodes its own color (build.js ~2225), so currentColor from the
+         active <a>'s color alone doesn't reach the icon — mirrors the desktop rail's
+         own [aria-current] .gvic override. */
+      .gvtab[aria-current="page"] .gvic { color: #16171a; }
       .gvtab.is-blank { visibility: hidden; pointer-events: none; }
       .gvtab.is-disabled { opacity: 0.35; pointer-events: none; }
       .gvtab-label-only { font-size: 12.5px; font-weight: 600; }
@@ -2943,8 +2951,13 @@ function tabBar(active) {
   const playground = NAV_STATE.hasPlayground
     ? tab("/playground/", "Playground", "playground", IC_PLAY)
     : blankSlot;
+  // By this point active === "admin" and LIB_KEYS.includes(active) have already
+  // returned above, so anything left besides "playground"/"changelog" is either the
+  // literal root ("prototypes") or an opportunity's own name — both are still
+  // Projects, the same way appChrome()'s isOpportunity treats them as one section.
+  const projectsActive = active !== "playground" && active !== "changelog";
   return `<nav class="gvtabbar" aria-label="Primary">
-    ${tab("/", PROJECTS_LABEL, "prototypes", IC_HOME)}
+    <a class="gvtab" href="${S("/")}"${projectsActive ? ' aria-current="page"' : ""}>${IC_HOME}<span>${PROJECTS_LABEL}</span></a>
     ${playground}
     ${tab("/tokens/", "Design system", "library", IC_LIBRARY)}
     <button type="button" class="gvtab" data-tab-pinned aria-haspopup="dialog">${IC_STAR}<span>Pinned</span></button>
@@ -3198,12 +3211,19 @@ function appChrome(active) {
   // view (the same branch computed below for `rail`).
   const spaces = NAV_STATE.spaces || [];
   const activeSpaceObj = spaces.find((s) => s.id === NAV_STATE.activeSpace) || spaces[0];
-  const isSubView = active === "admin" || LIB_KEYS.includes(active) ||
-    (active && active !== "prototypes" && active !== "playground" && active !== "library" && active !== "changelog");
+  const isLibOrAdmin = active === "admin" || LIB_KEYS.includes(active);
+  // An opportunity page (active = the opportunity's own name) is a sub-view too —
+  // same back-chevron treatment as library/admin, titled with the opportunity's own
+  // name rather than left blank.
+  const isOpportunity = !isLibOrAdmin && !!active && active !== "prototypes" && active !== "playground" && active !== "changelog";
+  const isSubView = isLibOrAdmin || isOpportunity;
   const brandCenter = activeSpaceObj
     ? `<a class="gvtop__center-brand" href="${S("/")}"><img src="/space-icon.png" alt="" width="22" height="22" /><span>${escAttr(activeSpaceObj.name)}</span></a>`
     : `<a class="gvtop__center-brand" href="${S("/")}">${GV_MARK}<span>augur</span></a>`;
-  const titleText = active === "admin" ? "Workspace settings" : LIB_KEYS.includes(active) ? "Design system" : "";
+  const titleText = active === "admin" ? "Workspace settings"
+    : LIB_KEYS.includes(active) ? "Design system"
+    : active === "changelog" ? "Changelog"
+    : isOpportunity ? titleCase(active) : "";
   const center = isSubView
     ? `<span class="gvtop__title">${titleText || ""}</span>`
     : brandCenter;
@@ -3283,7 +3303,8 @@ function chromeScript() {
   // box has its own clear button and "/" hint); emptyMsg stays page-wide — the
   // "No matches" message is a single page-level element, not part of railSearch()'s
   // own markup.
-  [].forEach.call(document.querySelectorAll('[data-filter]'), function(input){
+  var __gvFilterInputs = [].slice.call(document.querySelectorAll('[data-filter]'));
+  __gvFilterInputs.forEach(function(input){
   if (input && !input.dataset.wired) {
     input.dataset.wired = '1';
     var searchBox = input.closest('.gvsearch');
@@ -3329,14 +3350,6 @@ function chromeScript() {
     input.addEventListener('input', apply);
     input.addEventListener('keydown', function(e){ if(e.key === 'Escape' && input.value){ e.preventDefault(); e.stopPropagation(); input.value=''; apply(); } });
     if(clear) clear.addEventListener('click', function(){ input.value=''; apply(); input.focus(); });
-    var isMac = /Mac|iPhone|iPad|iPod/.test(navigator.platform || navigator.userAgent);
-    document.addEventListener('keydown', function(e){
-      var k = (e.key || '').toLowerCase();
-      var el = document.activeElement, tag = el && el.tagName;
-      var typing = tag === 'INPUT' || tag === 'TEXTAREA' || (el && el.isContentEditable);
-      if((e.metaKey || e.ctrlKey) && k === 'k'){ e.preventDefault(); input.focus(); input.select(); return; }
-      if(k === '/' && !typing){ e.preventDefault(); input.focus(); }
-    });
     apply();
 
     // ── Global fuzzy finder ──────────────────────────────────────────────────
@@ -3468,6 +3481,25 @@ function chromeScript() {
     if(clear) clear.addEventListener('click', ghide);
   }
   });
+  // Cmd+K / "/" — registered once, not once per input, so it doesn't fire twice per
+  // keystroke now that there can be two [data-filter] boxes on the page. Picks
+  // whichever one is actually reachable in the current viewport (the header's inside
+  // .gvtop on mobile, the sidebar's inside .gvside on desktop).
+  if(__gvFilterInputs.length){
+    document.addEventListener('keydown', function(e){
+      var k = (e.key || '').toLowerCase();
+      var el = document.activeElement, tag = el && el.tagName;
+      var typing = tag === 'INPUT' || tag === 'TEXTAREA' || (el && el.isContentEditable);
+      var isShortcut = (e.metaKey || e.ctrlKey) && k === 'k';
+      var isSlash = k === '/' && !typing;
+      if(!isShortcut && !isSlash) return;
+      var mobile = window.matchMedia('(max-width: 860px)').matches;
+      var target = __gvFilterInputs.filter(function(i){ return !!i.closest('.gvtop') === mobile; })[0] || __gvFilterInputs[0];
+      e.preventDefault();
+      target.focus();
+      if(isShortcut) target.select();
+    });
+  }
 
   // ── Help drawer (footer button → right-side panel, two tracks) ────────────
   var helpEl = document.querySelector('[data-help]');
@@ -3528,8 +3560,20 @@ function TABBAR_JS() {
     var sheet = document.querySelector(sheetSel);
     var openBtn = document.querySelector(openBtnSel);
     if(!sheet || !openBtn) return;
-    function open(){ if(openBtn.disabled) return; sheet.hidden = false; requestAnimationFrame(function(){ sheet.classList.add('is-open'); }); }
-    function close(){ sheet.classList.remove('is-open'); setTimeout(function(){ sheet.hidden = true; }, 220); }
+    var hideT = null;
+    // Mirrors the help drawer / settings modal's own open()/close() (same 220ms fade
+    // + hideT guard) — without clearing a pending close, tapping the tab again while
+    // the previous close's timeout is still armed made the sheet flash in and vanish.
+    function open(){
+      if(openBtn.disabled) return;
+      if(hideT){ clearTimeout(hideT); hideT = null; }
+      sheet.hidden = false;
+      requestAnimationFrame(function(){ sheet.classList.add('is-open'); });
+    }
+    function close(){
+      sheet.classList.remove('is-open');
+      hideT = setTimeout(function(){ sheet.hidden = true; hideT = null; }, 220);
+    }
     openBtn.addEventListener('click', open);
     var scrim = sheet.querySelector(scrimSel);
     if(scrim) scrim.addEventListener('click', close);
@@ -4332,6 +4376,10 @@ const PINS_JS = `
         order.forEach(function(k){ if(map[k]) nm[k] = map[k]; });
         Object.keys(map).forEach(function(k){ if(!nm[k]) nm[k] = map[k]; }); // keep keys not in the DOM
         map = nm;
+        // Repaint every list instance (there can be two now — desktop rail + mobile
+        // sheet) so the one NOT being dragged in picks up the new order too; without
+        // this it would show the pre-reorder order until the next unrelated repaint.
+        renderList();
         save(false); // a reorder must never empty the set
       });
     }
