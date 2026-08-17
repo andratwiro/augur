@@ -2989,6 +2989,27 @@ function mobilePinnedSheet() {
   </div>`;
 }
 
+// Second copy of the profile chip's identity block/menu, plus the two items the
+// sidebar's foot carried (Admin, Changelog) that have nowhere else to live once the
+// drawer is off-canvas. profileChip() itself is called unchanged — see PROFILE_JS,
+// SETTINGS_JS and SPACE_JS below for the matching multi-instance fixes this requires.
+function mobileProfileSheet() {
+  return `<div class="gvsheet" id="gvprofsheet" data-prof-sheet hidden>
+    <div class="gvsheet__scrim" data-prof-sheet-scrim></div>
+    <div class="gvsheet__panel" role="dialog" aria-modal="true" aria-label="Profile">
+      <div class="gvsheet__head">
+        <h2 class="gvsheet__title">Profile</h2>
+        <button type="button" class="gvsheet__x" data-prof-sheet-close aria-label="Close">${IC_CLOSE}</button>
+      </div>
+      ${profileChip()}
+      <a class="gvside__admin" href="/admin/" data-space-admin${
+        NAV_STATE.activeSpace ? ` data-space-id="${escAttr(NAV_STATE.activeSpace)}"` : ""
+      }>${IC_GEAR}<span>Admin</span></a>
+      <a href="/changelog/">${IC_CHANGELOG}<span>Changelog</span><span class="gvside__ver">v${UI_VERSION}</span></a>
+    </div>
+  </div>`;
+}
+
 // City themes for the Help drawer's ?theme= reference. Mirrors GV_THEMES in
 // the space's UI-skill themes file (id, name, primary) — that file is the
 // source of truth; this is a static copy for the shell (which doesn't load it).
@@ -4331,8 +4352,8 @@ const PINS_JS = `
 // hidden until we confirm a user, so open/no-identity builds stay clean). Plus the
 // dropdown open/close (outside-click + Escape to dismiss).
 const PROFILE_JS = `(function(){
-  var box = document.querySelector('[data-prof]');
-  if(!box) return;
+  var boxes = [].slice.call(document.querySelectorAll('[data-prof]'));
+  if(!boxes.length) return;
   var ME = null;
   function initials(u){ return (u.initials || (u.name||'?').slice(0,2)).toUpperCase(); }
   // Identity paints PAGE-WIDE, not just inside the chip: the settings modal renders at
@@ -4359,7 +4380,7 @@ const PROFILE_JS = `(function(){
     // Instance-wide admin surfaces (the Pitis paw, Delete forever) still reveal via
     // html.gv-admin — those are not per-space questions.
     document.documentElement.classList.toggle('gv-admin', !!u.admin);
-    box.hidden = false;
+    boxes.forEach(function(b){ b.hidden = false; });
     if(u.admin){ version(); }
     // SETTINGS_JS listens for this instead of fetching /__me a second time. Fired on
     // every paint, so it also carries a fresh photo back to an already-open modal.
@@ -4390,15 +4411,17 @@ const PROFILE_JS = `(function(){
       .then(function(r){ return r.ok ? r.json() : null; })
       .then(function(v){
         if(!v || !v.current) return;
-        var row = box.querySelector('[data-prof-ver]');
-        var cur = box.querySelector('[data-prof-vercur]');
-        var lnk = box.querySelector('[data-prof-verlink]');
-        if(cur) cur.textContent = 'Augur v' + v.current + (v.current.lastIndexOf('0.', 0) === 0 ? ' beta' : '');
-        if(row) row.hidden = false;
-        if(v.behind){
-          var dot = box.querySelector('[data-prof-dot]'); if(dot) dot.hidden = false;
-          if(lnk){ lnk.textContent = 'v' + v.latest + ' available'; if(v.url) lnk.href = v.url; lnk.hidden = false; }
-        }
+        boxes.forEach(function(box){
+          var row = box.querySelector('[data-prof-ver]');
+          var cur = box.querySelector('[data-prof-vercur]');
+          var lnk = box.querySelector('[data-prof-verlink]');
+          if(cur) cur.textContent = 'Augur v' + v.current + (v.current.lastIndexOf('0.', 0) === 0 ? ' beta' : '');
+          if(row) row.hidden = false;
+          if(v.behind){
+            var dot = box.querySelector('[data-prof-dot]'); if(dot) dot.hidden = false;
+            if(lnk){ lnk.textContent = 'v' + v.latest + ' available'; if(v.url) lnk.href = v.url; lnk.hidden = false; }
+          }
+        });
       }).catch(function(){});
   }
   fetch('/__me', {headers:{'Accept':'application/json'}}).then(function(r){ return r.json(); })
@@ -4408,14 +4431,16 @@ const PROFILE_JS = `(function(){
       // Delete forever) key off gv-operator there instead of gv-admin.
       if(d && d.accounts === false) document.documentElement.classList.add('gv-operator');
     }).catch(function(){});
-  var btn = box.querySelector('[data-prof-toggle]');
-  var menu = box.querySelector('[data-prof-menu]');
-  function open(o){ if(!menu) return; menu.hidden = !o; if(btn) btn.setAttribute('aria-expanded', o ? 'true' : 'false'); }
-  if(btn && menu){
-    btn.addEventListener('click', function(e){ e.stopPropagation(); open(menu.hidden); });
-    document.addEventListener('click', function(e){ if(!box.contains(e.target)) open(false); });
-    document.addEventListener('keydown', function(e){ if(e.key === 'Escape') open(false); });
-  }
+  boxes.forEach(function(box){
+    var btn = box.querySelector('[data-prof-toggle]');
+    var menu = box.querySelector('[data-prof-menu]');
+    function open(o){ if(!menu) return; menu.hidden = !o; if(btn) btn.setAttribute('aria-expanded', o ? 'true' : 'false'); }
+    if(btn && menu){
+      btn.addEventListener('click', function(e){ e.stopPropagation(); open(menu.hidden); });
+      document.addEventListener('click', function(e){ if(!box.contains(e.target)) open(false); });
+      document.addEventListener('keydown', function(e){ if(e.key === 'Escape') open(false); });
+    }
+  });
 })();
 `;
 
@@ -4449,11 +4474,12 @@ const SETTINGS_JS = `(function(){
   // ── The modal ──────────────────────────────────────────────────────────────
   var errEl = el.querySelector('[data-set-err]');
   function err(t){ if(!errEl) return; errEl.textContent = t || ''; errEl.hidden = !t; }
-  function open(){
+  function open(returnEl){
     if(!ME) return;
     if(hideT){ clearTimeout(hideT); hideT = null; }
-    // Restore focus to the chip, not to the menu item — that is hidden by then.
-    last = document.querySelector('[data-prof-toggle]') || document.activeElement;
+    // Restore focus to whichever chip/sheet-button opened this (desktop dropdown or
+    // the mobile Profile-tab button) — there can be more than one on the page now.
+    last = returnEl || document.activeElement;
     el.hidden = false;
     requestAnimationFrame(function(){ el.classList.add('is-open'); });
     var x = el.querySelector('[data-set-close]'); if(x) x.focus();
@@ -4469,11 +4495,14 @@ const SETTINGS_JS = `(function(){
   [].forEach.call(document.querySelectorAll('[data-prof-settings]'), function(o){
     o.addEventListener('click', function(e){
       e.preventDefault(); e.stopPropagation();
+      // Scope to the box this button lives in — there can be more than one
+      // [data-prof] on the page (desktop chip + mobile Profile sheet).
+      var box = o.closest('[data-prof]');
       // The click never reaches PROFILE_JS's outside-click handler (and wouldn't
       // close the menu anyway, being inside it), so dismiss the menu here.
-      var pm = document.querySelector('[data-prof-menu]'); if(pm) pm.hidden = true;
-      var pt = document.querySelector('[data-prof-toggle]'); if(pt) pt.setAttribute('aria-expanded','false');
-      open();
+      var pm = box && box.querySelector('[data-prof-menu]'); if(pm) pm.hidden = true;
+      var pt = box && box.querySelector('[data-prof-toggle]'); if(pt) pt.setAttribute('aria-expanded','false');
+      open(pt);
     });
   });
   [].forEach.call(el.querySelectorAll('[data-set-close], [data-set-scrim]'), function(c){
@@ -4863,9 +4892,10 @@ const SPACE_JS = `(function(){
     }
     if(open || (here && here.role === 'admin')){
       document.documentElement.classList.add('gv-space-admin');
-      // Scope the Admin link to this workspace so the page opens on the right one.
-      var link = document.querySelector('[data-space-admin]');
-      if(link && id) link.setAttribute('href', '/admin/?space=' + encodeURIComponent(id));
+      // Scope every Admin link to this workspace so each opens on the right one —
+      // there can be more than one now (desktop rail + mobile Profile sheet).
+      var links = document.querySelectorAll('[data-space-admin]');
+      if(id) [].forEach.call(links, function(link){ link.setAttribute('href', '/admin/?space=' + encodeURIComponent(id)); });
     }
   }).catch(function(){});
 })();
