@@ -2971,6 +2971,24 @@ function tabBar(active) {
   </nav>`;
 }
 
+// Second copy of the pinned list — sideRail()'s copy lives inside .gvside, which is
+// off-canvas on mobile (no toggle left to open it), so it can't double as this
+// sheet's content. PINS_JS is made multi-instance-aware below so both copies stay in
+// sync off the one /__pins fetch.
+function mobilePinnedSheet() {
+  return `<div class="gvsheet" id="gvpinsheet" data-pin-sheet hidden>
+    <div class="gvsheet__scrim" data-pin-sheet-scrim></div>
+    <div class="gvsheet__panel" role="dialog" aria-modal="true" aria-label="Pinned">
+      <div class="gvsheet__head">
+        <h2 class="gvsheet__title">Pinned</h2>
+        <button type="button" class="gvsheet__x" data-pin-sheet-close aria-label="Close">${IC_CLOSE}</button>
+      </div>
+      <div class="gvside__group" data-pinned-list></div>
+      <p class="gvside__pinhint" data-pinned-empty hidden>Star a prototype to pin it here.</p>
+    </div>
+  </div>`;
+}
+
 // City themes for the Help drawer's ?theme= reference. Mirrors GV_THEMES in
 // the space's UI-skill themes file (id, name, primary) — that file is the
 // source of truth; this is a static copy for the shell (which doesn't load it).
@@ -4095,10 +4113,10 @@ function spaceContextScript() {
 
 const PINS_JS = `
 (function(){
-  var listEl = document.querySelector('[data-pinned-list]');
-  var emptyEl = document.querySelector('[data-pinned-empty]');
+  var listEls = [].slice.call(document.querySelectorAll('[data-pinned-list]'));
+  var emptyEls = [].slice.call(document.querySelectorAll('[data-pinned-empty]'));
   var btns = Array.prototype.slice.call(document.querySelectorAll('[data-pin-key]'));
-  if(!listEl && !btns.length) return;
+  if(!listEls.length && !btns.length) return;
   var PCACHE = 'gv_pins_map';
   var EMO = /^(\\p{Extended_Pictographic}(\\uFE0F)?(\\u200D\\p{Extended_Pictographic}(\\uFE0F)?)*)\\s*/u;
   var map = {};
@@ -4126,16 +4144,17 @@ const PINS_JS = `
   function nameKeyOf(k){ try { return decodeURIComponent(k).replace(/^\\/+|\\/+$/g, ''); } catch(e){ return String(k).replace(/^\\/+|\\/+$/g, ''); } }
   function labelOf(k, it){ return NAMES[nameKeyOf(k)] || (it && it.label) || k; }
   function renderList(){
-    if(!listEl) return;
+    if(!listEls.length) return;
     var keys = Object.keys(map).filter(inSpace);
-    listEl.innerHTML = keys.map(function(k){
+    var html = keys.map(function(k){
       var it = map[k] || {}; var parts = splitEmoji(labelOf(k, it));
       var glyph = parts[0] || '📌';
       var txt = esc(parts[1] || it.label || k);
       var cur = (it.href === location.pathname) ? ' aria-current="page"' : '';
       return '<a href="'+esc(it.href||k)+'" draggable="true" data-k="'+esc(k)+'"'+cur+'><span class="gvpin-ic" aria-hidden="true">'+esc(glyph)+'</span><span>'+txt+'</span></a>';
     }).join('');
-    if(emptyEl) emptyEl.hidden = keys.length > 0;
+    listEls.forEach(function(el){ el.innerHTML = html; });
+    emptyEls.forEach(function(el){ el.hidden = keys.length > 0; });
   }
   function paintBtns(){
     btns.forEach(function(b){
@@ -4223,7 +4242,10 @@ const PINS_JS = `
     paintBtns();
   };
   // ---- drag-and-drop reorder of the pinned list ----
-  if(listEl){
+  // Wrapped per-instance: there can now be two [data-pinned-list]s on the page (the
+  // desktop sidebar's and the mobile sheet's, Task 3) and only one is ever visible at
+  // a time, but both need independent, fully-working drag/right-click wiring.
+  listEls.forEach(function(listEl){
     var dragEl = null, lastDrag = 0;
     function afterEl(y){
       var els = Array.prototype.slice.call(listEl.querySelectorAll('a:not(.gv-dragging)'));
@@ -4299,7 +4321,7 @@ const PINS_JS = `
       if(e.key === 'ArrowUp'){ e.preventDefault(); var p = a.previousElementSibling; if(p){ listEl.insertBefore(a, p); a.focus(); persistOrder(); } }
       else if(e.key === 'ArrowDown'){ e.preventDefault(); var n = a.nextElementSibling; if(n){ listEl.insertBefore(n, a); a.focus(); persistOrder(); } }
     });
-  }
+  });
   window.addEventListener('storage', function(e){ if(e.key === PCACHE){ try { var nv = JSON.parse(e.newValue || '{}'); map = nv; renderList(); paintBtns(); } catch(_){} } });
 })();
 `;
