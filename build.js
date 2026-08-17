@@ -2585,9 +2585,10 @@ const TABBAR_CSS = `
       .gvtab .gvic, .gvtab .pin-star, .gvtab .gvprof__av { width: 22px; height: 22px; display: block; position: relative; z-index: 1; }
       .gvtab .gvprof__av { font-size: 10px; }
       /* Icon-only: the label stays in the DOM (screen readers still get "Projects",
-         "Pinned", etc.) but is visually hidden rather than removed, so nothing about
-         PROFILE_JS's/PINS_JS's existing hooks needs to change. Admin's sub-bar
-         (.gvtab-label-only, no icon set to reuse) is excluded — those need their text.
+         "Pinned", "People", etc.) but is visually hidden rather than removed, so
+         nothing about PROFILE_JS's/PINS_JS's existing hooks needs to change. Every tab
+         now carries an icon (incl. the admin sub-bar); .gvtab-label-only is the escape
+         hatch for any future text-only tab and is excluded here so its label shows.
          :not(.gvprof__av) spares the Profile tab's avatar span, which is ALSO a
          <span> child of .gvtab — without it this clip (0,2,1) out-specifies
          .gvtab .gvprof__av (0,2,0) and collapses the face to 1px. */
@@ -2596,14 +2597,15 @@ const TABBAR_CSS = `
         overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0;
       }
       .gvtab[aria-current="page"] { color: #16171a; }
-      /* The selected background hugs the glyph with EQUAL padding on all four sides
-         (a 46px square around the 22px icon → 12px each way) instead of filling the
-         whole flex column, which left far more space left/right than top/bottom. The
+      /* The selected background is a CAPSULE (oval, iOS-style) that hugs the glyph —
+         not the full-width stadium the original was (which left far more room
+         left/right than top/bottom), and not a square (which loses the oval). A
+         52×40 stadium with fully-rounded ends is snug but keeps the pill shape. The
          full .gvtab stays the tap target; only the visible pill shrinks. Behind the
          icon (z-index:0; the icon is z-index:1 above). */
       .gvtab[aria-current="page"]::before {
         content: ""; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-        width: 46px; height: 46px; border-radius: 15px; background: rgba(16,17,26,0.09); z-index: 0;
+        width: 52px; height: 40px; border-radius: 999px; background: rgba(16,17,26,0.09); z-index: 0;
       }
       /* .gvic hardcodes its own color (build.js ~2225), so currentColor from the
          active <a>'s color alone doesn't reach the icon — mirrors the desktop rail's
@@ -2756,6 +2758,7 @@ const IC_CHANGELOG = ic(`<path d="M12 8v4l3 2"/><path d="M3.05 11a9 9 0 1 1 .5 4
 const IC_CHEV = ic(`<path d="m9 18 6-6-6-6"/>`); // chevron-right (rotates open via CSS)
 const IC_GEAR = ic(`<path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/>`); // settings
 const IC_SIGNOUT = ic(`<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" x2="9" y1="12" y2="12"/>`); // log-out
+const IC_USERS = ic(`<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>`); // users — admin People
 const IC_LOCK = ic(`<rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>`); // lock — marks a "Change …" that isn't wired yet
 const IC_SLIDERS = ic(`<line x1="4" x2="4" y1="21" y2="14"/><line x1="4" x2="4" y1="10" y2="3"/><line x1="12" x2="12" y1="21" y2="12"/><line x1="12" x2="12" y1="8" y2="3"/><line x1="20" x2="20" y1="21" y2="16"/><line x1="20" x2="20" y1="12" y2="3"/><line x1="2" x2="6" y1="14" y2="14"/><line x1="10" x2="14" y1="8" y2="8"/><line x1="18" x2="22" y1="16" y2="16"/>`); // sliders-vertical (account settings)
 const IC_HELP = ic(`<circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/>`); // circle-help
@@ -3078,15 +3081,16 @@ function tabBar(active) {
   const blankSlot = `<span class="gvtab is-blank" aria-hidden="true"></span>`;
 
   if (active === "admin") {
-    // Same three destinations as adminRail() (build.js:3084-3086), label-only —
-    // adminRail()'s tab() helper has no icon set to reuse. Two blank slots keep the
-    // bar's 5-column width stable across every context. Same data-admin-tab
-    // attribute/values adminRail() itself uses — ADMIN_SECTIONS_JS's tab query is
-    // widened to reach both sets from one place, not a parallel mechanism.
+    // Same three destinations as adminRail() (build.js:3084-3086), icon-only to match
+    // the primary bar (People=users, Content=folder, Settings=gear); the label stays in
+    // the DOM for screen readers and is visually hidden by the same clip. Two blank
+    // slots keep the bar's 5-column width stable across every context. Same
+    // data-admin-tab attribute/values adminRail() itself uses — ADMIN_SECTIONS_JS's tab
+    // query is widened to reach both sets from one place, not a parallel mechanism.
     return `<nav class="gvtabbar" aria-label="Workspace settings">
-      <button type="button" class="gvtab gvtab-label-only" data-admin-tab="people"><span>People</span></button>
-      <button type="button" class="gvtab gvtab-label-only" data-admin-tab="content"><span>Content</span></button>
-      <button type="button" class="gvtab gvtab-label-only" data-admin-tab="settings"><span>Settings</span></button>
+      <button type="button" class="gvtab" data-admin-tab="people">${IC_USERS}<span>People</span></button>
+      <button type="button" class="gvtab" data-admin-tab="content">${IC_FOLDER}<span>Content</span></button>
+      <button type="button" class="gvtab" data-admin-tab="settings">${IC_GEAR}<span>Settings</span></button>
       ${blankSlot}${blankSlot}
     </nav>`;
   }
