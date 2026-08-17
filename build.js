@@ -2547,17 +2547,22 @@ const TABBAR_CSS = `
            so every icon sat high with the slack pooling at the bottom of the pill.
            Centering splits the 64px − 48px slack evenly above and below. */
         display: flex; align-items: center; padding: 4px;
-        background: rgba(255,255,255,0.72);
-        -webkit-backdrop-filter: blur(24px) saturate(190%) brightness(1.08);
-        backdrop-filter: blur(24px) saturate(190%) brightness(1.08);
-        border: 1px solid rgba(255,255,255,0.5);
+        /* Exaggerated glass: a much more see-through fill (0.46, was a near-opaque
+           0.72) is what actually lets the blurred page-behind read AS glass — at 0.72
+           the panel was effectively a white card and the effect was invisible. Bigger
+           blur + stronger saturate/brightness/contrast pushes the refraction, and the
+           edge highlights are brighter and 1.5px so the rim catches light. */
+        background: rgba(255,255,255,0.46);
+        -webkit-backdrop-filter: blur(30px) saturate(210%) brightness(1.16) contrast(1.04);
+        backdrop-filter: blur(30px) saturate(210%) brightness(1.16) contrast(1.04);
+        border: 1px solid rgba(255,255,255,0.7);
         box-shadow:
-          0 12px 32px -12px rgba(16,24,40,0.35),
+          0 16px 40px -14px rgba(16,24,40,0.44),
           0 0 0 1px rgba(16,17,26,0.05),
-          inset 0 1px 0.5px rgba(255,255,255,0.9),
-          inset 0 -1px 0.5px rgba(16,17,26,0.05),
-          inset 1px 0 0.5px rgba(255,255,255,0.5),
-          inset -1px 0 0.5px rgba(255,255,255,0.5);
+          inset 0 1.5px 0.5px rgba(255,255,255,1),
+          inset 0 -1.5px 1px rgba(16,17,26,0.06),
+          inset 1.5px 0 1px rgba(255,255,255,0.62),
+          inset -1.5px 0 1px rgba(255,255,255,0.62);
       }
       .gvtab {
         flex: 1 1 0; display: flex; align-items: center; justify-content: center;
@@ -2577,7 +2582,7 @@ const TABBAR_CSS = `
       /* [hidden] override: the display above would otherwise beat the UA rule (the
          Profile tab starts hidden until PROFILE_JS confirms identity). */
       .gvtab[hidden] { display: none; }
-      .gvtab .gvic, .gvtab .pin-star, .gvtab .gvprof__av { width: 22px; height: 22px; display: block; }
+      .gvtab .gvic, .gvtab .pin-star, .gvtab .gvprof__av { width: 22px; height: 22px; display: block; position: relative; z-index: 1; }
       .gvtab .gvprof__av { font-size: 10px; }
       /* Icon-only: the label stays in the DOM (screen readers still get "Projects",
          "Pinned", etc.) but is visually hidden rather than removed, so nothing about
@@ -2590,7 +2595,16 @@ const TABBAR_CSS = `
         position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
         overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0;
       }
-      .gvtab[aria-current="page"] { color: #16171a; background: rgba(16,17,26,0.08); }
+      .gvtab[aria-current="page"] { color: #16171a; }
+      /* The selected background hugs the glyph with EQUAL padding on all four sides
+         (a 46px square around the 22px icon → 12px each way) instead of filling the
+         whole flex column, which left far more space left/right than top/bottom. The
+         full .gvtab stays the tap target; only the visible pill shrinks. Behind the
+         icon (z-index:0; the icon is z-index:1 above). */
+      .gvtab[aria-current="page"]::before {
+        content: ""; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+        width: 46px; height: 46px; border-radius: 15px; background: rgba(16,17,26,0.09); z-index: 0;
+      }
       /* .gvic hardcodes its own color (build.js ~2225), so currentColor from the
          active <a>'s color alone doesn't reach the icon — mirrors the desktop rail's
          own [aria-current] .gvic override. */
