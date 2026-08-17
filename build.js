@@ -5421,7 +5421,10 @@ const ADMIN_SECTIONS_JS = `(function(){
   // Sections are plain show/hide — three small panels, no routing worth the name.
   // The hash keeps a reload (and a browser back) on the section you were reading.
   function show(name){
-    var tabs = nav.querySelectorAll('[data-admin-tab]');
+    // Document-wide, not nav-scoped: the mobile Admin sub-bar (tabBar()) renders its
+    // three buttons in the bottom tab bar, outside adminRail()'s [data-admin-nav] —
+    // same data-admin-tab attribute/values, so one query now reaches both.
+    var tabs = document.querySelectorAll('[data-admin-tab]');
     tabs.forEach(function(t){
       var on = t.getAttribute('data-admin-tab') === name;
       t.classList.toggle('is-on', on);
@@ -5431,7 +5434,7 @@ const ADMIN_SECTIONS_JS = `(function(){
       s.hidden = s.getAttribute('data-admin-sec') !== name;
     });
   }
-  nav.querySelectorAll('[data-admin-tab]').forEach(function(t){
+  document.querySelectorAll('[data-admin-tab]').forEach(function(t){
     t.addEventListener('click', function(){
       var name = t.getAttribute('data-admin-tab');
       show(name);
