@@ -2545,7 +2545,7 @@ const TABBAR_CSS = `
         font: 500 11px/1 "Inter", "Inter Variable", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
         border: 0; background: none; cursor: pointer; position: relative;
       }
-      .gvtab .gvic { width: 24px; height: 24px; }
+      .gvtab .gvic, .gvtab .pin-star { width: 24px; height: 24px; display: block; }
       .gvtab span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
       .gvtab[aria-current="page"] { color: #16171a; background: rgba(16,17,26,0.08); }
       .gvtab.is-blank { visibility: hidden; pointer-events: none; }
@@ -2922,6 +2922,53 @@ function sideRail(active) {
       </div>
     </div>
   </aside>`;
+}
+
+// Mobile bottom tab bar. Mirrors the same three-way branch appChrome() already
+// computes for the rail (active === "admin" / LIB_KEYS.includes(active) / else) —
+// "one nav column at a time" expressed as one bar content at a time, not a second
+// source of truth for which nav shows. Reuses the existing IC_STAR (build.js:2631,
+// the pin-button glyph) for the Pinned tab rather than a second star icon.
+function tabBar(active) {
+  const tab = (href, label, key, icon, extraAttrs) =>
+    `<a class="gvtab" href="${S(href)}"${active === key ? ' aria-current="page"' : ""}${extraAttrs || ""}>${icon}<span>${label}</span></a>`;
+  const blankSlot = `<span class="gvtab is-blank" aria-hidden="true"></span>`;
+
+  if (active === "admin") {
+    // Same three destinations as adminRail() (build.js:3084-3086), label-only —
+    // adminRail()'s tab() helper has no icon set to reuse. Two blank slots keep the
+    // bar's 5-column width stable across every context. Same data-admin-tab
+    // attribute/values adminRail() itself uses — ADMIN_SECTIONS_JS's tab query is
+    // widened to reach both sets from one place, not a parallel mechanism.
+    return `<nav class="gvtabbar" aria-label="Workspace settings">
+      <button type="button" class="gvtab gvtab-label-only" data-admin-tab="people"><span>People</span></button>
+      <button type="button" class="gvtab gvtab-label-only" data-admin-tab="content"><span>Content</span></button>
+      <button type="button" class="gvtab gvtab-label-only" data-admin-tab="settings"><span>Settings</span></button>
+      ${blankSlot}${blankSlot}
+    </nav>`;
+  }
+
+  if (LIB_KEYS.includes(active)) {
+    // Same five destinations as libraryRail() (build.js:3060-3064), same order.
+    return `<nav class="gvtabbar" aria-label="Design system">
+      ${tab("/tokens/", "Tokens", "tokens", IC_TOKEN)}
+      ${tab("/base/", "Base", "base", IC_PRIM)}
+      ${tab("/components/", "Components", "components", IC_COMP)}
+      ${tab("/patterns/", "Patterns", "patterns", IC_PATTERN)}
+      ${tab("/pages/", "Pages", "pages", IC_PAGE)}
+    </nav>`;
+  }
+
+  const playground = NAV_STATE.hasPlayground
+    ? tab("/playground/", "Playground", "playground", IC_PLAY)
+    : blankSlot;
+  return `<nav class="gvtabbar" aria-label="Primary">
+    ${tab("/", PROJECTS_LABEL, "prototypes", IC_HOME)}
+    ${playground}
+    ${tab("/tokens/", "Design system", "library", IC_LIBRARY)}
+    <button type="button" class="gvtab" data-tab-pinned aria-haspopup="dialog">${IC_STAR}<span>Pinned</span></button>
+    <button type="button" class="gvtab" data-prof data-tab-profile aria-haspopup="dialog" hidden><span class="gvprof__av" data-prof-av aria-hidden="true"></span><span>Profile</span></button>
+  </nav>`;
 }
 
 // City themes for the Help drawer's ?theme= reference. Mirrors GV_THEMES in
