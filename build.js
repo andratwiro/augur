@@ -2542,7 +2542,11 @@ const TABBAR_CSS = `
         bottom: calc(10px + env(safe-area-inset-bottom));
         z-index: 2147483100;
         height: 64px; border-radius: 32px;
-        display: flex; align-items: stretch; padding: 4px;
+        /* center, not stretch: the tabs carry a fixed 48px height, and stretch on a
+           definite-height item is a no-op that leaves it at the cross-start (top) —
+           so every icon sat high with the slack pooling at the bottom of the pill.
+           Centering splits the 64px − 48px slack evenly above and below. */
+        display: flex; align-items: center; padding: 4px;
         background: rgba(255,255,255,0.72);
         -webkit-backdrop-filter: blur(24px) saturate(190%) brightness(1.08);
         backdrop-filter: blur(24px) saturate(190%) brightness(1.08);
