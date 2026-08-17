@@ -3518,6 +3518,58 @@ function chromeScript() {
 })();`;
 }
 
+// Mobile tab bar behaviour: the two sheets (Pinned, Profile), the header's search
+// toggle, and dimming the Pinned tab when there's nothing pinned. Route tabs
+// (Projects/Playground/DS/DS-sub/Admin-sub) are plain <a>/<button data-admin-tab>
+// links needing no JS of their own — this only wires what isn't a navigation.
+function TABBAR_JS() {
+  return `(function(){
+  function wireSheet(openBtnSel, sheetSel, scrimSel, closeSel){
+    var sheet = document.querySelector(sheetSel);
+    var openBtn = document.querySelector(openBtnSel);
+    if(!sheet || !openBtn) return;
+    function open(){ if(openBtn.disabled) return; sheet.hidden = false; requestAnimationFrame(function(){ sheet.classList.add('is-open'); }); }
+    function close(){ sheet.classList.remove('is-open'); setTimeout(function(){ sheet.hidden = true; }, 220); }
+    openBtn.addEventListener('click', open);
+    var scrim = sheet.querySelector(scrimSel);
+    if(scrim) scrim.addEventListener('click', close);
+    var x = sheet.querySelector(closeSel);
+    if(x) x.addEventListener('click', close);
+    document.addEventListener('keydown', function(e){ if(e.key === 'Escape' && !sheet.hidden) close(); });
+  }
+  wireSheet('[data-tab-pinned]', '[data-pin-sheet]', '[data-pin-sheet-scrim]', '[data-pin-sheet-close]');
+  wireSheet('[data-tab-profile]', '[data-prof-sheet]', '[data-prof-sheet-scrim]', '[data-prof-sheet-close]');
+
+  // Dim the Pinned tab when the (now possibly-multiple) empty-state hint is showing.
+  // PINS_JS toggles [data-pinned-empty].hidden once its /__pins fetch resolves; watch
+  // the first instance (they're always in sync — see PINS_JS's renderList()) rather
+  // than duplicating the pins-map logic here.
+  var emptyHint = document.querySelector('[data-pinned-empty]');
+  var pinnedTab = document.querySelector('[data-tab-pinned]');
+  if(emptyHint && pinnedTab){
+    var mo = new MutationObserver(function(){
+      var empty = emptyHint.hidden === false;
+      pinnedTab.classList.toggle('is-disabled', empty);
+      pinnedTab.disabled = empty;
+    });
+    mo.observe(emptyHint, {attributes:true, attributeFilter:['hidden']});
+    // Initial state — MutationObserver only fires on future changes.
+    pinnedTab.classList.toggle('is-disabled', emptyHint.hidden === false);
+    pinnedTab.disabled = emptyHint.hidden === false;
+  }
+
+  // Header search toggle: swap the center brand/title for the omni search input.
+  var searchBtn = document.querySelector('[data-mobile-search-toggle]');
+  if(searchBtn){
+    searchBtn.addEventListener('click', function(){
+      var on = document.body.classList.toggle('gv-mobile-searching');
+      if(on){ var input = document.querySelector('.gvtop__searchwrap [data-filter]'); if(input) input.focus(); }
+    });
+  }
+})();
+`;
+}
+
 /** Inject the nav (with its own styles) right after the opening <body> tag. */
 function injectNav(html, active) {
   const m = html.match(/<body[^>]*>/i);
