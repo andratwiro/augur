@@ -2486,6 +2486,99 @@ function filterEmpty() {
 // Shipped at /augur-eye.svg (copied in main() from brand/). Sized via the .gvmark class.
 // The brand mark rotates as a whole on rail-brand hover (see NAV_CSS) — the disc is a
 // circle so only the sparkle cut-out appears to spin.
+// Mobile (≤860px) bottom tab bar + restructured header. Replaces the off-canvas
+// drawer (.gvside/.gvscrim, hidden below via NAV_CSS's 860px query) with a floating
+// glass pill bar, mirroring Framework7's current iOS toolbar (.ios-glass(): backdrop-
+// filter saturate(180%) blur(16px)) — the same translucency idiom .gvtop already uses.
+// Scoped entirely inside the existing 860px query; nothing here reaches desktop.
+const TABBAR_CSS = `
+    @media (max-width: 860px) {
+      /* ── Header: 3-slot row (back/spacer · brand or title · search) ─────────── */
+      .gvtop { justify-content: space-between; }
+      .gvtop__side {
+        display: inline-flex; align-items: center; justify-content: center;
+        width: 36px; height: 34px; flex: none;
+      }
+      .gvtop__back {
+        display: inline-flex; align-items: center; justify-content: center;
+        width: 36px; height: 34px; padding: 0; cursor: pointer;
+        border-radius: 9px; border: 1px solid rgba(16,17,26,0.12); background: rgba(16,17,26,0.03); color: #16171a;
+      }
+      .gvtop__back:hover { background: rgba(16,17,26,0.06); border-color: rgba(16,17,26,0.20); }
+      .gvtop__back:focus-visible { outline: 2px solid #5e6ad2; outline-offset: 1px; }
+      .gvtop__back svg { width: 16px; height: 16px; }
+      .gvtop__center {
+        flex: 1; display: flex; align-items: center; justify-content: center; gap: 8px;
+        min-width: 0; overflow: hidden;
+      }
+      .gvtop__center-brand { display: inline-flex; align-items: center; gap: 8px; color: #16171a; text-decoration: none; }
+      .gvtop__center-brand img { width: 22px; height: 22px; border-radius: 5px; flex: none; }
+      .gvtop__center-brand span { font-family: var(--font-display); font-weight: 800; font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+      .gvtop__title { font-weight: 700; font-size: 15px; color: #16171a; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+      .gvtop__search-btn {
+        display: inline-flex; align-items: center; justify-content: center;
+        width: 36px; height: 34px; padding: 0; cursor: pointer; flex: none;
+        border-radius: 9px; border: 1px solid rgba(16,17,26,0.12); background: rgba(16,17,26,0.03); color: #16171a;
+      }
+      .gvtop__search-btn:hover { background: rgba(16,17,26,0.06); border-color: rgba(16,17,26,0.20); }
+      .gvtop__search-btn svg { width: 16px; height: 16px; }
+      .gvtop__search-btn .gvic { width: 16px; height: 16px; }
+      .gvtop__searchwrap { flex: 1; min-width: 0; }
+      .gvtop__searchwrap .gvsearch { width: 100%; }
+      body:not(.gv-mobile-searching) .gvtop__searchwrap { display: none; }
+      .gv-mobile-searching .gvtop__center { display: none; }
+
+      /* ── Floating pill tab bar ────────────────────────────────────────────── */
+      .gvtabbar {
+        position: fixed; left: 12px; right: 12px;
+        bottom: calc(10px + env(safe-area-inset-bottom));
+        z-index: 2147483100;
+        height: 64px; border-radius: 32px;
+        display: flex; align-items: stretch; padding: 4px;
+        background: rgba(255,255,255,0.82);
+        -webkit-backdrop-filter: blur(16px) saturate(180%); backdrop-filter: blur(16px) saturate(180%);
+        box-shadow: 0 12px 32px -12px rgba(16,24,40,0.35), 0 0 0 1px rgba(16,17,26,0.06);
+      }
+      .gvtab {
+        flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
+        gap: 2px; border-radius: 26px; text-decoration: none; color: #6b7280;
+        font: 500 11px/1 "Inter", "Inter Variable", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        border: 0; background: none; cursor: pointer; position: relative;
+      }
+      .gvtab .gvic { width: 24px; height: 24px; }
+      .gvtab span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+      .gvtab[aria-current="page"] { color: #16171a; background: rgba(16,17,26,0.08); }
+      .gvtab.is-blank { visibility: hidden; pointer-events: none; }
+      .gvtab.is-disabled { opacity: 0.35; pointer-events: none; }
+      .gvtab-label-only { font-size: 12.5px; font-weight: 600; }
+
+      /* ── Sheets (Pinned / Profile) — same scrim/panel shape as the help drawer ── */
+      .gvsheet { position: fixed; inset: 0; z-index: 2147483150; }
+      .gvsheet[hidden] { display: none; }
+      .gvsheet__scrim { position: absolute; inset: 0; background: rgba(16,17,26,0.34); opacity: 0; transition: opacity .2s ease; }
+      .gvsheet.is-open .gvsheet__scrim { opacity: 1; }
+      .gvsheet__panel {
+        position: absolute; left: 0; right: 0; bottom: 0;
+        max-height: 70vh; overflow-y: auto;
+        background: #fff; border-radius: 20px 20px 0 0;
+        padding: 14px 16px calc(16px + env(safe-area-inset-bottom));
+        box-shadow: 0 -24px 60px -28px rgba(16,24,40,0.45);
+        transform: translateY(100%); transition: transform .24s ease;
+        font: 500 13px/1.5 "Inter", "Inter Variable", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        color: #2c2f36;
+      }
+      .gvsheet.is-open .gvsheet__panel { transform: translateY(0); }
+      .gvsheet__head { display: flex; align-items: center; justify-content: space-between; padding-bottom: 10px; margin-bottom: 6px; border-bottom: 1px solid rgba(16,17,26,0.08); }
+      .gvsheet__title { margin: 0; font: 700 15px/1.2 "Inter", "Inter Variable", sans-serif; color: #16171a; }
+      .gvsheet__x { display: grid; place-items: center; width: 30px; height: 30px; border: 0; border-radius: 8px; background: none; color: #5b626e; cursor: pointer; }
+      .gvsheet__x:hover { background: rgba(16,17,26,0.06); color: #16171a; }
+      .gvsheet__x .gvic { width: 18px; height: 18px; }
+    }
+    @media (min-width: 861px) {
+      .gvtabbar, .gvsheet { display: none; }
+    }
+`;
+
 const GV_MARK = `<img class="gvmark" src="/augur-eye.svg" alt="" aria-hidden="true" width="24" height="24" />`;
 
 // Rail item glyphs — real Lucide icons (ISC license), the clean line set Linear-class
@@ -5082,7 +5175,7 @@ function renderNotFoundPage() {
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <meta name="robots" content="noindex, nofollow" />
   <title>Not found · Augur</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -5591,7 +5684,7 @@ function shell({ title, body, back, activeTab = "prototypes", wrapClass = "" }) 
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <meta name="robots" content="noindex, nofollow" />
   <title>${title}</title>
   <link rel="icon" type="image/png" href="/augur-mark.png?v=${UI_VERSION}" />
