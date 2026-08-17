@@ -2498,14 +2498,20 @@ const TABBAR_CSS = `
       .gvtop__back:hover { background: rgba(16,17,26,0.06); border-color: rgba(16,17,26,0.20); }
       .gvtop__back:focus-visible { outline: 2px solid #5e6ad2; outline-offset: 1px; }
       .gvtop__back svg { width: 16px; height: 16px; }
+      /* Height locked to the back/search buttons' own 34px (not line-height:1 on the
+         text alone) — a tight line-height box centers geometrically but a font's
+         ascent/descent asymmetry still visibly offsets the GLYPHS within it, which
+         next to a truly-centered 16px icon reads as misaligned even though the
+         boxes line up. Flex-centering a single text line inside a height-matched
+         container is the reliable fix; line-height stops being load-bearing here. */
       .gvtop__center {
         flex: 1; display: flex; align-items: center; justify-content: flex-start; gap: 8px;
-        min-width: 0; overflow: hidden;
+        min-width: 0; overflow: hidden; height: 34px;
       }
-      .gvtop__center-brand { display: inline-flex; align-items: center; gap: 8px; color: #16171a; text-decoration: none; line-height: 1; }
+      .gvtop__center-brand { display: flex; align-items: center; gap: 8px; height: 34px; color: #16171a; text-decoration: none; }
       .gvtop__center-brand img { width: 22px; height: 22px; border-radius: 5px; flex: none; display: block; }
-      .gvtop__center-brand span { font-family: var(--font-display); font-weight: 800; font-size: 15px; line-height: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-      .gvtop__title { display: flex; align-items: center; font-weight: 700; font-size: 15px; line-height: 1; color: #16171a; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+      .gvtop__center-brand span { display: flex; align-items: center; height: 34px; font-family: var(--font-display); font-weight: 800; font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+      .gvtop__title { display: flex; align-items: center; height: 34px; font-weight: 700; font-size: 15px; color: #16171a; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
       .gvtop__search-btn {
         display: inline-flex; align-items: center; justify-content: center;
         width: 36px; height: 34px; padding: 0; cursor: pointer; flex: none;
@@ -2550,17 +2556,25 @@ const TABBAR_CSS = `
           inset -1px 0 0.5px rgba(255,255,255,0.5);
       }
       .gvtab {
-        flex: 1; display: flex; align-items: center; justify-content: center;
+        flex: 1 1 0; display: flex; align-items: center; justify-content: center;
         border-radius: 26px; text-decoration: none; color: #6b7280;
         font: 500 11px/1 "Inter", "Inter Variable", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
         border: 0; background: none; cursor: pointer; position: relative;
-        min-height: 48px;
+        height: 48px; margin: 0; padding: 0; box-sizing: border-box;
+        -webkit-appearance: none; appearance: none;
       }
+      /* Safari gives <button> its own UA font/line-height that survives most resets
+         (the block above already covers appearance/border/padding — font needs its
+         own explicit inherit, or a <button> tab renders visibly bigger/differently
+         spaced than the <a> tabs sitting right next to it in the same flex row,
+         which reads as "icons too big" and "not evenly spaced" even though every
+         tab shares the same flex:1 basis). */
+      button.gvtab { font: inherit; text-align: center; }
       /* [hidden] override: the display above would otherwise beat the UA rule (the
          Profile tab starts hidden until PROFILE_JS confirms identity). */
       .gvtab[hidden] { display: none; }
-      .gvtab .gvic, .gvtab .pin-star, .gvtab .gvprof__av { width: 25px; height: 25px; display: block; }
-      .gvtab .gvprof__av { font-size: 11px; }
+      .gvtab .gvic, .gvtab .pin-star, .gvtab .gvprof__av { width: 22px; height: 22px; display: block; }
+      .gvtab .gvprof__av { font-size: 10px; }
       /* Icon-only: the label stays in the DOM (screen readers still get "Projects",
          "Pinned", etc.) but is visually hidden rather than removed, so nothing about
          PROFILE_JS's/PINS_JS's existing hooks needs to change. Admin's sub-bar
@@ -3026,11 +3040,16 @@ function sideRail(active) {
   </aside>`;
 }
 
+// Map-pin glyph for the tab bar's Pinned tab specifically — IC_STAR (build.js:2631)
+// is the established "pin to sidebar" affection glyph on cards throughout the rest
+// of the app, but a star reads as "favourite" here, floating alone in a primary nav
+// slot with no card to explain it. A pin shape says "pinned" without that context.
+const IC_MAPPIN = ic(`<path d="M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0"/><circle cx="12" cy="10" r="3"/>`);
+
 // Mobile bottom tab bar. Mirrors the same three-way branch appChrome() already
 // computes for the rail (active === "admin" / LIB_KEYS.includes(active) / else) —
 // "one nav column at a time" expressed as one bar content at a time, not a second
-// source of truth for which nav shows. Reuses the existing IC_STAR (build.js:2631,
-// the pin-button glyph) for the Pinned tab rather than a second star icon.
+// source of truth for which nav shows.
 function tabBar(active) {
   const tab = (href, label, key, icon, extraAttrs) =>
     `<a class="gvtab" href="${S(href)}"${active === key ? ' aria-current="page"' : ""}${extraAttrs || ""}>${icon}<span>${label}</span></a>`;
@@ -3073,7 +3092,7 @@ function tabBar(active) {
     <a class="gvtab" href="${S("/")}"${projectsActive ? ' aria-current="page"' : ""}>${IC_HOME}<span>${PROJECTS_LABEL}</span></a>
     ${playground}
     ${tab("/tokens/", "Design system", "library", IC_LIBRARY)}
-    <button type="button" class="gvtab" data-tab-pinned aria-haspopup="dialog">${IC_STAR}<span>Pinned</span></button>
+    <button type="button" class="gvtab" data-tab-pinned aria-haspopup="dialog">${IC_MAPPIN}<span>Pinned</span></button>
     <button type="button" class="gvtab" data-prof data-tab-profile aria-haspopup="dialog" hidden><span class="gvprof__av" data-prof-av aria-hidden="true"></span><span>Profile</span></button>
   </nav>`;
 }
