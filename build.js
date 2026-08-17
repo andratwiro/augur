@@ -2578,8 +2578,11 @@ const TABBAR_CSS = `
       /* Icon-only: the label stays in the DOM (screen readers still get "Projects",
          "Pinned", etc.) but is visually hidden rather than removed, so nothing about
          PROFILE_JS's/PINS_JS's existing hooks needs to change. Admin's sub-bar
-         (.gvtab-label-only, no icon set to reuse) is excluded — those need their text. */
-      .gvtab:not(.gvtab-label-only) span {
+         (.gvtab-label-only, no icon set to reuse) is excluded — those need their text.
+         :not(.gvprof__av) spares the Profile tab's avatar span, which is ALSO a
+         <span> child of .gvtab — without it this clip (0,2,1) out-specifies
+         .gvtab .gvprof__av (0,2,0) and collapses the face to 1px. */
+      .gvtab:not(.gvtab-label-only) span:not(.gvprof__av) {
         position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
         overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0;
       }
@@ -3040,11 +3043,12 @@ function sideRail(active) {
   </aside>`;
 }
 
-// Map-pin glyph for the tab bar's Pinned tab specifically — IC_STAR (build.js:2631)
+// Pushpin glyph for the tab bar's Pinned tab specifically — IC_STAR (build.js:2631)
 // is the established "pin to sidebar" affection glyph on cards throughout the rest
 // of the app, but a star reads as "favourite" here, floating alone in a primary nav
-// slot with no card to explain it. A pin shape says "pinned" without that context.
-const IC_MAPPIN = ic(`<path d="M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0"/><circle cx="12" cy="10" r="3"/>`);
+// slot with no card to explain it. The lucide `pin` (an actual pushpin) says
+// "pinned" directly — a map-pin/location teardrop would misread as a place marker.
+const IC_PIN = ic(`<path d="M12 17v5"/><path d="M9 10.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24V16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V7a1 1 0 0 1 1-1 2 2 0 0 0 0-4H8a2 2 0 0 0 0 4 1 1 0 0 1 1 1z"/>`);
 
 // Mobile bottom tab bar. Mirrors the same three-way branch appChrome() already
 // computes for the rail (active === "admin" / LIB_KEYS.includes(active) / else) —
@@ -3092,7 +3096,7 @@ function tabBar(active) {
     <a class="gvtab" href="${S("/")}"${projectsActive ? ' aria-current="page"' : ""}>${IC_HOME}<span>${PROJECTS_LABEL}</span></a>
     ${playground}
     ${tab("/tokens/", "Design system", "library", IC_LIBRARY)}
-    <button type="button" class="gvtab" data-tab-pinned aria-haspopup="dialog">${IC_MAPPIN}<span>Pinned</span></button>
+    <button type="button" class="gvtab" data-tab-pinned aria-haspopup="dialog">${IC_PIN}<span>Pinned</span></button>
     <button type="button" class="gvtab" data-prof data-tab-profile aria-haspopup="dialog" hidden><span class="gvprof__av" data-prof-av aria-hidden="true"></span><span>Profile</span></button>
   </nav>`;
 }

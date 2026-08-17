@@ -120,6 +120,33 @@ test("the rail's leading marks share one padding, gap and box", () => {
   assert.match(rule(".gvside a > .gvic, .gvside__act > .gvic") || "", /width: 20px/);
 });
 
+// ---- the tab bar's label-clip must spare the Profile avatar ------------------
+// The mobile tab bar hides each tab's text label with a visually-hidden clip on
+// `.gvtab … span`. The Profile tab's avatar is ALSO a <span> child of .gvtab, so a
+// bare `.gvtab:not(.gvtab-label-only) span` (specificity 0,2,1) out-specifies
+// `.gvtab .gvprof__av` (0,2,0) and collapses the signed-in face to a 1px dot —
+// exactly what shipped and looked like "no avatar in the bottom bar". The fix is a
+// `:not(.gvprof__av)` on the clip selector; this holds it in place.
+test("the tab bar label-clip does not catch the Profile avatar span", () => {
+  const file = join(DIST, "index.html");
+  if (!existsSync(file)) return;
+  const css = strip(styleText(readFileSync(file, "utf8")));
+  // The clip rule is the one whose body visually-hides text (clip: rect(0,0,0,0))
+  // and whose selector targets a <span> inside .gvtab.
+  let clipSel = null;
+  for (const m of css.matchAll(/([^{}]+)\{([^}]*)\}/g)) {
+    const sel = m[1].replace(/\s+/g, " ").trim();
+    const body = m[2];
+    if (/\.gvtab\b/.test(sel) && /\bspan\b/.test(sel) && /clip\s*:\s*rect\(/.test(body)) {
+      clipSel = sel;
+      break;
+    }
+  }
+  assert.ok(clipSel, "the tab bar's label-clip rule exists");
+  assert.match(clipSel, /span:not\(\.gvprof__av\)/,
+    `the label-clip selector must exclude the avatar span, else the signed-in face collapses to 1px — got: ${clipSel}`);
+});
+
 // ---- floating surfaces must be opaque ----------------------------------------
 // A dropdown that loses its `background` does not disappear — it goes transparent,
 // and the rail behind it reads straight through the menu items. That is what
