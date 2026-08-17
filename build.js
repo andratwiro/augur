@@ -2074,7 +2074,13 @@ const NAV_CSS = `
       display: flex; align-items: center; gap: 9px; padding: 7px 8px; border-radius: 7px;
       text-decoration: none; color: #16171a; font-size: 13px; font-weight: 500;
     }
-    .gvprof__item:hover { background: rgba(16,17,26,0.05); }
+    /* hover:hover excludes touchscreens — without it, a tap leaves the row's
+       background stuck "hovered" until something else steals focus, which reads as
+       a rendering glitch rather than a hover state (this is what a touch tap on
+       .gvprof__item looked like before this rule was scoped). */
+    @media (hover: hover) {
+      .gvprof__item:hover { background: rgba(16,17,26,0.05); }
+    }
     .gvprof__item .gvic { width: 15px; height: 15px; color: #5b626e; }
     /* Settings opens a dialog rather than navigating, so it's a button — same row,
        none of the UA button chrome. */
@@ -2493,13 +2499,13 @@ const TABBAR_CSS = `
       .gvtop__back:focus-visible { outline: 2px solid #5e6ad2; outline-offset: 1px; }
       .gvtop__back svg { width: 16px; height: 16px; }
       .gvtop__center {
-        flex: 1; display: flex; align-items: center; justify-content: center; gap: 8px;
+        flex: 1; display: flex; align-items: center; justify-content: flex-start; gap: 8px;
         min-width: 0; overflow: hidden;
       }
-      .gvtop__center-brand { display: inline-flex; align-items: center; gap: 8px; color: #16171a; text-decoration: none; }
-      .gvtop__center-brand img { width: 22px; height: 22px; border-radius: 5px; flex: none; }
-      .gvtop__center-brand span { font-family: var(--font-display); font-weight: 800; font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-      .gvtop__title { font-weight: 700; font-size: 15px; color: #16171a; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+      .gvtop__center-brand { display: inline-flex; align-items: center; gap: 8px; color: #16171a; text-decoration: none; line-height: 1; }
+      .gvtop__center-brand img { width: 22px; height: 22px; border-radius: 5px; flex: none; display: block; }
+      .gvtop__center-brand span { font-family: var(--font-display); font-weight: 800; font-size: 15px; line-height: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+      .gvtop__title { display: flex; align-items: center; font-weight: 700; font-size: 15px; line-height: 1; color: #16171a; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
       .gvtop__search-btn {
         display: inline-flex; align-items: center; justify-content: center;
         width: 36px; height: 34px; padding: 0; cursor: pointer; flex: none;
@@ -2508,33 +2514,61 @@ const TABBAR_CSS = `
       .gvtop__search-btn:hover { background: rgba(16,17,26,0.06); border-color: rgba(16,17,26,0.20); }
       .gvtop__search-btn svg { width: 16px; height: 16px; }
       .gvtop__search-btn .gvic { width: 16px; height: 16px; }
-      .gvtop__searchwrap { flex: 1; min-width: 0; }
-      .gvtop__searchwrap .gvsearch { width: 100%; }
+      .gvtop__searchwrap { flex: 1; min-width: 0; display: flex; align-items: center; }
+      /* .gvsearch's default margin (2px 1px 8px) is tuned for its desktop-sidebar
+         context, where the 8px bottom margin is breathing room before the next rail
+         row. That asymmetric margin box is what a flex-centered header was centering,
+         which visibly sat the search field above true center — zero it out here. */
+      .gvtop__searchwrap .gvsearch { width: 100%; margin: 0; }
       body:not(.gv-mobile-searching) .gvtop__searchwrap { display: none; }
       .gv-mobile-searching .gvtop__center { display: none; }
 
       /* ── Floating pill tab bar ────────────────────────────────────────────── */
+      /* iOS 26 Liquid Glass, approximated: a lighter, more see-through fill (was a
+         near-opaque 0.82) plus brightness() alongside the existing blur+saturate, a
+         hairline outer rim, and inset highlights on each edge — brightest on top
+         (light catching the glass from above), faint on the sides, near-none on the
+         bottom — is what actually reads as "glass" rather than "frosted card." No
+         SVG displacement/refraction filter: real but inconsistent browser support
+         for something this decorative isn't worth it for shared chrome. */
       .gvtabbar {
         position: fixed; left: calc(12px + env(safe-area-inset-left)); right: calc(12px + env(safe-area-inset-right));
         bottom: calc(10px + env(safe-area-inset-bottom));
         z-index: 2147483100;
         height: 64px; border-radius: 32px;
         display: flex; align-items: stretch; padding: 4px;
-        background: rgba(255,255,255,0.82);
-        -webkit-backdrop-filter: blur(16px) saturate(180%); backdrop-filter: blur(16px) saturate(180%);
-        box-shadow: 0 12px 32px -12px rgba(16,24,40,0.35), 0 0 0 1px rgba(16,17,26,0.06);
+        background: rgba(255,255,255,0.72);
+        -webkit-backdrop-filter: blur(24px) saturate(190%) brightness(1.08);
+        backdrop-filter: blur(24px) saturate(190%) brightness(1.08);
+        border: 1px solid rgba(255,255,255,0.5);
+        box-shadow:
+          0 12px 32px -12px rgba(16,24,40,0.35),
+          0 0 0 1px rgba(16,17,26,0.05),
+          inset 0 1px 0.5px rgba(255,255,255,0.9),
+          inset 0 -1px 0.5px rgba(16,17,26,0.05),
+          inset 1px 0 0.5px rgba(255,255,255,0.5),
+          inset -1px 0 0.5px rgba(255,255,255,0.5);
       }
       .gvtab {
-        flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
-        gap: 2px; border-radius: 26px; text-decoration: none; color: #6b7280;
+        flex: 1; display: flex; align-items: center; justify-content: center;
+        border-radius: 26px; text-decoration: none; color: #6b7280;
         font: 500 11px/1 "Inter", "Inter Variable", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
         border: 0; background: none; cursor: pointer; position: relative;
+        min-height: 48px;
       }
       /* [hidden] override: the display above would otherwise beat the UA rule (the
          Profile tab starts hidden until PROFILE_JS confirms identity). */
       .gvtab[hidden] { display: none; }
-      .gvtab .gvic, .gvtab .pin-star { width: 24px; height: 24px; display: block; }
-      .gvtab span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+      .gvtab .gvic, .gvtab .pin-star, .gvtab .gvprof__av { width: 25px; height: 25px; display: block; }
+      .gvtab .gvprof__av { font-size: 11px; }
+      /* Icon-only: the label stays in the DOM (screen readers still get "Projects",
+         "Pinned", etc.) but is visually hidden rather than removed, so nothing about
+         PROFILE_JS's/PINS_JS's existing hooks needs to change. Admin's sub-bar
+         (.gvtab-label-only, no icon set to reuse) is excluded — those need their text. */
+      .gvtab:not(.gvtab-label-only) span {
+        position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+        overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0;
+      }
       .gvtab[aria-current="page"] { color: #16171a; background: rgba(16,17,26,0.08); }
       /* .gvic hardcodes its own color (build.js ~2225), so currentColor from the
          active <a>'s color alone doesn't reach the icon — mirrors the desktop rail's
@@ -2560,11 +2594,87 @@ const TABBAR_CSS = `
         color: #2c2f36;
       }
       .gvsheet.is-open .gvsheet__panel { transform: translateY(0); }
-      .gvsheet__head { display: flex; align-items: center; justify-content: space-between; padding-bottom: 10px; margin-bottom: 6px; border-bottom: 1px solid rgba(16,17,26,0.08); }
+      /* Grabber: the one-glance "this is a sheet, swipe it away" cue every native
+         iOS sheet carries — its absence was one of the clearest "web component"
+         tells on an otherwise-corrected panel. */
+      .gvsheet__panel::before {
+        content: ""; display: block; width: 36px; height: 5px; border-radius: 3px;
+        background: rgba(16,17,26,0.16); margin: 0 auto 10px;
+      }
+      .gvsheet__head { display: flex; align-items: center; justify-content: space-between; padding-bottom: 10px; margin-bottom: 6px; }
       .gvsheet__title { margin: 0; font: 700 15px/1.2 "Inter", "Inter Variable", sans-serif; color: #16171a; }
       .gvsheet__x { display: grid; place-items: center; width: 30px; height: 30px; border: 0; border-radius: 8px; background: none; color: #5b626e; cursor: pointer; }
       .gvsheet__x:hover { background: rgba(16,17,26,0.06); color: #16171a; }
       .gvsheet__x .gvic { width: 18px; height: 18px; }
+
+      /* ── Profile sheet: the sheet itself IS the opened state ──────────────────
+         profileChip() is reused verbatim (same PROFILE_JS wiring as the desktop
+         chip), but inside the sheet its trigger button is redundant — the sheet's
+         own header already says "Profile" — and its dropdown starts hidden until
+         that trigger is tapped, which meant tapping the Profile tab opened an empty
+         sheet needing a SECOND tap to see anything. Hide the chip button, force the
+         menu permanently open and back to normal document flow (it doesn't need to
+         float over anything inside a sheet), and give every row — Settings, Sign
+         out, Admin, Changelog — a real touch target instead of the ~28px compact
+         rows sized for a mouse-driven desktop dropdown. */
+      [data-prof-sheet] .gvprof__btn { display: none; }
+      [data-prof-sheet] .gvprof__menu {
+        display: block !important; position: static; border: 0; box-shadow: none; padding: 0;
+      }
+      [data-prof-sheet] .gvprof__id { padding: 4px 4px 18px; margin-bottom: 8px; gap: 12px; }
+      [data-prof-sheet] .gvprof__av.lg { width: 52px; height: 52px; font-size: 19px; }
+      [data-prof-sheet] .gvprof__idtext .gvprof__name { font-size: 17px; }
+      [data-prof-sheet] .gvprof__email { font-size: 13px; color: #6b7280; }
+      [data-prof-sheet] .gvprof__item {
+        min-height: 50px; padding: 0 6px; gap: 14px; font-size: 15px; border-radius: 12px;
+      }
+      [data-prof-sheet] .gvprof__item .gvic { width: 20px; height: 20px; }
+      [data-prof-sheet] .gvprof__item + .gvprof__item { margin-top: 2px; }
+      /* Settings/Admin/Changelog all push into another screen — a trailing chevron
+         says so, the same accessory a real iOS settings row carries. Sign out is the
+         one row that doesn't navigate anywhere, so it's excluded. */
+      [data-prof-sheet] .gvprof__item:not([data-prof-signout])::after {
+        content: ""; width: 7px; height: 7px; margin-left: auto; flex: none;
+        border-top: 1.6px solid #c3c7cf; border-right: 1.6px solid #c3c7cf;
+        transform: rotate(45deg);
+      }
+      /* Sign out is destructive and the only row that isn't "go somewhere" — iOS
+         convention breaks it out with its own divider, spacing and red. */
+      [data-prof-sheet] [data-prof-signout] {
+        margin-top: 10px; padding-top: 20px; border-top: 1px solid rgba(16,17,26,0.08);
+        color: #d92d20;
+      }
+      [data-prof-sheet] [data-prof-signout] .gvic { color: #d92d20; }
+      [data-prof-sheet] .gvprof__ver {
+        min-height: 34px; padding: 14px 6px 6px; margin-top: 6px; border-top: 0;
+        justify-content: center; font-size: 12px;
+      }
+      /* The update nudge is real information, not a second call to action — at the
+         same size/weight as Settings/Sign out it was the loudest thing in the
+         sheet. A small pill reads as a status, not a competing button. */
+      [data-prof-sheet] .gvprof__ver a {
+        padding: 3px 8px; border-radius: 999px; background: rgba(180,83,9,0.1);
+        font-size: 11px; font-weight: 700;
+      }
+      [data-prof-sheet] .gvsheet__panel { padding-bottom: calc(24px + env(safe-area-inset-bottom)); }
+
+      /* ── Pinned sheet rows ──────────────────────────────────────────────────
+         PINS_JS renders identical row markup into both the desktop rail's list and
+         this sheet's copy, but the row's own styling (.gvside a) only ever applied
+         inside .gvside — the sheet's rows had no padding, icon slot, or tap sizing
+         at all. Mirrors .gvside a, scaled up for touch. */
+      [data-pin-sheet] [data-pinned-list] a {
+        display: flex; align-items: center; gap: 12px; min-height: 48px; padding: 0 6px;
+        border-radius: 12px; text-decoration: none; color: #2c2f36; font-weight: 500; font-size: 15px;
+        white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: grab;
+      }
+      [data-pin-sheet] [data-pinned-list] a:hover { background: rgba(16,17,26,0.05); }
+      [data-pin-sheet] [data-pinned-list] a[aria-current="page"] { background: rgba(16,17,26,0.07); font-weight: 600; }
+      [data-pin-sheet] [data-pinned-list] a.gv-dragging { opacity: .45; cursor: grabbing; }
+      [data-pin-sheet] [data-pinned-list] a.gv-ctxopen { background: rgba(16,17,26,0.06); }
+      [data-pin-sheet] [data-pinned-list] a > span:last-child { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+      [data-pin-sheet] .gvpin-ic { width: 22px; font-size: 16px; }
+      [data-pin-sheet] .gvside__pinhint { padding: 12px 6px; font-size: 13.5px; }
     }
     @media (min-width: 861px) {
       .gvtabbar, .gvsheet { display: none; }
@@ -2999,10 +3109,10 @@ function mobileProfileSheet() {
         <button type="button" class="gvsheet__x" data-prof-sheet-close aria-label="Close">${IC_CLOSE}</button>
       </div>
       ${profileChip()}
-      <a class="gvside__admin" href="/admin/" data-space-admin${
+      <a class="gvprof__item gvside__admin" href="/admin/" data-space-admin${
         NAV_STATE.activeSpace ? ` data-space-id="${escAttr(NAV_STATE.activeSpace)}"` : ""
       }>${IC_GEAR}<span>Admin</span></a>
-      <a href="/changelog/">${IC_CHANGELOG}<span>Changelog</span><span class="gvside__ver">v${UI_VERSION}</span></a>
+      <a class="gvprof__item" href="/changelog/">${IC_CHANGELOG}<span>Changelog</span></a>
     </div>
   </div>`;
 }
@@ -3230,9 +3340,11 @@ function appChrome(active) {
   const center = isSubView
     ? `<span class="gvtop__title">${titleText || ""}</span>`
     : brandCenter;
+  // No spacer at top level: the brand sits flush against the header's own left edge
+  // rather than centered behind a symmetry-only placeholder.
   const leftSlot = isSubView
     ? `<a class="gvtop__back" href="${S("/")}" aria-label="Back"><svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M10 3L5 8l5 5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></a>`
-    : `<span class="gvtop__side" aria-hidden="true"></span>`;
+    : "";
   const top = `<header class="gvtop">
     ${leftSlot}
     <div class="gvtop__center">${center}</div>
