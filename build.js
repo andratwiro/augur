@@ -2508,18 +2508,16 @@ const TABBAR_CSS = `
         flex: 1; display: flex; align-items: center; justify-content: flex-start; gap: 8px;
         min-width: 0; overflow: hidden; height: 34px;
       }
-      .gvtop__center-brand { display: flex; align-items: center; gap: 8px; height: 34px; color: #16171a; text-decoration: none; }
-      .gvtop__center-brand img { width: 22px; height: 22px; border-radius: 5px; flex: none; display: block; }
-      .gvtop__center-brand span { display: flex; align-items: center; height: 34px; font-family: var(--font-display); font-weight: 800; font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-      .gvtop__title { display: flex; align-items: center; height: 34px; font-weight: 700; font-size: 15px; color: #16171a; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-      .gvtop__search-btn {
-        display: inline-flex; align-items: center; justify-content: center;
-        width: 36px; height: 34px; padding: 0; cursor: pointer; flex: none;
-        border-radius: 9px; border: 1px solid rgba(16,17,26,0.12); background: rgba(16,17,26,0.03); color: #16171a;
-      }
-      .gvtop__search-btn:hover { background: rgba(16,17,26,0.06); border-color: rgba(16,17,26,0.20); }
-      .gvtop__search-btn svg { width: 16px; height: 16px; }
-      .gvtop__search-btn .gvic { width: 16px; height: 16px; }
+      /* Breadcrumb header: workspace › section. This is the mobile section header now. */
+      .gvtop__crumbs { display: flex; align-items: center; gap: 7px; min-width: 0; height: 34px; }
+      .gvtop__crumb { font-family: var(--font-display); font-size: 15px; font-weight: 700; color: #16171a; text-decoration: none; white-space: nowrap; }
+      a.gvtop__crumb { color: #6b7280; font-weight: 600; flex: none; }
+      a.gvtop__crumb:hover { color: #16171a; }
+      .gvtop__crumbsep { color: #b6bac2; font-size: 15px; flex: none; }
+      .gvtop__crumb--current { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+      /* Right-side contextual action (research/context docs when the page has them). */
+      .gvtop__action { flex: none; display: flex; align-items: center; }
+      .gvtop__action .research-chip { border-color: rgba(16,17,26,0.12); background: rgba(16,17,26,0.03); padding: 6px 9px; }
       .gvtop__searchwrap { flex: 1; min-width: 0; display: flex; align-items: center; }
       /* .gvsearch's default margin (2px 1px 8px) is tuned for its desktop-sidebar
          context, where the 8px bottom margin is breathing room before the next rail
@@ -2527,7 +2525,14 @@ const TABBAR_CSS = `
          which visibly sat the search field above true center — zero it out here. */
       .gvtop__searchwrap .gvsearch { width: 100%; margin: 0; }
       body:not(.gv-mobile-searching) .gvtop__searchwrap { display: none; }
-      .gv-mobile-searching .gvtop__center { display: none; }
+      .gv-mobile-searching .gvtop__center, .gv-mobile-searching .gvtop__action { display: none; }
+
+      /* The in-body section headers are folded into the breadcrumb header on mobile.
+         Hide the .folderbar EXCEPT ones carrying a real action button (admin's Invite,
+         .aubtn) — those aren't just a title. The create-canvas button never surfaces on
+         mobile even where a folderbar survives. */
+      .folderbar:not(:has(.aubtn)) { display: none; }
+      .folderbar__new { display: none; }
 
       /* ── Floating pill tab bar ────────────────────────────────────────────── */
       /* iOS 26 Liquid Glass, approximated: a lighter, more see-through fill (was a
@@ -2759,6 +2764,7 @@ const IC_CHEV = ic(`<path d="m9 18 6-6-6-6"/>`); // chevron-right (rotates open 
 const IC_GEAR = ic(`<path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/>`); // settings
 const IC_SIGNOUT = ic(`<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" x2="9" y1="12" y2="12"/>`); // log-out
 const IC_USERS = ic(`<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>`); // users — admin People
+const IC_SEARCH = ic(`<circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/>`); // search — mobile tab bar (.gvic-sized; SEARCH_ICON is the un-classed header variant)
 const IC_LOCK = ic(`<rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>`); // lock — marks a "Change …" that isn't wired yet
 const IC_SLIDERS = ic(`<line x1="4" x2="4" y1="21" y2="14"/><line x1="4" x2="4" y1="10" y2="3"/><line x1="12" x2="12" y1="21" y2="12"/><line x1="12" x2="12" y1="8" y2="3"/><line x1="20" x2="20" y1="21" y2="16"/><line x1="20" x2="20" y1="12" y2="3"/><line x1="2" x2="6" y1="14" y2="14"/><line x1="10" x2="14" y1="8" y2="8"/><line x1="18" x2="22" y1="16" y2="16"/>`); // sliders-vertical (account settings)
 const IC_HELP = ic(`<circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/>`); // circle-help
@@ -3119,6 +3125,7 @@ function tabBar(active) {
     ${playground}
     ${tab("/tokens/", "Design system", "library", IC_LIBRARY)}
     <button type="button" class="gvtab" data-tab-pinned aria-haspopup="dialog">${IC_PIN}<span>Pinned</span></button>
+    <button type="button" class="gvtab" data-mobile-search-toggle aria-label="Search">${IC_SEARCH}<span>Search</span></button>
     <button type="button" class="gvtab" data-prof data-tab-profile aria-haspopup="dialog" hidden><span class="gvprof__av" data-prof-av aria-hidden="true"></span><span>Profile</span></button>
   </nav>`;
 }
@@ -3359,7 +3366,7 @@ function settingsModal() {
 
 // Full chrome injected at the top of <body>: slim mobile top bar + the rail + the
 // drawer scrim (the last two are off-canvas / hidden on desktop via CSS).
-function appChrome(active) {
+function appChrome(active, opts = {}) {
   // Mobile header center: the active space's own icon+name (same data spaceSwitcher()
   // reads, build.js:2900ish), replacing the hardcoded engine mark — correct on every
   // instance by construction. Falls back to GV_MARK+"augur" only when there's no
@@ -3374,27 +3381,33 @@ function appChrome(active) {
   // same back-chevron treatment as library/admin, titled with the opportunity's own
   // name rather than left blank.
   const isOpportunity = !isLibOrAdmin && !!active && active !== "prototypes" && active !== "playground" && active !== "changelog";
-  const isSubView = isLibOrAdmin || isOpportunity;
-  const brandCenter = activeSpaceObj
-    ? `<a class="gvtop__center-brand" href="${S("/")}"><img src="/space-icon.png" alt="" width="22" height="22" /><span>${escAttr(activeSpaceObj.name)}</span></a>`
-    : `<a class="gvtop__center-brand" href="${S("/")}">${GV_MARK}<span>augur</span></a>`;
-  const titleText = active === "admin" ? "Workspace settings"
+  // Breadcrumb: workspace › current section, ALWAYS (the mobile header IS the section
+  // header now — the in-body .folderbar is hidden on mobile, see NAV_CSS). The section
+  // crumb names whatever view you're in; the workspace crumb links to root and so
+  // replaces the old back chevron.
+  const spaceName = activeSpaceObj ? activeSpaceObj.name : "augur";
+  const sectionLabel = active === "admin" ? "Workspace settings"
     : LIB_KEYS.includes(active) ? "Design system"
     : active === "changelog" ? "Changelog"
-    : isOpportunity ? titleCase(active) : "";
-  const center = isSubView
-    ? `<span class="gvtop__title">${titleText || ""}</span>`
-    : brandCenter;
-  // No spacer at top level: the brand sits flush against the header's own left edge
-  // rather than centered behind a symmetry-only placeholder.
-  const leftSlot = isSubView
-    ? `<a class="gvtop__back" href="${S("/")}" aria-label="Back"><svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M10 3L5 8l5 5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></a>`
+    : active === "playground" ? "Playground"
+    : isOpportunity ? titleCase(active)
+    : PROJECTS_LABEL;
+  const crumbs = `<nav class="gvtop__crumbs" aria-label="Breadcrumb">
+      <a class="gvtop__crumb" href="${S("/")}">${escAttr(spaceName)}</a>
+      <span class="gvtop__crumbsep" aria-hidden="true">›</span>
+      <span class="gvtop__crumb gvtop__crumb--current" aria-current="page">${escAttr(sectionLabel)}</span>
+    </nav>`;
+  // Right side: the page's research/context docs when it has any (opportunities). The
+  // create-canvas button deliberately does NOT surface on mobile. Search is NOT here
+  // anymore — it moved to the bottom tab bar; railSearch() still lives in the header
+  // but stays hidden until the Search tab toggles .gv-mobile-searching.
+  const headerAction = opts.research && opts.research.length
+    ? `<div class="gvtop__action">${researchChip(opts.research)}</div>`
     : "";
   const top = `<header class="gvtop">
-    ${leftSlot}
-    <div class="gvtop__center">${center}</div>
+    <div class="gvtop__center">${crumbs}</div>
     <div class="gvtop__searchwrap">${railSearch()}</div>
-    <button type="button" class="gvtop__search-btn" data-mobile-search-toggle aria-label="Search">${SEARCH_ICON}</button>
+    ${headerAction}
   </header>`;
   // Workspace admin REPLACES the rail rather than adding a second nav column beside
   // it. You are in one workspace's settings, not browsing its content, so the rail's
@@ -6037,7 +6050,7 @@ const RESEARCH_JS = `(function(){
   });
 })();`;
 
-function shell({ title, body, back, activeTab = "prototypes", wrapClass = "" }) {
+function shell({ title, body, back, activeTab = "prototypes", wrapClass = "", research }) {
   const backLink = back
     ? `<a class="back" href="${back.href}">${back.label}</a>`
     : "";
@@ -6057,7 +6070,7 @@ function shell({ title, body, back, activeTab = "prototypes", wrapClass = "" }) 
   </style>
 </head>
 <body>
-  ${appChrome(activeTab)}
+  ${appChrome(activeTab, { research })}
   <div class="wrap${wrapClass ? " " + wrapClass : ""}">
     ${backLink}
     ${body}
@@ -6206,6 +6219,7 @@ function renderOpportunityIndex(opp) {
     title: titleCase(opp.name),
     activeTab: opp.name,
     wrapClass: "wrap--wide",
+    research: opp.research,
     body: `<header class="folderbar"><a class="folderbar__up" href="${S("/")}" aria-label="All ${PROJECTS_LABEL.toLowerCase()}" title="All ${PROJECTS_LABEL.toLowerCase()}"><svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M10 3L5 8l5 5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></a><h1 class="folderbar__title">${titleCase(opp.name)}</h1><span class="folderbar__count">${opp.prototypes.length}</span><span class="folderbar__rule"></span>${researchChip(opp.research)}${newCanvasBtn(S(`/${opp.name}/`))}</header><div data-fgroup><div class="page-grid is-3up">${cards}</div></div>${filterEmpty()}`,
   });
 }
