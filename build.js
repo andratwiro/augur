@@ -2513,6 +2513,10 @@ const TABBAR_CSS = `
       .gvtop__crumb { font-family: var(--font-display); font-size: 15px; font-weight: 700; color: #16171a; text-decoration: none; white-space: nowrap; }
       a.gvtop__crumb { color: #6b7280; font-weight: 600; flex: none; }
       a.gvtop__crumb:hover { color: #16171a; }
+      .gvtop__crumb--home { display: flex; align-items: center; gap: 7px; }
+      .gvtop__logo { width: 22px; height: 22px; border-radius: 5px; flex: none; display: block; }
+      .gvtop__logo--mark { display: inline-flex; align-items: center; }
+      .gvtop__logo--mark svg { width: 22px; height: 22px; }
       .gvtop__crumbsep { color: #b6bac2; font-size: 15px; flex: none; }
       .gvtop__crumb--current { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
       /* Right-side contextual action (research/context docs when the page has them). */
@@ -3392,8 +3396,11 @@ function appChrome(active, opts = {}) {
     : active === "playground" ? "Playground"
     : isOpportunity ? titleCase(active)
     : PROJECTS_LABEL;
+  const homeMark = activeSpaceObj
+    ? `<img class="gvtop__logo" src="/space-icon.png" alt="" width="22" height="22" />`
+    : `<span class="gvtop__logo gvtop__logo--mark">${GV_MARK}</span>`;
   const crumbs = `<nav class="gvtop__crumbs" aria-label="Breadcrumb">
-      <a class="gvtop__crumb" href="${S("/")}">${escAttr(spaceName)}</a>
+      <a class="gvtop__crumb gvtop__crumb--home" href="${S("/")}">${homeMark}<span>${escAttr(spaceName)}</span></a>
       <span class="gvtop__crumbsep" aria-hidden="true">›</span>
       <span class="gvtop__crumb gvtop__crumb--current" aria-current="page">${escAttr(sectionLabel)}</span>
     </nav>`;
