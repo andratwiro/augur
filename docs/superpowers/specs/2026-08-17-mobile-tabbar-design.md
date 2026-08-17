@@ -238,8 +238,9 @@ No DOM test suite in this repo (`npm test` is worker/node-only); verified by dri
 it, same as the account-settings-modal spec:
 
 `npm run offline` (or `OFFLINE_PORT=8791 npm --prefix augur run offline` from the
-workspace root if GoVocal's offline server is also running), then in a real mobile
-viewport (Chrome DevTools device toolbar or an actual phone on the tailnet):
+workspace root if another local dev server is already occupying the default port),
+then in a real mobile viewport (Chrome DevTools device toolbar or an actual phone on
+the tailnet):
 
 1. Load `/` under 860px — bottom bar shows Projects/Playground/DS/Pinned/Profile,
    Projects active; header shows the space's icon + name centered, no hamburger

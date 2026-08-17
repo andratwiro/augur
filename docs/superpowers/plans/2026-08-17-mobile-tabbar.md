@@ -984,16 +984,18 @@ const UI_VERSION = "1.13";
 
 - [ ] **Step 2: Start the offline server**
 
-From the workspace root (`/Users/rob/Documents/augur-workspace`), run:
+From the workspace root (the parent folder containing this engine clone and its
+sibling space clones), run:
 ```bash
 OFFLINE_PORT=8791 npm --prefix augur run offline
 ```
-(use `8791` unconditionally here since GoVocal's offline server commonly occupies 8788/8790 — avoids a port clash regardless of whether it's currently running). Wait for the "ready"/listening log line before continuing.
+(pick a port unlikely to clash with any other local dev server you may already have
+running). Wait for the "ready"/listening log line before continuing.
 
 - [ ] **Step 3: Playwright mobile-viewport smoke pass**
 
-Write a throwaway script (not committed — scratch verification only) at
-`/private/tmp/claude-501/-Users-rob-Documents-augur-workspace/54b3ff19-9864-4629-8651-1bda92ef5ce7/scratchpad/tabbar-check.mjs`:
+Write a throwaway script (not committed — scratch verification only) to a scratch
+directory outside this repo, e.g. `/tmp/tabbar-check.mjs`:
 
 ```js
 import { chromium, devices } from "playwright";
@@ -1002,7 +1004,7 @@ const browser = await chromium.launch();
 const page = await browser.newPage({ ...devices["iPhone 13"] });
 await page.goto("http://localhost:8791/");
 await page.waitForSelector(".gvtabbar");
-await page.screenshot({ path: "/private/tmp/claude-501/-Users-rob-Documents-augur-workspace/54b3ff19-9864-4629-8651-1bda92ef5ce7/scratchpad/tabbar-01-home.png" });
+await page.screenshot({ path: "/tmp/tabbar-01-home.png" });
 
 // Header shows space branding, not "augur"
 const centerText = await page.locator(".gvtop__center").innerText();
@@ -1015,7 +1017,7 @@ console.log("gvburger count (expect 0):", burgerCount);
 // Tap into Design System — bar swaps, back chevron appears
 await page.locator('.gvtabbar a[href="/tokens/"], .gvtabbar a[href$="/tokens/"]').first().click();
 await page.waitForSelector('.gvtabbar a[href$="/base/"]');
-await page.screenshot({ path: "/private/tmp/claude-501/-Users-rob-Documents-augur-workspace/54b3ff19-9864-4629-8651-1bda92ef5ce7/scratchpad/tabbar-02-ds.png" });
+await page.screenshot({ path: "/tmp/tabbar-02-ds.png" });
 const backVisible = await page.locator(".gvtop__back").count();
 console.log("back chevron count in DS (expect 1):", backVisible);
 
@@ -1034,7 +1036,7 @@ await browser.close();
 console.log("DONE");
 ```
 
-Run: `node /private/tmp/claude-501/-Users-rob-Documents-augur-workspace/54b3ff19-9864-4629-8651-1bda92ef5ce7/scratchpad/tabbar-check.mjs`
+Run: `node /tmp/tabbar-check.mjs`
 
 Expected output: header center text is the space's name (not `"augur"`), `gvburger count: 0`, back chevron count in DS `1`, "returned to primary bar OK", `gvtabbar visible at 1280px: false`, `DONE`. If any expectation fails, fix the relevant task's code before continuing — do not proceed to Step 4 with a failing check.
 

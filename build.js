@@ -2530,6 +2530,9 @@ const TABBAR_CSS = `
         font: 500 11px/1 "Inter", "Inter Variable", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
         border: 0; background: none; cursor: pointer; position: relative;
       }
+      /* [hidden] override: the display above would otherwise beat the UA rule (the
+         Profile tab starts hidden until PROFILE_JS confirms identity). */
+      .gvtab[hidden] { display: none; }
       .gvtab .gvic, .gvtab .pin-star { width: 24px; height: 24px; display: block; }
       .gvtab span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
       .gvtab[aria-current="page"] { color: #16171a; background: rgba(16,17,26,0.08); }
