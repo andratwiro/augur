@@ -3208,9 +3208,32 @@ function settingsModal() {
 // Full chrome injected at the top of <body>: slim mobile top bar + the rail + the
 // drawer scrim (the last two are off-canvas / hidden on desktop via CSS).
 function appChrome(active) {
+  // Mobile header center: the active space's own icon+name (same data spaceSwitcher()
+  // reads, build.js:2900ish), replacing the hardcoded engine mark — correct on every
+  // instance by construction. Falls back to GV_MARK+"augur" only when there's no
+  // space to name (the engine-only/shell build case, spaceSwitcher() returns "" then
+  // too). A back chevron replaces the brand whenever this page's rail would be
+  // library/admin/an opportunity — i.e. whenever sideRail() itself isn't the active
+  // view (the same branch computed below for `rail`).
+  const spaces = NAV_STATE.spaces || [];
+  const activeSpaceObj = spaces.find((s) => s.id === NAV_STATE.activeSpace) || spaces[0];
+  const isSubView = active === "admin" || LIB_KEYS.includes(active) ||
+    (active && active !== "prototypes" && active !== "playground" && active !== "library" && active !== "changelog");
+  const brandCenter = activeSpaceObj
+    ? `<a class="gvtop__center-brand" href="${S("/")}"><img src="/space-icon.png" alt="" width="22" height="22" /><span>${escAttr(activeSpaceObj.name)}</span></a>`
+    : `<a class="gvtop__center-brand" href="${S("/")}">${GV_MARK}<span>augur</span></a>`;
+  const titleText = active === "admin" ? "Workspace settings" : LIB_KEYS.includes(active) ? "Design system" : "";
+  const center = isSubView
+    ? `<span class="gvtop__title">${titleText || ""}</span>`
+    : brandCenter;
+  const leftSlot = isSubView
+    ? `<a class="gvtop__back" href="${S("/")}" aria-label="Back"><svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M10 3L5 8l5 5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></a>`
+    : `<span class="gvtop__side" aria-hidden="true"></span>`;
   const top = `<header class="gvtop">
-    <button type="button" class="gvburger" data-side-toggle aria-expanded="false" aria-controls="gvside" aria-label="Open navigation"><span class="gvburger__bars" aria-hidden="true"><span></span><span></span><span></span></span></button>
-    <a class="gvtop__brand" href="${S("/")}">${GV_MARK}<span>augur</span></a>
+    ${leftSlot}
+    <div class="gvtop__center">${center}</div>
+    <div class="gvtop__searchwrap">${railSearch()}</div>
+    <button type="button" class="gvtop__search-btn" data-mobile-search-toggle aria-label="Search">${SEARCH_ICON}</button>
   </header>`;
   // Workspace admin REPLACES the rail rather than adding a second nav column beside
   // it. You are in one workspace's settings, not browsing its content, so the rail's
@@ -3219,7 +3242,7 @@ function appChrome(active) {
   const rail = active === "admin" ? adminRail()
     : LIB_KEYS.includes(active) ? libraryRail(active)
     : sideRail(active);
-  return `${top}${rail}<div class="gvscrim" data-side-scrim></div>${helpDrawer()}${settingsModal()}`;
+  return `${top}${rail}<div class="gvscrim" data-side-scrim></div>${tabBar(active)}${mobilePinnedSheet()}${mobileProfileSheet()}${helpDrawer()}${settingsModal()}`;
 }
 
 // The rail while you are inside the design system. Same shape as workspace settings: profile
