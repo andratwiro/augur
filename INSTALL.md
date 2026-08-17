@@ -239,7 +239,10 @@ field at all: invite them from the Admin panel and they choose their own.
 build input — the shell mounts no space submodules. Optional keys: `realtimeOrigin`
 (step 9), `sentinels`, `mcpHostSuffixes`, `mcpHostAllowlistUrl`, `vanityRedirects`,
 `updateFeed`, `loginHint` (one line of plain text rendered under the
-login form — how a demo instance surfaces its test credentials), and
+login form — how a demo instance surfaces its test credentials), `loginPrefill`
+(`{email, password}` baked into the login form's `value=` attributes — how a demo
+instance turns its throwaway account into a one-click login instead of a
+copy-paste; leave unset and the form renders empty, as before), and
 `minClientProtocol`.
 
 `minClientProtocol` is the oldest publish protocol this instance accepts a commit

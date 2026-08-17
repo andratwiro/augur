@@ -344,6 +344,12 @@ let MIN_CLIENT_PROTOCOL = 0;
 // Optional one-liner rendered on the login page (deploy.config.json "loginHint") —
 // how a demo instance surfaces its test credentials without opening the gate.
 let LOGIN_HINT = "";
+// Optional email/password baked into the login form's value= attributes
+// (deploy.config.json "loginPrefill": {email, password}) — a demo instance's way of
+// making its throwaway account a one-click login instead of a copy-paste. Empty by
+// default, so a normal instance's form renders with no values, same as before.
+let LOGIN_PREFILL_EMAIL = "";
+let LOGIN_PREFILL_PASSWORD = "";
 // Engine version of the build that produced the live config/chrome (from
 // package.json via build.js) + the release feed the update nudge polls.
 let INSTANCE_ENGINE_VERSION = "";
@@ -363,6 +369,9 @@ function applyInstance(inst) {
   MIN_CLIENT_PROTOCOL = Number.isInteger(inst.minClientProtocol) && inst.minClientProtocol > 0
     ? inst.minClientProtocol : 0;
   LOGIN_HINT = typeof inst.loginHint === "string" ? inst.loginHint : "";
+  const prefill = inst.loginPrefill && typeof inst.loginPrefill === "object" ? inst.loginPrefill : {};
+  LOGIN_PREFILL_EMAIL = typeof prefill.email === "string" ? prefill.email : "";
+  LOGIN_PREFILL_PASSWORD = typeof prefill.password === "string" ? prefill.password : "";
   CONFIG_LOADED = true; // an instance document was actually applied this isolate
 }
 // Has a real instance config ever loaded in THIS isolate? A cold isolate whose first
@@ -2836,9 +2845,9 @@ function loginPage(redirect, error) {
     <form method="POST" action="/__auth">
       <input type="hidden" name="redirect" value="${safeRedirect}" />
       <label for="email">Email</label>
-      <input id="email" name="email" type="email" autocomplete="username" autocapitalize="off" autocorrect="off" spellcheck="false" autofocus required ${error ? 'aria-invalid="true" aria-describedby="pw-err"' : ""} />
+      <input id="email" name="email" type="email" autocomplete="username" autocapitalize="off" autocorrect="off" spellcheck="false" autofocus required value="${escapeHtml(LOGIN_PREFILL_EMAIL)}" ${error ? 'aria-invalid="true" aria-describedby="pw-err"' : ""} />
       <label for="password">Password</label>
-      <input id="password" name="password" type="password" autocomplete="current-password" required ${error ? 'aria-invalid="true" aria-describedby="pw-err"' : ""} />
+      <input id="password" name="password" type="password" autocomplete="current-password" required value="${escapeHtml(LOGIN_PREFILL_PASSWORD)}" ${error ? 'aria-invalid="true" aria-describedby="pw-err"' : ""} />
       <button type="submit">Enter</button>
       <p class="error" id="pw-err" role="alert">
         <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 8v5M12 16.5v.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M10.3 3.9 2.5 18a2 2 0 0 0 1.7 3h15.6a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>
