@@ -8,6 +8,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { renderAppChrome, renderSpaceContextScript } from "../src/chrome/appchrome.mjs";
+import { __testables as W } from "../src/_worker.js";
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 
@@ -66,4 +67,44 @@ test("non-default active space scopes rail links to its base", () => {
   const html = renderAppChrome("prototypes", state, {});
   assert.match(html, /data-search-base="\/beta\/"/);
   assert.match(html, /href="\/beta\/"/); // the Projects rail item is base-scoped
+});
+
+// ---- composeChrome (worker serve-time composer) ------------------------------
+
+const OLD_PAGE = `<!doctype html><html><head>
+<link rel="stylesheet" href="/_chrome.1.11.deadbeef.css">
+</head><body>
+<!--gv-chrome-start data-space="" data-active="prototypes" data-ui="1.11"-->OLDRAIL<!--gv-chrome-end-->
+<script defer src="/_chrome.1.11.deadbeef.js"></script>
+</body></html>`;
+
+test("composeChrome swaps bundle refs and re-renders the rail", async () => {
+  W.__setChromeTestState(
+    { css: "_chrome.1.14.abc12345.css", js: "_chrome.1.14.abc12345.js", ui: "1.14" },
+    [{ id: "demo", name: "Demo", default: true, base: "" }], true);
+  const res = new Response(OLD_PAGE, { headers: { "Content-Type": "text/html", "ETag": '"stale"', "Content-Length": "999" } });
+  const out = await W.composeChrome(res, new URL("https://x/"));
+  const body = await out.text();
+  assert.match(body, /_chrome\.1\.14\.abc12345\.css/);
+  assert.match(body, /_chrome\.1\.14\.abc12345\.js/);
+  assert.doesNotMatch(body, /1\.11\.deadbeef/);
+  assert.doesNotMatch(body, /OLDRAIL/);
+  assert.match(body, /gvside__ver">v1\.14/);
+  assert.match(body, /<!--gv-chrome-start [^>]*data-active="prototypes"[^>]*-->/, "markers preserved");
+  assert.equal(out.headers.get("ETag"), null, "stale ETag dropped");
+  assert.equal(out.headers.get("Content-Length"), null, "stale Content-Length dropped");
+});
+
+test("composeChrome is a no-op when the flag is off", async () => {
+  W.__setChromeTestState({ css: "x.css", js: "x.js", ui: "1.14" }, [], false);
+  const res = new Response("<body>hi</body>", { headers: { "Content-Type": "text/html" } });
+  assert.equal(await (await W.composeChrome(res, new URL("https://x/"))).text(), "<body>hi</body>");
+});
+
+test("composeChrome leaves ?raw and non-HTML untouched even when on", async () => {
+  W.__setChromeTestState({ css: "c.css", js: "c.js", ui: "1.14" }, [], true);
+  const raw = new Response(OLD_PAGE, { headers: { "Content-Type": "text/html" } });
+  assert.match(await (await W.composeChrome(raw, new URL("https://x/?raw"))).text(), /OLDRAIL/);
+  const json = new Response('{"a":1}', { headers: { "Content-Type": "application/json" } });
+  assert.equal(await (await W.composeChrome(json, new URL("https://x/"))).text(), '{"a":1}');
 });

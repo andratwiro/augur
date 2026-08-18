@@ -21,6 +21,13 @@
 //
 // Casual gate against link leakage — NOT Zero Trust.
 
+// The page-level chrome renderer, shared with build.js (which bakes it). At serve time
+// composeChrome() re-renders it from the CURRENT engine so a deploy updates every stored
+// page's rail without a re-bake (runtime-chrome). build.js copies this module next to the
+// worker (dist/chrome/appchrome.mjs) so the relative import resolves at the edge. Pure,
+// side-effect-free at import — keeps this file importable by test/worker.test.mjs.
+import { renderAppChrome, renderSpaceContextScript } from "./chrome/appchrome.mjs";
+
 const COOKIE = "gv_auth";
 const MAX_AGE = 60 * 60 * 24 * 7; // 7 days
 
@@ -3042,6 +3049,54 @@ function withLiveReload(res, url) {
     .transform(res);
 }
 
+// ---- Serve-time chrome composition (runtime-chrome) --------------------------
+// A stored page carries the chrome the engine baked when it was published, wrapped in
+// <!--gv-chrome-start …-->…<!--gv-chrome-end--> markers and pointing at whatever
+// _chrome.<ver>.<hash>.{css,js} that engine emitted. When RUNTIME_CHROME is on we
+// re-render the marked region with the CURRENT engine and repoint the bundle refs, so a
+// deploy updates every space/tenant instantly regardless of which engine baked the page —
+// no per-space re-bake. The active tab + space come from the marker's own data-* (never
+// re-derived from the path). HTMLRewriter can't replace a range between two comment nodes,
+// so this buffers the (bounded, stored) HTML and does a marker splice + ref swap in JS.
+const CHROME_MARK_RE = /<!--gv-chrome-start\s+([^>]*?)-->[\s\S]*?<!--gv-chrome-end-->/;
+function markerAttr(attrs, name) {
+  const m = attrs.match(new RegExp(name + '="([^"]*)"'));
+  return m ? m[1] : "";
+}
+
+async function composeChrome(res, url) {
+  if (!RUNTIME_CHROME || !CHROME_POINTER) return res;
+  const ct = res.headers.get("Content-Type") || "";
+  if (!ct.includes("text/html") || url.searchParams.has("raw")) return res;
+  let html = await res.text();
+  // (a) re-render the marked rail with the current engine, keyed on the marker's own
+  //     data-space / data-active (kept verbatim so the markers survive for next time).
+  html = html.replace(CHROME_MARK_RE, (full, attrs) => {
+    const active = markerAttr(attrs, "data-active") || "prototypes";
+    const spaceId = markerAttr(attrs, "data-space");
+    const state = { spaces: SPACES, activeSpace: spaceId, opportunities: [], hasPlayground: true };
+    return `<!--gv-chrome-start ${attrs}-->` + renderAppChrome(active, state, {}) + `<!--gv-chrome-end-->`;
+  });
+  // (b) point stale bundle refs at the current bundle.
+  html = html.replace(/\/_chrome\.[\d.]+\.[0-9a-f]{8}\.css/g, "/" + CHROME_POINTER.css)
+             .replace(/\/_chrome\.[\d.]+\.[0-9a-f]{8}\.js/g, "/" + CHROME_POINTER.js);
+  // The recomposed body is no longer the stored blob, so its ETag/Content-Length must not
+  // ride along. Served HTML stays no-cache (withAssetCache never marks it immutable), so
+  // the change is visible on the next request.
+  const headers = new Headers(res.headers);
+  headers.delete("Content-Length");
+  headers.delete("ETag");
+  return new Response(html, { status: res.status, statusText: res.statusText, headers });
+}
+
+// Test seam: loadConfig sets CHROME_POINTER/SPACES/RUNTIME_CHROME from routing.json in a
+// live isolate; this lets a unit test drive composeChrome without a config load.
+function __setChromeTestState(pointer, spaces, on) {
+  CHROME_POINTER = pointer;
+  SPACES = spaces;
+  RUNTIME_CHROME = on;
+}
+
 // ---- Platform MCP proxy (same-origin bridge) ---------------------------------
 // Upstream platforms often send no CORS headers on /mcp or /oauth/token, so a
 // browser prototype on this origin cannot call them directly. This route lets a
@@ -4628,4 +4683,5 @@ export const __testables = {
   isPrefixBacked, backedPublicPrefixes,
   isPublicPath, isTrackPath, isRestrictedPath, versionFor, brandMark,
   boardApi, canvasesApi, virtualCanvas, CANVASES_KEY, BOARD_PREFIX, BOARD_MAX_BYTES,
+  composeChrome, renderAppChrome, renderSpaceContextScript, __setChromeTestState,
 };
