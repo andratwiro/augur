@@ -161,7 +161,7 @@ jobs:
               echo "::warning::clone of $REPO failed — skipping $ID"; FAILED="$FAILED $ID"; continue
             fi
             echo "re-baking $ID (${BW:-<none>}→${NEW:0:12})"
-            if AUGUR_ORIGIN="$ORIGIN" GV_SPACES_ROOT="$DIR" node engine/scripts/publish.mjs; then
+            if ( cd "$DIR" && AUGUR_ORIGIN="$ORIGIN" GV_SPACES_ROOT="$DIR" node "$GITHUB_WORKSPACE/engine/scripts/publish.mjs" ); then
               echo "re-baked $ID"
             else
               echo "::warning::re-bake of $ID failed"; FAILED="$FAILED $ID"
