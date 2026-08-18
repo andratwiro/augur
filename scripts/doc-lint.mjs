@@ -11,12 +11,13 @@ import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 
 // The canary guards the AGENT-CONTEXT layer (root docs, skills/<x>-ui/, agents/) — not
-// scratch, archives, extracted research, or source-embedded build notes, which carry
-// their own noisy cross-refs and would swamp the signal. Recursion reaches the two-deep
-// context docs (skills/<x>-ui/SKILL.md) while these trees stay out.
+// scratch, archives, extracted research, prototype build notes, or source-embedded
+// build notes, which carry their own noisy cross-refs (placeholder paths, throwaway
+// links) and would swamp the signal. Recursion reaches the two-deep context docs
+// (skills/<x>-ui/SKILL.md) while these trees stay out.
 const SKIP_DIRS = new Set([
   "node_modules", "dist", ".git", "spaces",
-  "playground", "docs", "references", "research", "context",
+  "playground", "prototypes", "docs", "references", "research", "context",
   "src", "tracks", "toolkit", "img", "webapp-testing", "_extracted", "_archive",
 ]);
 const skipDir = (name) => SKIP_DIRS.has(name) || /-exports$/.test(name); // *-exports: local capture bundles
