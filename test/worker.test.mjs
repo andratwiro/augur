@@ -1059,19 +1059,24 @@ test("revokePublishTokens drops exactly the removed user's tokens", async () => 
   assert.deepEqual(Object.keys(map), ["h3"], "only the other user's token survives");
 });
 
-test("pathOwnedBySpace: a non-default space owns only its own subtree", () => {
+// D2 retired (Phase A, S3): with the path-mount tier gone there is one workspace, so
+// ownership no longer discriminates by space id — a "/space-beta/..." path is the one
+// workspace's now, whichever id is asked. The engine-chrome / reserved-/__ exclusions are
+// KEPT: they are what keeps a publish token off shared assets, single-workspace or not.
+test("pathOwnedBySpace: the one workspace owns any non-chrome subtree (tier retired)", () => {
   const spaces = [{ id: "space-alpha", default: true }, { id: "space-beta" }];
   assert.equal(W.pathOwnedBySpace("/space-beta/pages/x/", "space-beta", spaces), true);
-  assert.equal(W.pathOwnedBySpace("/departments/x/", "space-beta", spaces), false, "not its base");
+  assert.equal(W.pathOwnedBySpace("/departments/x/", "space-beta", spaces), true, "no /<id>/ boundary any more");
   assert.equal(W.pathOwnedBySpace("/admin/index.html", "space-beta", spaces), false, "engine chrome");
 });
 
-test("pathOwnedBySpace: the default space owns root EXCEPT engine chrome and other bases", () => {
+test("pathOwnedBySpace: the workspace owns root EXCEPT engine chrome (tier retired)", () => {
   const spaces = [{ id: "space-alpha", default: true }, { id: "space-beta" }];
   assert.equal(W.pathOwnedBySpace("/departments/x/", "space-alpha", spaces), true);
   assert.equal(W.pathOwnedBySpace("/__canvas/canvas.js", "space-alpha", spaces), false, "engine internals");
   assert.equal(W.pathOwnedBySpace("/admin/app.js", "space-alpha", spaces), false, "the admin panel");
-  assert.equal(W.pathOwnedBySpace("/space-beta/pages/x/", "space-alpha", spaces), false, "the other space");
+  assert.equal(W.pathOwnedBySpace("/space-beta/pages/x/", "space-alpha", spaces), true,
+    "a former second-space subtree is the one workspace's now");
   assert.equal(W.pathOwnedBySpace("relative", "space-alpha", spaces), false, "must be absolute");
 });
 
@@ -1103,13 +1108,14 @@ test("synthBuildStamp redacts the publisher email to a display name", () => {
 
 // The chrome a space may never write, and the two things a blanket "/__" ban got
 // wrong in both directions. Publishing was blocked outright by the first of these.
-test("the default space owns its own search index at the root", () => {
+test("the workspace owns its own search index at the root (tier retired)", () => {
   const spaces = [{ id: "alpha", default: true }, { id: "beta" }];
   assert.equal(W.pathOwnedBySpace("/__search.json", "alpha", spaces), true,
-    "the default space serves at the root, so its search index lands under /__ — refusing it stops it publishing at all");
+    "the workspace serves at the root, so its search index lands under /__ — refusing it stops it publishing at all");
   assert.equal(W.pathOwnedBySpace("/beta/__search.json", "beta", spaces), true);
-  assert.equal(W.pathOwnedBySpace("/__search.json", "beta", spaces), false,
-    "…but only its OWN index");
+  // /__search.json is the one /__ exception, owned by the one workspace whichever id
+  // asks — the "…but only its OWN index" boundary was the multi-space tier, now retired.
+  assert.equal(W.pathOwnedBySpace("/__search.json", "beta", spaces), true);
 });
 
 test("a space cannot write chrome that other spaces' pages load absolutely", () => {
@@ -1151,8 +1157,9 @@ test("a public prefix may not be the bare root (that opens the whole site)", () 
   // Real subtrees still publish, with or without the trailing slash.
   assert.equal(W.isPublishablePublicPrefix("/departments/x/", "alpha", spaces), true);
   assert.equal(W.isPublishablePublicPrefix("/departments/x", "alpha", spaces), true);
-  // And the ownership rule still applies on top of it.
-  assert.equal(W.isPublishablePublicPrefix("/beta/x/", "alpha", spaces), false, "another space's subtree");
+  // Engine chrome is still never publishable — the tier retirement keeps that guard. (The
+  // "/beta/x/ belongs to another space" boundary that used to sit here was the multi-space
+  // tier: with one workspace, "/beta/x/" is simply the workspace's own subtree now.)
   assert.equal(W.isPublishablePublicPrefix("/__canvas/", "alpha", spaces), false, "engine chrome");
 });
 

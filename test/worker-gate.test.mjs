@@ -324,28 +324,33 @@ test("[tier] spaceIdForPath sends a root path to the default space", () => {
   assert.equal(W.spaceIdForPath("/betamax", spaces), "alpha");
 });
 
-// D2 / D3 — pathOwnedBySpace / isPublishablePublicPrefix: a "/<id>/" public path
-// is owned by that non-default space, and the DEFAULT space does NOT own another
-// space's "/<id>/" subtree. This is what keeps a publish token to its own space.
-test("[tier] a /<id>/ public path is owned by that non-default space, not the default", () => {
+// D2 / D3 — pathOwnedBySpace / isPublishablePublicPrefix RETIRED the /<id>/ ownership
+// (S3): with one workspace, ownership no longer discriminates by space — every path that
+// is not engine chrome and not reserved /__ (bar /__search.json) belongs to the one
+// workspace, whichever spaceId is asked. The chrome and /__ exclusions are KEPT — they
+// are what keeps a publish token off shared engine assets, single-workspace or not.
+test("[tier] pathOwnedBySpace owns every non-chrome path for the one workspace", () => {
   const spaces = tierSpaces();
-  assert.equal(W.pathOwnedBySpace("/beta/prototypes/panel/", "beta", spaces), true,
-    "beta owns its own /beta/ subtree");
-  assert.equal(W.pathOwnedBySpace("/beta/prototypes/panel/", "alpha", spaces), false,
-    "the default space does NOT own another space's /beta/ subtree");
+  // Formerly-second-space paths are the one workspace's now, whichever id is asked.
+  assert.equal(W.pathOwnedBySpace("/beta/prototypes/panel/", "beta", spaces), true);
+  assert.equal(W.pathOwnedBySpace("/beta/prototypes/panel/", "alpha", spaces), true,
+    "no /<id>/ boundary: the space id no longer restricts ownership");
   assert.equal(W.pathOwnedBySpace("/beta", "beta", spaces), true, "the bare base too");
-  // And the default still owns whatever is left.
-  assert.equal(W.pathOwnedBySpace("/prototypes/home/", "alpha", spaces), true,
-    "the default owns the root-mounted subtree");
-  assert.equal(W.pathOwnedBySpace("/prototypes/home/", "beta", spaces), false,
-    "a non-default space does not own the default's root subtree");
+  assert.equal(W.pathOwnedBySpace("/prototypes/home/", "alpha", spaces), true);
+  assert.equal(W.pathOwnedBySpace("/prototypes/home/", "beta", spaces), true);
+  // KEEP: engine chrome and reserved /__ belong to NO space, the one workspace included.
+  assert.equal(W.pathOwnedBySpace("/admin", "alpha", spaces), false, "engine chrome");
+  assert.equal(W.pathOwnedBySpace("/__canvas/canvas.js", "alpha", spaces), false, "engine chrome");
+  assert.equal(W.pathOwnedBySpace("/__whatever", "alpha", spaces), false, "reserved /__");
+  assert.equal(W.pathOwnedBySpace("/__search.json", "alpha", spaces), true, "the one /__ exception");
 });
 
-test("[tier] isPublishablePublicPrefix follows the same /<id>/ ownership", () => {
+test("[tier] isPublishablePublicPrefix owns any non-root subtree for the one workspace", () => {
   const spaces = tierSpaces();
   assert.equal(W.isPublishablePublicPrefix("/beta/prototypes/panel/", "beta", spaces), true);
-  assert.equal(W.isPublishablePublicPrefix("/beta/prototypes/panel/", "alpha", spaces), false,
-    "the default space cannot publish into beta's mount");
+  assert.equal(W.isPublishablePublicPrefix("/beta/prototypes/panel/", "alpha", spaces), true,
+    "no /<id>/ boundary any more");
+  assert.equal(W.isPublishablePublicPrefix("/", "alpha", spaces), false, "but never the bare root");
 });
 
 // D4 — RESTRICTED_BASES: a space that is adminOnly AND non-default seals its base.
