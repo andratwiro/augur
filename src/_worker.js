@@ -1715,10 +1715,11 @@ function applyDerivedRouting(manifests) {
   SPACES = applySpaceIcons(SPACES, SPACE_ICONS);
 }
 
-// Does a path (or routing prefix) belong to `spaceId`, given the live space list? This
-// is the fix that keeps a publish token to its own space: engine internals (/__*, the
-// admin panel) belong to NO space; a non-default space owns only its /<id>/ subtree; the
-// default space owns the root EXCEPT any other space's base. Pure + exported for tests.
+// Does a path (or routing prefix) belong to a publishable workspace? This keeps a publish
+// token off shared engine assets: engine internals (/__*, the admin panel) belong to NO
+// space and can never be written by a space token. With the path-mount tier retired the
+// remaining rule is simply "not engine chrome, not reserved /__" → the one workspace owns
+// it. Pure + exported for tests.
 // The shared chrome a space may never write. Every one of these is loaded by
 // absolute URL from pages in EVERY space, so a space able to write one could run
 // code in another space's prototypes — which is what this guard is for.
@@ -1806,12 +1807,11 @@ function pathOwnedBySpace(key, spaceId, spaces) {
   // direction: /piti.js and /fonts/* are injected into every prototype and it let
   // those through. The chrome list above closes both ends.)
   if (key.startsWith("/__") && !/^\/__search\.json$/.test(key)) return false;
-  const isDefault = (spaces.find((s) => s.default) || {}).id === spaceId;
-  if (!isDefault) return key === "/" + spaceId || key.startsWith("/" + spaceId + "/");
-  for (const s of spaces) {
-    if (s.default) continue;
-    if (key === "/" + s.id || key.startsWith("/" + s.id + "/")) return false;
-  }
+  // With the path-mount tier retired there is one workspace, so ownership no longer
+  // discriminates by space: anything that is not engine chrome and not reserved /__
+  // belongs to the one workspace. The `spaceId`/`spaces` arguments are kept for the
+  // callers' shape (and for the sweep that later threads a context) but no longer
+  // select among several "/<id>/" subtrees — that plurality is gone.
   return true;
 }
 
