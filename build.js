@@ -2803,6 +2803,19 @@ function pinStar(key, href) {
 const FACE_JS = `
 (function(){
   var RESOLVED = {};
+  // A transient miss (cold-isolate non-200, a network reject, a probe that errors under
+  // fan-out) re-arms the affected chips but leaves the initials showing. Nothing on the
+  // page re-runs wire() on its own, so without this the face stuck until a manual reload
+  // — worst on the Playground grid, which fires one probe per card at once. Reschedule
+  // wire() ourselves, backing off and capped so a permanently-broken avatar settles on
+  // initials instead of spinning.
+  var RETRY_WAVES = 0, MAX_WAVES = 4, retryQueued = false;
+  function scheduleRetry(){
+    if(retryQueued || RETRY_WAVES >= MAX_WAVES) return;
+    retryQueued = true;
+    RETRY_WAVES++;
+    setTimeout(function(){ retryQueued = false; wire(); }, 500 * Math.pow(2, RETRY_WAVES - 1));
+  }
   function lay(el, src){
     if(!src) return;
     var img = new Image();
@@ -2812,7 +2825,7 @@ const FACE_JS = `
       el.style.backgroundPosition = 'center';
       el.textContent = '';
     };
-    img.onerror = function(){ delete el.dataset.faceDone; };
+    img.onerror = function(){ delete el.dataset.faceDone; scheduleRetry(); };
     img.src = src;
   }
   function paintBaked(el){
@@ -2836,7 +2849,15 @@ const FACE_JS = `
       fetch('/__people?ids=' + encodeURIComponent(ids.join(',')), { credentials: 'same-origin' })
         .then(function(r){ return r.ok ? r.json() : null; })
         .then(function(d){
-          if(!d || !d.people) return;
+          if(!d || !d.people){
+            // A non-200 (cold isolate, KV latency) or a malformed body is transient, NOT
+            // "this person has no face" — re-arm and retry rather than leaving the chips
+            // marked done forever. A genuine 200 with people (even an empty list) falls
+            // through to the caching below, so a real miss is still only asked once.
+            ids.forEach(function(id){ (pending[id] || []).forEach(function(el){ delete el.dataset.faceDone; }); });
+            scheduleRetry();
+            return;
+          }
           // Cache the misses too (null): an id nobody answers for must not be re-asked
           // on every wire, and the chip is already showing the right initials.
           ids.forEach(function(id){ if(RESOLVED[id] === undefined) RESOLVED[id] = null; });
@@ -2849,6 +2870,7 @@ const FACE_JS = `
           // Offline/file:// or a gate in the way — leave the initials standing and let a
           // later wire try again rather than caching a network failure as "no face".
           ids.forEach(function(id){ (pending[id] || []).forEach(function(el){ delete el.dataset.faceDone; }); });
+          scheduleRetry();
         });
     });
   }
