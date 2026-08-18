@@ -251,10 +251,6 @@ function isPublicPath(pathname) {
   // load their assets from already-public paths (the public skill dir, /fonts/), so
   // the whole subtree — index pages and any page-local assets — bypasses the gate.
   if (pathname === "/pages" || pathname.startsWith("/pages/")) return true;
-  // NOTE: the /skills and /pages doors above are DEFAULT-SPACE-ONLY (root paths). A
-  // future non-default, non-adminOnly space needs base-aware equivalents
-  // (/<id>/skills/…, /<id>/pages/…) or its public prototypes render unstyled to
-  // signed-out visitors. Revisit when the first public second space mounts.
   return PUBLIC_PREFIXES.some(
     (p) => pathname === p || pathname === p.slice(0, -1) || pathname.startsWith(p)
   );
