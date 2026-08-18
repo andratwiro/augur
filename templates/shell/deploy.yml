@@ -126,35 +126,46 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 20
-      # Only when the pin moved. For each roster space: clone it (full history — publish.mjs
-      # refuses a shallow clone, it dates cards from git) and publish it with the star token
-      # and the shell's pinned engine. A single space's failure warns and the job fails at
-      # the end so it's visible; health.yml (f) also alarms on any drift that outlives its
-      # window. AUGUR_TOKEN unset = assets-mode shell with nothing to publish.
-      - name: Re-bake each roster space against the new engine (only when the pin moved)
+      # Drift-driven, not push-driven: re-bake any roster space whose LIVE baked chrome
+      # (/_build.json builtWithEngine) is behind the engine this shell just deployed
+      # (HEAD:engine). Idempotent — a space already current is a curl + skip, so this is
+      # safe to run on every deploy and self-heals a space that drifted for any reason;
+      # it does not depend on diffing github.event.before (fragile when pushes interleave).
+      # For each stale space: clone it (full history — publish.mjs refuses a shallow clone,
+      # it dates cards from git) and publish with the star token, the pinned engine, and an
+      # explicit AUGUR_ORIGIN (a bare space clone has no shell beside it to resolve one).
+      # Skips a dirty (working-tree) publish — that is someone's live session, not ours to
+      # clobber. A failure warns and fails the job at the end; health.yml (f) also alarms.
+      # AUGUR_TOKEN unset = assets-mode shell with nothing to publish.
+      - name: Re-bake roster spaces whose baked chrome is behind the engine
         env:
           GH_TOKEN: ${{ secrets.SUBMODULE_PAT }}   # clone the space repos
           AUGUR_TOKEN: ${{ secrets.AUGUR_TOKEN }}  # *-scoped: publishes any space's content
         run: |
           set -uo pipefail
           if [ -z "${AUGUR_TOKEN:-}" ]; then echo "AUGUR_TOKEN unset (assets-mode) — nothing to re-bake"; exit 0; fi
-          OLD="$(git rev-parse '${{ github.event.before }}:engine' 2>/dev/null \
-             || git rev-parse 'HEAD^:engine' 2>/dev/null || true)"
           NEW="$(git rev-parse 'HEAD:engine' 2>/dev/null || true)"
-          if [ -z "$NEW" ] || [ -z "$OLD" ] || [ "$OLD" = "$NEW" ]; then echo "engine pin unmoved — no re-bake needed."; exit 0; fi
+          [ -n "$NEW" ] || { echo "no engine pin on disk — skipping"; exit 0; }
+          ORIGIN="$(jq -r '.siteOrigin // empty' deploy.config.json)"
+          [ -n "$ORIGIN" ] || { echo "no siteOrigin in deploy.config.json — skipping"; exit 0; }
+          STAMP="$(curl -fsS --max-time 30 "$ORIGIN/_build.json" 2>/dev/null || echo '{}')"
           FAILED=""
           while read -r ID REPO; do
             [ -n "$ID" ] && [ -n "$REPO" ] || continue
+            BW="$(printf '%s' "$STAMP" | jq -r --arg id "$ID" '.spaces[$id].builtWithEngine // empty')"
+            DIRTY="$(printf '%s' "$STAMP" | jq -r --arg id "$ID" '.spaces[$id].dirty // false')"
+            if [ "$BW" = "$NEW" ]; then echo "$ID already on ${NEW:0:12} — skip"; continue; fi
+            if [ "$DIRTY" = "true" ]; then echo "$ID is a working-tree publish — leaving it"; continue; fi
             DIR="$RUNNER_TEMP/space-$ID"; rm -rf "$DIR"
             if ! git clone --quiet "https://x-access-token:${GH_TOKEN}@github.com/${REPO}.git" "$DIR"; then
               echo "::warning::clone of $REPO failed — skipping $ID"; FAILED="$FAILED $ID"; continue
             fi
-            echo "re-baking $ID ($REPO) @ engine ${NEW:0:12}"
-            if GV_SPACES_ROOT="$DIR" node engine/scripts/publish.mjs; then
+            echo "re-baking $ID (${BW:-<none>}→${NEW:0:12})"
+            if AUGUR_ORIGIN="$ORIGIN" GV_SPACES_ROOT="$DIR" node engine/scripts/publish.mjs; then
               echo "re-baked $ID"
             else
               echo "::warning::re-bake of $ID failed"; FAILED="$FAILED $ID"
             fi
           done < <(jq -r '.spaces[]? | "\(.id) \(.repo)"' deploy.config.json)
           if [ -n "$FAILED" ]; then echo "::error::re-bake failed for:$FAILED — see warnings above"; exit 1; fi
-          echo "re-bake complete."
+          echo "re-bake pass complete."
