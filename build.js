@@ -1509,6 +1509,16 @@ const PAGE_CSS = `
       .preview::after, .comp-thumb::after { animation: none; }
       .preview iframe, .preview-img, .comp-thumb iframe, .comp-thumb img { transition: none; }
     }
+    /* No-poster placeholder: a static, zero-request tile (faint dot grid over a soft
+       wash) shown until the nightly reshoot lands a real poster. No live iframe, no
+       shimmer — the card reads as "no preview yet", not as broken or loading. */
+    .preview-ph {
+      position: absolute; inset: 0; z-index: 1;
+      background:
+        radial-gradient(rgba(16,17,26,0.05) 1px, transparent 1.6px) 0 0 / 13px 13px,
+        linear-gradient(180deg, #fbfcfe, var(--bg-2));
+    }
+    .preview--ph::after { display: none; }
     .preview-link { position: absolute; inset: 0; z-index: 2; }
     /* Download icon overlays the preview image, top-right, above the cover link.
        A translucent white backdrop keeps it legible over any screenshot. */
@@ -5579,10 +5589,10 @@ function renderNotFoundPage() {
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <meta name="robots" content="noindex, nofollow" />
   <title>Not found · Augur</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" />
+  <link rel="preload" href="/fonts/inter-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin />
   <style>
+    /* Self-hosted Inter — same as the gate; no external font request. */
+    @font-face { font-family: "Inter"; font-style: normal; font-weight: 100 900; font-display: swap; src: url("/fonts/inter-latin-wght-normal.woff2") format("woff2"); }
     :root {
       --bg: #fbfbfd; --card: #ffffff; --fg: #16171a; --muted: #5b626e; --faint: #9aa0ab;
       --line: rgba(16,17,26,0.09); --line-2: rgba(16,17,26,0.15);
@@ -6195,14 +6205,19 @@ function shell({ title, body, back, activeTab = "prototypes", wrapClass = "", re
 // poster yet. `href` is the folder href (ends with "/"), so the poster sits at
 // `${href}preview.webp`.
 function media(href, hasPoster) {
+  // A poster is one cached WebP. Without one we render a static, zero-network
+  // placeholder — NOT a live prototype iframe: booting a heavy prototype (some ship
+  // ~1 MB of libraries) per uncovered card is the single biggest avoidable gallery
+  // cost, and navigation speed beats a live thumbnail (posters land via the nightly
+  // reshoot). See docs/service-worker.md and the poster pipeline (scripts/shoot.mjs).
   return hasPoster
     ? `<img class="preview-img" src="${href}preview.webp" alt="" aria-hidden="true" loading="lazy" decoding="async" width="768" height="480" />`
-    : `<iframe data-src="${href}" title="" aria-hidden="true" tabindex="-1" scrolling="no" sandbox="allow-scripts allow-same-origin"></iframe>`;
+    : `<div class="preview-ph" aria-hidden="true"></div>`;
 }
 
-/** A preview tile (poster image, or live iframe fallback) wrapped for a card. */
+/** A preview tile (poster image, or static placeholder) wrapped for a card. */
 function preview(href, hasPoster) {
-  return `<div class="preview">${media(href, hasPoster)}</div>`;
+  return `<div class="preview${hasPoster ? "" : " preview--ph"}">${media(href, hasPoster)}</div>`;
 }
 
 function renderRootIndex(opportunities) {
