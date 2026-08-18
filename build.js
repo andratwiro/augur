@@ -3231,7 +3231,7 @@ function injectNav(html, active) {
   if (!m) return html;
   return html.replace(
     m[0],
-    `${m[0]}\n  <style>${NAV_CSS}${TABBAR_CSS}</style>\n  ${CHROME_MARK_START(NAV_STATE.activeSpace || "", active)}${renderAppChrome(active, NAV_STATE)}${CHROME_MARK_END}\n  <script>${chromeScript()}</script>\n  <script>${renderSpaceContextScript(NAV_STATE)}</script>\n  <script>${PINS_JS}</script>\n  <script>${PROFILE_JS}</script>\n  <script>${SETTINGS_JS}</script>\n  <script>${SPACE_JS}</script>\n  <script>${TABBAR_JS()}</script>`
+    `${m[0]}\n  <style>${NAV_CSS}${TABBAR_CSS}</style>\n  ${CHROME_MARK_START(NAV_STATE.activeSpace || "", active, NAV_STATE.hasPlayground)}${renderAppChrome(active, NAV_STATE)}${CHROME_MARK_END}\n  <script>${chromeScript()}</script>\n  <script>${renderSpaceContextScript(NAV_STATE)}</script>\n  <script>${PINS_JS}</script>\n  <script>${PROFILE_JS}</script>\n  <script>${SETTINGS_JS}</script>\n  <script>${SPACE_JS}</script>\n  <script>${TABBAR_JS()}</script>`
   );
 }
 
@@ -5576,7 +5576,7 @@ function shell({ title, body, back, activeTab = "prototypes", wrapClass = "", re
   <link rel="stylesheet" href="/${CHROME_CSS_NAME}" />${addon ? `\n  <style>${addon.css()}</style>` : ""}
 </head>
 <body>
-  ${CHROME_MARK_START(NAV_STATE.activeSpace || "", activeTab)}${renderAppChrome(activeTab, NAV_STATE, { research })}${CHROME_MARK_END}
+  ${CHROME_MARK_START(NAV_STATE.activeSpace || "", activeTab, NAV_STATE.hasPlayground)}${renderAppChrome(activeTab, NAV_STATE, { research })}${CHROME_MARK_END}
   <div class="wrap${wrapClass ? " " + wrapClass : ""}">
     ${backLink}
     ${body}

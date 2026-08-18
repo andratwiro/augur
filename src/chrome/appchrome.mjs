@@ -551,6 +551,6 @@ export function renderSpaceContextScript(state) {
 // Delimiters wrapping the baked chrome region. HTML comments — inert, changing no
 // rendering — carrying the space id + active tab so the worker can re-render the
 // CURRENT engine's chrome in place at serve time (composeChrome in src/_worker.js).
-export const CHROME_MARK_START = (space, active) =>
-  `<!--gv-chrome-start data-space="${escAttr(space)}" data-active="${escAttr(active)}" data-ui="${UI_VERSION}"-->`;
+export const CHROME_MARK_START = (space, active, hasPlayground) =>
+  `<!--gv-chrome-start data-space="${escAttr(space)}" data-active="${escAttr(active)}" data-playground="${hasPlayground ? "1" : "0"}" data-ui="${UI_VERSION}"-->`;
 export const CHROME_MARK_END = `<!--gv-chrome-end-->`;

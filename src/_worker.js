@@ -3081,7 +3081,11 @@ async function composeChrome(res, url) {
   html = html.replace(CHROME_MARK_RE, (full, attrs) => {
     const active = markerAttr(attrs, "data-active") || "prototypes";
     const spaceId = markerAttr(attrs, "data-space");
-    const state = { spaces: SPACES, activeSpace: spaceId, opportunities: [], hasPlayground: true };
+    // data-playground carries the bake's playground presence (absent on a pre-marker
+    // page ⇒ default true, the common case). Without it a no-playground space would get
+    // a stray Playground rail item at serve time.
+    const hasPlayground = markerAttr(attrs, "data-playground") !== "0";
+    const state = { spaces: SPACES, activeSpace: spaceId, opportunities: [], hasPlayground };
     return `<!--gv-chrome-start ${attrs}-->` + renderAppChrome(active, state, {}) + `<!--gv-chrome-end-->`;
   });
   // (b) point stale bundle refs at the current bundle.
