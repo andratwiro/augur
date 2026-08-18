@@ -17,23 +17,29 @@ const SPACES = [
 const member = (map) =>
   W.applySpaces([{ email: "e@example.test", role: "editor" }], { "e@example.test": map })[0];
 
-test("spaceIdForPath maps a path to the space that owns it", () => {
-  assert.equal(W.spaceIdForPath("/beta/", SPACES), "beta");
-  assert.equal(W.spaceIdForPath("/beta", SPACES), "beta");
-  assert.equal(W.spaceIdForPath("/beta/proj/proto/", SPACES), "beta");
+// D1 retired with the space-tier (Phase A, S2): one workspace (the default) owns every
+// path — the "/<id>/" mount that used to pick a second space is gone, so a "/beta/..."
+// path now maps to the single default workspace, not "beta". The membership MODEL below
+// (isMemberOf / roleIn / administersAny) is unchanged; only the path→space resolver
+// collapsed.
+test("spaceIdForPath maps every path to the single default workspace", () => {
+  assert.equal(W.spaceIdForPath("/beta/", SPACES), "alpha");
+  assert.equal(W.spaceIdForPath("/beta", SPACES), "alpha");
+  assert.equal(W.spaceIdForPath("/beta/proj/proto/", SPACES), "alpha");
   assert.equal(W.spaceIdForPath("/", SPACES), "alpha", "the default space owns the root");
   assert.equal(W.spaceIdForPath("/anything/else/", SPACES), "alpha");
 });
 
-test("a prefix match respects the path boundary", () => {
-  assert.equal(W.spaceIdForPath("/betamax/", SPACES), "alpha",
-    "'/betamax' must not read as the 'beta' space");
+test("every path resolves to the one workspace regardless of prefix", () => {
+  assert.equal(W.spaceIdForPath("/betamax/", SPACES), "alpha");
   assert.equal(W.spaceIdForPath("/beta-two/", SPACES), "alpha");
 });
 
-test("with no default space, an unowned path belongs to nobody rather than to anyone", () => {
+test("with no default space, a path belongs to nobody rather than to anyone", () => {
+  // The null-when-no-space contract is KEPT (callers branch on it): with no DEFAULT
+  // workspace configured, nothing owns the path.
   const noDefault = [{ id: "beta", name: "Beta", base: "/beta" }];
-  assert.equal(W.spaceIdForPath("/beta/", noDefault), "beta");
+  assert.equal(W.spaceIdForPath("/beta/", noDefault), null);
   assert.equal(W.spaceIdForPath("/loose/", noDefault), null);
 });
 
