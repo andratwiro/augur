@@ -263,3 +263,101 @@ test("an admin-only space contributes nothing to the public canvas catalog", asy
   const tracksAnon = await W.canvasAggregate("tracks", false).text();
   assert.equal(tracksAnon, "[]", "a non-admin is told the instance has no music at all");
 });
+
+// ---- S1: the space-tier baseline (pins TODAY's multi-space answers) ---------
+//
+// Phase A retires the "several spaces path-mounted in one instance" tier (plan
+// §1b, D1–D9): the default space at "/", every other under "/<id>/", a path
+// resolved to one of several spaces. Nothing live uses the plural, so it goes
+// first — but before the deletion these assertions LOCK the current answers, so
+// when S2/S4 collapse the tier the flip is a visible, reviewed diff and not a
+// silent behaviour change. Every assertion below passes against the UNMODIFIED
+// worker; each is expected to INVERT in the commit that deletes its D-item.
+//
+// The fixture the whole section is described against: a DEFAULT space "alpha" at
+// the root, plus a NON-DEFAULT admin-only space "beta" mounted under "/beta/".
+function seedTier() {
+  W.applyDerivedRouting({
+    _engine: { routing: { canvasLoaderExtras: "" } },
+    alpha: space("alpha", {
+      publicPrefixes: ["/prototypes/home/"],
+      versionMap: {},
+      shellSig: "sig-alpha",
+    }, { default: true }),
+    beta: space("beta", {
+      publicPrefixes: ["/beta/prototypes/panel/"],
+      versionMap: {},
+      shellSig: "sig-beta",
+    }, { adminOnly: true }),
+  });
+}
+
+// The module-scope SPACES list applyDerivedRouting builds is exactly the array
+// of each fixture's `.space` object ({id, default, adminOnly}); spaceIdForPath
+// and pathOwnedBySpace take that list as an explicit argument (they do not read
+// the global), so the tests reconstruct it in the same shape.
+function tierSpaces() {
+  return [
+    { id: "alpha", default: true, adminOnly: false },
+    { id: "beta", default: false, adminOnly: true },
+  ];
+}
+
+// D1 — spaceIdForPath: the path→space resolver picks the non-default space by its
+// "/<id>/" mount, falls back to the default for the root, and does not confuse a
+// sibling whose name merely extends another space's id.
+test("[tier] spaceIdForPath resolves a /<id>/ path to that non-default space", () => {
+  const spaces = tierSpaces();
+  assert.equal(W.spaceIdForPath("/beta/x", spaces), "beta", "under the mount");
+  assert.equal(W.spaceIdForPath("/beta", spaces), "beta", "the bare base is the space too");
+  assert.equal(W.spaceIdForPath("/beta/", spaces), "beta", "the root of the mount");
+});
+
+test("[tier] spaceIdForPath sends a root path to the default space", () => {
+  const spaces = tierSpaces();
+  assert.equal(W.spaceIdForPath("/", spaces), "alpha", "the root is the default's");
+  assert.equal(W.spaceIdForPath("/prototypes/home/", spaces), "alpha", "any unowned path too");
+  // "/betamax" is NOT the "beta" space — the "/<id>/" boundary is load-bearing.
+  assert.equal(W.spaceIdForPath("/betamax", spaces), "alpha");
+});
+
+// D2 / D3 — pathOwnedBySpace / isPublishablePublicPrefix: a "/<id>/" public path
+// is owned by that non-default space, and the DEFAULT space does NOT own another
+// space's "/<id>/" subtree. This is what keeps a publish token to its own space.
+test("[tier] a /<id>/ public path is owned by that non-default space, not the default", () => {
+  const spaces = tierSpaces();
+  assert.equal(W.pathOwnedBySpace("/beta/prototypes/panel/", "beta", spaces), true,
+    "beta owns its own /beta/ subtree");
+  assert.equal(W.pathOwnedBySpace("/beta/prototypes/panel/", "alpha", spaces), false,
+    "the default space does NOT own another space's /beta/ subtree");
+  assert.equal(W.pathOwnedBySpace("/beta", "beta", spaces), true, "the bare base too");
+  // And the default still owns whatever is left.
+  assert.equal(W.pathOwnedBySpace("/prototypes/home/", "alpha", spaces), true,
+    "the default owns the root-mounted subtree");
+  assert.equal(W.pathOwnedBySpace("/prototypes/home/", "beta", spaces), false,
+    "a non-default space does not own the default's root subtree");
+});
+
+test("[tier] isPublishablePublicPrefix follows the same /<id>/ ownership", () => {
+  const spaces = tierSpaces();
+  assert.equal(W.isPublishablePublicPrefix("/beta/prototypes/panel/", "beta", spaces), true);
+  assert.equal(W.isPublishablePublicPrefix("/beta/prototypes/panel/", "alpha", spaces), false,
+    "the default space cannot publish into beta's mount");
+});
+
+// D4 — RESTRICTED_BASES: a space that is adminOnly AND non-default seals its base.
+// RESTRICTED_BASES is not exported, so the seal is pinned through its one observable
+// consumer, isRestrictedPath (which reads the global applyDerivedRouting just filled).
+test("[tier] an adminOnly non-default space puts its base in RESTRICTED_BASES", () => {
+  seedTier();
+  assert.equal(W.isRestrictedPath("/beta"), true, "the bare base is sealed");
+  assert.equal(W.isRestrictedPath("/beta/secret"), true, "and everything beneath it");
+  assert.equal(W.isRestrictedPath("/prototypes/home/"), false, "the default's paths are not sealed");
+});
+
+// D5 — TRACK_PATH: the leading optional "(\/<space>)" group is the "/<id>/" mount,
+// so session music resolves under a non-default space, not only at the root.
+test("[tier] TRACK_PATH matches a /<id>/tracks/*.mp3 under a non-default space", () => {
+  assert.equal(W.isTrackPath("/beta/tracks/x.mp3"), true, "the /<space>/ mounted form");
+  assert.equal(W.isTrackPath("/tracks/x.mp3"), true, "and the root form still");
+});
