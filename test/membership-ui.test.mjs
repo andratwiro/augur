@@ -107,8 +107,11 @@ test("the rail carries Admin, hidden until you administer this workspace", () =>
   assert.match(html, /data-space-admin/);
   assert.match(html, />Admin</);
   assert.ok(html.indexOf("Playground") < html.indexOf(">Admin<"), "Admin comes after Playground");
-  // Revealed only by the per-space class — never shipped visible.
-  assert.match(html, /html\.gv-space-admin \.gvside__admin/);
+  // Revealed only by the per-space class — never shipped visible. That CSS rule now
+  // lives in the shared chrome bundle linked from the page, not inline.
+  const cssLink = html.match(/<link rel="stylesheet" href="\/(_chrome\.[\w.]+\.css)"/);
+  const bundleCss = cssLink && existsSync(join(DIST, cssLink[1])) ? readFileSync(join(DIST, cssLink[1]), "utf8") : "";
+  assert.match(html + bundleCss, /html\.gv-space-admin \.gvside__admin/);
 });
 
 // ---- the workspace admin surface --------------------------------------------

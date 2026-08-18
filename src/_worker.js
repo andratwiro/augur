@@ -216,6 +216,10 @@ function isPublicPath(pathname) {
   // prototypes by absolute path, so they must bypass the gate too (else the
   // <script>/<link> fetches the login page instead of the asset).
   if (pathname === "/piti.js" || pathname.startsWith("/fonts/")) return true;
+  // The shared chrome bundle (P1) and the service worker (P0) are generic engine
+  // code, embedded by absolute path into every page and registered at root scope;
+  // they must bypass the gate too (the SW update check fetches /sw.js with no cookie).
+  if (pathname === "/sw.js" || pathname.startsWith("/_chrome.")) return true;
   // Shared canonical design-system assets. Linked prototypes (the default — INV-10)
   // reference these via the space's public skill dir (injected at build from the
   // detected UI skill), so they must bypass the gate or a public prototype renders
@@ -1729,11 +1733,14 @@ function applyDerivedRouting(manifests) {
 // Mirrors ENGINE_CHROME in build.js; keep the two in step.
 const ENGINE_CHROME_PATHS = [
   "/fonts/", "/pitis/", "/__review/", "/__canvas/", "/admin", "/changelog",
-  "/piti.js", "/404.html", "/manifest.webmanifest",
+  "/piti.js", "/404.html", "/manifest.webmanifest", "/sw.js",
   "/augur-eye.svg", "/augur-icon-192.png", "/augur-icon-512.png", "/augur-mark.png",
 ];
-const isEngineChrome = (key) => ENGINE_CHROME_PATHS.some((p) =>
-  p.endsWith("/") ? key.startsWith(p) : key === p || key.startsWith(p + "/"));
+const isEngineChrome = (key) =>
+  // The content-hashed shared chrome bundle: /_chrome.<ver>.<hash>.{js,css}.
+  key.startsWith("/_chrome.") ||
+  ENGINE_CHROME_PATHS.some((p) =>
+    p.endsWith("/") ? key.startsWith(p) : key === p || key.startsWith(p + "/"));
 
 // A publisher-declared PUBLIC PREFIX — a path the gate will open to anonymous visitors.
 // Held to the same ownership rule as a file, normalizing a trailing slash so "/x" and
@@ -3003,7 +3010,11 @@ function withAssetCache(res, url) {
     out.headers.set("Cache-Control", "no-cache");
     return out;
   }
-  const versioned = url.searchParams.has("v") || /\.(woff2?|ttf|otf)$/.test(url.pathname);
+  // The shared chrome bundle (/_chrome.<ver>.<hash>.{js,css}) carries a content hash
+  // in its name, so it's safe to cache forever like a ?v= or font asset. sw.js is NOT
+  // here on purpose — it must revalidate so a new worker version is picked up.
+  const versioned = url.searchParams.has("v") || /\.(woff2?|ttf|otf)$/.test(url.pathname)
+    || url.pathname.startsWith("/_chrome.");
   if (!versioned) return res;
   const out = new Response(res.body, res);
   out.headers.set("Cache-Control", "public, max-age=31536000, immutable");

@@ -29,6 +29,16 @@ const PAGES = ["index.html", join("admin", "index.html")];
 const styleText = (html) =>
   [...html.matchAll(/<style[^>]*>([\s\S]*?)<\/style>/g)].map((m) => m[1]).join("\n");
 
+// The bulk of the chrome CSS now ships as the shared, content-hashed bundle
+// (/_chrome.<ver>.<hash>.css) linked from every shell() page, not inlined. The
+// stylesheet these tests validate is therefore inline <style> PLUS that bundle.
+const cssSource = (file) => {
+  const html = readFileSync(file, "utf8");
+  const link = html.match(/<link rel="stylesheet" href="\/(_chrome\.[\w.]+\.css)"/);
+  const bundle = link && existsSync(join(DIST, link[1])) ? readFileSync(join(DIST, link[1]), "utf8") : "";
+  return styleText(html) + "\n" + bundle;
+};
+
 // Strip comments and strings so a `}` inside either can't be miscounted.
 const strip = (css) =>
   css.replace(/\/\*[\s\S]*?\*\//g, " ").replace(/"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'/g, '""');
@@ -37,7 +47,7 @@ for (const page of PAGES) {
   test(`the stylesheet in ${page} has balanced braces`, () => {
     const file = join(DIST, page);
     if (!existsSync(file)) return;
-    const css = strip(styleText(readFileSync(file, "utf8")));
+    const css = strip(cssSource(file));
     let depth = 0, stray = 0, line = 1, firstStray = null;
     for (const ch of css) {
       if (ch === "\n") line++;
@@ -55,7 +65,7 @@ for (const page of PAGES) {
   test(`no declaration sits outside a block in ${page}`, () => {
     const file = join(DIST, page);
     if (!existsSync(file)) return;
-    const css = strip(styleText(readFileSync(file, "utf8")));
+    const css = strip(cssSource(file));
     // Walk top level only; a `prop: value;` at depth 0 is an orphan left by an edit.
     const orphans = [];
     let depth = 0, buf = "", line = 1;
@@ -87,7 +97,7 @@ for (const page of PAGES) {
 test("the rail's leading marks share one padding, gap and box", () => {
   const file = join(DIST, "index.html");
   if (!existsSync(file)) return;
-  const css = strip(styleText(readFileSync(file, "utf8")));
+  const css = strip(cssSource(file));
   // Escape the selector once, here — passing pre-escaped strings in and escaping
   // again produced patterns that matched nothing and a test that "passed" vacuously.
   const rule = (sel) => {
@@ -130,7 +140,7 @@ test("the rail's leading marks share one padding, gap and box", () => {
 test("the tab bar label-clip does not catch the Profile avatar span", () => {
   const file = join(DIST, "index.html");
   if (!existsSync(file)) return;
-  const css = strip(styleText(readFileSync(file, "utf8")));
+  const css = strip(cssSource(file));
   // The clip rule is the one whose body visually-hides text (clip: rect(0,0,0,0))
   // and whose selector targets a <span> inside .gvtab.
   let clipSel = null;
@@ -159,7 +169,7 @@ test("the tab bar label-clip does not catch the Profile avatar span", () => {
 test("every floating panel declares a background", () => {
   const file = join(DIST, "index.html");
   if (!existsSync(file)) return;
-  const css = strip(styleText(readFileSync(file, "utf8")));
+  const css = strip(cssSource(file));
   const naked = [];
   for (const m of css.matchAll(/([^{}]+)\{([^}]*)\}/g)) {
     const sel = m[1].replace(/\s+/g, " ").trim();
