@@ -30,6 +30,15 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+
+// Declare this as an automated ship so a space's pre-commit hooks can honour the
+// "commit cannot fail" contract above — a developer-time quality gate (e.g. a
+// prototype-lint ratchet) must never dead-end the ship path, because the live URL
+// and the durability of the work are the user's promise, not a decision to punt
+// back to them. Hooks that block a MANUAL commit still block; they read this env
+// and degrade to advisory only under ship. Generic + inert for spaces that ignore it.
+process.env.AUGUR_SHIP = "1";
+
 const log = (msg) => console.error(`\x1b[35m[ship]\x1b[0m ${msg}`);
 const warn = (msg) => console.error(`\x1b[33m[ship]\x1b[0m ${msg}`);
 const die = (msg) => { console.error(`\x1b[31m[ship]\x1b[0m ${msg}`); process.exit(1); };

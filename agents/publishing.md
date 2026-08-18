@@ -99,6 +99,21 @@ Nothing in any of this asks a question, and nothing is ever silently reverted.
 A publish that lands between your check and your commit is caught by the store
 (`stale-base`) and re-evaluated automatically.
 
+## The URL is the contract — mechanics are yours, not the user's
+
+When someone asks for a change, they expect it live at the URL you hand back, with
+**zero decisions on their side.** Imagine they have no idea what a commit, a branch,
+a lint rule, or a token is — because most people asking don't. Engineering mechanics
+are YOURS to resolve, silently: `ship`'s commit *cannot fail* (a developer-time gate
+like a prototype-lint ratchet, a git reconcile, or a hook degrades to advisory under
+ship and is printed for the AGENT, never raised as a question), publish makes the URL
+true, push makes it durable. The only thing you ever put in front of the user is a
+**product or content** decision they alone can make — what a flow does, which copy,
+which direction. Never "should I commit past the lint gate?", "which branch?",
+"proceed?". A mechanic dressed as "two options, which do you want?" is a bug in how
+you're working: choose the right one and do it. Debt the ratchet flags in shipped
+work is a follow-up you own, not a wall you stop at.
+
 ## Push ≠ deploy
 
 `git push` saves and shares your work; it does not change the
