@@ -31,6 +31,14 @@ import { execFileSync } from "node:child_process";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { createHash } from "node:crypto";
+// The page-level chrome renderer is shared with the serve-time worker (runtime-chrome):
+// build.js bakes it, src/_worker.js re-renders it. It also owns the small pure utilities
+// and the UI version so there is ONE source of truth for both — see src/chrome/appchrome.mjs.
+import {
+  renderAppChrome, renderSpaceContextScript, researchChip,
+  CHROME_MARK_START, CHROME_MARK_END,
+  UI_VERSION, ic, titleCase, fmtDate, relTime,
+} from "./src/chrome/appchrome.mjs";
 
 const ROOT = path.dirname(fileURLToPath(import.meta.url));
 // Augur composes ONE read-only submodule PER SPACE, mounted at spaces/<id>/. Each space
@@ -326,6 +334,9 @@ if ((DEPLOY.shellContract || 0) > SHELL_CONTRACT) {
   console.error(`⚠ deploy.config.json declares shellContract ${DEPLOY.shellContract}; this engine implements ${SHELL_CONTRACT} — bump the engine pin.`);
 }
 
+// titleCase / fmtDate / relTime / UI_VERSION are imported from the shared chrome module
+// (src/chrome/appchrome.mjs). escAttr is kept here too (the module carries its own copy):
+// several tests lift it out of this source by name, and it is a frozen one-liner.
 function escAttr(s) {
   return String(s).replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
@@ -386,7 +397,8 @@ function prependTitleEmoji(html, emoji) {
 // build.js shell/CSS, the index pages, or features like carousel/comments/download.
 // Do NOT bump it for changes inside individual prototypes; their content is
 // versioned by their own modified date, not this number.
-const UI_VERSION = "1.14";
+// SINGLE SOURCE: UI_VERSION lives in src/chrome/appchrome.mjs (shared with the worker)
+// and is imported at the top of this file.
 
 // One id per build (ms timestamp). Baked into every page's live-reload poller AND
 // into the worker's /__version endpoint, so a fresh deploy = a new id = open tabs
@@ -1190,48 +1202,8 @@ async function scanPlayground() {
   return projects;
 }
 
-// Slug words that should render fully upper-cased (acronyms) rather than
-// Capitalized — so `sms-verification` reads "SMS Verification", not "Sms …".
-const ACRONYMS = new Set(["sms", "ui", "ux", "uxui", "api", "url", "faq", "sso", "cta", "pdf", "csv", "riot", "fo", "bo"]);
-
-function titleCase(slug) {
-  return slug
-    .replace(/[-_]/g, " ")
-    .replace(/\S+/g, (w) =>
-      ACRONYMS.has(w.toLowerCase()) ? w.toUpperCase() : w.charAt(0).toUpperCase() + w.slice(1)
-    );
-}
-
-function fmtDate(ms) {
-  if (!ms) return "";
-  return new Date(ms).toLocaleDateString("en-US", {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-  });
-}
-
-// Relative "Edited N <unit> ago" label, computed at build time against now.
-// Weeks are intentionally skipped so the day bucket runs all the way to a month
-// ("Edited 20 days ago", not "2 weeks ago"). Months/years are calendar-approx
-// (30/365 days) — fine for a listing label. Pair with fmtDate() in a title=…
-// for the exact date on hover.
-function relTime(ms) {
-  if (!ms) return "";
-  const sec = Math.round(Math.max(0, Date.now() - ms) / 1000);
-  const units = [
-    ["year", 31536000],
-    ["month", 2592000],
-    ["day", 86400],
-    ["hour", 3600],
-    ["minute", 60],
-  ];
-  for (const [name, s] of units) {
-    const v = Math.floor(sec / s);
-    if (v >= 1) return `Edited ${v} ${name}${v > 1 ? "s" : ""} ago`;
-  }
-  return "Edited just now";
-}
+// titleCase (with its ACRONYMS set), fmtDate and relTime are imported from the shared
+// chrome module (src/chrome/appchrome.mjs) — one source of truth with the serve worker.
 
 function plural(n, word) {
   return `${n} ${word}${n === 1 ? "" : "s"}`;
@@ -2463,9 +2435,6 @@ const NAV_CSS = `
       .gvset__scrim, .gvset__panel { transition: none; }
     }`;
 
-// Magnifier glyph — used by the rail's omni-search field (railSearch).
-const SEARCH_ICON = `<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="2"/><path d="M21 21l-4.3-4.3" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>`;
-
 // "No matches" line shown under the cards when a query filters everything out.
 function filterEmpty() {
   return `<p class="filter-empty" data-filter-empty hidden>No matches.</p>`;
@@ -2727,54 +2696,19 @@ const TABBAR_CSS = `
     }
 `;
 
-const GV_MARK = `<img class="gvmark" src="/augur-eye.svg" alt="" aria-hidden="true" width="24" height="24" />`;
-
 // Rail item glyphs — real Lucide icons (ISC license), the clean line set Linear-class
-// apps use. Verbatim official paths, rendered at a refined 1.75 stroke for that crisp
-// Linear weight; 24px viewBox, currentColor, tinted/sized via .gvic.
-const ic = (inner) => `<svg class="gvic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${inner}</svg>`;
+// apps use. `ic()` (the shared <svg> wrapper) and GV_MARK are imported from the chrome
+// module; the icons below that are NOT part of the page chrome still build with it.
 // Role icons, one per role — the People table shows the role as icon + label, so the
 // three must read apart at a glance and not just by their word. Lucide, same set and
 // stroke as the rail's.
 const IC_ROLE_ADMIN = ic(`<path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/>`); // shield
 const IC_ROLE_EDITOR = ic(`<path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z"/><path d="m15 5 4 4"/>`); // pencil
 const IC_ROLE_VIEWER = ic(`<path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0"/><circle cx="12" cy="12" r="3"/>`); // eye
-const IC_HOME = ic(`<rect width="7" height="7" x="3" y="3" rx="1"/><rect width="7" height="7" x="14" y="3" rx="1"/><rect width="7" height="7" x="14" y="14" rx="1"/><rect width="7" height="7" x="3" y="14" rx="1"/>`); // layout-grid
-const IC_PLAY = ic(`<path d="M14 2v6a2 2 0 0 0 .245.96l5.51 10.08A2 2 0 0 1 18 22H6a2 2 0 0 1-1.755-2.96l5.51-10.08A2 2 0 0 0 10 8V2"/><path d="M6.453 15h11.094"/><path d="M8.5 2h7"/>`); // flask-conical
-const IC_FOLDER = ic(`<path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/>`); // folder
-const IC_PRIM = ic(`<path d="M8.3 10a.7.7 0 0 1-.626-1.079L11.4 3a.7.7 0 0 1 1.198-.043L16.3 8.9a.7.7 0 0 1-.572 1.1Z"/><rect x="3" y="14" width="7" height="7" rx="1"/><circle cx="17.5" cy="17.5" r="3.5"/>`); // shapes
-const IC_COMP = ic(`<path d="M15.536 11.293a1 1 0 0 0 0 1.414l2.376 2.377a1 1 0 0 0 1.414 0l2.377-2.377a1 1 0 0 0 0-1.414l-2.377-2.377a1 1 0 0 0-1.414 0z"/><path d="M2.297 11.293a1 1 0 0 0 0 1.414l2.377 2.377a1 1 0 0 0 1.414 0l2.377-2.377a1 1 0 0 0 0-1.414L6.088 8.916a1 1 0 0 0-1.414 0z"/><path d="M8.916 17.912a1 1 0 0 0 0 1.415l2.377 2.376a1 1 0 0 0 1.414 0l2.377-2.376a1 1 0 0 0 0-1.415l-2.377-2.376a1 1 0 0 0-1.414 0z"/><path d="M8.916 4.674a1 1 0 0 0 0 1.414l2.377 2.376a1 1 0 0 0 1.414 0l2.377-2.376a1 1 0 0 0 0-1.414l-2.377-2.377a1 1 0 0 0-1.414 0z"/>`); // component
-const IC_PAGE = ic(`<rect x="2" y="4" width="20" height="16" rx="2"/><path d="M10 4v4"/><path d="M2 8h20"/><path d="M6 4v4"/>`); // app-window (pages are websites, not paper)
-const IC_RESEARCH = ic(`<path d="M6 3h8l4 4v13a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1Z"/><path d="M14 3v4h4"/><path d="M8.5 13h7M8.5 16.5h4.5"/>`); // document with text lines (internal research/context docs)
-
-// Research/context surface — gated metadata only. The count, and (interactive variant)
-// the filenames on click. Names live only on the already-gated index pages; file
-// CONTENT is never read or shipped. Empty research → renders nothing.
-function researchLabel(n) { return `${n} research ${n === 1 ? "file" : "files"}`; }
-function researchListItems(research) {
-  return research
-    .map((r) => `<li><span class="research-pop__name">${escAttr(r.name)}</span><span class="research-pop__date" title="${escAttr(fmtDate(r.mtimeMs))}">${relTime(r.mtimeMs)}</span></li>`)
-    .join("");
-}
-// Interactive (opportunity page header): click → disclosure of the filenames.
-function researchChip(research) {
-  if (!research || !research.length) return "";
-  const label = researchLabel(research.length);
-  return `<span class="research-wrap"><button type="button" class="research-chip" aria-expanded="false" aria-label="${label}" title="${label}">${IC_RESEARCH}<span class="research-chip__n">${research.length}</span></button><div class="research-pop" role="group" aria-label="Research &amp; context files" hidden><div class="research-pop__head">Research &amp; context</div><ul class="research-pop__list">${researchListItems(research)}</ul></div></span>`;
-}
-const IC_LIBRARY = ic(`<path d="m16 6 4 14"/><path d="M12 6v14"/><path d="M8 8v12"/><path d="M4 4v16"/>`); // library
-const IC_CHANGELOG = ic(`<path d="M12 8v4l3 2"/><path d="M3.05 11a9 9 0 1 1 .5 4"/><path d="M3 21v-5h5"/>`); // history (clock + counter-rotate)
+// The rail/tab-bar/overlay icons + GV_MARK + SEARCH_ICON + researchChip live in the shared
+// chrome module now (src/chrome/appchrome.mjs), imported at the top of this file.
 const IC_CHEV = ic(`<path d="m9 18 6-6-6-6"/>`); // chevron-right (rotates open via CSS)
-const IC_GEAR = ic(`<path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/>`); // settings
-const IC_SIGNOUT = ic(`<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" x2="9" y1="12" y2="12"/>`); // log-out
-const IC_USERS = ic(`<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>`); // users — admin People
-const IC_SEARCH = ic(`<circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/>`); // search — mobile tab bar (.gvic-sized; SEARCH_ICON is the un-classed header variant)
-const IC_LOCK = ic(`<rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>`); // lock — marks a "Change …" that isn't wired yet
-const IC_SLIDERS = ic(`<line x1="4" x2="4" y1="21" y2="14"/><line x1="4" x2="4" y1="10" y2="3"/><line x1="12" x2="12" y1="21" y2="12"/><line x1="12" x2="12" y1="8" y2="3"/><line x1="20" x2="20" y1="21" y2="16"/><line x1="20" x2="20" y1="12" y2="3"/><line x1="2" x2="6" y1="14" y2="14"/><line x1="10" x2="14" y1="8" y2="8"/><line x1="18" x2="22" y1="16" y2="16"/>`); // sliders-vertical (account settings)
 const IC_HELP = ic(`<circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/>`); // circle-help
-const IC_CLOSE = ic(`<path d="M18 6 6 18"/><path d="m6 6 12 12"/>`); // x
-const IC_TOKEN = ic(`<circle cx="13.5" cy="6.5" r=".5" fill="currentColor"/><circle cx="17.5" cy="10.5" r=".5" fill="currentColor"/><circle cx="8.5" cy="7.5" r=".5" fill="currentColor"/><circle cx="6.5" cy="12.5" r=".5" fill="currentColor"/><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z"/>`); // palette (tokens)
-const IC_PATTERN = ic(`<rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><path d="M10 6.5h4M6.5 10v4M17.5 10v4M10 17.5h4"/>`); // grid + links (patterns)
 
 // Star toggle on cards — Lucide 'star'. Outline (grey) when unpinned, gold-filled
 // when pinned (PINS_JS toggles .is-pinned). Its own class so CSS can flip the fill.
@@ -2963,537 +2897,11 @@ const NAV_STATE = { opportunities: [], hasPlayground: false, spaces: [], activeS
 // be the default space's rail — not whichever space happened to be built last.
 let DEFAULT_NAV = null;
 
-// The omni search field — lives in the rail, filters whatever cards are on the right
-// (the shared chrome script wires [data-filter] to the current page's [data-fitem]).
-function railSearch() {
-  return `<div class="gvsearch" data-search-src="${S("/__search.json")}" data-search-base="${S("/")}">${SEARCH_ICON}` +
-    `<input type="text" data-filter placeholder="Search…" aria-label="Search content" autocomplete="off" autocapitalize="off" spellcheck="false" />` +
-    `<button type="button" class="gvsearch__clear" data-filter-clear aria-label="Clear search" hidden>&times;</button>` +
-    `<kbd data-filter-kbd>/</kbd></div>`;
-}
-
-// Profile chip — sits in the brand spot under the wordmark. Static markup; PROFILE_JS
-// fills the avatar/name/email from /__me (per-request identity, so it can't be baked
-// at build time) and reveals the chip + the admin link only when relevant. Hidden by
-// default so signed-out / open (no-identity) builds show nothing.
-function profileChip() {
-  return `<div class="gvprof" data-prof hidden>
-      <button type="button" class="gvprof__btn" data-prof-toggle aria-haspopup="true" aria-expanded="false" aria-label="Account">
-        <span class="gvprof__av" data-prof-av aria-hidden="true"></span>
-        <span class="gvprof__name" data-prof-name>…</span>
-        <span class="gvprof__dot" data-prof-dot hidden title="Update available">!</span>
-        <svg class="gvprof__cv" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
-      </button>
-      <div class="gvprof__menu" data-prof-menu role="menu" hidden>
-        <div class="gvprof__id">
-          <span class="gvprof__av lg" data-prof-av aria-hidden="true"></span>
-          <span class="gvprof__idtext"><span class="gvprof__name" data-prof-name></span><span class="gvprof__email" data-prof-email></span></span>
-        </div>
-        <button type="button" class="gvprof__item" role="menuitem" data-prof-settings>${IC_SLIDERS}<span>Settings</span></button>
-        <a class="gvprof__item" href="/__logout" role="menuitem" data-prof-signout>${IC_SIGNOUT}<span>Sign out</span></a>
-        <div class="gvprof__ver" data-prof-ver hidden>
-          <span data-prof-vercur></span>
-          <a data-prof-verlink href="#" target="_blank" rel="noopener" hidden></a>
-        </div>
-      </div>
-    </div>`;
-}
-
-// Space switcher — sits above the main nav (the team-switcher in the brief): the active
-// space's icon + name + badge, with a dropdown of every space (check on the active one)
-// and a Create-new stub. The space list is known at build time (NAV_STATE.spaces) and the
-// active space is stamped by setSpaceContext (NAV_STATE.activeSpace), so this is fully
-// server-rendered — SPACE_JS only toggles the menu open/closed. Each row links to the
-// space's base URL ("/" for the default, "/<id>/" otherwise). Hidden when only one space
-// exists (nothing to switch to) — the chip would be noise.
-function spaceSwitcher() {
-  const spaces = NAV_STATE.spaces || [];
-  if (!spaces.length) return "";
-  const active = spaces.find((s) => s.id === NAV_STATE.activeSpace) || spaces[0];
-  // Nameplate + cog, and nothing else.
-  //
-  // No dropdown: nobody can belong to more than one workspace yet — that needs
-  // per-workspace origins and a central sign-in (plan items B-resolver-dynamic and
-  // B-cross-workspace-signin). A chevron opening a list of one is furniture, and a
-  // list built at BUILD time could only ever name spaces the viewer may not enter.
-  // When membership can genuinely span workspaces, the switcher comes back with rows
-  // rendered from /__me rather than baked in.
-  //
-  // No badge either: it labelled which space was "current" back when the switcher was
-  // a maintainer's tool for hopping between them. With one workspace it says nothing.
-  const iconSrc = "/space-icon.png";
-  const icon = `<span class="gvspace__icon"><img src="${iconSrc}" alt="" width="20" height="20" data-space-icon /></span>`;
-  return `<div class="gvspace" data-space data-space-active="${escAttr(active.id)}">
-      <div class="gvspace__row">
-        <span class="gvspace__btn">
-          ${icon}<span class="gvspace__name" data-space-name>${escAttr(active.name)}</span>
-        </span>
-      </div>
-    </div>`;
-}
-
-// The persistent left rail: brand → omni search → Playground → Opportunities → Pinned
-// (the user's starred prototypes/projects, rendered client-side by PINS_JS) → Design system
-// (collapsible, pinned to the bottom). `active` is a single key: 'prototypes' |
-// 'playground' | <opportunity name> | 'primitives' | 'components' | 'pages'.
-// The library's own sections — used both to build its rail and to know when the rail
-// should BE the library's (see appChrome).
-const LIB_KEYS = ["tokens", "base", "components", "patterns", "pages", "primitives"];
-
-function sideRail(active) {
-  const item = (href, label, key, icon) =>
-    `<a href="${S(href)}"${active === key ? ' aria-current="page"' : ""}>${icon}<span>${label}</span></a>`;
-  const playground = NAV_STATE.hasPlayground ? item("/playground/", "Playground", "playground", IC_PLAY) : "";
-  // Workspace admin sits with the other destinations rather than as a cog beside the
-  // name — it IS a place you go, and the rail is where places live. Hidden until
-  // SPACE_JS confirms you administer this workspace (html.gv-space-admin); the href
-  // carries the space id so the page opens already scoped, filled in by SPACE_JS too.
-  const adminItem = `<a class="gvside__admin" href="/admin/" data-space-admin${
-    NAV_STATE.activeSpace ? ` data-space-id="${escAttr(NAV_STATE.activeSpace)}"` : ""
-  }>${IC_GEAR}<span>Admin</span></a>`;
-  // The design system is a destination like the others now, not a disclosure wedged in
-  // the foot. `library` stays the internal key — renaming it would churn every
-  // aria-current match and the LIB_KEYS list for no user-visible gain.
-  // Everyone sees it; opening it swaps the rail for its own sections, the same shape
-  // Admin uses — one nav column at a time, never two.
-  const libraryItem = item("/tokens/", "Design system", "library", IC_LIBRARY);
-  // Pinned is rendered live from the KV pins map (PINS_JS fills [data-pinned-list] and
-  // toggles the empty hint); nothing is server-rendered here.
-  const pinned = `<p class="gvside__label">Pinned</p>
-      <div class="gvside__group" data-pinned-list></div>
-      <p class="gvside__pinhint" data-pinned-empty hidden>Star a prototype to pin it here.</p>`;
-  // Library is a collapsible section in the pinned foot (Changelog sits below it);
-  // collapsed by default, auto-opens when you're on one of its pages. Its own icon
-  // leads; the disclosure chevron sits on the right.
-  // Layered design system: Tokens → Base → Components → Patterns → Pages.
-  return `<aside class="gvside" id="gvside" aria-label="Augur">
-    ${profileChip()}
-    ${railSearch()}
-    <div class="gvside__rule"></div>
-    ${spaceSwitcher()}
-    <div class="gvside__scroll">
-      <div class="gvside__group">
-        ${item("/", PROJECTS_LABEL, "prototypes", IC_HOME)}
-        ${playground}
-        ${libraryItem}
-        ${adminItem}
-      </div>
-      ${pinned}
-    </div>
-    <div class="gvside__foot">
-      <div class="gvside__rule"></div>
-      <div class="gvside__group" style="margin-top:6px">
-        <a href="/changelog/"${active === "changelog" ? ' aria-current="page"' : ""}>${IC_CHANGELOG}<span>Changelog</span><span class="gvside__ver">v${UI_VERSION}</span></a>
-      </div>
-    </div>
-  </aside>`;
-}
-
-// Pushpin glyph for the tab bar's Pinned tab specifically — IC_STAR (build.js:2631)
-// is the established "pin to sidebar" affection glyph on cards throughout the rest
-// of the app, but a star reads as "favourite" here, floating alone in a primary nav
-// slot with no card to explain it. The lucide `pin` (an actual pushpin) says
-// "pinned" directly — a map-pin/location teardrop would misread as a place marker.
-const IC_PIN = ic(`<path d="M12 17v5"/><path d="M9 10.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24V16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V7a1 1 0 0 1 1-1 2 2 0 0 0 0-4H8a2 2 0 0 0 0 4 1 1 0 0 1 1 1z"/>`);
-
-// Mobile bottom tab bar. Mirrors the same three-way branch appChrome() already
-// computes for the rail (active === "admin" / LIB_KEYS.includes(active) / else) —
-// "one nav column at a time" expressed as one bar content at a time, not a second
-// source of truth for which nav shows.
-function tabBar(active) {
-  const tab = (href, label, key, icon, extraAttrs) =>
-    `<a class="gvtab" href="${S(href)}"${active === key ? ' aria-current="page"' : ""}${extraAttrs || ""}>${icon}<span>${label}</span></a>`;
-  const blankSlot = `<span class="gvtab is-blank" aria-hidden="true"></span>`;
-
-  if (active === "admin") {
-    // Same three destinations as adminRail() (build.js:3084-3086), icon-only to match
-    // the primary bar (People=users, Content=folder, Settings=gear); the label stays in
-    // the DOM for screen readers and is visually hidden by the same clip. Two blank
-    // slots keep the bar's 5-column width stable across every context. Same
-    // data-admin-tab attribute/values adminRail() itself uses — ADMIN_SECTIONS_JS's tab
-    // query is widened to reach both sets from one place, not a parallel mechanism.
-    return `<nav class="gvtabbar" aria-label="Workspace settings">
-      <button type="button" class="gvtab" data-admin-tab="people">${IC_USERS}<span>People</span></button>
-      <button type="button" class="gvtab" data-admin-tab="content">${IC_FOLDER}<span>Content</span></button>
-      <button type="button" class="gvtab" data-admin-tab="settings">${IC_GEAR}<span>Settings</span></button>
-      ${blankSlot}${blankSlot}
-    </nav>`;
-  }
-
-  if (LIB_KEYS.includes(active)) {
-    // Same five destinations as libraryRail() (build.js:3060-3064), same order.
-    return `<nav class="gvtabbar" aria-label="Design system">
-      ${tab("/tokens/", "Tokens", "tokens", IC_TOKEN)}
-      ${tab("/base/", "Base", "base", IC_PRIM)}
-      ${tab("/components/", "Components", "components", IC_COMP)}
-      ${tab("/patterns/", "Patterns", "patterns", IC_PATTERN)}
-      ${tab("/pages/", "Pages", "pages", IC_PAGE)}
-    </nav>`;
-  }
-
-  const playground = NAV_STATE.hasPlayground
-    ? tab("/playground/", "Playground", "playground", IC_PLAY)
-    : blankSlot;
-  // By this point active === "admin" and LIB_KEYS.includes(active) have already
-  // returned above, so anything left besides "playground"/"changelog" is either the
-  // literal root ("prototypes") or an opportunity's own name — both are still
-  // Projects, the same way appChrome()'s isOpportunity treats them as one section.
-  const projectsActive = active !== "playground" && active !== "changelog";
-  return `<nav class="gvtabbar" aria-label="Primary">
-    <a class="gvtab" href="${S("/")}"${projectsActive ? ' aria-current="page"' : ""}>${IC_HOME}<span>${PROJECTS_LABEL}</span></a>
-    ${playground}
-    ${tab("/tokens/", "Design system", "library", IC_LIBRARY)}
-    <button type="button" class="gvtab" data-tab-pinned aria-haspopup="dialog">${IC_PIN}<span>Pinned</span></button>
-    <button type="button" class="gvtab" data-mobile-search-toggle aria-label="Search">${IC_SEARCH}<span>Search</span></button>
-    <button type="button" class="gvtab" data-prof data-tab-profile aria-haspopup="dialog" hidden><span class="gvprof__av" data-prof-av aria-hidden="true"></span><span>Profile</span></button>
-  </nav>`;
-}
-
-// Second copy of the pinned list — sideRail()'s copy lives inside .gvside, which is
-// off-canvas on mobile (no toggle left to open it), so it can't double as this
-// sheet's content. PINS_JS is made multi-instance-aware below so both copies stay in
-// sync off the one /__pins fetch.
-function mobilePinnedSheet() {
-  return `<div class="gvsheet" id="gvpinsheet" data-pin-sheet hidden>
-    <div class="gvsheet__scrim" data-pin-sheet-scrim></div>
-    <div class="gvsheet__panel" role="dialog" aria-modal="true" aria-label="Pinned">
-      <div class="gvsheet__head">
-        <h2 class="gvsheet__title">Pinned</h2>
-        <button type="button" class="gvsheet__x" data-pin-sheet-close aria-label="Close">${IC_CLOSE}</button>
-      </div>
-      <div class="gvside__group" data-pinned-list></div>
-      <p class="gvside__pinhint" data-pinned-empty hidden>Star a prototype to pin it here.</p>
-    </div>
-  </div>`;
-}
-
-// Second copy of the profile chip's identity block/menu, plus the two items the
-// sidebar's foot carried (Admin, Changelog) that have nowhere else to live once the
-// drawer is off-canvas. profileChip() itself is called unchanged — see PROFILE_JS,
-// SETTINGS_JS and SPACE_JS below for the matching multi-instance fixes this requires.
-function mobileProfileSheet() {
-  return `<div class="gvsheet" id="gvprofsheet" data-prof-sheet hidden>
-    <div class="gvsheet__scrim" data-prof-sheet-scrim></div>
-    <div class="gvsheet__panel" role="dialog" aria-modal="true" aria-label="Profile">
-      <div class="gvsheet__head">
-        <h2 class="gvsheet__title">Profile</h2>
-        <button type="button" class="gvsheet__x" data-prof-sheet-close aria-label="Close">${IC_CLOSE}</button>
-      </div>
-      ${profileChip()}
-      <a class="gvprof__item gvside__admin" href="/admin/" data-space-admin${
-        NAV_STATE.activeSpace ? ` data-space-id="${escAttr(NAV_STATE.activeSpace)}"` : ""
-      }>${IC_GEAR}<span>Admin</span></a>
-      <a class="gvprof__item" href="/changelog/">${IC_CHANGELOG}<span>Changelog</span></a>
-    </div>
-  </div>`;
-}
-
-// City themes for the Help drawer's ?theme= reference. Mirrors GV_THEMES in
-// the space's UI-skill themes file (id, name, primary) — that file is the
-// source of truth; this is a static copy for the shell (which doesn't load it).
-const HELP_THEMES = [
-  [0, "Linz", "#604596"], [1, "Dublin City", "#0077A3"], [2, "Stadt Wien", "#FF5A64"],
-  [3, "Københavns Kommune", "#000C2E"], [4, "City of St. Louis", "#033D8B"], [5, "Oslo kommune", "#034B45"],
-  [6, "Lambeth", "#246797"], [7, "Stad Lokeren", "#025157"], [8, "Engaged California", "#1C2745"],
-];
-
-// The Help drawer — a right-side slide-in panel opened from the rail footer (data-help-open).
-// Two tracks: Reviewing (stakeholders giving feedback) + Building (driving an agent). Present
-// on every page via appChrome(); chromeScript() wires open/close + track switching.
-function helpDrawer() {
-  const themeRows = HELP_THEMES.map(
-    ([id, name, c]) => `<tr><td><code>?theme=${id}</code></td><td><span class="gvhelp__sw" style="background:${c}"></span>${name}</td></tr>`
-  ).join("");
-  return `<div class="gvhelp" data-help hidden>
-    <div class="gvhelp__scrim" data-help-scrim></div>
-    <div class="gvhelp__panel" role="dialog" aria-modal="true" aria-label="Help">
-      <header class="gvhelp__head">
-        <h3 class="gvhelp__title">Help</h3>
-        <button type="button" class="gvhelp__x" data-help-close aria-label="Close help">${IC_CLOSE}</button>
-      </header>
-      <div class="gvhelp__tabs" role="tablist" aria-label="Help topics">
-        <button type="button" class="gvhelp__tab" data-help-tab="review" role="tab">Reviewing</button>
-        <button type="button" class="gvhelp__tab" data-help-tab="build" role="tab">Building</button>
-      </div>
-      <div class="gvhelp__body">
-        <section class="gvhelp__track" data-help-track="review" role="tabpanel">
-          <h4>Comment</h4>
-          <ul>
-            <li><kbd>Shift</kbd>+<kbd>C</kbd>: toggle review mode.</li>
-            <li>Click any element to drop a pin, type, press <kbd>Enter</kbd>.</li>
-            <li>Pins scope to the screen they were made on. Off-screen pins hide.</li>
-            <li><kbd>Esc</kbd>: exit review mode.</li>
-          </ul>
-
-          <h4>Layers view</h4>
-          <ul>
-            <li>In review mode, press <kbd>&uarr;</kbd>/<kbd>&darr;</kbd> (or click the Layers pill, bottom-left).</li>
-            <li>Boxes every element by layer: Components, +Base, +Tokens.</li>
-            <li>+Tokens paints live spacing on each box.</li>
-          </ul>
-
-          <h4>Marks</h4>
-          <ul>
-            <li><b>Comments</b>: your pins and threads (review mode on).</li>
-            <li><b>Annotations</b>: notes pinned to stay visible with review off. Skipped by "resolve comments".</li>
-            <li><b>Status</b>: the badge on each card. Click to cycle Dev ready, In progress, Ignore.</li>
-          </ul>
-
-          <h4>Cards</h4>
-          <ul>
-            <li>Right-click a card: Open, Copy link, Download HTML, Rename, Edit description.</li>
-            <li>Star a card to pin it to the sidebar. Drag pinned items to reorder.</li>
-          </ul>
-
-          <h4>Search</h4>
-          <ul>
-            <li><kbd>/</kbd> focus. <kbd>Cmd</kbd>/<kbd>Ctrl</kbd>+<kbd>K</kbd> focus and select. <kbd>Esc</kbd> clear.</li>
-          </ul>
-
-          <h4>Replies appear</h4>
-          <ul><li>An agent may answer or resolve your comment in-thread. That is the comment loop (see Building).</li></ul>
-        </section>
-
-        <section class="gvhelp__track" data-help-track="build" role="tabpanel" hidden>
-          <h4>Skills</h4>
-          <ul>
-            <li><code>frontend-design</code>: generic design craft. Default (Free mode).</li>
-            <li>The space's UI skill (<code>*-ui</code>): real product tokens + <code>.gv-*</code> components.</li>
-            <li>The a11y skill: accessibility audit (contrast, zoom, target size).</li>
-            <li>Persona critique + <code>webapp-testing</code>: critique in character, run personas + a11y.</li>
-          </ul>
-
-          <h4>Modes</h4>
-          <ul>
-            <li><b>Free</b>: default, light, generic craft.</li>
-            <li><b>System-building</b>: faithful library work (design-system repo).</li>
-            <li>Everything else is opt-in. Name it to load it.</li>
-          </ul>
-
-          <h4>Avoid</h4>
-          <ul>
-            <li>No hardcoded brand colours. Use <code>var(--gv-tenant-primary | secondary | text)</code>.</li>
-            <li>Design system is read-only from a prototype. Edit the source, don't copy <code>.gv-*</code> out.</li>
-            <li>Prototypes stay self-contained static HTML, no build step.</li>
-            <li>A11y: no colour-only state, low contrast, disabled zoom, tiny targets.</li>
-          </ul>
-
-          <h4>Context</h4>
-          <ul>
-            <li>Standing rules: <code>CLAUDE.md</code>. Product depth: the space's product doc (re-read on a real doubt, not auto-loaded).</li>
-            <li>Name a mode to pull capability.</li>
-          </ul>
-
-          <h4>Comment loop <span class="gvhelp__tag">maintainer</span></h4>
-          <ul>
-            <li><code>npm run review --open</code> lists open threads.</li>
-            <li>The agent fixes, replies, resolves in-thread. Put it on <code>/loop</code> to keep watching.</li>
-            <li>Not automated. You steer it.</li>
-          </ul>
-
-          <h4>Themes</h4>
-          <ul>
-            <li><code>?theme=&lt;id&gt;</code> on any prototype URL. Numeric id only (<code>?theme=2</code>, not a name).</li>
-            <li>Picker sits bottom-right. Hide with <code>&lt;body data-gv-theme-picker="off"&gt;</code>.</li>
-            <li><code>?cookies=reset</code> re-shows the cookie banner.</li>
-          </ul>
-          <table class="gvhelp__themes"><tbody>${themeRows}</tbody></table>
-        </section>
-      </div>
-    </div>
-  </div>`;
-}
-
-// Account settings — a centred modal opened from the profile menu ([data-prof-settings]),
-// rendered at body level rather than inside the rail so it escapes the rail's stacking
-// and overflow context (same reason the help drawer sits out here).
-//
-// Only the photo is editable; name, email and role render read-only until each is wired,
-// because a "Change" link that opens nothing is worse than no link. The tab bar ships
-// with one tab on purpose — Notifications/Security later is one <button role=tab> plus
-// one <section role=tabpanel>, with nothing existing having to move.
-//
-// The avatar carries data-prof-av, so PROFILE_JS's paint() fills it (photo, or
-// initials on the person's colour) from the same /__me fetch that fills the chip;
-// data-prof-name and data-prof-email fill the same way. Role is the one new hook.
-function settingsModal() {
-  return `<div class="gvset" data-set hidden>
-    <div class="gvset__scrim" data-set-scrim></div>
-    <div class="gvset__panel" role="dialog" aria-modal="true" aria-label="Settings">
-      <div class="gvset__head">
-        <div class="gvset__tabs" role="tablist" aria-label="Settings sections">
-          <button type="button" class="gvset__tab is-active" data-set-tab="account" role="tab" aria-selected="true">Account</button>
-        </div>
-        <button type="button" class="gvset__x" data-set-close aria-label="Close settings">${IC_CLOSE}</button>
-      </div>
-      <div class="gvset__body">
-        <section class="gvset__cols" data-set-panel="account" role="tabpanel" aria-label="Account">
-          <div class="gvset__avcol">
-            <span class="gvset__av" data-prof-av aria-hidden="true"></span>
-            <button type="button" class="gvset__edit" data-set-edit>Edit</button>
-            <p class="gvset__err" data-set-err hidden></p>
-            <input type="file" accept="image/*" data-set-file hidden />
-          </div>
-          <div class="gvset__fields">
-            <div>
-              <h3 class="gvset__label">Name</h3>
-              <div data-set-name-view>
-                <p class="gvset__value" data-prof-name></p>
-                <button type="button" class="gvset__link" data-set-rename>Change name</button>
-              </div>
-              <form class="gvset__form" data-set-name-form hidden>
-                <input type="text" class="gvset__input" data-set-name-input maxlength="60"
-                  autocomplete="name" aria-label="Your name" />
-                <button type="submit" class="gvset__btn" data-set-name-save>Save</button>
-                <button type="button" class="gvset__btn gvset__btn--ghost" data-set-name-cancel>Cancel</button>
-                <span class="gvset__msg" data-set-name-msg aria-live="polite"></span>
-              </form>
-            </div>
-            <div>
-              <h3 class="gvset__label">Email</h3>
-              <p class="gvset__value" data-prof-email></p>
-              <button type="button" class="gvset__link" disabled title="Changing your email isn't available yet">${IC_LOCK}Change email</button>
-            </div>
-            <div>
-              <h3 class="gvset__label">Password</h3>
-              <p class="gvset__value">&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;</p>
-              <button type="button" class="gvset__link" disabled title="Changing your own password isn't built yet — ask an admin of every workspace you belong to, or the instance admin, to reset it">${IC_LOCK}Change password</button>
-            </div>
-            <div><h3 class="gvset__label">Role</h3><p class="gvset__value" data-set-role></p></div>
-          </div>
-        </section>
-      </div>
-    </div>
-  </div>
-  <div class="gvcrop" data-crop hidden>
-    <div class="gvcrop__scrim" data-crop-scrim></div>
-    <div class="gvcrop__panel" role="dialog" aria-modal="true" aria-label="Crop photo">
-      <button type="button" class="gvcrop__x" data-crop-close aria-label="Cancel">${IC_CLOSE}</button>
-      <div class="gvcrop__stage"><canvas class="gvcrop__canvas" data-crop-canvas width="576" height="576"></canvas></div>
-      <div class="gvcrop__zoom">
-        <button type="button" class="gvcrop__step" data-crop-out aria-label="Zoom out">&minus;</button>
-        <input type="range" class="gvcrop__range" data-crop-range min="1" max="3" step="0.01" value="1" aria-label="Zoom" />
-        <button type="button" class="gvcrop__step" data-crop-in aria-label="Zoom in">+</button>
-      </div>
-      <div class="gvcrop__foot">
-        <button type="button" class="gvcrop__save" data-crop-save>Save image</button>
-        <p class="gvcrop__msg" data-crop-msg hidden></p>
-      </div>
-    </div>
-  </div>`;
-}
-
-// Delimiters wrapping the baked chrome region (rail/tab bar/header/overlays). They are
-// HTML comments — inert, so they change no rendering — carrying the space id + active
-// tab so the worker can re-render the CURRENT engine's chrome in place at serve time
-// (runtime-chrome). See composeChrome in src/_worker.js.
-const CHROME_MARK_START = (space, active) =>
-  `<!--gv-chrome-start data-space="${escAttr(space)}" data-active="${escAttr(active)}" data-ui="${UI_VERSION}"-->`;
-const CHROME_MARK_END = `<!--gv-chrome-end-->`;
-
-// Full chrome injected at the top of <body>: slim mobile top bar + the rail + the
-// drawer scrim (the last two are off-canvas / hidden on desktop via CSS).
-function appChrome(active, opts = {}) {
-  // Mobile header center: the active space's own icon+name (same data spaceSwitcher()
-  // reads, build.js:2900ish), replacing the hardcoded engine mark — correct on every
-  // instance by construction. Falls back to GV_MARK+"augur" only when there's no
-  // space to name (the engine-only/shell build case, spaceSwitcher() returns "" then
-  // too). A back chevron replaces the brand whenever this page's rail would be
-  // library/admin/an opportunity — i.e. whenever sideRail() itself isn't the active
-  // view (the same branch computed below for `rail`).
-  const spaces = NAV_STATE.spaces || [];
-  const activeSpaceObj = spaces.find((s) => s.id === NAV_STATE.activeSpace) || spaces[0];
-  const isLibOrAdmin = active === "admin" || LIB_KEYS.includes(active);
-  // An opportunity page (active = the opportunity's own name) is a sub-view too —
-  // same back-chevron treatment as library/admin, titled with the opportunity's own
-  // name rather than left blank.
-  const isOpportunity = !isLibOrAdmin && !!active && active !== "prototypes" && active !== "playground" && active !== "changelog";
-  // Breadcrumb: workspace › current section, ALWAYS (the mobile header IS the section
-  // header now — the in-body .folderbar is hidden on mobile, see NAV_CSS). The section
-  // crumb names whatever view you're in; the workspace crumb links to root and so
-  // replaces the old back chevron.
-  const spaceName = activeSpaceObj ? activeSpaceObj.name : "augur";
-  const sectionLabel = active === "admin" ? "Workspace settings"
-    : LIB_KEYS.includes(active) ? "Design system"
-    : active === "changelog" ? "Changelog"
-    : active === "playground" ? "Playground"
-    : isOpportunity ? titleCase(active)
-    : PROJECTS_LABEL;
-  const homeMark = activeSpaceObj
-    ? `<img class="gvtop__logo" src="/space-icon.png" alt="" width="22" height="22" />`
-    : `<span class="gvtop__logo gvtop__logo--mark">${GV_MARK}</span>`;
-  const crumbs = `<nav class="gvtop__crumbs" aria-label="Breadcrumb">
-      <a class="gvtop__crumb gvtop__crumb--home" href="${S("/")}">${homeMark}<span>${escAttr(spaceName)}</span></a>
-      <span class="gvtop__crumbsep" aria-hidden="true">›</span>
-      <span class="gvtop__crumb gvtop__crumb--current" aria-current="page">${escAttr(sectionLabel)}</span>
-    </nav>`;
-  // Right side: the page's research/context docs when it has any (opportunities). The
-  // create-canvas button deliberately does NOT surface on mobile. Search is NOT here
-  // anymore — it moved to the bottom tab bar; railSearch() still lives in the header
-  // but stays hidden until the Search tab toggles .gv-mobile-searching.
-  const headerAction = opts.research && opts.research.length
-    ? `<div class="gvtop__action">${researchChip(opts.research)}</div>`
-    : "";
-  const top = `<header class="gvtop">
-    <div class="gvtop__center">${crumbs}</div>
-    <div class="gvtop__searchwrap">${railSearch()}</div>
-    ${headerAction}
-  </header>`;
-  // Workspace admin REPLACES the rail rather than adding a second nav column beside
-  // it. You are in one workspace's settings, not browsing its content, so the rail's
-  // Projects / Pinned / Design system are noise — and two nav columns side by side read as
-  // two levels of hierarchy when there is only one.
-  const rail = active === "admin" ? adminRail()
-    : LIB_KEYS.includes(active) ? libraryRail(active)
-    : sideRail(active);
-  return `${top}${rail}<div class="gvscrim" data-side-scrim></div>${tabBar(active)}${mobilePinnedSheet()}${mobileProfileSheet()}${helpDrawer()}${settingsModal()}`;
-}
-
-// The rail while you are inside the design system. Same shape as workspace settings: profile
-// chip, a way back, then this section's own destinations — one nav column, never two.
-function libraryRail(active) {
-  const item = (href, label, key, icon) =>
-    `<a href="${S(href)}"${active === key ? ' aria-current="page"' : ""}>${icon}<span>${label}</span></a>`;
-  return `<aside class="gvside" id="gvside" aria-label="Design system">
-    ${profileChip()}
-    <div class="gvside__rule"></div>
-    <a class="gvadmin__back" href="${S("/")}">
-      <svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M10 3L5 8l5 5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
-      <span>Design system</span>
-    </a>
-    <div class="gvside__scroll">
-      <div class="gvside__group">
-        ${item("/tokens/", "Tokens", "tokens", IC_TOKEN)}
-        ${item("/base/", "Base", "base", IC_PRIM)}
-        ${item("/components/", "Components", "components", IC_COMP)}
-        ${item("/patterns/", "Patterns", "patterns", IC_PATTERN)}
-        ${item("/pages/", "Pages", "pages", IC_PAGE)}
-      </div>
-    </div>
-  </aside>`;
-}
-
-// The rail while you are inside workspace settings: the profile chip stays (it is
-// yours, everywhere), then a back link naming the workspace, then the sections.
-function adminRail() {
-  const tab = (key, label) =>
-    `<button type="button" class="gvside__act gvadmin__tab" data-admin-tab="${key}">${label}</button>`;
-  return `<aside class="gvside" id="gvside" aria-label="Workspace settings">
-    ${profileChip()}
-    <div class="gvside__rule"></div>
-    <a class="gvadmin__back" href="/" data-admin-back>
-      <svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M10 3L5 8l5 5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
-      <span data-admin-space-name>Workspace</span>
-    </a>
-    <div class="gvside__scroll">
-      <div class="gvside__group" data-admin-nav>
-        ${tab("people", "People")}
-        ${tab("content", "Content")}
-        ${tab("settings", "Settings")}
-      </div>
-    </div>
-  </aside>`;
-}
+// ── Page-level chrome (rail, tab bar, mobile header, overlays) ────────────────
+// The whole chrome renderer moved to src/chrome/appchrome.mjs so the serve worker can
+// re-render it (runtime-chrome). build.js imports renderAppChrome / renderSpaceContextScript
+// / researchChip / CHROME_MARK_START / CHROME_MARK_END from there. NAV_STATE (above) is the
+// build-side state object threaded into renderAppChrome at the two call sites (shell, injectNav).
 
 /** Shared chrome script: real-time in-page filter + the mobile rail drawer. */
 function chromeScript() {
@@ -3823,7 +3231,7 @@ function injectNav(html, active) {
   if (!m) return html;
   return html.replace(
     m[0],
-    `${m[0]}\n  <style>${NAV_CSS}${TABBAR_CSS}</style>\n  ${CHROME_MARK_START(NAV_STATE.activeSpace || "", active)}${appChrome(active)}${CHROME_MARK_END}\n  <script>${chromeScript()}</script>\n  <script>${spaceContextScript()}</script>\n  <script>${PINS_JS}</script>\n  <script>${PROFILE_JS}</script>\n  <script>${SETTINGS_JS}</script>\n  <script>${SPACE_JS}</script>\n  <script>${TABBAR_JS()}</script>`
+    `${m[0]}\n  <style>${NAV_CSS}${TABBAR_CSS}</style>\n  ${CHROME_MARK_START(NAV_STATE.activeSpace || "", active)}${renderAppChrome(active, NAV_STATE)}${CHROME_MARK_END}\n  <script>${chromeScript()}</script>\n  <script>${renderSpaceContextScript(NAV_STATE)}</script>\n  <script>${PINS_JS}</script>\n  <script>${PROFILE_JS}</script>\n  <script>${SETTINGS_JS}</script>\n  <script>${SPACE_JS}</script>\n  <script>${TABBAR_JS()}</script>`
   );
 }
 
@@ -4423,12 +3831,7 @@ const COMP_STATUS_JS = `
 // emoji we prefix to prototype names), promoted into the icon slot.
 // Inline global consumed by PINS_JS to scope the pinned list to the active space:
 // { base: "<active space base>", others: [<every non-default space base>] }.
-function spaceContextScript() {
-  const spaces = NAV_STATE.spaces || [];
-  const active = spaces.find((s) => s.id === NAV_STATE.activeSpace) || spaces[0] || { base: "" };
-  const others = spaces.filter((s) => !s.default).map((s) => s.base);
-  return `window.__GV_SPACE=${JSON.stringify({ base: active.base || "", others })};`;
-}
+// renderSpaceContextScript (the per-page __GV_SPACE data) moved to src/chrome/appchrome.mjs.
 
 const PINS_JS = `
 (function(){
@@ -6173,13 +5576,13 @@ function shell({ title, body, back, activeTab = "prototypes", wrapClass = "", re
   <link rel="stylesheet" href="/${CHROME_CSS_NAME}" />${addon ? `\n  <style>${addon.css()}</style>` : ""}
 </head>
 <body>
-  ${CHROME_MARK_START(NAV_STATE.activeSpace || "", activeTab)}${appChrome(activeTab, { research })}${CHROME_MARK_END}
+  ${CHROME_MARK_START(NAV_STATE.activeSpace || "", activeTab)}${renderAppChrome(activeTab, NAV_STATE, { research })}${CHROME_MARK_END}
   <div class="wrap${wrapClass ? " " + wrapClass : ""}">
     ${backLink}
     ${body}
   </div>
   ${addon ? addon.cornerHtml() : ""}
-  <script>${spaceContextScript()}
+  <script>${renderSpaceContextScript(NAV_STATE)}
   </script>
   <script defer src="/${CHROME_JS_NAME}"></script>
   ${addon ? addon.bodyScripts(UI_VERSION) : ""}
@@ -7288,6 +6691,10 @@ async function main() {
   NAV_STATE.spaces = spaces.map((s) => ({
     id: s.id, name: s.name, default: s.default, badge: s.badge, base: s.default ? "" : `/${s.id}`,
     adminOnly: s.adminOnly,
+    // Carried so the shared chrome renderer (build + serve worker) reproduces a space's
+    // custom Projects label without a build global — renderAppChrome reads it off the
+    // active space entry. Empty ⇒ the "Projects" default.
+    projectsLabel: s.projectsLabel || "",
   }));
 
   // Worker inputs accumulate ACROSS spaces — one gate, one version map for the whole site.

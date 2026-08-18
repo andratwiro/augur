@@ -13,27 +13,32 @@ import { readFileSync, existsSync } from "node:fs";
 import { join } from "node:path";
 
 const SRC = readFileSync(new URL("../build.js", import.meta.url), "utf8");
+// The rail renderer (spaceSwitcher/profileChip/adminRail) moved into the shared chrome
+// module (runtime-chrome), so it is lifted from THERE now; the admin PAGE body
+// (adminSections) is still built in build.js.
+const MOD = readFileSync(new URL("../src/chrome/appchrome.mjs", import.meta.url), "utf8");
 const DIST = new URL("../dist", import.meta.url).pathname;
 
-function lift(name) {
-  const start = SRC.indexOf(`function ${name}(`);
-  assert.notEqual(start, -1, `${name} was found in build.js`);
-  return SRC.slice(start, SRC.indexOf("\n}", start) + 2);
+function liftFrom(src, name, where) {
+  const start = src.indexOf(`function ${name}(`);
+  assert.notEqual(start, -1, `${name} was found in ${where}`);
+  return src.slice(start, src.indexOf("\n}", start) + 2);
 }
+const lift = (name) => liftFrom(SRC, name, "build.js");
 
 // Icon constants are inert markup here; stubbing them keeps the lift small.
 const STUBS = `const IC_SLIDERS = "", IC_GEAR = "<svg data-gear></svg>", IC_SIGNOUT = "";`;
 
+// spaceSwitcher takes its state as an argument now (was a module global NAV_STATE).
 const makeSwitcher = (spaces, activeSpace) =>
   new Function(
     `${STUBS}
-     const NAV_STATE = { spaces: ${JSON.stringify(spaces)}, activeSpace: ${JSON.stringify(activeSpace)} };
      ${lift("escAttr")}
-     ${lift("spaceSwitcher")}
-     return spaceSwitcher();`,
+     ${liftFrom(MOD, "spaceSwitcher", "appchrome.mjs")}
+     return spaceSwitcher({ spaces: ${JSON.stringify(spaces)}, activeSpace: ${JSON.stringify(activeSpace)} });`,
   )();
 
-const profileChip = new Function(`${STUBS}\n${lift("profileChip")}\nreturn profileChip();`)();
+const profileChip = new Function(`${STUBS}\n${liftFrom(MOD, "profileChip", "appchrome.mjs")}\nreturn profileChip();`)();
 
 const TWO = [
   { id: "alpha", name: "Alpha", default: true, base: "", badge: "" },
@@ -129,8 +134,8 @@ const adminPage = new Function(
 // sections markup must carry no nav of its own.
 const adminRail = new Function(
   `${STUBS}
-   ${lift("profileChip")}
-   ${lift("adminRail")}
+   ${liftFrom(MOD, "profileChip", "appchrome.mjs")}
+   ${liftFrom(MOD, "adminRail", "appchrome.mjs")}
    return adminRail();`,
 )();
 
