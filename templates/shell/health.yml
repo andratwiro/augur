@@ -53,8 +53,8 @@ jobs:
       SITE: https://your-site-origin.example # ← your deploy.config.json siteOrigin
       # NB: the `runner` context is not available in job-level env, so a literal path.
       FAILS: /tmp/health-failures.txt
-      GRACE_SECONDS: "3600"         # 1h: a human or agent may publish minutes after pushing
-      DIRTY_GRACE_SECONDS: "21600"  # 6h: an active session may legitimately sit dirty
+      GRACE_SECONDS: "3600"        # 1h: a human or agent may publish minutes after pushing
+      DIRTY_GRACE_SECONDS: "21600" # 6h: an active session may legitimately sit dirty
       REBAKE_GRACE_SECONDS: "28800" # 8h: > the space self-heal poll interval (6h), so (f)
                                     # only fires once a re-bake has genuinely been missed
     steps:
