@@ -4865,15 +4865,19 @@ export default {
       return out;
     }
 
-    // Membership gate. Layered ABOVE the admin-only-space seal, never replacing it:
-    // that seal is still the hard gate, and this narrows what is left.
+    // Membership gate. With the path-mount tier retired there is one workspace, so this is
+    // simply "are you in it?" — the path no longer selects among several spaces, so the
+    // gate resolves the one workspace directly instead of per-request from url.pathname
+    // (D6). The membership/role MODEL is unchanged (Q2): isMemberOf still answers from the
+    // {email: {spaceId: role}} map, and an ABSENT membership still means "the whole
+    // instance", so a user with none recorded passes exactly as before.
     //
-    // 404, not 403 or a redirect — a space you are not a member of must not be
+    // 404, not 403 or a redirect — a workspace you are not a member of must not be
     // confirmable from the outside, and "forbidden" confirms it. Placed AFTER the
     // public-prototype door on purpose: share links stay open, so a signed-in
     // non-member never fares worse than a signed-out stranger looking at the same URL.
     if (usersActive && me) {
-      const sid = spaceIdForPath(url.pathname, SPACES);
+      const sid = (SPACES.find((s) => s.default) || {}).id || null;
       if (sid && !isMemberOf(me, sid)) return notFoundResponse();
     }
 
