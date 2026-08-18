@@ -6894,6 +6894,9 @@ async function main() {
     // bundle names + UI version, so the worker can point stale baked pages at them
     // and re-render the rail. Additive; ignored unless runtimeChrome is on.
     chrome: { css: CHROME_CSS_NAME, js: CHROME_JS_NAME, ui: UI_VERSION, stamp: CHROME_STAMP },
+    // Serve-time chrome composition switch. OFF unless the instance's build sets
+    // GV_RUNTIME_CHROME=1 — dark by default until parity is proven per instance.
+    runtimeChrome: process.env.GV_RUNTIME_CHROME === "1",
   }), "utf8");
   await fs.writeFile(path.join(DIST, "_worker.js"), workerSrc, "utf8");
 

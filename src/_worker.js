@@ -152,6 +152,14 @@ const INVITE_TTL_MS = 7 * 24 * 60 * 60 * 1000; // links get pasted into chat —
 // "dev" in a raw/local copy just means a stable id.
 let BUILD_ID = "dev";
 
+// Serve-time chrome composition (runtime-chrome). CHROME_POINTER is the CURRENT engine's
+// chrome bundle names + UI version (routing.chrome); RUNTIME_CHROME gates composeChrome.
+// Inert defaults so a raw/local copy (and every test import) stays side-effect-free — the
+// worker fills them in loadConfig from routing.json (assets mode). Off ⇒ served HTML is
+// untouched, exactly as before.
+let CHROME_POINTER = null;
+let RUNTIME_CHROME = false;
+
 // Per-page live-reload versions: URL-prefix → token that changes only when that
 // folder's content changes (routing.json). Lets a tab reload only when ITS
 // own prototype changed, so unrelated deploys (e.g. another agent's prototype) don't
@@ -424,6 +432,8 @@ async function loadConfig(env) {
     MCP_HOST_ALLOWLIST = routing.mcpAllowlist || [];
     mcpStaticHosts = new Set(MCP_HOST_ALLOWLIST);
     SPACES = Array.isArray(routing.spaces) ? routing.spaces : [];
+    CHROME_POINTER = routing.chrome || null;
+    RUNTIME_CHROME = !!routing.runtimeChrome;
   }
   await applyRoster(env);
 }
