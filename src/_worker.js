@@ -4597,7 +4597,7 @@ export default {
       }
       const asset = await assetFetch(env, request);
       if (asset.status === 404) return notFoundResponse();
-      return withAssetCache(withLiveReload(asset, url), url);
+      return withAssetCache(await composeChrome(withLiveReload(asset, url), url), url);
     }
 
     // Published prototypes are public — never gated, regardless of the cookie.
@@ -4606,7 +4606,7 @@ export default {
     if (isPublicPath(url.pathname)) {
       const asset = await assetFetch(env, request);
       if (asset.status === 404) return notFoundResponse();
-      const res = withAssetCache(withLiveReload(asset, url), url);
+      const res = withAssetCache(await composeChrome(withLiveReload(asset, url), url), url);
       const out = new Response(res.body, res);
       out.headers.set("X-Robots-Tag", "noindex, nofollow, noarchive");
       return out;
@@ -4633,7 +4633,7 @@ export default {
         if (virt) return virt;
         return notFoundResponse();
       }
-      return withAssetCache(withLiveReload(asset, url), url);
+      return withAssetCache(await composeChrome(withLiveReload(asset, url), url), url);
     }
 
     // Created canvas boards are public like published prototypes — same obscure
