@@ -100,35 +100,61 @@ jobs:
           echo "realtime/ changed in ${OLD:0:12}..${NEW:0:12} — redeploying"
           npx wrangler deploy -c realtime.wrangler.toml
 
-      # Published pages bake the engine's page-level chrome (rail, profile menu, overlays,
-      # responsive layout) at PUBLISH time; an engine bump refreshes the serving engine
-      # but leaves already-published space pages on their old baked chrome until the space
-      # republishes (its /_build.json `builtWithEngine` is what moves). When the pin moved,
-      # ask each space in the roster to re-bake against the new engine. This does NOT ship
-      # content from the shell — it POSTs an `engine-rebake` repository_dispatch and the
-      # space's own publish.yml does the publishing, with the space's own token. Best-effort
-      # by design: a failed dispatch is not a failed deploy, because each space's publish.yml
-      # also self-heals on a schedule. Skips cleanly when no dispatch token is configured.
-      #
-      # TOKEN: SPACE_DISPATCH_TOKEN (a PAT that can POST dispatches to the space repos) if
-      # set, else SUBMODULE_PAT. A read-only token just makes this log a warning and lets the
-      # schedule do the work; set SPACE_DISPATCH_TOKEN for near-instant re-bakes.
-      - name: Ask spaces to re-bake if the engine pin moved
+  # Published pages bake the engine's page-level chrome (rail, profile menu, overlays,
+  # responsive layout) at PUBLISH time; the deploy above refreshes the SERVING engine but
+  # leaves already-published space pages on their old baked chrome until the space
+  # republishes (its /_build.json `builtWithEngine` is what moves). So when the engine pin
+  # moved, re-bake every space in the roster against the new engine — HERE, with the
+  # shell's own token, not by asking each space to do it.
+  #
+  # Why the shell and not the space: AUGUR_TOKEN is `*`-scoped (it has to be — it pushes
+  # instance config), so it can publish any space on this instance. Re-baking centrally
+  # means the star token lives ONLY in this private shell, never in a (possibly public)
+  # space repo, and no space needs a token or CI of its own. It does NOT weaken the "one
+  # source of content" rule: it runs the ordinary `augur publish` client against a fresh
+  # clone of the space's own repo (its git HEAD, the real source), exactly as a person
+  # would — the store's stale-base / unpublish guards still apply.
+  rebake:
+    needs: deploy
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: true          # the engine, at the just-deployed pin — bakes exactly it
+          token: ${{ secrets.SUBMODULE_PAT }}
+          fetch-depth: 0            # to tell whether the pin actually moved
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      # Only when the pin moved. For each roster space: clone it (full history — publish.mjs
+      # refuses a shallow clone, it dates cards from git) and publish it with the star token
+      # and the shell's pinned engine. A single space's failure warns and the job fails at
+      # the end so it's visible; health.yml (f) also alarms on any drift that outlives its
+      # window. AUGUR_TOKEN unset = assets-mode shell with nothing to publish.
+      - name: Re-bake each roster space against the new engine (only when the pin moved)
         env:
-          GH_TOKEN: ${{ secrets.SPACE_DISPATCH_TOKEN || secrets.SUBMODULE_PAT }}
+          GH_TOKEN: ${{ secrets.SUBMODULE_PAT }}   # clone the space repos
+          AUGUR_TOKEN: ${{ secrets.AUGUR_TOKEN }}  # *-scoped: publishes any space's content
         run: |
           set -uo pipefail
-          if [ -z "${GH_TOKEN:-}" ]; then echo "no dispatch token — spaces will self-heal on their schedule"; exit 0; fi
+          if [ -z "${AUGUR_TOKEN:-}" ]; then echo "AUGUR_TOKEN unset (assets-mode) — nothing to re-bake"; exit 0; fi
           OLD="$(git rev-parse '${{ github.event.before }}:engine' 2>/dev/null \
              || git rev-parse 'HEAD^:engine' 2>/dev/null || true)"
           NEW="$(git rev-parse 'HEAD:engine' 2>/dev/null || true)"
           if [ -z "$NEW" ] || [ -z "$OLD" ] || [ "$OLD" = "$NEW" ]; then echo "engine pin unmoved — no re-bake needed."; exit 0; fi
-          jq -r '.spaces[]?.repo // empty' deploy.config.json | while read -r REPO; do
-            [ -n "$REPO" ] || continue
-            if gh api -X POST "repos/${REPO}/dispatches" -f event_type=engine-rebake \
-                 -F "client_payload[engine_sha]=${NEW}" >/dev/null 2>&1; then
-              echo "re-bake dispatched to ${REPO} @ ${NEW:0:12}"
-            else
-              echo "::warning::could not dispatch re-bake to ${REPO} (dispatch token scope?) — it will self-heal on schedule"
+          FAILED=""
+          while read -r ID REPO; do
+            [ -n "$ID" ] && [ -n "$REPO" ] || continue
+            DIR="$RUNNER_TEMP/space-$ID"; rm -rf "$DIR"
+            if ! git clone --quiet "https://x-access-token:${GH_TOKEN}@github.com/${REPO}.git" "$DIR"; then
+              echo "::warning::clone of $REPO failed — skipping $ID"; FAILED="$FAILED $ID"; continue
             fi
-          done
+            echo "re-baking $ID ($REPO) @ engine ${NEW:0:12}"
+            if GV_SPACES_ROOT="$DIR" node engine/scripts/publish.mjs; then
+              echo "re-baked $ID"
+            else
+              echo "::warning::re-bake of $ID failed"; FAILED="$FAILED $ID"
+            fi
+          done < <(jq -r '.spaces[]? | "\(.id) \(.repo)"' deploy.config.json)
+          if [ -n "$FAILED" ]; then echo "::error::re-bake failed for:$FAILED — see warnings above"; exit 1; fi
+          echo "re-bake complete."

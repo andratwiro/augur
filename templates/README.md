@@ -43,29 +43,24 @@ passwords out of service) and `publish:tokens` (live bearer tokens that can over
 published content). **Do not enable it on a public shell.** Everything else here is
 safe on one; this is not.
 
-**A space repo needs no CI to publish — `templates/space/publish.yml` is optional.**
-Space content reaches the live site through `augur publish` and nothing else, so a bare
-space repo needs no CI, no submodule mount, just a `space.json` and some `prototypes/`
-folders — and `deploy.yml`'s `GV_ENGINE_ONLY=1` makes the shell structurally incapable
-of emitting space content, so a stale CI checkout can never overwrite a publish. What the
-optional space template adds is convenience, not a second content path: it runs the SAME
-`augur publish` client with an ordinary per-space token (same door, no key under the mat),
-and it earns its keep on two jobs a person forgets:
+**Keeping baked chrome current is the SHELL's job, not the space's.** Page-level chrome
+(rail, overlays, layout) is baked into each page at publish time (`/_build.json`
+`builtWithEngine`), so an engine bump refreshes the *serving* engine but leaves
+already-published pages on older chrome until the space republishes. `deploy.yml` closes
+that with a `rebake` job: when the engine pin moves it clones each roster space and
+re-publishes it with the shell's own `*`-scoped `AUGUR_TOKEN` (the one it already uses for
+`--engine`). The star token therefore lives ONLY in the private shell — never in a
+(possibly public) space repo — and **no space needs a token or CI just to stay on the
+current chrome.** `health.yml` check (f) alarms if a space is ever left on chrome older
+than the deployed engine.
 
-- **publish-on-push** — for a space where the last pusher is often not the person who
-  would remember to publish (a public demo). Delete the `push:` trigger for a working
-  space, where publishing is a deliberate act; keep the rest.
-- **keep baked chrome current** — page-level chrome (rail, overlays, layout) is baked
-  into each page at publish time (`/_build.json` `builtWithEngine`), so an engine bump
-  refreshes the *serving* engine but leaves already-published pages on older chrome until
-  the space republishes. The template re-bakes automatically: the shell's `deploy.yml`
-  fires an `engine-rebake` dispatch when it moves its pin, and a schedule self-heals any
-  missed dispatch. The shell's `health.yml` check (f) alarms if a space is ever left on
-  chrome older than the deployed engine. This part is useful to *every* space, working or
-  public.
-
-The one secret is `AUGUR_TOKEN`, scoped to that space (not `*`); the file's header has the
-mint-and-set steps.
+**`templates/space/publish.yml` is optional and only for a PUBLIC auto-publish space** —
+a demo whose last pusher is often not the person who'd remember to publish. It joins
+push→publish so content goes live on push, running the same `augur publish` client with a
+token scoped to that space (not `*`, since the repo may be public). A working space needs
+none of this: it publishes deliberately from a terminal, and its chrome is re-baked by the
+shell above. A bare space repo is just a `space.json` and some `prototypes/` folders — no
+CI, no secret, no submodule mount.
 
 Engine missing something your instance needs? Don't patch your copy — **open a PR
 upstream** ([CONTRIBUTING.md](../CONTRIBUTING.md)) and take it back via pin bump. That
