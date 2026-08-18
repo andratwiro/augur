@@ -31,12 +31,15 @@ import { fileURLToPath } from "node:url";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
-// Declare this as an automated ship so a space's pre-commit hooks can honour the
-// "commit cannot fail" contract above — a developer-time quality gate (e.g. a
-// prototype-lint ratchet) must never dead-end the ship path, because the live URL
-// and the durability of the work are the user's promise, not a decision to punt
-// back to them. Hooks that block a MANUAL commit still block; they read this env
-// and degrade to advisory only under ship. Generic + inert for spaces that ignore it.
+// The checks contract: a developer-time gate (e.g. a prototype-lint ratchet) must
+// NEVER wall the path between a prompt and its live URL, and never reach the human —
+// the live URL + durability are the user's promise, not a decision to punt back. That
+// guarantee is the ENGINE's, not each space's hook. A space opts in by declaring
+// `augur:generate` / `augur:gate` npm scripts (see below): ship then owns the commit
+// (runs them, commits with --no-verify) so no hook can block it. AUGUR_SHIP stays set
+// as the interim bridge for spaces that haven't migrated — their hook can read it to
+// degrade a gate to advisory. Manual `git commit` and CI keep the gate's teeth either
+// way. Generic + inert for spaces that declare neither.
 process.env.AUGUR_SHIP = "1";
 
 const log = (msg) => console.error(`\x1b[35m[ship]\x1b[0m ${msg}`);
@@ -100,6 +103,39 @@ const whoami = (() => {
   return n.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "someone";
 })();
 
+// ── the checks contract: ship owns the commit path when the space opts in ────
+// A space declares two optional npm scripts:
+//   augur:generate — regenerate its derived files (indexes, allowlists). MUST succeed;
+//                    a failure is a real correctness error, surfaced to the AGENT (never
+//                    the human) and aborts the ship. Its output is staged by `git add -A`.
+//   augur:gate     — run its quality gates (lint ratchets). ADVISORY on the ship path:
+//                    findings are printed for the agent, they never block. The SAME gate
+//                    is blocking on a manual `git commit` (the hook) and in CI — teeth
+//                    stay for anyone editing source by hand; the vibecoder is shielded.
+// When either is declared, ship commits with `--no-verify` so no hook can wall the path.
+// A space with neither keeps today's behaviour (the hook runs and may block).
+const spaceScripts = (() => {
+  try { return JSON.parse(readFileSync(path.join(dir, "package.json"), "utf8")).scripts || {}; }
+  catch { return {}; }
+})();
+const HAS_GENERATE = !!spaceScripts["augur:generate"];
+const HAS_GATE = !!spaceScripts["augur:gate"];
+const SHIP_OWNS = HAS_GENERATE || HAS_GATE;
+const runInSpace = (script) => execFileSync("npm", ["run", "--silent", script], { cwd: dir, stdio: "inherit" });
+function runGenerate() {
+  if (!HAS_GENERATE) return;
+  log("augur:generate — refreshing derived files");
+  try { runInSpace("augur:generate"); }
+  catch { die(`augur:generate failed (a generator, not a gate) — nothing committed, nothing lost. Fix and re-run. ${MEANWHILE}`); }
+}
+function runGateAdvisory() {
+  if (!HAS_GATE) return;
+  try { runInSpace("augur:gate"); }
+  catch { warn("augur:gate reported findings — committing anyway (advisory on the ship path). Clean up any real new debt in a follow-up; it is never the human's decision."); }
+}
+// A commit a developer-time gate cannot wall, once the space owns the path.
+const commit = (...a) => git("commit", "-q", ...(SHIP_OWNS ? ["--no-verify"] : []), ...a);
+
 // ── 1. commit ────────────────────────────────────────────────────────────────
 // A prototype's folder is the unit people think in, so name the commit after the
 // folders that moved rather than a file count.
@@ -122,9 +158,11 @@ if (dirtyPaths.length) {
   const subject = MSG || `Ship ${touched.slice(0, 3).join(", ")}${touched.length > 3 ? ` +${touched.length - 3} more` : ""}`;
   log(`${dirtyPaths.length} change(s) in ${touched.length} folder(s) — committing`);
   if (!DRY) {
+    runGenerate();          // refresh derived files first, so `git add -A` stages them
     git("add", "-A");
+    runGateAdvisory();      // gates see the staged tree; findings never block the ship
     const body = MSG ? "" : "\n\nCommitted automatically by `augur ship` so the live site is never\nserving anything that exists only in a working folder.";
-    git("commit", "-q", "-m", subject + body);
+    commit("-m", subject + body);
     committed = git("rev-parse", "--short", "HEAD");
     log(`committed ${committed}`);
   }
@@ -242,7 +280,7 @@ async function reconcile({ alreadyLive }) {
     forks.push({ folder, fork, theirs });
   }
   git("add", "-A");
-  git("commit", "-q", "-m",
+  commit("-m",
     `Reconcile a live edit conflict in ${forks.map((f) => path.basename(f.folder)).join(", ")}\n\n` +
     forks.map((f) => `${f.folder} kept ${f.theirs}'s version; yours forked to ${f.fork}.`).join("\n") +
     `\n\nResolved by \`augur ship\`: prototype HTML is not textually merged.`);
