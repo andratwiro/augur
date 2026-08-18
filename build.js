@@ -3383,6 +3383,14 @@ function settingsModal() {
   </div>`;
 }
 
+// Delimiters wrapping the baked chrome region (rail/tab bar/header/overlays). They are
+// HTML comments — inert, so they change no rendering — carrying the space id + active
+// tab so the worker can re-render the CURRENT engine's chrome in place at serve time
+// (runtime-chrome). See composeChrome in src/_worker.js.
+const CHROME_MARK_START = (space, active) =>
+  `<!--gv-chrome-start data-space="${escAttr(space)}" data-active="${escAttr(active)}" data-ui="${UI_VERSION}"-->`;
+const CHROME_MARK_END = `<!--gv-chrome-end-->`;
+
 // Full chrome injected at the top of <body>: slim mobile top bar + the rail + the
 // drawer scrim (the last two are off-canvas / hidden on desktop via CSS).
 function appChrome(active, opts = {}) {
@@ -3815,7 +3823,7 @@ function injectNav(html, active) {
   if (!m) return html;
   return html.replace(
     m[0],
-    `${m[0]}\n  <style>${NAV_CSS}${TABBAR_CSS}</style>\n  ${appChrome(active)}\n  <script>${chromeScript()}</script>\n  <script>${spaceContextScript()}</script>\n  <script>${PINS_JS}</script>\n  <script>${PROFILE_JS}</script>\n  <script>${SETTINGS_JS}</script>\n  <script>${SPACE_JS}</script>\n  <script>${TABBAR_JS()}</script>`
+    `${m[0]}\n  <style>${NAV_CSS}${TABBAR_CSS}</style>\n  ${CHROME_MARK_START(NAV_STATE.activeSpace || "", active)}${appChrome(active)}${CHROME_MARK_END}\n  <script>${chromeScript()}</script>\n  <script>${spaceContextScript()}</script>\n  <script>${PINS_JS}</script>\n  <script>${PROFILE_JS}</script>\n  <script>${SETTINGS_JS}</script>\n  <script>${SPACE_JS}</script>\n  <script>${TABBAR_JS()}</script>`
   );
 }
 
@@ -6165,7 +6173,7 @@ function shell({ title, body, back, activeTab = "prototypes", wrapClass = "", re
   <link rel="stylesheet" href="/${CHROME_CSS_NAME}" />${addon ? `\n  <style>${addon.css()}</style>` : ""}
 </head>
 <body>
-  ${appChrome(activeTab, { research })}
+  ${CHROME_MARK_START(NAV_STATE.activeSpace || "", activeTab)}${appChrome(activeTab, { research })}${CHROME_MARK_END}
   <div class="wrap${wrapClass ? " " + wrapClass : ""}">
     ${backLink}
     ${body}

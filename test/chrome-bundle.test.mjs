@@ -87,6 +87,15 @@ test("the bundle preserves the original IIFE order and parses as one script", ()
   } finally { cleanup(); }
 });
 
+test("baked chrome is wrapped in gv-chrome markers with data-active", () => {
+  const { out, cleanup } = buildMinimalSite();
+  try {
+    const html = readFileSync(path.join(out, "index.html"), "utf8");
+    assert.match(html, /<!--gv-chrome-start [^>]*data-active="[^"]+"[^>]*-->/);
+    assert.match(html, /<!--gv-chrome-end-->/);
+  } finally { cleanup(); }
+});
+
 test("routing.json carries the current chrome bundle pointer", () => {
   const { out, cleanup } = buildMinimalSite();
   try {
