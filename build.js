@@ -684,8 +684,8 @@ async function isDir(p) {
  *    NON-rename change, attributed through however many renames followed it.
  *
  * The same pass also tallies WHO works where — commits per author per path — which
- * is what the card face reports (see mainContributor): the person whose work a
- * folder mostly is, not whoever touched it last.
+ * is what the card faces report (see contributors): everyone whose work a folder
+ * is, most-committed first, not whoever touched it last.
  *
  * Returns { file: Map<relPath, {t,email}>, dir: Map<relDirPath, {t,email}>,
  * by: Map<relPath, Map<email, {n,t}>> } or null when git/history is unavailable
@@ -802,25 +802,13 @@ function modifiedTime(srcDir, fsLatest) {
 }
 
 /**
- * The "face" on a card: the folder's MAIN contributor — the known user with the most
- * commits touching it — not whoever happened to push last. A folder is someone's
- * work; a passing tweak by a colleague shouldn't hand them the card. Ties (equal
- * commit counts) go to whoever worked on it most recently.
- *
- * Counts are per USER, not per email: people commit from several machines/addresses,
- * so every address a user lists (identity `emails`) folds into one tally. Unknown
- * addresses are ignored rather than shown as a blank — a folder whose top committer
- * has no account still shows the next person who does. Returns a public profile, or
- * null (uncommitted folder, or nobody we know has touched it).
- */
-function mainContributor(absDir) {
-  return contributors(absDir)[0] || null;
-}
-
-/**
- * EVERY known contributor to a folder, most commits first (ties → most recent).
- * Same per-user folding as mainContributor; the root-index face pile renders the
- * whole list, capped for weight.
+ * EVERY known contributor to a folder, most commits first (ties → most recent) —
+ * the faces on a card. Counts are per USER, not per email: people commit from
+ * several machines/addresses, so every address a user lists (identity `emails`)
+ * folds into one tally. Unknown addresses are ignored rather than shown as a blank.
+ * The card face pile renders the whole list (capped for weight); [0] is the top
+ * contributor when a single face is wanted. Empty for an uncommitted folder, or one
+ * nobody we know has touched.
  */
 function contributors(absDir) {
   const dates = WS_ROOT ? spaceDates(WS_ROOT) : null;
@@ -1060,7 +1048,7 @@ async function scan() {
         poster: await exists(path.join(protoDir, "preview.webp")),
         mtimeMs: modifiedTime(protoDir, latest),
         status: statusMap[`${SPACE_KEY}${top.name}/${proto.name}`] || null,
-        editor: mainContributor(protoDir),
+        editors: contributors(protoDir),
       });
     }
 
@@ -1195,7 +1183,7 @@ async function scanPlayground() {
       poster: await exists(path.join(dir, "preview.webp")),
       mtimeMs: modifiedTime(dir, await latestMtime(dir)),
       status: statusMap[`${SPACE_KEY}playground/${e.name}`] || "in-progress",
-      editor: mainContributor(dir),
+      editors: contributors(dir),
     });
   }
   projects.sort(byStatusThenRecency);
@@ -1558,7 +1546,8 @@ const PAGE_CSS = `
        hierarchy, not scale. Kept small for app-like density. */
     .proto-name { font-weight: 600; font-size: 13px; letter-spacing: -0.01em; }
     .proto-date { color: var(--faint); font-weight: 450; font-size: 13px; margin-top: 1px; }
-    /* Last-editor face — git's last-commit author for the prototype, mapped to a user. */
+    /* Contributor face — a git contributor to the prototype, mapped to a user.
+       One per known contributor, rendered as an overlapping pile (see .opp-face). */
     .proto-editor {
       flex: none; width: 20px; height: 20px; border-radius: 50%; display: grid; place-items: center;
       color: #fff; font-size: 9.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .02em;
@@ -2938,13 +2927,6 @@ function faceChip(u, cls, label) {
   const ini = escAttr((u.initials || (u.name || "?").slice(0, 2)).toUpperCase());
   const face = u.email ? ` data-person="${escAttr(personIdOf(u.email))}"` : "";
   return `<span class="${cls}" style="background-color:${u.color || "#4f46e5"}"${face} title="${label}" aria-label="${label}">${ini}</span>`;
-}
-
-// A small avatar for whoever the prototype mostly belongs to (build's
-// mainContributor). "" when nobody we know has committed to it.
-function editorChip(ed) {
-  if (!ed) return "";
-  return faceChip(ed, "proto-editor", `Main contributor: ${escAttr(ed.name)}`);
 }
 
 // Overlapping face pile — EVERY known contributor to a folder (most commits
@@ -6302,7 +6284,7 @@ function renderOpportunityIndex(opp) {
               <div class="proto-name">${dname}</div>
               <div class="proto-date" title="${fmtDate(p.mtimeMs)}">${relTime(p.mtimeMs)}</div>
             </div>
-            ${editorChip(p.editor)}
+            ${facePile(p.editors)}
           </div>
         </div>`;
     })
@@ -6348,7 +6330,7 @@ function renderPlaygroundIndex(projects) {
               <div class="proto-name">${dname}</div>
               <div class="proto-date" title="${fmtDate(p.mtimeMs)}">${relTime(p.mtimeMs)}</div>
             </div>
-            ${editorChip(p.editor)}
+            ${facePile(p.editors)}
           </div>
         </div>`;
     })
@@ -7352,7 +7334,7 @@ async function main() {
     sr.sigParts.push(`space:${space.id}|pg:${r.playground.length > 0}`);
     for (const opp of r.opportunities)
       for (const p of opp.prototypes)
-        sr.sigParts.push(`${space.id}:${opp.name}/${p.name}|${p.status || ""}|${p.editor ? p.editor.email : ""}`);
+        sr.sigParts.push(`${space.id}:${opp.name}/${p.name}|${p.status || ""}|${(p.editors || []).map((e) => e.email).join(",")}`);
     for (const [label, arr] of [["c", r.components], ["b", r.base], ["pt", r.patterns], ["pg", r.pages], ["pl", r.playground]])
       for (const it of arr) sr.sigParts.push(`${space.id}:${label}:${it.name}`);
 
