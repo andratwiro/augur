@@ -241,20 +241,23 @@ function isPublicPath(pathname) {
   );
 }
 
-// ADMIN-ONLY space base paths. routing.json carries the base path of every space
-// whose space.json sets "adminOnly": true, so it can never drift from what shipped.
-// Everything under one of these prefixes requires an admin user — regular users are
-// bounced home, signed-out visitors get the login page. Empty default → no space
-// is restricted (a local build with no identity gates nothing extra).
+// ADMIN-ONLY space base paths. RETIRED with the path-mount tier: an adminOnly space only
+// ever sealed a NON-DEFAULT "/<id>/" mount, and no such mount exists any more, so nothing
+// is derived into this list — it is permanently empty and everything below reads it as
+// "no path is restricted." The declaration and its consumer (isRestrictedPath) are kept
+// as a harmless always-false read rather than ripped out; assets mode still assigns from
+// a routing.restrictedBases field defensively, but the build no longer emits one.
 let RESTRICTED_BASES = [];
 
-// Canvas session music: a space's tracks/ folder, at the root for the default space and
-// under /<space>/ for the rest. AUDIO EXTENSIONS ONLY — a README or a stray export that
-// lands in the same folder is gated by the ordinary rules, not by this one. Only an
-// instance ADMIN may fetch these: the build already refuses to publish a tracks/ folder
-// unless the space claims the right to distribute it ("publishTracks"), and this is the
-// second half of that promise — published audio still never reaches the open web.
-const TRACK_PATH = /^(\/[a-z0-9-]+)?\/tracks\/[^?]+\.(mp3|m4a|aac|ogg|opus|wav|flac|webm)$/i;
+// Canvas session music: the one workspace's tracks/ folder, at the root. AUDIO
+// EXTENSIONS ONLY — a README or a stray export that lands in the same folder is gated by
+// the ordinary rules, not by this one. Only an instance ADMIN may fetch these: the build
+// already refuses to publish a tracks/ folder unless the space claims the right to
+// distribute it ("publishTracks"), and this is the second half of that promise —
+// published audio still never reaches the open web. The leading optional "/<space>/"
+// mount group was retired with the path-mount tier: no space mounts under "/<id>/", so
+// tracks only ever live at the root now.
+const TRACK_PATH = /^\/tracks\/[^?]+\.(mp3|m4a|aac|ogg|opus|wav|flac|webm)$/i;
 function isTrackPath(pathname) { return TRACK_PATH.test(pathname); }
 
 // Does this path live inside an admin-only space? Matches the base ("/space-2"),
@@ -1668,7 +1671,7 @@ async function loadManifests(env, force) {
 // routing.json): merge every space's fragment, fold per-space shell signatures
 // into one buildId, and read the chrome pieces off the _engine manifest.
 function applyDerivedRouting(manifests) {
-  const vmap = {}, prefixes = [], restricted = [], mcp = new Set(), spacesList = [];
+  const vmap = {}, prefixes = [], mcp = new Set(), spacesList = [];
   const sigs = [];
   const catalog = [], tracks = [];
   let skillPrefixes = [], loaderExtras = "";
@@ -1677,25 +1680,22 @@ function applyDerivedRouting(manifests) {
     if (id === "_engine") { loaderExtras = (m.routing && m.routing.canvasLoaderExtras) || ""; continue; }
     const r = m.routing || {};
     const sp = m.space || { id };
-    const spRestricted = sp.adminOnly && !sp.default;
     prefixes.push(...(r.publicPrefixes || []));
     Object.assign(vmap, r.versionMap || {});
     // Each space's slice of the two aggregates, concatenated in the same sorted-id
-    // order every time so the merge is stable. A space that has never published
-    // simply contributes nothing, rather than erasing the others. Admin-only spaces
-    // contribute NOTHING to the public catalog — /__canvas/catalog.json is served
-    // before the gate, so a listed entry would leak that space's whole inventory
-    // (titles, descriptions, exact URLs) to anonymous callers.
-    if (!spRestricted) catalog.push(...(r.canvasCatalog || []));
-    // Music is the opposite case: the track list answers ADMINS only (canvasAggregate)
-    // and the audio itself is admin-only too (isTrackPath), so an admin-only space's
-    // tracks are safe to merge — and that is where an instance's music usually lives,
-    // since a sealed space is the one nobody else republishes out from under it.
+    // order every time so the merge is stable. A space that has never published simply
+    // contributes nothing, rather than erasing the others. With the path-mount tier
+    // retired there is one workspace and no whole-instance admin seal (RESTRICTED_BASES
+    // is permanently empty — see below), so the workspace always contributes its catalog:
+    // /__canvas/catalog.json is served before the gate, exactly as the default space's
+    // catalog always was.
+    catalog.push(...(r.canvasCatalog || []));
+    // Music: the track list answers ADMINS only (canvasAggregate) and the audio itself is
+    // admin-only too (isTrackPath), so the workspace's tracks merge for an admin to see.
     tracks.push(...(r.canvasTracks || []));
     for (const h of r.mcpAllowlist || []) mcp.add(h);
     if (r.publicSkillPrefixes) skillPrefixes = r.publicSkillPrefixes;
     spacesList.push(sp);
-    if (spRestricted) restricted.push("/" + id);
     sigs.push(`${id}:${r.shellSig || m.version || 0}`);
   }
   let h = 5381;
@@ -1705,7 +1705,11 @@ function applyDerivedRouting(manifests) {
   VERSION_MAP = vmap;
   PUBLIC_PREFIXES = prefixes;
   PUBLIC_SKILL_PREFIXES = skillPrefixes;
-  RESTRICTED_BASES = restricted;
+  // The path-mount tier is retired: an adminOnly space only ever sealed a NON-DEFAULT
+  // "/<id>/" mount, and no such mount exists any more, so the bundle derivation never
+  // seals anything. RESTRICTED_BASES is permanently empty here. (Assets mode still reads
+  // a routing.restrictedBases field defensively, but the build no longer emits one.)
+  RESTRICTED_BASES = [];
   CANVAS_LOADER_EXTRAS = loaderExtras;
   CANVAS_CATALOG = catalog;
   CANVAS_TRACKS = tracks;

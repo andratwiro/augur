@@ -146,43 +146,40 @@ test("with no routing at all nothing prototype-shaped is public", () => {
 
 // ---- isRestrictedPath ------------------------------------------------------
 
-test("an admin-only space seals its base, its root and everything beneath", () => {
+// D4 RETIRED with the path-mount tier + Q1 (Phase A, S4): an adminOnly space only ever
+// sealed a NON-DEFAULT "/<id>/" mount, and no such mount exists any more, so the bundle
+// derivation seals nothing — RESTRICTED_BASES is permanently empty and isRestrictedPath
+// answers false for every path. This inverts the S1 baseline (a sealed "/sealed" used to
+// be restricted); the flip is the deliberate diff a reviewer should see land with D4.
+test("an admin-only space no longer seals anything (tier + adminOnly retired)", () => {
   seedRouting();
-  assert.equal(W.isRestrictedPath("/sealed"), true, "the bare base");
-  assert.equal(W.isRestrictedPath("/sealed/"), true, "the root");
-  assert.equal(W.isRestrictedPath("/sealed/prototypes/x/"), true, "any depth");
+  assert.equal(W.isRestrictedPath("/sealed"), false, "the bare base is not sealed");
+  assert.equal(W.isRestrictedPath("/sealed/"), false, "nor its root");
+  assert.equal(W.isRestrictedPath("/sealed/prototypes/x/"), false, "nor anything beneath");
 });
 
-test("a sibling space whose name merely EXTENDS a sealed one is not sealed", () => {
-  // The trap this matching shape exists to avoid: a bare startsWith("/sealed") would
-  // seal "/sealed-public" too, and — worse in the other direction — a base of "/s"
-  // would seal every space. The `b + "/"` is load-bearing.
+test("with the tier retired, no path is restricted at all", () => {
   seedRouting();
   assert.equal(W.isRestrictedPath("/sealed-public/"), false);
   assert.equal(W.isRestrictedPath("/sealedx"), false);
-});
-
-test("a space that is adminOnly AND default is not restricted", () => {
-  // A sealed default space would put the whole instance root behind an admin check,
-  // so applyDerivedRouting excludes it (spRestricted = adminOnly && !default).
   W.applyDerivedRouting({
     only: space("only", { publicPrefixes: [], versionMap: {} }, { default: true, adminOnly: true }),
   });
-  assert.equal(W.isRestrictedPath("/only"), false);
+  assert.equal(W.isRestrictedPath("/only"), false, "an adminOnly default space is not restricted either");
   assert.equal(W.isRestrictedPath("/"), false);
-});
-
-test("with no admin-only space nothing is restricted", () => {
   W.applyDerivedRouting({ delta: space("delta", { publicPrefixes: [], versionMap: {} }, { default: true }) });
   assert.equal(W.isRestrictedPath("/anything"), false);
 });
 
 // ---- isTrackPath -----------------------------------------------------------
 
-test("session music is admin-only for audio extensions, at the root and under a space", () => {
+// D5 RETIRED (Phase A, S4): the leading optional "/<space>/" mount group is gone, so
+// session music resolves ONLY at the root now — no space mounts under "/<id>/". A
+// "/sealed/tracks/*.mp3" is no longer a track (it inverts the S1 baseline deliberately).
+test("session music is admin-only for audio extensions, at the root only", () => {
   for (const ext of ["mp3", "m4a", "aac", "ogg", "opus", "wav", "flac", "webm"]) {
     assert.equal(W.isTrackPath(`/tracks/song.${ext}`), true, `root /tracks/*.${ext}`);
-    assert.equal(W.isTrackPath(`/sealed/tracks/song.${ext}`), true, `spaced /tracks/*.${ext}`);
+    assert.equal(W.isTrackPath(`/sealed/tracks/song.${ext}`), false, `no /<space>/ mount any more`);
   }
 });
 
@@ -192,8 +189,9 @@ test("a non-audio file in tracks/ is governed by the ordinary rules, not this on
   assert.equal(W.isTrackPath("/tracks/"), false);
 });
 
-test("isTrackPath only matches one space segment deep", () => {
-  assert.equal(W.isTrackPath("/a/b/tracks/song.mp3"), false);
+test("isTrackPath matches only the root tracks/ folder, at any depth below it", () => {
+  assert.equal(W.isTrackPath("/a/b/tracks/song.mp3"), false, "not under any prefix");
+  assert.equal(W.isTrackPath("/sealed/tracks/song.mp3"), false, "not even one segment deep now");
   assert.equal(W.isTrackPath("/tracks/nested/song.mp3"), true, "but the file may nest below tracks/");
 });
 
@@ -234,11 +232,13 @@ test("the build id is stable for the same manifests and moves when a slice does"
   assert.notEqual(W.versionFor("/"), a, "a changed slice changes the id");
 });
 
-// ---- the aggregate an admin-only space must NOT reach -----------------------
+// ---- the public canvas catalog, with the admin-only exclusion retired -------
 
-test("an admin-only space contributes nothing to the public canvas catalog", async () => {
-  // /__canvas/catalog.json is served BEFORE the gate, so a listed entry would leak a
-  // sealed space's whole inventory — titles, descriptions and exact URLs — to anyone.
+test("with adminOnly retired, every space contributes to the public canvas catalog", async () => {
+  // The admin-only catalog exclusion was the multi-space tier: a NON-DEFAULT sealed space
+  // was kept out of /__canvas/catalog.json (served before the gate) so its inventory did
+  // not leak. Q1 retires adminOnly with the tier, so nothing is excluded now — exactly as
+  // the DEFAULT space's catalog was always merged. This inverts the S1 baseline.
   W.applyDerivedRouting({
     _engine: { routing: { canvasLoaderExtras: "" } },
     delta: space("delta", {
@@ -253,13 +253,13 @@ test("an admin-only space contributes nothing to the public canvas catalog", asy
     }, { adminOnly: true }),
   });
   const catalog = await W.canvasAggregate("catalog").text();
-  assert.doesNotMatch(catalog, /Secret|\/sealed\//, "a sealed space must not appear in the catalog");
+  assert.match(catalog, /Secret/, "the formerly-sealed space now contributes too");
   assert.match(catalog, /Open/, "the open space still does");
 
-  // Music is the opposite case by design: the track LIST answers admins only, and the
-  // audio itself is admin-only (isTrackPath), so a sealed space's tracks do merge.
+  // Music is unchanged: the track LIST answers admins only, and the audio itself is
+  // admin-only (isTrackPath), so every space's tracks merge for an admin to see.
   const tracksAdmin = await W.canvasAggregate("tracks", true).text();
-  assert.match(tracksAdmin, /\/sealed\/tracks\/b\.mp3/, "an admin sees the sealed space's music");
+  assert.match(tracksAdmin, /\/sealed\/tracks\/b\.mp3/, "an admin sees every space's music");
   const tracksAnon = await W.canvasAggregate("tracks", false).text();
   assert.equal(tracksAnon, "[]", "a non-admin is told the instance has no music at all");
 });
@@ -353,19 +353,19 @@ test("[tier] isPublishablePublicPrefix owns any non-root subtree for the one wor
   assert.equal(W.isPublishablePublicPrefix("/", "alpha", spaces), false, "but never the bare root");
 });
 
-// D4 — RESTRICTED_BASES: a space that is adminOnly AND non-default seals its base.
-// RESTRICTED_BASES is not exported, so the seal is pinned through its one observable
-// consumer, isRestrictedPath (which reads the global applyDerivedRouting just filled).
-test("[tier] an adminOnly non-default space puts its base in RESTRICTED_BASES", () => {
+// D4 RETIRED (S4) + Q1: adminOnly no longer seals anything, so an adminOnly non-default
+// space contributes NOTHING to RESTRICTED_BASES — it is permanently empty. This inverts
+// the S1 baseline (the "/beta" base used to be sealed).
+test("[tier] an adminOnly non-default space no longer seals its base", () => {
   seedTier();
-  assert.equal(W.isRestrictedPath("/beta"), true, "the bare base is sealed");
-  assert.equal(W.isRestrictedPath("/beta/secret"), true, "and everything beneath it");
-  assert.equal(W.isRestrictedPath("/prototypes/home/"), false, "the default's paths are not sealed");
+  assert.equal(W.isRestrictedPath("/beta"), false, "the base is not sealed any more");
+  assert.equal(W.isRestrictedPath("/beta/secret"), false, "nor anything beneath it");
+  assert.equal(W.isRestrictedPath("/prototypes/home/"), false, "and the default's paths never were");
 });
 
-// D5 — TRACK_PATH: the leading optional "(\/<space>)" group is the "/<id>/" mount,
-// so session music resolves under a non-default space, not only at the root.
-test("[tier] TRACK_PATH matches a /<id>/tracks/*.mp3 under a non-default space", () => {
-  assert.equal(W.isTrackPath("/beta/tracks/x.mp3"), true, "the /<space>/ mounted form");
-  assert.equal(W.isTrackPath("/tracks/x.mp3"), true, "and the root form still");
+// D5 RETIRED (S4): the leading optional "(\/<space>)" mount group is gone, so a
+// "/<id>/tracks/*.mp3" is no longer a track — session music lives only at the root.
+test("[tier] TRACK_PATH no longer matches a /<id>/tracks/*.mp3 (root only now)", () => {
+  assert.equal(W.isTrackPath("/beta/tracks/x.mp3"), false, "no /<space>/ mount survives");
+  assert.equal(W.isTrackPath("/tracks/x.mp3"), true, "the root form still matches");
 });
