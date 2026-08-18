@@ -713,19 +713,15 @@ async function spaceIconApi(request, env, me, spaces = SPACES) {
 // embedded in PUBLIC prototypes for the comment overlay, and a space list there would
 // hand the whole site's structure to anyone holding a prototype link — the same reason
 // /__people refuses to enumerate the roster.
-// Which space serves this path. Non-default spaces own "/<id>" and everything under
-// it; the default space owns whatever is left. The boundary check is load-bearing:
-// "/betamax" must not read as the "beta" space. With no default space configured an
-// unowned path belongs to NOBODY (null) rather than falling to an arbitrary space —
-// the caller then leaves it alone rather than gating it on a guess.
+// Which space serves this path. A single-workspace instance mounts exactly one space
+// (the default) at the root, so every owned path resolves to it and `pathname` no longer
+// discriminates — the "/<id>/" path-mount tier that once picked one of several spaces is
+// retired. With no default space configured an unowned path belongs to NOBODY (null)
+// rather than falling to an arbitrary space — the caller then leaves it alone rather than
+// gating it on a guess. That null-when-no-space contract is load-bearing and KEPT.
 function spaceIdForPath(pathname, spaces) {
-  const p = typeof pathname === "string" ? pathname : "/";
-  for (const s of spaces || []) {
-    if (s.default) continue;
-    if (p === "/" + s.id || p.startsWith("/" + s.id + "/")) return s.id;
-  }
-  const def = (spaces || []).find((s) => s.default);
-  return def ? def.id : null;
+  const only = (spaces || []).find((s) => s.default);
+  return only ? only.id : null;
 }
 
 // Does this person administer ANY space? The /admin door asks this rather than the

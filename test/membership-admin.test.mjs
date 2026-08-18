@@ -247,16 +247,20 @@ test("an editor and an admin write freely", () => {
   }
 });
 
-test("the role is taken from the space that owns the path, not the global role", () => {
-  // Viewer in alpha, editor in beta — the same person, two answers.
+test("the role is taken from the one workspace's membership, not the global role or the path", () => {
+  // D1 retired (Phase A, S2): every path resolves to the single workspace, so a person
+  // holds ONE role in it. A viewer in that workspace — whatever their global role — is
+  // refused on EVERY path; the "/beta/..." prefix no longer selects a second space with
+  // a different role. (Before the tier retirement this same person was an editor under
+  // "/beta/" and allowed there; that path-mounted second answer is what went.)
   const [u] = withSpaces([{ email: "x@example.test", role: "editor" }],
-    { "x@example.test": { alpha: "viewer", beta: "editor" } });
-  const inAlpha = "/__name?path=/proj/proto/";        // default space → alpha
-  const inBeta = "/__name?path=/beta/proj/proto/";
-  assert.ok(W.viewerWriteRefusal(req("POST", inAlpha), new URL("https://example.test" + inAlpha), u, "name", SPACES),
-    "refused where they are a viewer");
-  assert.equal(W.viewerWriteRefusal(req("POST", inBeta), new URL("https://example.test" + inBeta), u, "name", SPACES), null,
-    "allowed where they are an editor");
+    { "x@example.test": { alpha: "viewer" } });
+  const rootPath = "/__name?path=/proj/proto/";
+  const betaLike = "/__name?path=/beta/proj/proto/";
+  assert.ok(W.viewerWriteRefusal(req("POST", rootPath), new URL("https://example.test" + rootPath), u, "name", SPACES),
+    "refused: a viewer in the one workspace, despite the editor global role");
+  assert.ok(W.viewerWriteRefusal(req("POST", betaLike), new URL("https://example.test" + betaLike), u, "name", SPACES),
+    "still refused: the '/beta/' prefix resolves to the same one workspace now");
 });
 
 test("a signed-out caller is not this gate's problem", () => {

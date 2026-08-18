@@ -303,14 +303,17 @@ function tierSpaces() {
   ];
 }
 
-// D1 — spaceIdForPath: the path→space resolver picks the non-default space by its
-// "/<id>/" mount, falls back to the default for the root, and does not confuse a
-// sibling whose name merely extends another space's id.
-test("[tier] spaceIdForPath resolves a /<id>/ path to that non-default space", () => {
+// D1 — spaceIdForPath RETIRED (S2): the path-mount tier is gone, so there is exactly one
+// workspace (the default). The resolver ignores the path and every owned path maps to
+// that one space; the "/<id>/" mount that used to pick a non-default space no longer
+// exists, so a "/beta/..." path is the single workspace's, not "beta"'s. This inverts the
+// S1 baseline deliberately — the flip a reviewer should see land with the D1 deletion.
+test("[tier] spaceIdForPath maps every path to the single default workspace", () => {
   const spaces = tierSpaces();
-  assert.equal(W.spaceIdForPath("/beta/x", spaces), "beta", "under the mount");
-  assert.equal(W.spaceIdForPath("/beta", spaces), "beta", "the bare base is the space too");
-  assert.equal(W.spaceIdForPath("/beta/", spaces), "beta", "the root of the mount");
+  assert.equal(W.spaceIdForPath("/beta/x", spaces), "alpha", "no /<id>/ mount survives");
+  assert.equal(W.spaceIdForPath("/beta", spaces), "alpha");
+  assert.equal(W.spaceIdForPath("/beta/", spaces), "alpha");
+  assert.equal(W.spaceIdForPath("/", spaces), "alpha", "the root is the one workspace's too");
 });
 
 test("[tier] spaceIdForPath sends a root path to the default space", () => {
