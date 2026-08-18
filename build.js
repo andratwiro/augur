@@ -7326,12 +7326,12 @@ async function main() {
   // Same derivation, same can't-drift guarantee (emitted by the very build that
   // shipped the assets); the worker file itself no longer changes per build.
   const workerSrc = await fs.readFile(SRC_WORKER, "utf8");
-  // Admin-only space base paths (an adminOnly space's "/<id>") seal those spaces
-  // to admins. Derived from each space's space.json `adminOnly` flag (the default
-  // space is never restricted), so it can't drift from what shipped.
-  const restrictedBases = NAV_STATE.spaces
-    .filter((s) => s.adminOnly && !s.default)
-    .map((s) => s.base);
+  // Admin-only space base paths — RETIRED with the path-mount tier (Phase A, Q1). An
+  // adminOnly space only ever sealed a NON-DEFAULT "/<id>/" mount, and no space mounts
+  // under "/<id>/" any more, so this is permanently empty: the default space was never
+  // restricted, and there are no non-default spaces to seal. Emitted as [] so the worker's
+  // assets-mode consumer keeps a stable shape (it reads routing.restrictedBases || []).
+  const restrictedBases = [];
   // Deploy knobs (gate-exempt skill-asset prefixes from the DEFAULT space's detected
   // UI skill, the MCP-proxy host allowlist, vanity redirects) ride the runtime
   // config documents below instead of worker stamping.
