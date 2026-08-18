@@ -7176,7 +7176,14 @@ async function main() {
   };
   for (const [id, m] of Object.entries(manifests)) {
     if (id === "_engine") {
-      m.routing = { canvasLoaderExtras: addonHtml(reviewTag()) };
+      // The chrome pointer + runtime-chrome switch ride the _engine fragment so bundle
+      // mode (live) reads them the same way assets mode reads routing.json — see
+      // applyDerivedRouting in src/_worker.js.
+      m.routing = {
+        canvasLoaderExtras: addonHtml(reviewTag()),
+        chrome: { css: CHROME_CSS_NAME, js: CHROME_JS_NAME, ui: UI_VERSION, stamp: CHROME_STAMP },
+        runtimeChrome: process.env.GV_RUNTIME_CHROME === "1",
+      };
       continue;
     }
     m.space = NAV_STATE.spaces.find((s) => s.id === id) || { id };

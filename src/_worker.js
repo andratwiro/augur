@@ -1699,7 +1699,14 @@ function applyDerivedRouting(manifests) {
   let skillPrefixes = [], loaderExtras = "";
   for (const id of Object.keys(manifests).sort()) {
     const m = manifests[id];
-    if (id === "_engine") { loaderExtras = (m.routing && m.routing.canvasLoaderExtras) || ""; continue; }
+    if (id === "_engine") {
+      loaderExtras = (m.routing && m.routing.canvasLoaderExtras) || "";
+      // Serve-time chrome composition (runtime-chrome): the pointer + switch ride the
+      // _engine fragment in bundle mode, mirroring routing.json in assets mode.
+      CHROME_POINTER = (m.routing && m.routing.chrome) || null;
+      RUNTIME_CHROME = !!(m.routing && m.routing.runtimeChrome);
+      continue;
+    }
     const r = m.routing || {};
     const sp = m.space || { id };
     const spRestricted = sp.adminOnly && !sp.default;
