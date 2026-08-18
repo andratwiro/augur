@@ -6896,7 +6896,7 @@ async function main() {
     chrome: { css: CHROME_CSS_NAME, js: CHROME_JS_NAME, ui: UI_VERSION, stamp: CHROME_STAMP },
     // Serve-time chrome composition switch. OFF unless the instance's build sets
     // GV_RUNTIME_CHROME=1 — dark by default until parity is proven per instance.
-    runtimeChrome: process.env.GV_RUNTIME_CHROME === "1",
+    runtimeChrome: process.env.GV_RUNTIME_CHROME === "1" || DEPLOY.runtimeChrome === true,
   }), "utf8");
   await fs.writeFile(path.join(DIST, "_worker.js"), workerSrc, "utf8");
   // The worker imports the shared chrome renderer by relative path ("./chrome/appchrome.mjs").
@@ -7182,7 +7182,7 @@ async function main() {
       m.routing = {
         canvasLoaderExtras: addonHtml(reviewTag()),
         chrome: { css: CHROME_CSS_NAME, js: CHROME_JS_NAME, ui: UI_VERSION, stamp: CHROME_STAMP },
-        runtimeChrome: process.env.GV_RUNTIME_CHROME === "1",
+        runtimeChrome: process.env.GV_RUNTIME_CHROME === "1" || DEPLOY.runtimeChrome === true,
       };
       continue;
     }
