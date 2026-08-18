@@ -1223,22 +1223,23 @@ test("session music is admin-only — never public, whatever the space is called
   // A tracks/ folder is somebody's music library. It ships only when the space opts in,
   // and even then the gate hands it to admins alone — the door it used to have in
   // isPublicPath made every published track downloadable by anyone who asked.
-  for (const p of [
-    "/tracks/01 Ambient.mp3", "/space-2/tracks/theme.m4a", "/tracks/deep/sub.opus",
-  ]) {
+  // Root-only now (Phase A, S4): the "/<space>/tracks/" mount was retired with the
+  // path-mount tier, so "/space-2/tracks/theme.m4a" is no longer a track.
+  for (const p of ["/tracks/01 Ambient.mp3", "/tracks/deep/sub.opus"]) {
     assert.equal(W.isPublicPath(p), false, `${p} must not be public`);
     assert.equal(W.isTrackPath(p), true, `${p} must be recognised as music`);
   }
+  assert.equal(W.isTrackPath("/space-2/tracks/theme.m4a"), false, "no /<space>/ mount survives");
   // …and the rule is audio-only: a doc that lands in the same folder is not "music",
   // it is ordinary gated content (isTrackPath is a permission, not a hiding place).
   for (const p of ["/tracks/README.md", "/tracks/cover.png", "/track-list/x.mp3"])
     assert.equal(W.isTrackPath(p), false, `${p} is not a track`);
 
   // The manifest a non-admin sees says the instance has no music at all, so the canvas
-  // hides its music surface instead of offering a picker whose every track 404s.
-  // An admin-only space still contributes its music: the list answers admins only, so
-  // there is nothing to leak — and a sealed space is exactly where music belongs, being
-  // the one no collaborator republishes out from under it. Its CATALOG stays excluded.
+  // hides its music surface instead of offering a picker whose every track 404s. With
+  // adminOnly retired (Q1), a formerly-sealed space now contributes its CATALOG too —
+  // the admin-only exclusion was the multi-space tier, and the track LIST already only
+  // ever answered admins, so nothing leaks that the default space did not already.
   W.applyDerivedRouting({
     alpha: { id: "alpha", format: 1, files: {}, space: { id: "alpha", default: true },
              routing: { canvasTracks: [{ id: "alpha:one", name: "One", url: "/tracks/one.mp3" }] } },
@@ -1246,8 +1247,9 @@ test("session music is admin-only — never public, whatever the space is called
              routing: { canvasTracks: [{ id: "vault:two", name: "Two", url: "/vault/tracks/two.mp3" }],
                         canvasCatalog: [{ title: "secret", url: "/vault/x/" }] } },
   });
-  assert.deepEqual(await (await W.canvasAggregate("catalog", true)).json(), [],
-    "an admin-only space never appears in the catalogue");
+  assert.deepEqual(await (await W.canvasAggregate("catalog", true)).json(),
+    [{ title: "secret", url: "/vault/x/" }],
+    "with adminOnly retired, the formerly-sealed space now appears in the catalogue");
   assert.deepEqual(await (await W.canvasAggregate("tracks", false)).json(), []);
   assert.equal((await (await W.canvasAggregate("tracks", true)).json()).length, 2);
 });
