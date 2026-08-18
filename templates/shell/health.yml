@@ -21,6 +21,11 @@ name: Health canary
 #      never reaches the shells that already had a copy is invisible exactly the way
 #      publish drift is. Compared against the engine submodule, i.e. this shell's own
 #      pinned engine.
+#   f. is each space's BAKED chrome current with the serving engine? Page-level chrome
+#      (rail, overlays, layout) is baked at publish time (spaces.<id>.builtWithEngine),
+#      so an engine bump can leave a space serving older chrome than the deployed engine
+#      (engine.sha). deploy.yml nudges a re-bake and each space self-heals on a schedule;
+#      this catches the case where BOTH missed and the drift has outlived its window.
 #
 # On any failure the run exits non-zero (GitHub emails the owner) AND maintains a
 # single open issue labelled `health`; a green run closes it.
@@ -48,8 +53,10 @@ jobs:
       SITE: https://your-site-origin.example # ← your deploy.config.json siteOrigin
       # NB: the `runner` context is not available in job-level env, so a literal path.
       FAILS: /tmp/health-failures.txt
-      GRACE_SECONDS: "3600"        # 1h: a human or agent may publish minutes after pushing
-      DIRTY_GRACE_SECONDS: "21600" # 6h: an active session may legitimately sit dirty
+      GRACE_SECONDS: "3600"         # 1h: a human or agent may publish minutes after pushing
+      DIRTY_GRACE_SECONDS: "21600"  # 6h: an active session may legitimately sit dirty
+      REBAKE_GRACE_SECONDS: "28800" # 8h: > the space self-heal poll interval (6h), so (f)
+                                    # only fires once a re-bake has genuinely been missed
     steps:
       - uses: actions/checkout@v4
         with:
@@ -103,6 +110,36 @@ jobs:
               echo "publish drift: $ID main HEAD is ${HEAD_SHA:0:12} (pushed ${AGE}s ago) but live serves '${LIVE_SHA:-<absent>}' — pushed but never published; run \`augur publish\` from the $ID clone" >> "$FAILS"
             else
               echo "OK: $ID drifting but pushed ${AGE}s ago (inside the ${GRACE_SECONDS}s grace window)"
+            fi
+          done
+
+      # (f) Chrome-bake drift. engine.sha moves on every engine bump; a space's baked
+      # chrome (spaces.<id>.builtWithEngine) moves only when that space republishes. If a
+      # space is serving chrome older than the deployed engine and the drift has outlived
+      # REBAKE_GRACE_SECONDS (longer than the self-heal poll), the re-bake was missed.
+      - name: Check baked chrome vs the serving engine (re-bake drift)
+        run: |
+          set -uo pipefail
+          if ! STAMP="$(curl -fsS --max-time 30 "$SITE/_build.json")"; then
+            echo "no stamp — check (a) already recorded the site being down"; exit 0
+          fi
+          NOW=$(date -u +%s)
+          ENG="$(printf '%s' "$STAMP" | jq -r '.engine.sha // empty')"
+          if [ -z "$ENG" ]; then echo "no engine.sha in stamp — skipping (f)"; exit 0; fi
+          ENG_AT="$(printf '%s' "$STAMP" | jq -r '.engine.publishedAt // empty')"
+          ENG_AGE=$(( NOW - $(date -u -d "${ENG_AT:-1970-01-01T00:00:00Z}" +%s) ))
+          jq -r '.spaces[]? | "\(.id) \(.repo)"' deploy.config.json | while read -r ID REPO; do
+            BW="$(printf '%s' "$STAMP" | jq -r --arg id "$ID" '.spaces[$id].builtWithEngine // empty')"
+            DIRTY="$(printf '%s' "$STAMP" | jq -r --arg id "$ID" '.spaces[$id].dirty // false')"
+            if [ "$BW" = "$ENG" ]; then echo "OK: $ID baked chrome matches serving engine (${ENG:0:12})"; continue; fi
+            if [ "$DIRTY" = "true" ]; then echo "OK: $ID is a working-tree publish — chrome catches up when it republishes"; continue; fi
+            if [ "$ENG_AGE" -le "$REBAKE_GRACE_SECONDS" ]; then
+              echo "OK: $ID chrome ${BW:-<none>} vs engine ${ENG:0:12}, but engine deployed only ${ENG_AGE}s ago (grace)"; continue
+            fi
+            if [ -z "$BW" ]; then
+              echo "chrome drift: $ID has no builtWithEngine stamp ${ENG_AGE}s after the engine deployed — never re-baked; the $ID space's publish.yml should re-bake (check its Actions), or run \`augur publish\` from the $ID clone" >> "$FAILS"
+            else
+              echo "chrome drift: $ID serves baked chrome ${BW:0:12} but the engine is ${ENG:0:12} (deployed ${ENG_AGE}s ago) — the re-bake was missed; check the $ID space's publish.yml Actions" >> "$FAILS"
             fi
           done
 

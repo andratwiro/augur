@@ -1,0 +1,172 @@
+# Push to main → this space is live in about a minute, AND its baked page chrome stays
+# current with the engine on its own. No publish command to run and none to forget.
+#
+# Why this exists at all: in Augur a push and a publish are different acts. A push
+# records content in git; a PUBLISH is what puts it in front of visitors, and until
+# someone runs it the live site quietly lags the repo — everybody's own clone looks
+# right, so nobody notices. This joins the two acts HERE, in the space repo, rather
+# than in the deploy shell. The shell's CI is structurally forbidden to ship content
+# (it builds with GV_ENGINE_ONLY=1 and the build asserts nothing space-derived came
+# out), and that guarantee is worth keeping — one source of content, by construction.
+# This job is not an exception to it: it runs the ordinary `augur publish` client with
+# an ordinary publish token, exactly as a person at a terminal would. Same door, no key
+# under the mat.
+#
+# It ALSO closes the chrome-bake gap. An engine push refreshes the SERVING engine
+# (worker + shared chrome) on every instance within a minute, but the page-level chrome
+# the rail, the profile menu, the overlays, the responsive layout is baked into each
+# page at PUBLISH time (stamped as `builtWithEngine` in /_build.json) and only moves
+# when the space republishes. So an engine bump alone leaves already-published pages on
+# older chrome. Two triggers below keep them converged automatically: the shell fires
+# `engine-rebake` the moment it moves its pin (fast path), and a schedule self-heals in
+# case that dispatch is ever missed (backstop). Both re-publish the same tree with the
+# now-current engine; content is unchanged, chrome catches up.
+#
+# ── SETUP (one secret, once) ────────────────────────────────────────────────────
+# AUGUR_TOKEN — a publish token scoped to THIS space, minted on the instance:
+#   1. sign in to the site in space.json `siteOrigin` as an admin
+#   2. Admin → Tokens → mint one for this space (label it so a revoke is obvious)
+#   3. gh secret set AUGUR_TOKEN -R <owner>/<this repo>
+# Scope it to this space, not "*": a star-scope token in a repo's CI can write every
+# space on the instance. Fork pull requests never receive it — that is why the triggers
+# below are push / manual / dispatch / schedule only, and why pull_request must not be
+# added.
+#
+# The target is NOT configured here. It comes from space.json `siteOrigin`, the one
+# public fact a space repo knows about its instance — so a fork that repoints its
+# space.json publishes to its own site and this file needs no edit.
+#
+# WORKING SPACE? Delete the `push:` trigger below. A working space (someone is at a
+# terminal) publishes content deliberately, not on every push — but it still wants the
+# engine-rebake and self-heal triggers, so keep the rest.
+name: Publish to the live site
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      dry-run:
+        description: "Build and diff against live, ship nothing"
+        type: boolean
+        default: false
+  # The deploy shell POSTs this the moment it moves its engine pin, with the new engine
+  # sha in client_payload.engine_sha, so this space re-bakes against exactly the engine
+  # the instance just pinned (correct even for an instance deliberately pinned behind
+  # engine main). Not subject to GitHub's "cron disabled after 60 days idle" — it rides
+  # the engine push, not a schedule.
+  repository_dispatch:
+    types: [engine-rebake]
+  # Self-heal backstop for a missed dispatch: republish only if the live baked chrome
+  # (builtWithEngine) has drifted from the serving engine (engine.sha). A no-drift run is
+  # a curl + exit — it publishes nothing.
+  schedule:
+    - cron: "41 */6 * * *" # every 6h (offset minute — GitHub drops top-of-hour crons)
+
+# Newest run wins. Cancelling is safe: a publish commits atomically at the end, so an
+# interrupted run ships nothing at all, and the run that replaces it carries a tree that
+# already includes whatever the cancelled one was going to send.
+concurrency:
+  group: publish
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      # fetch-depth: 0 is load-bearing, not caution. publish.mjs REFUSES a shallow
+      # clone, because it reads each file's git history to date the cards and credit the
+      # editor — from a shallow one every prototype would look like it was written the
+      # moment CI cloned it, and the whole gallery would show one timestamp. Checked out
+      # first (unconditionally) because the plan step below reads this space's own
+      # space.json for its id and siteOrigin.
+      - name: Check out this space
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          path: space
+
+      # Decide, from the event, WHICH engine to bake and WHETHER to publish at all:
+      #   push / workflow_dispatch → publish, engine at main (content should be built by
+      #     the engine that will serve it; this instance tracks main).
+      #   repository_dispatch(engine-rebake) → publish, engine at client_payload.engine_sha
+      #     (exactly the pin the shell just moved to).
+      #   schedule → self-heal: publish ONLY if the live baked chrome has drifted from the
+      #     serving engine, and not while a working-tree (dirty) publish is live.
+      - name: Plan (engine ref + whether to publish)
+        id: plan
+        env:
+          EVENT: ${{ github.event_name }}
+          PAYLOAD_SHA: ${{ github.event.client_payload.engine_sha }}
+        run: |
+          set -uo pipefail
+          ID="$(jq -r '.id' space/space.json)"
+          SITE="$(jq -r '.siteOrigin // empty' space/space.json)"
+          REF="main"; DO="yes"; REASON="publish (engine main)"
+          case "$EVENT" in
+            repository_dispatch)
+              REF="${PAYLOAD_SHA:-main}"; REASON="engine-rebake @ ${REF:0:12}"
+              ;;
+            schedule)
+              if [ -z "$SITE" ]; then echo "no siteOrigin in space.json — cannot self-heal"; DO="no";
+              elif ! STAMP="$(curl -fsS --max-time 30 "$SITE/_build.json")"; then
+                echo "site down / no stamp — skipping self-heal"; DO="no"
+              else
+                ENG="$(printf '%s' "$STAMP" | jq -r '.engine.sha // empty')"
+                BW="$(printf '%s' "$STAMP" | jq -r --arg id "$ID" '.spaces[$id].builtWithEngine // empty')"
+                DIRTY="$(printf '%s' "$STAMP" | jq -r --arg id "$ID" '.spaces[$id].dirty // false')"
+                if [ "$DIRTY" = "true" ]; then
+                  echo "live $ID is a working-tree publish — leaving it (self-heal skipped)"; DO="no"
+                elif [ -n "$ENG" ] && [ "$BW" = "$ENG" ]; then
+                  echo "$ID baked chrome already at engine ${ENG:0:12} — nothing to do"; DO="no"
+                else
+                  REF="${ENG:-main}"; REASON="self-heal ${BW:0:12}→${ENG:0:12}"
+                fi
+              fi
+              ;;
+          esac
+          {
+            echo "do=$DO"
+            echo "ref=$REF"
+            echo "reason=$REASON"
+          } >> "$GITHUB_OUTPUT"
+          echo "Plan: id=$ID do=$DO ref=$REF — $REASON"
+
+      # The engine is public and carries no runtime dependencies, so there is nothing to
+      # install. It is checked out at the ref the plan chose, so content is built by the
+      # exact engine the instance is on.
+      - name: Check out the engine
+        if: steps.plan.outputs.do == 'yes'
+        uses: actions/checkout@v4
+        with:
+          repository: andratwiro/augur
+          ref: ${{ steps.plan.outputs.ref }}
+          path: engine
+
+      - uses: actions/setup-node@v4
+        if: steps.plan.outputs.do == 'yes'
+        with: { node-version: 22 }
+
+      - name: Fail early if the publish token is missing
+        if: steps.plan.outputs.do == 'yes'
+        env:
+          AUGUR_TOKEN: ${{ secrets.AUGUR_TOKEN }}
+        run: |
+          if [ -z "$AUGUR_TOKEN" ]; then
+            echo "::error::AUGUR_TOKEN is not set — see the setup notes at the top of this workflow."
+            exit 1
+          fi
+
+      # GV_SPACES_ROOT points AT this space rather than at a parent folder, so the build
+      # mounts it at the root and does not go looking for a spaces/ dir. No AUGUR_ORIGIN:
+      # with no deploy shell on disk the origin resolves to space.json `siteOrigin`.
+      - name: Publish
+        if: steps.plan.outputs.do == 'yes'
+        working-directory: space
+        env:
+          AUGUR_TOKEN: ${{ secrets.AUGUR_TOKEN }}
+          GV_SPACES_ROOT: ${{ github.workspace }}/space
+        run: node ../engine/scripts/publish.mjs ${{ inputs.dry-run && '--dry-run' || '' }}

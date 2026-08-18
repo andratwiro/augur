@@ -99,3 +99,36 @@ jobs:
           fi
           echo "realtime/ changed in ${OLD:0:12}..${NEW:0:12} — redeploying"
           npx wrangler deploy -c realtime.wrangler.toml
+
+      # Published pages bake the engine's page-level chrome (rail, profile menu, overlays,
+      # responsive layout) at PUBLISH time; an engine bump refreshes the serving engine
+      # but leaves already-published space pages on their old baked chrome until the space
+      # republishes (its /_build.json `builtWithEngine` is what moves). When the pin moved,
+      # ask each space in the roster to re-bake against the new engine. This does NOT ship
+      # content from the shell — it POSTs an `engine-rebake` repository_dispatch and the
+      # space's own publish.yml does the publishing, with the space's own token. Best-effort
+      # by design: a failed dispatch is not a failed deploy, because each space's publish.yml
+      # also self-heals on a schedule. Skips cleanly when no dispatch token is configured.
+      #
+      # TOKEN: SPACE_DISPATCH_TOKEN (a PAT that can POST dispatches to the space repos) if
+      # set, else SUBMODULE_PAT. A read-only token just makes this log a warning and lets the
+      # schedule do the work; set SPACE_DISPATCH_TOKEN for near-instant re-bakes.
+      - name: Ask spaces to re-bake if the engine pin moved
+        env:
+          GH_TOKEN: ${{ secrets.SPACE_DISPATCH_TOKEN || secrets.SUBMODULE_PAT }}
+        run: |
+          set -uo pipefail
+          if [ -z "${GH_TOKEN:-}" ]; then echo "no dispatch token — spaces will self-heal on their schedule"; exit 0; fi
+          OLD="$(git rev-parse '${{ github.event.before }}:engine' 2>/dev/null \
+             || git rev-parse 'HEAD^:engine' 2>/dev/null || true)"
+          NEW="$(git rev-parse 'HEAD:engine' 2>/dev/null || true)"
+          if [ -z "$NEW" ] || [ -z "$OLD" ] || [ "$OLD" = "$NEW" ]; then echo "engine pin unmoved — no re-bake needed."; exit 0; fi
+          jq -r '.spaces[]?.repo // empty' deploy.config.json | while read -r REPO; do
+            [ -n "$REPO" ] || continue
+            if gh api -X POST "repos/${REPO}/dispatches" -f event_type=engine-rebake \
+                 -F "client_payload[engine_sha]=${NEW}" >/dev/null 2>&1; then
+              echo "re-bake dispatched to ${REPO} @ ${NEW:0:12}"
+            else
+              echo "::warning::could not dispatch re-bake to ${REPO} (dispatch token scope?) — it will self-heal on schedule"
+            fi
+          done
