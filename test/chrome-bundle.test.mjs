@@ -87,6 +87,17 @@ test("the bundle preserves the original IIFE order and parses as one script", ()
   } finally { cleanup(); }
 });
 
+test("routing.json carries the current chrome bundle pointer", () => {
+  const { out, cleanup } = buildMinimalSite();
+  try {
+    const routing = JSON.parse(readFileSync(path.join(out, "__config", "routing.json"), "utf8"));
+    assert.ok(routing.chrome, "routing.chrome present");
+    assert.match(routing.chrome.css, /^_chrome\.[\d.]+\.[0-9a-f]{8}\.css$/);
+    assert.match(routing.chrome.js, /^_chrome\.[\d.]+\.[0-9a-f]{8}\.js$/);
+    assert.equal(typeof routing.chrome.ui, "string");
+  } finally { cleanup(); }
+});
+
 test("the shipped sw.js carries the tested decision logic", () => {
   const { out, cleanup } = buildMinimalSite();
   try {

@@ -7475,6 +7475,10 @@ async function main() {
     canvasLoaderExtras: addonHtml(reviewTag()),
     defaultSpace: (NAV_STATE.spaces.find((s) => s.default) || {}).id || null,
     spaces: NAV_STATE.spaces,
+    // Serve-time chrome composition (runtime-chrome): the CURRENT engine's chrome
+    // bundle names + UI version, so the worker can point stale baked pages at them
+    // and re-render the rail. Additive; ignored unless runtimeChrome is on.
+    chrome: { css: CHROME_CSS_NAME, js: CHROME_JS_NAME, ui: UI_VERSION, stamp: CHROME_STAMP },
   }), "utf8");
   await fs.writeFile(path.join(DIST, "_worker.js"), workerSrc, "utf8");
 
