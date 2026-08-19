@@ -344,6 +344,17 @@ they never persist to SQLite or KV; every other path does.** Clients POST
 an enhancement layer: if the socket can't connect, the canvas behaves exactly as
 solo. Net: a hot multi-person board costs ≤ ~80 KV writes/hour.
 
+**The solo rail cannot latch shut and cannot fail silently** (canvas.js, the save
+watchdog): a save POST aborts after 20s instead of hanging forever, the in-flight
+guard is a timestamp that expires rather than a boolean that can stick, and a 5s
+watchdog re-kicks the rail whenever the doc holds unconfirmed edits with no live
+room and nothing in flight, scheduled, or backing off. Once the dirt survives two
+ticks the client shows a persistent "Changes not saved — retrying" pill (cleared
+by the next 2xx or a live room), and closing the tab while it shows asks first.
+(Born of a measured failure: a dev-server restart hung one save fetch, the old
+boolean guard then suppressed every save for the rest of the session, and an
+hour's board edits existed only on screen.)
+
 **The pieces:**
 - `realtime/` — the room worker (BoardRoom DO, WebSocket Hibernation API).
   Deployed **standalone**, NOT via Pages: `npm run deploy:realtime` (Pages can't

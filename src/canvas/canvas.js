@@ -4257,7 +4257,15 @@
   // doc runs to hundreds of KB once images are inlined — so never spend a write we don't owe.
   // If only the camera moved, the content signature is unchanged and the POST is skipped.
   var lastSavedSig = null; // the last signature CONFIRMED durable (a load, a room adopt, or a 2xx save)
-  var savePending = false, saveRetry = 0, saveWarned = false, loadOk = false;
+  var savePendingAt = 0, saveRetry = 0, saveRetryTimer = null, saveWarned = false, loadOk = false;
+  // One request may never latch the rail (measured 2026-08-19): a save POST dispatched into
+  // a dev server mid-restart hung forever — fetch has NO default timeout — and the boolean
+  // savePending guard that stood here then short-circuited every save() for the rest of the
+  // session while the board kept editing. Silent, permanent, invisible. So a pending save
+  // only counts while it's provably in flight: the request aborts at SAVE_TIMEOUT (settling
+  // into the normal saveFail retry path), and the guard's timestamp expires on its own even
+  // if settlement never comes.
+  var SAVE_TIMEOUT = 20000;
   function docSig() { return JSON.stringify({ n: board.nodes, m: board.name }); }
   function save() {
     if (saveTimer) { clearTimeout(saveTimer); saveTimer = null; }
@@ -4270,20 +4278,23 @@
     // real one. The room's welcome doc (mpAdoptDoc) also clears this.
     if (!loadOk) return;
     var sig = docSig();
-    if (sig === lastSavedSig || savePending) return;
-    savePending = true;
+    if (sig === lastSavedSig || (savePendingAt && performance.now() - savePendingAt < SAVE_TIMEOUT + 5000)) return;
+    savePendingAt = performance.now();
+    var ctl = typeof AbortController === "function" ? new AbortController() : null;
+    var abortTimer = ctl ? setTimeout(function () { ctl.abort(); }, SAVE_TIMEOUT) : null;
     // keepalive: a save racing a tab close must survive the unload — without it the fetch
     // is aborted mid-flight and the edit exists nowhere
-    fetch(BOARD_API, { method: "POST", keepalive: true, headers: { "content-type": "application/json" }, body: JSON.stringify({ doc: board }) })
+    fetch(BOARD_API, { method: "POST", keepalive: true, signal: ctl ? ctl.signal : undefined, headers: { "content-type": "application/json" }, body: JSON.stringify({ doc: board }) })
       .then(function (r) {
-        savePending = false;
+        if (abortTimer) clearTimeout(abortTimer);
+        savePendingAt = 0;
         if (r.ok) {
-          lastSavedSig = sig; saveRetry = 0; saveWarned = false;
+          lastSavedSig = sig; saveRetry = 0; saveWarned = false; saveWarn(false);
           if (docSig() !== sig) scheduleSave(); // edits landed while the write was in flight
           return;
         }
         saveFail(r.status);
-      }, function () { savePending = false; saveFail(0); });
+      }, function () { if (abortTimer) clearTimeout(abortTimer); savePendingAt = 0; saveFail(0); });
   }
   // A failed save is DEBT, not history: the signature stays unconfirmed, so the retries
   // here and the unload beacon keep carrying it. (The old code marked the doc saved
@@ -4295,8 +4306,37 @@
     }
     saveRetry++;
     if (saveRetry === 2 && !saveWarned) { saveWarned = true; toast("Saving isn't reaching the server — retrying"); }
-    setTimeout(function () { if (!mpLiveFresh()) save(); }, Math.min(30000, 800 * Math.pow(2, saveRetry)));
+    if (saveRetryTimer) clearTimeout(saveRetryTimer);
+    saveRetryTimer = setTimeout(function () { saveRetryTimer = null; if (!mpLiveFresh()) save(); }, Math.min(30000, 800 * Math.pow(2, saveRetry)));
   }
+  // The dead-man switch + the visible truth (same 2026-08-19 session): whatever kills the
+  // solo rail — a hung request, a lost timer, a failure mode this file hasn't met yet — the
+  // board must not sit dirty and quiet. Every 5s: if the doc holds unconfirmed edits and no
+  // room is persisting, kick the rail unless it's provably busy (in flight, scheduled, or
+  // backing off); and once the dirt survives two ticks, SAY it. The pill is persistent
+  // where a toast is missable, and it clears the moment a save confirms or a room adopts.
+  var saveWarnEl = null, saveDirtyTicks = 0, loadFailSig = null;
+  function saveWarn(on) {
+    saveDirtyTicks = on ? saveDirtyTicks : 0;
+    if (on && !saveWarnEl) { saveWarnEl = el("div", { id: "gvc-savewarn" }); saveWarnEl.textContent = "Changes not saved — retrying"; ui.appendChild(saveWarnEl); }
+    if (saveWarnEl) saveWarnEl.classList.toggle("show", !!on);
+  }
+  setInterval(function () {
+    if (!loadSettled) return;
+    // with loadOk false there is no confirmed signature — the stand-in rendered by the
+    // failed load is the baseline, so the pill still only speaks once the user has EDITS
+    var base = loadOk ? lastSavedSig : loadFailSig;
+    if (mpLiveFresh() || docSig() === base) { saveWarn(false); return; }
+    saveDirtyTicks++;
+    if (saveDirtyTicks >= 2) saveWarn(true);
+    var pendingFresh = savePendingAt && performance.now() - savePendingAt < SAVE_TIMEOUT + 5000;
+    if (loadOk && !pendingFresh && !saveRetryTimer && !saveTimer) save();
+  }, 5000);
+  // The unload beacon below is fire-and-forget and can miss; while the pill is up, the board
+  // on screen may be the only copy of the work — leaving should be a decision, not a default.
+  window.addEventListener("beforeunload", function (e) {
+    if (saveWarnEl && saveWarnEl.classList.contains("show")) { e.preventDefault(); e.returnValue = ""; }
+  });
   // The viewport is PER-USER — the room never syncs it — so it has no business in the shared
   // doc, where every pan and every zoom step used to trigger a full-document KV write AND
   // overwrite everyone else's stored camera. It lives in localStorage now, keyed by board path;
@@ -4380,7 +4420,7 @@
         // the unload beacon stay off, because an empty stand-in must never overwrite the
         // real board just because a load 500'd (that was audit finding #9).
         if (!board.tombs) board.tombs = {};
-        if (!mpAdopted) { histSeed(); toast("Couldn't load the board — editing won't save until it reloads"); }
+        if (!mpAdopted) { histSeed(); loadFailSig = docSig(); toast("Couldn't load the board — editing won't save until it reloads"); }
         loadSettled = true;
         done();
       });

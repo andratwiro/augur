@@ -486,6 +486,9 @@ svg.stk { display: block; overflow: visible; }
 /* sits ABOVE the bottom toolbar pill, not on it */
 #gvc-toast { position: fixed; z-index: 90; left: 50%; bottom: 104px; transform: translate(-50%, 8px); background: #1f2430; color: #e8eaee; font-size: 13px; padding: 9px 15px; border-radius: 10px; box-shadow: 0 10px 30px rgba(0, 0, 0, .34); white-space: nowrap; opacity: 0; pointer-events: none; transition: opacity .16s, transform .16s; }
 #gvc-toast.show { opacity: 1; transform: translate(-50%, 0); }
+/* the save watchdog's pill — persistent while edits aren't landing, unlike the toast above */
+#gvc-savewarn { position: fixed; z-index: 90; left: 50%; bottom: 148px; transform: translate(-50%, 8px); background: #3a2024; color: #ffd9dd; border: 1px solid #b4525a; font-size: 13px; padding: 8px 14px; border-radius: 10px; box-shadow: 0 10px 30px rgba(0, 0, 0, .34); white-space: nowrap; opacity: 0; pointer-events: none; transition: opacity .16s, transform .16s; }
+#gvc-savewarn.show { opacity: 1; transform: translate(-50%, 0); }
 @keyframes gvc-linkpulse { 0%, 100% { box-shadow: 0 0 0 0 rgba(123, 97, 255, 0); } 22% { box-shadow: 0 0 0 7px rgba(123, 97, 255, .42); } 60% { box-shadow: 0 0 0 4px rgba(123, 97, 255, .22); } }
 .gvc-node.gvc-linked { animation: gvc-linkpulse 1.7s ease-out; }
 
