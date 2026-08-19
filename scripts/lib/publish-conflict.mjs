@@ -69,14 +69,51 @@ export function stripInjectedChrome(html) {
 
 // Tolerant equality for "did the content really change": a live blob and a git
 // source must compare equal when they differ only by injected chrome, social
-// meta (og:url legitimately varies with the configured origin), and the
-// whitespace those injections leave behind. A comparator, not a transformer.
+// meta (og:url legitimately varies with the configured origin), the linked-assets
+// stamp, the skills-path depth rewrite (dist mounts prototypes one level shallower
+// than the repo), and the whitespace those injections leave behind. Every one of
+// these leaked through this comparator on 2026-08-19 and a reconcile then adopted
+// 169 chrome-baked pages into a space repo as one collaborator's authorship.
+// A comparator, not a transformer.
 export function stripVolatileHead(html) {
   return stripInjectedChrome(html)
     .replace(/[ \t]*<meta\s+(?:property|name)="(?:og|twitter):[^"]*"\s+content="[^"]*"\s*\/?>[ \t]*/g, "")
+    .replace(/<script>window\.__GV_LINKED=\[[^\n]*?\];<\/script>/g, "")
     // The build stamps the card emoji onto <title> (idempotently) — not an edit.
     .replace(/(<title>)\s*(?:[\p{Extended_Pictographic}‍️]+\s*)+/gu, "$1")
+    // Depth is layout, not content: collapse any ../-run before skills/ so the
+    // repo form (../../../skills/…) and the dist form (../../skills/…) compare equal.
+    .replace(/(?:\.\.\/)+skills\//g, "skills/")
     .replace(/\s+/g, " ").replace(/>\s+</g, "><").trim();
+}
+
+// The WRITER'S peel — everything the build decorates authored HTML with on its way
+// to dist, undone, so an adopted source is byte-shaped like what its author wrote:
+// marker chrome out, og/twitter meta out (the build re-derives it), the linked-assets
+// stamp out, the title emoji off, and the skills-path depth rewrite reversed for the
+// file's REPO location (`relDir`, the file's directory relative to the space root).
+// Without the full peel, an adopt writes dist bytes into git — pages whose relative
+// asset paths no longer resolve in the repo layout, plus baked meta that reads as an
+// edit forever after. A transformer, not a comparator: depth must come out exact.
+export function stripBuildDecorations(html, relDir) {
+  const up = "../".repeat(String(relDir || "").split("/").filter(Boolean).length);
+  return stripInjectedChrome(String(html))
+    .replace(/[ \t]*<meta\s+(?:property|name)="(?:og|twitter):[^"]*"\s+content="[^"]*"\s*\/?>\s*\n?/g, "")
+    .replace(/[ \t]*<script>window\.__GV_LINKED=\[[^\n]*?\];<\/script>\s*\n?/g, "")
+    .replace(/(<title>)\s*(?:[\p{Extended_Pictographic}‍️]+\s*)+/gu, "$1")
+    .replace(/(?:\.\.\/)+skills\//g, up + "skills/");
+}
+
+// Mirror of build.js's internal-material predicates (isInternalOnly + the secret/VCS
+// screens). These files NEVER ship, so live's manifest cannot testify about them —
+// an adopt that syncs a repo folder to "exactly what live has" must leave them be.
+// (The 2026-08-19 adopt deleted 54 research/context files this way.)
+const INTERNAL_SECRET_RE = /(^\.env(\.|$)|\.env$|\.(pem|key|p12|pfx|ppk|keystore|jks)$|(^|[._-])(secret|secrets|credentials?)([._-]|$)|^id_(rsa|dsa|ecdsa|ed25519)$|^\.(npmrc|netrc|pgpass|htpasswd|ssh|aws|gnupg)$)/i;
+const INTERNAL_VCS_RE = /^\.(git|hg|svn|bzr)$/i;
+export function isInternalPath(rel) {
+  return String(rel).split("/").some((name) =>
+    name === "research" || name === "context" || name === "research.md" || name === "context.md" ||
+    name === ".DS_Store" || name.endsWith(".zip") || INTERNAL_VCS_RE.test(name) || INTERNAL_SECRET_RE.test(name));
 }
 
 const hashesOf = (manifest, unit) => {

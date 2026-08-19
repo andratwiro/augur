@@ -30,7 +30,7 @@ import { createHash } from "node:crypto";
 import { cpSync, existsSync, mkdirSync, readdirSync, rmSync, statSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import {
-  classifyPublish, repoDirCandidates, stripInjectedChrome, stripVolatileHead, unitPaths,
+  classifyPublish, repoDirCandidates, stripBuildDecorations, stripVolatileHead, unitPaths, isInternalPath,
 } from "./publish-conflict.mjs";
 
 const dec = (s) => { try { return decodeURIComponent(String(s)); } catch (e) { return String(s); } };
@@ -162,12 +162,22 @@ async function materializeUnit({ unit, live, sourceDir, spaceBase, fetchBlob }) 
     const blob = await fetchBlob(h);
     if (!blob) throw new Error(`blob ${String(h).slice(0, 12)} unavailable for ${unit}`);
     mkdirSync(path.dirname(file), { recursive: true });
-    // Live blobs are BUILT bytes; peel the marker-injected chrome back off so the
-    // adopted source stays what its author wrote (the rebuild re-injects it
-    // identically — same markers, same versions — so live hashes still match).
-    writeFileSync(file, isHtml(file) ? Buffer.from(stripInjectedChrome(blob.toString("utf8"))) : blob);
+    // Live blobs are BUILT bytes; peel EVERYTHING the build decorates them with —
+    // marker chrome, og meta, the linked-assets stamp, the title emoji, the skills
+    // depth rewrite — so the adopted source is byte-shaped like what its author
+    // wrote (the rebuild re-injects identically, so live hashes still match). A
+    // partial peel here wrote 169 dist-flavored pages into a space repo 2026-08-19.
+    const relDir = path.relative(sourceDir, path.dirname(file)).split(path.sep).join("/");
+    writeFileSync(file, isHtml(file) ? Buffer.from(stripBuildDecorations(blob.toString("utf8"), relDir)) : blob);
   }
-  for (const f of walkFiles(abs)) if (!wanted.has(f)) rmSync(f);
+  // Live testifies only about what SHIPS: internal material (research/, context.md,
+  // secrets screens) never reaches a manifest, so its absence from live proves
+  // nothing — deleting it here destroyed 54 research files once. Leave it be.
+  for (const f of walkFiles(abs)) {
+    if (wanted.has(f)) continue;
+    if (isInternalPath(path.relative(sourceDir, f).split(path.sep).join("/"))) continue;
+    rmSync(f);
+  }
   return unitDir;
 }
 

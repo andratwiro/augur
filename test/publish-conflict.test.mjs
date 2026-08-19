@@ -15,7 +15,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
   authoredUnits, unitOfPath, unitPaths, repoDirCandidates, stripVolatileHead,
-  stripInjectedChrome, classifyPublish,
+  stripInjectedChrome, stripBuildDecorations, isInternalPath, classifyPublish,
 } from "../scripts/lib/publish-conflict.mjs";
 
 const entry = (h) => ({ h: String(h).repeat(64).slice(0, 64), ct: "text/html", s: 1 });
@@ -102,6 +102,43 @@ test("the stamped card emoji in a built title never reads as an edit", () => {
   assert.equal(stripVolatileHead(built), stripVolatileHead(source));
   const reallyRenamed = `<html><head><title>🎚️ beta</title></head><body>x</body></html>`;
   assert.notEqual(stripVolatileHead(reallyRenamed), stripVolatileHead(source));
+});
+
+test("the linked-assets stamp and the skills depth rewrite never read as edits", () => {
+  // These two leaked through the comparator on 2026-08-19 — every untouched page
+  // then read as "theirs newer" and a reconcile adopted 169 baked pages into git.
+  const source = `<html><head><title>t</title>\n` +
+    `  <link rel="stylesheet" href="../../../skills/acme-ui/acme-ui.css" />\n</head><body>x</body></html>`;
+  const built = `<html><head><title>t</title>\n` +
+    `  <link rel="stylesheet" href="../../skills/acme-ui/acme-ui.css" />\n` +
+    `<script>window.__GV_LINKED=["acme-ui.css"];</script></head><body>x</body></html>`;
+  assert.equal(stripVolatileHead(built), stripVolatileHead(source));
+});
+
+// ── the writer's peel — adopted sources are byte-shaped like authored ones ──
+
+test("stripBuildDecorations returns a dist page to its authored shape", () => {
+  const authored = `<html><head>\n  <title>Lab</title>\n` +
+    `  <link rel="stylesheet" href="../../../skills/acme-ui/acme-ui.css" />\n</head>\n<body>x</body></html>`;
+  const dist = `<html><head>\n  <title>🧷 Lab</title>\n` +
+    `  <link rel="stylesheet" href="../../skills/acme-ui/acme-ui.css" />\n` +
+    `  <meta property="og:type" content="website" />\n` +
+    `  <meta property="og:url" content="https://x.dev/demo/hello/" />\n` +
+    `  <meta name="twitter:card" content="summary" />\n` +
+    `<script>window.__GV_LINKED=["acme-ui.css"];</script></head>\n<body>x` +
+    `<!--gv-review-start--><script src="/__review/comments.js" defer></script><!--gv-review-end--></body></html>`;
+  // the unit lives at demo/prototypes/hello in the repo — three levels below the space root
+  assert.equal(stripBuildDecorations(dist, "demo/prototypes/hello"), authored);
+});
+
+test("isInternalPath shields what live can never testify about", () => {
+  for (const p of ["demo/prototypes/x/research/notes.md", "demo/prototypes/x/context.md",
+    "demo/prototypes/x/research/deep/file.png", "playground/y/context.md", "a/b/export.zip", "a/.env.local"]) {
+    assert.equal(isInternalPath(p), true, `${p} is internal`);
+  }
+  for (const p of ["demo/prototypes/x/index.html", "demo/prototypes/x/preview.webp", "skills/acme-ui/acme-ui.css"]) {
+    assert.equal(isInternalPath(p), false, `${p} ships`);
+  }
 });
 
 test("full built-page shape: emoji title + og + overlay markers vs raw source", () => {
