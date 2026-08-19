@@ -15,8 +15,17 @@ function memR2(initial = {}) {
     async get(k) { return store.has(k) ? { text: async () => store.get(k), body: store.get(k) } : null; },
     async put(k, v) { store.set(k, typeof v === "string" ? v : JSON.stringify(v)); },
     async head(k) { return store.has(k) ? {} : null; },
-    async list({ prefix = "" } = {}) {
-      return { objects: [...store.keys()].filter((k) => k.startsWith(prefix)).map((k) => ({ key: k })), truncated: false };
+    async list({ prefix = "", delimiter } = {}) {
+      const keys = [...store.keys()].filter((k) => k.startsWith(prefix));
+      const out = { objects: keys.map((k) => ({ key: k })), truncated: false };
+      if (delimiter) {
+        // Mirror R2's delimited listing — loadManifests discovers space ids from it.
+        out.delimitedPrefixes = [...new Set(keys
+          .map((k) => k.slice(prefix.length))
+          .filter((r) => r.includes(delimiter))
+          .map((r) => prefix + r.slice(0, r.indexOf(delimiter) + 1)))];
+      }
+      return out;
     },
   };
 }
