@@ -719,13 +719,28 @@ function spaceDates(repoRoot) {
   let parsed = null;
   try {
     // -z: NUL-delimited (paths with spaces/quotes stay intact). Each commit emits a
-    // header record "\x01<sha> <epoch> <email>" followed by status records; a rename is
-    // "R<score>" NUL <old> NUL <new>.
-    const raw = execFileSync("git", ["-C", repoRoot, "log", "-M", "--name-status", "-z", "--format=%x01%H %ct %ae"], {
+    // header record "\x01<sha> <epoch> <email> [mechanical-trailer]" followed by status
+    // records; a rename is "R<score>" NUL <old> NUL <new>.
+    const raw = execFileSync("git", ["-C", repoRoot, "log", "-M", "--name-status", "-z",
+      "--format=%x01%H %ct %ae %(trailers:key=Augur-Mechanical,valueonly,separator=%x20)"], {
       encoding: "utf8",
       stdio: ["ignore", "pipe", "ignore"],
       maxBuffer: 64 * 1024 * 1024,
     });
+    // MECHANICAL commits are repo surgery, not authorship: a reconcile adoption, a
+    // mass restore, a generated-asset sweep. One such commit touches hundreds of
+    // folders at once, and counting it stamps its date on every card and its author
+    // on every face pile (the 2026-08-19 incident: one adopt commit put one person
+    // on all 14 project cards, "edited just now" site-wide). Two opt-outs, both
+    // explicit — never a heuristic: a commit carrying an `Augur-Mechanical: true`
+    // trailer skips itself; `.augur/mechanical-commits` (full shas, one per line,
+    // `#` comments) retro-marks commits that are already history and cannot be
+    // rewritten in a shared repo.
+    let mech = new Set();
+    try {
+      mech = new Set(readFileSync(path.join(repoRoot, ".augur", "mechanical-commits"), "utf8")
+        .split("\n").map((s) => s.replace(/#.*/, "").trim()).filter(Boolean));
+    } catch { /* no exclusion file — the common case */ }
     // A SHALLOW clone's boundary ("graft") commits are not history — git presents each
     // one as the ENTIRE TREE added in a single commit, crediting its author with every
     // file in the repo at that date. A space published from such a clone stamped one
@@ -773,6 +788,7 @@ function spaceDates(repoRoot) {
       if (cut === -1) continue;
       const head = chunk.slice(0, cut).trim().split(" ");
       if (grafts.has(head[0])) continue; // a shallow boundary is the clone's floor, not an edit
+      if (mech.has(head[0]) || head[3] === "true") continue; // marked mechanical — repo surgery, not authorship
       const t = Number(head[1]) * 1000;
       const email = (head[2] || "").toLowerCase();
       const tokens = chunk.slice(cut + 1).split("\0");

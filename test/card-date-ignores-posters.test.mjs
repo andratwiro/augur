@@ -97,6 +97,36 @@ test("the filter is precise: a real edit riding alongside a poster still counts"
   } finally { rmSync(ws, { recursive: true, force: true }); }
 });
 
+// Mechanical commits are repo surgery, not authorship: a reconcile adoption or a mass
+// restore touches hundreds of folders in one commit, and counting it stamps its date on
+// every card and its author on every face pile (2026-08-19: one adopt commit put one
+// person on all 14 project cards, "edited just now" site-wide). Both opt-outs are
+// explicit: the Augur-Mechanical trailer marks a commit as it is made; the
+// .augur/mechanical-commits sha list retro-marks history that cannot be rewritten.
+test("a mechanical commit stamps no dates — trailer and retro sha list both work", () => {
+  const { ws, dir, proto, proto2 } = makeSpace();
+  try {
+    const HUMAN = "2021-03-15T12:00:00Z", ADOPT = "2024-09-20T12:00:00Z", RESTORE = "2025-01-05T12:00:00Z";
+    git(dir, ["add", "-A"], HUMAN);
+    git(dir, ["commit", "-q", "-m", "both prototypes"], HUMAN);
+    // an adopt-style commit, already in history, unmarked — neutralized via the sha list
+    writeFileSync(path.join(proto, "index.html"), "<!doctype html><title>Hello</title><p>adopted bytes</p>\n");
+    git(dir, ["add", "-A"], ADOPT);
+    git(dir, ["commit", "-q", "-m", "reconcile: adopt live"], ADOPT);
+    const adoptSha = execFileSync("git", ["-C", dir, "rev-parse", "HEAD"], { encoding: "utf8" }).trim();
+    // a restore-style commit made WITH the trailer
+    writeFileSync(path.join(proto2, "index.html"), "<!doctype html><title>World</title><p>restored</p>\n");
+    mkdirSync(path.join(dir, ".augur"), { recursive: true });
+    writeFileSync(path.join(dir, ".augur", "mechanical-commits"), `# adopted-bytes laundering\n${adoptSha}\n`);
+    git(dir, ["add", "-A"], RESTORE);
+    git(dir, ["commit", "-q", "-m", "restore authored bytes\n\nAugur-Mechanical: true"], RESTORE);
+
+    const vm = versionMap(ws);
+    assert.equal(vm["/demo/hello/"], String(SEC(HUMAN) * 1000), "the sha-listed adopt commit must not date the card");
+    assert.equal(vm["/demo/world/"], String(SEC(HUMAN) * 1000), "the trailer-marked restore must not date the card");
+  } finally { rmSync(ws, { recursive: true, force: true }); }
+});
+
 // A shallow clone's graft commit is not history. git presents the boundary commit of a
 // --depth clone as the ENTIRE TREE added at once — so a space published from such a
 // clone credited that commit's author with every folder and stamped its date on every
