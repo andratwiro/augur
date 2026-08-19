@@ -2150,6 +2150,20 @@ async function publishApi(request, url, env) {
     const body = await request.text();
     let cfg;
     try { cfg = JSON.parse(body); } catch (e) { return jsonResponse({ error: "bad-json" }, 400); }
+    // Same downgrade rule one level up: a stale clone's `--all` would POST its
+    // old instance.json (engineVersion, knobs, the user roster) over the live
+    // one. When live carries an engineVersion, an older or absent incoming one
+    // is a stale tree — refuse; the shell's next deploy pushes a current config.
+    try {
+      const liveObj = await env.BUNDLES.get("config/instance.json");
+      const live = liveObj ? JSON.parse(await liveObj.text()) : null;
+      if (live && live.engineVersion) {
+        const incoming = cfg.engineVersion || "";
+        if (!incoming || semverBehind(incoming, live.engineVersion)) {
+          return jsonResponse({ error: "engine-downgrade", live: live.engineVersion, publishing: incoming || null }, 409);
+        }
+      }
+    } catch (e) {}
     await env.BUNDLES.put("config/instance.json", body);
     cfgAt = 0;
     // The deploy that ships an updated identity file also retires the roster
@@ -2405,6 +2419,35 @@ async function publishApi(request, url, env) {
     // after reconciling, the removal usually turns out not to be one.
     const curObj = await env.BUNDLES.get(`spaces/${spaceId}/manifest.json`);
     const cur = curObj ? JSON.parse(await curObj.text()) : null;
+    // ── Engine-downgrade guard. `_engine` is the instance's chrome, service
+    // worker, and the runtime-chrome switch; a publish from a clone that predates
+    // those files would 404 them site-wide and silently switch composition off —
+    // and `_engine` bypasses every other guard (no reconcile client-side, no
+    // publicPrefixes for the unpublish guard, star tokens skip ownership checks).
+    // Compare against live: dropping /sw.js, dropping every /_chrome.* (new
+    // hashes are fine — the bundle renames on every UI change), dropping
+    // routing.chrome/runtimeChrome, or a semver-older builtWith.version is a
+    // stale tree, not an intent. Intentional restores go through `rollback`
+    // (append-only, audited) or a republish from a current engine.
+    if (spaceId === "_engine" && cur) {
+      const drops = [];
+      const hasChrome = (f) => Object.keys(f || {}).some((p) => p.startsWith("/_chrome."));
+      if ((cur.files || {})["/sw.js"] && !(m.files || {})["/sw.js"]) drops.push("/sw.js");
+      if (hasChrome(cur.files) && !hasChrome(m.files)) drops.push("/_chrome.*");
+      const curR = cur.routing || {}, newR = m.routing || {};
+      if (curR.chrome && !newR.chrome) drops.push("routing.chrome");
+      if (curR.runtimeChrome && !newR.runtimeChrome) drops.push("routing.runtimeChrome");
+      const curV = cur.builtWith && cur.builtWith.version;
+      const newV = m.builtWith && m.builtWith.version;
+      const older = !!(curV && newV && semverBehind(newV, curV));
+      if (drops.length || older) {
+        return jsonResponse({
+          error: "engine-downgrade",
+          ...(drops.length ? { drops: drops.slice(0, 20) } : {}),
+          ...(older ? { live: curV, publishing: newV } : {}),
+        }, 409);
+      }
+    }
     const baseVersion = m.baseVersion;
     delete m.baseVersion; // transport-only — never persisted in the manifest
     if (typeof baseVersion === "number" && baseVersion !== ((cur && cur.version) || 0)) {
