@@ -703,6 +703,16 @@ async function isDir(p) {
  * by: Map<relPath, Map<email, {n,t}>> } or null when git/history is unavailable
  * (untracked content falls back to fs mtime).
  */
+// Poster/OG cards are BUILD OUTPUTS committed back into each folder (scripts/shoot.mjs,
+// scripts/og.mjs), not human work. A reshoot commit touches every folder at once, so
+// counting it would reset every card's "edited N ago" to the reshoot time and wipe the
+// real human-edit recency (and the sort order that rides on it). So the git-date/
+// contributor pass ignores these basenames — an author who only regenerated posters gets
+// no credit and stamps no date; a commit that ALSO changed a real file still counts via
+// that file. Prototype content images (assets/img/*.webp) are NOT generated — kept.
+const GENERATED_ASSET_BASENAMES = new Set(["preview.webp", "og.jpg"]);
+function isGeneratedAsset(p) { return GENERATED_ASSET_BASENAMES.has(path.basename(p)); }
+
 const SPACE_DATES = new Map(); // space root → parsed maps (one git pass per space per build)
 function spaceDates(repoRoot) {
   if (SPACE_DATES.has(repoRoot)) return SPACE_DATES.get(repoRoot);
@@ -761,7 +771,7 @@ function spaceDates(repoRoot) {
           if (st === "R") alias.set(from, today);
           // A pure rename (R100) isn't an edit; a rename-with-change (R0xx) and any
           // copy are. Stamp only the newest occurrence (we walk newest→oldest).
-          if (tok !== "R100") {
+          if (tok !== "R100" && !isGeneratedAsset(today)) {
             if (!file.has(today)) file.set(today, { t, email });
             touched.push(today);
           }
@@ -770,6 +780,7 @@ function spaceDates(repoRoot) {
           if (p === undefined) break;
           if (st === "D") continue; // deleted names don't exist today
           const today = cur(p);
+          if (isGeneratedAsset(today)) continue;
           if (!file.has(today)) file.set(today, { t, email });
           touched.push(today);
         }
