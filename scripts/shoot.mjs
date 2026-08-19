@@ -46,6 +46,95 @@ async function entry(dir) {
   return h ? path.join(dir, h.name) : null;
 }
 
+// A canvas board can't be shot from source: its entry html is a thin shell that
+// loads /__canvas/canvas.js by absolute path (dead over file://) and the board
+// content lives in the instance's KV (GET /__board — a public route). Canvas
+// folders are shot from the LIVE page instead — strictly read-only: the room
+// socket is stubbed at the constructor (upgrades bypass route interception), in
+// EVERY frame, because a tile can embed another canvas which would join ITS room
+// and haunt presence; POST /__board is answered locally; the overlay/companion
+// scripts are blocked for the same clean-shot reason source shots use file://.
+// No siteOrigin, offline, or a gate answering the URL → skip, keeping whatever
+// poster is committed.
+async function isCanvasEntry(file) {
+  try { return /\/__canvas\/canvas\.js/.test(await fs.readFile(file, "utf8")); } catch { return false; }
+}
+
+// A card folder's live URL: walk up to its space root (space.json), mount the
+// default space at "/" and others at "/<id>/" (build.js's rule), and drop the
+// on-disk "prototypes/" segment (<opp>/prototypes/<name> ships at /<opp>/<name>/).
+async function liveUrl(dir) {
+  let root = dir;
+  while (root !== path.dirname(root) && !(await exists(path.join(root, "space.json")))) root = path.dirname(root);
+  let meta;
+  try { meta = JSON.parse(await fs.readFile(path.join(root, "space.json"), "utf8")); } catch { return null; }
+  const origin = typeof meta.siteOrigin === "string" ? meta.siteOrigin.replace(/\/+$/, "") : "";
+  if (!origin) return null;
+  const parts = path.relative(root, dir).split(path.sep);
+  if (parts[1] === "prototypes") parts.splice(1, 1);
+  const base = meta.default ? "" : `/${meta.id}`;
+  return `${origin}${base}/${parts.map(encodeURIComponent).join("/")}/`;
+}
+
+async function shootLiveCanvas(browser, dir, rel) {
+  const live = await liveUrl(dir);
+  if (!live) { console.log("· skip (canvas, no siteOrigin):", rel); return false; }
+  // Reachability first: the gate answers unknown or locked paths with its own
+  // login HTML, which must never become a poster.
+  let shell = "";
+  try { shell = await (await fetch(live)).text(); } catch {}
+  if (!/\/__canvas\/canvas\.js/.test(shell)) {
+    console.log("· skip (canvas gated/unpublished/offline):", rel, "→", live);
+    return false;
+  }
+  const tmp = path.join(os.tmpdir(), "shoot-" + rel.replace(/[^a-z0-9]+/gi, "-") + ".png");
+  const outWebp = path.join(dir, "preview.webp");
+  for (let attempt = 1; attempt <= 2; attempt++) {
+    const page = await browser.newPage({ viewport: VIEWPORT });
+    try {
+      await page.addInitScript(() => {
+        window.WebSocket = class {
+          constructor() {
+            this.readyState = 3;
+            setTimeout(() => { if (this.onerror) this.onerror(new Event("error")); if (this.onclose) this.onclose(new Event("close")); }, 0);
+          }
+          addEventListener(type, fn) { if (type === "error" || type === "close") setTimeout(() => fn(new Event(type)), 0); }
+          removeEventListener() {} send() {} close() {}
+        };
+      });
+      await page.route("**/__board*", (r) =>
+        r.request().method() === "POST" ? r.fulfill({ status: 204, body: "" }) : r.continue());
+      await page.route("**/piti*", (r) => r.abort());
+      await page.route("**/__review/**", (r) => r.abort());
+      await page.goto(live, { waitUntil: "load", timeout: 30000 });
+      // Board fetch + node paint; an empty board is legitimate, so a miss just shoots.
+      await page.waitForFunction(() => window.GVCanvas && window.GVCanvas.nodes && window.GVCanvas.nodes().length > 0, { timeout: 15000 }).catch(() => {});
+      await page.waitForTimeout(2500); // tiles/images/fonts settle
+      // Editing chrome (toolbar/topbar/zoom — all inside #gvc-ui) is not board
+      // content; frame the whole board rather than whatever camera was saved last.
+      await page.addStyleTag({ content: "#gvc-ui { display: none !important; }" });
+      await page.evaluate(() => { try { window.GVCanvas.fit(); } catch {} });
+      await page.waitForTimeout(700); // fit() animates ~320ms; let tiles re-rasterize
+      await page.screenshot({ path: tmp, clip: { x: 0, y: 0, ...VIEWPORT } });
+      const png = await fs.stat(tmp).catch(() => null);
+      if (!png || png.size === 0) throw new Error("empty screenshot");
+      await execFileP("cwebp", ["-quiet", "-q", String(WEBP_Q), "-resize", String(WEBP_W), "0", tmp, "-o", outWebp]);
+      const kb = Math.round((await fs.stat(outWebp)).size / 1024);
+      console.log("✓", rel + "/preview.webp", kb + "KB (live canvas)");
+      return true;
+    } catch (e) {
+      const msg = e.message.split("\n")[0];
+      if (attempt < 2) { console.log("· retry", rel, "—", msg); continue; }
+      console.log("✗ FAIL", rel, "—", msg);
+      return false;
+    } finally {
+      await page.close().catch(() => {});
+      await fs.unlink(tmp).catch(() => {});
+    }
+  }
+  return false;
+}
+
 // Folders inside a space root that never hold card targets.
 // Extend via GV_SCAN_IGNORE (comma-separated dir names) for space-specific bulk dirs.
 const IGNORE = new Set(["node_modules", "skills", "scripts", "registry", ".git", ".github", ".claude",
@@ -118,6 +207,7 @@ async function shoot(browser, dir) {
   const file = await entry(dir);
   const rel = path.relative(ROOT, dir);
   if (!file) { console.log("· skip (no html):", rel); return false; }
+  if (await isCanvasEntry(file)) return shootLiveCanvas(browser, dir, rel);
   const tmp = path.join(os.tmpdir(), "shoot-" + rel.replace(/[^a-z0-9]+/gi, "-") + ".png");
   const outWebp = path.join(dir, "preview.webp");
   // Up to 2 attempts. Headless captures occasionally produce an empty/corrupt PNG

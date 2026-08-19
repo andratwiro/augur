@@ -316,6 +316,9 @@ const DEPLOY = existsSync(DEPLOY_CONFIG_PATH) ? JSON.parse(readFileSync(DEPLOY_C
 // Absolute origin used to build absolute og:image / og:url (unfurl bots need
 // absolute URLs). From the deploy config; empty → root-relative page URLs.
 const SITE_ORIGIN = DEPLOY.siteOrigin || "";
+// Per-space effective origin — SITE_ORIGIN, else the active space's own siteOrigin.
+// (Re)assigned by setSpaceContext().
+let PAGE_ORIGIN = SITE_ORIGIN;
 
 // The engine's release version — package.json is the single source (git tags
 // mirror it, 1.0.0 is reserved for the public launch). It rides the runtime
@@ -980,7 +983,7 @@ async function copyDir(src, dest, exclude, titleEmoji) {
         // composed card (og.png, see scripts/og.mjs) sits beside it when shot.
         if (entry.name === "index.html") {
           const rel = path.relative(DIST, dest).split(path.sep).map(encodeURIComponent).join("/");
-          const pageUrl = `${SITE_ORIGIN}/${rel}${rel ? "/" : ""}`;
+          const pageUrl = `${PAGE_ORIGIN}/${rel}${rel ? "/" : ""}`;
           const hasOg = await exists(path.join(src, "og.jpg"));
           html = injectHead(html, pageUrl, hasOg);
         }
@@ -6360,6 +6363,9 @@ async function discoverSpaces() {
       // One line for the front door's link preview (og:description on the gate) when
       // this is the default space. Empty ⇒ the worker's engine tagline.
       description: typeof meta.description === "string" ? meta.description.trim() : "",
+      // The space's own declared origin — the fallback for absolute og:url/og:image
+      // when no deploy config provides one (a bare space clone publishing itself).
+      siteOrigin: typeof meta.siteOrigin === "string" ? meta.siteOrigin.replace(/\/+$/, "") : "",
       // Admin-only space: the switcher still lists it for everyone (spaceSwitcher()
       // renders every space unconditionally); the gate is the worker, which seals the
       // space's base path (RESTRICTED_BASES) so a non-admin who clicks through is
@@ -6432,6 +6438,10 @@ function setSpaceContext(space) {
   BASE = space.default ? "" : `/${space.id}`;
   SPACE_KEY = space.default ? "" : `${space.id}/`;
   DIST_SPACE = space.default ? DIST : path.join(DIST, space.id);
+  // Absolute origin for this space's baked og:url/og:image (unfurl bots need
+  // absolute URLs). Deploy config wins; a bare clone falls back to the space's
+  // own siteOrigin rather than baking root-relative tags that no bot resolves.
+  PAGE_ORIGIN = SITE_ORIGIN || space.siteOrigin || "";
   NAV_STATE.activeSpace = space.id;
 }
 

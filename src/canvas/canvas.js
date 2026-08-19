@@ -4447,6 +4447,21 @@
     })();
   }
 
+  // Frame the whole board: union every node's box and fly there. Public because
+  // anything rendering a board cold (a poster shot, a share landing with no target)
+  // wants "show me everything", and only the engine knows every node's rect.
+  function fitAll() {
+    var r = null;
+    for (var i = 0; i < board.nodes.length; i++) {
+      var b = anyRect(board.nodes[i]);
+      if (!b) continue;
+      r = r
+        ? { x: Math.min(r.x, b.x), y: Math.min(r.y, b.y), x2: Math.max(r.x2, b.x + b.w), y2: Math.max(r.y2, b.y + b.h) }
+        : { x: b.x, y: b.y, x2: b.x + b.w, y2: b.y + b.h };
+    }
+    if (r) flyToRect({ x: r.x, y: r.y, w: r.x2 - r.x, h: r.y2 - r.y });
+  }
+
   // ---- public API for the comment overlay + tools --------------------------
   window.GVCanvas = {
     get board() { return board; },
@@ -4454,7 +4469,7 @@
     screenToWorld: screenToWorld, worldToScreen: worldToScreen, world: world,
     onTransform: function (cb) { transformCbs.push(cb); },
     nodes: function () { return board.nodes; }, addNode: addNode,
-    setTool: setTool
+    setTool: setTool, fit: fitAll
   };
 
   // ---- multiplayer (cursors · presence · live ops · co-editing) ------------
