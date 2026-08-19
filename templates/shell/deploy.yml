@@ -143,6 +143,10 @@ jobs:
           AUGUR_TOKEN: ${{ secrets.AUGUR_TOKEN }}  # *-scoped: publishes any space's content
         run: |
           set -uo pipefail
+          if [ "$(jq -r '.runtimeChrome // false' deploy.config.json)" = "true" ]; then
+            echo "runtimeChrome is on — the worker composes current chrome at serve time, so a re-bake is obsolete (and would fight a repo that lags a direct publish). Skipping."
+            exit 0
+          fi
           if [ -z "${AUGUR_TOKEN:-}" ]; then echo "AUGUR_TOKEN unset (assets-mode) — nothing to re-bake"; exit 0; fi
           NEW="$(git rev-parse 'HEAD:engine' 2>/dev/null || true)"
           [ -n "$NEW" ] || { echo "no engine pin on disk — skipping"; exit 0; }
