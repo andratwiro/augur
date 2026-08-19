@@ -12,7 +12,7 @@ import { __testables as W } from "../src/_worker.js";
 const setSpaces = (spaces) => W.__setChromeTestState(null, spaces, false);
 afterEach(() => setSpaces([]));
 
-const DELTA = { id: "delta", name: "Delta Studio", default: true, description: "" };
+const BOREALIS = { id: "borealis", name: "Borealis Studio", default: true, description: "" };
 
 test("engine-only gate falls back to Augur + the engine tagline, no icon or image", () => {
   setSpaces([]);
@@ -26,26 +26,26 @@ test("engine-only gate falls back to Augur + the engine tagline, no icon or imag
 });
 
 test("a mounted default space brands the whole preview", () => {
-  setSpaces([{ ...DELTA, description: "Prototypes for the Delta team." }]);
-  const html = W.loginPage("/", false, "https://augur.deltastudio.io/pages/x/?q=1");
-  assert.match(html, /<title>Delta Studio · Augur<\/title>/);
-  assert.ok(html.includes(`<meta property="og:title" content="Delta Studio" />`));
-  assert.ok(html.includes(`<meta property="og:description" content="Prototypes for the Delta team." />`));
+  setSpaces([{ ...BOREALIS, description: "Prototypes for the Borealis team." }]);
+  const html = W.loginPage("/", false, "https://borealis.example.com/pages/x/?q=1");
+  assert.match(html, /<title>Borealis Studio · Augur<\/title>/);
+  assert.ok(html.includes(`<meta property="og:title" content="Borealis Studio" />`));
+  assert.ok(html.includes(`<meta property="og:description" content="Prototypes for the Borealis team." />`));
   assert.ok(html.includes(`<link rel="icon" href="/space-icon.png" />`));
-  assert.ok(html.includes(`<meta property="og:image" content="https://augur.deltastudio.io/space-icon.png" />`));
-  assert.ok(html.includes(`<meta property="og:url" content="https://augur.deltastudio.io/pages/x/" />`),
+  assert.ok(html.includes(`<meta property="og:image" content="https://borealis.example.com/space-icon.png" />`));
+  assert.ok(html.includes(`<meta property="og:url" content="https://borealis.example.com/pages/x/" />`),
     "og:url keeps the path but drops the query");
   assert.ok(html.includes(`<meta name="twitter:card" content="summary" />`));
 });
 
 test("a default space without a description gets the engine tagline", () => {
-  setSpaces([DELTA]);
-  const html = W.loginPage("/", false, "https://augur.deltastudio.io/");
+  setSpaces([BOREALIS]);
+  const html = W.loginPage("/", false, "https://borealis.example.com/");
   assert.ok(html.includes(`<meta property="og:description" content="${W.ENGINE_TAGLINE}" />`));
 });
 
 test("no request URL ⇒ no absolute tags, everything else intact", () => {
-  setSpaces([DELTA]);
+  setSpaces([BOREALIS]);
   const html = W.loginPage("/", false);
   assert.ok(!html.includes("og:image") && !html.includes("og:url"));
   assert.ok(html.includes(`<link rel="icon" href="/space-icon.png" />`), "favicon may stay relative");
@@ -60,7 +60,7 @@ test("space-authored name and description are attribute-safe", () => {
 });
 
 test("the 404 wears the space favicon exactly when a default space is mounted", () => {
-  setSpaces([DELTA]);
+  setSpaces([BOREALIS]);
   assert.ok(W.notFoundPage().includes(`<link rel="icon" href="/space-icon.png" />`));
   setSpaces([]);
   assert.ok(!W.notFoundPage().includes('rel="icon"'));
