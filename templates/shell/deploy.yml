@@ -100,76 +100,10 @@ jobs:
           echo "realtime/ changed in ${OLD:0:12}..${NEW:0:12} — redeploying"
           npx wrangler deploy -c realtime.wrangler.toml
 
-  # Published pages bake the engine's page-level chrome (rail, profile menu, overlays,
-  # responsive layout) at PUBLISH time; the deploy above refreshes the SERVING engine but
-  # leaves already-published space pages on their old baked chrome until the space
-  # republishes (its /_build.json `builtWithEngine` is what moves). So when the engine pin
-  # moved, re-bake every space in the roster against the new engine — HERE, with the
-  # shell's own token, not by asking each space to do it.
-  #
-  # Why the shell and not the space: AUGUR_TOKEN is `*`-scoped (it has to be — it pushes
-  # instance config), so it can publish any space on this instance. Re-baking centrally
-  # means the star token lives ONLY in this private shell, never in a (possibly public)
-  # space repo, and no space needs a token or CI of its own. It does NOT weaken the "one
-  # source of content" rule: it runs the ordinary `augur publish` client against a fresh
-  # clone of the space's own repo (its git HEAD, the real source), exactly as a person
-  # would — the store's stale-base / unpublish guards still apply.
+  # Drift-driven re-bake after every deploy; the same workflow also answers the
+  # worker's space-rebake dispatch the moment a stale-baked publish arrives.
+  # Full rationale + the script live in space-rebake.yml.
   rebake:
     needs: deploy
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          submodules: true          # the engine, at the just-deployed pin — bakes exactly it
-          token: ${{ secrets.SUBMODULE_PAT }}
-          fetch-depth: 0            # to tell whether the pin actually moved
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 20
-      # Drift-driven, not push-driven: re-bake any roster space whose LIVE baked chrome
-      # (/_build.json builtWithEngine) is behind the engine this shell just deployed
-      # (HEAD:engine). Idempotent — a space already current is a curl + skip, so this is
-      # safe to run on every deploy and self-heals a space that drifted for any reason;
-      # it does not depend on diffing github.event.before (fragile when pushes interleave).
-      # For each stale space: clone it (full history — publish.mjs refuses a shallow clone,
-      # it dates cards from git) and publish with the star token, the pinned engine, and an
-      # explicit AUGUR_ORIGIN (a bare space clone has no shell beside it to resolve one).
-      # Skips a dirty (working-tree) publish — that is someone's live session, not ours to
-      # clobber. A failure warns and fails the job at the end; health.yml (f) also alarms.
-      # AUGUR_TOKEN unset = assets-mode shell with nothing to publish.
-      - name: Re-bake roster spaces whose baked chrome is behind the engine
-        env:
-          GH_TOKEN: ${{ secrets.SUBMODULE_PAT }}   # clone the space repos
-          AUGUR_TOKEN: ${{ secrets.AUGUR_TOKEN }}  # *-scoped: publishes any space's content
-        run: |
-          set -uo pipefail
-          if [ "$(jq -r '.runtimeChrome // false' deploy.config.json)" = "true" ]; then
-            echo "runtimeChrome is on — the worker composes current chrome at serve time, so a re-bake is obsolete (and would fight a repo that lags a direct publish). Skipping."
-            exit 0
-          fi
-          if [ -z "${AUGUR_TOKEN:-}" ]; then echo "AUGUR_TOKEN unset (assets-mode) — nothing to re-bake"; exit 0; fi
-          NEW="$(git rev-parse 'HEAD:engine' 2>/dev/null || true)"
-          [ -n "$NEW" ] || { echo "no engine pin on disk — skipping"; exit 0; }
-          ORIGIN="$(jq -r '.siteOrigin // empty' deploy.config.json)"
-          [ -n "$ORIGIN" ] || { echo "no siteOrigin in deploy.config.json — skipping"; exit 0; }
-          STAMP="$(curl -fsS --max-time 30 "$ORIGIN/_build.json" 2>/dev/null || echo '{}')"
-          FAILED=""
-          while read -r ID REPO; do
-            [ -n "$ID" ] && [ -n "$REPO" ] || continue
-            BW="$(printf '%s' "$STAMP" | jq -r --arg id "$ID" '.spaces[$id].builtWithEngine // empty')"
-            DIRTY="$(printf '%s' "$STAMP" | jq -r --arg id "$ID" '.spaces[$id].dirty // false')"
-            if [ "$BW" = "$NEW" ]; then echo "$ID already on ${NEW:0:12} — skip"; continue; fi
-            if [ "$DIRTY" = "true" ]; then echo "$ID is a working-tree publish — leaving it"; continue; fi
-            DIR="$RUNNER_TEMP/space-$ID"; rm -rf "$DIR"
-            if ! git clone --quiet "https://x-access-token:${GH_TOKEN}@github.com/${REPO}.git" "$DIR"; then
-              echo "::warning::clone of $REPO failed — skipping $ID"; FAILED="$FAILED $ID"; continue
-            fi
-            echo "re-baking $ID (${BW:-<none>}→${NEW:0:12})"
-            if ( cd "$DIR" && AUGUR_ORIGIN="$ORIGIN" GV_SPACES_ROOT="$DIR" node "$GITHUB_WORKSPACE/engine/scripts/publish.mjs" ); then
-              echo "re-baked $ID"
-            else
-              echo "::warning::re-bake of $ID failed"; FAILED="$FAILED $ID"
-            fi
-          done < <(jq -r '.spaces[]? | "\(.id) \(.repo)"' deploy.config.json)
-          if [ -n "$FAILED" ]; then echo "::error::re-bake failed for:$FAILED — see warnings above"; exit 1; fi
-          echo "re-bake pass complete."
+    uses: ./.github/workflows/space-rebake.yml
+    secrets: inherit

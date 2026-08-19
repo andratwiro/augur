@@ -1,0 +1,79 @@
+# Re-bake any roster space whose LIVE baked chrome (/_build.json builtWithEngine)
+# is behind this shell's pinned engine. Two triggers, one job:
+#   - workflow_call: deploy.yml runs it after every deploy (drift converges on
+#     every pin bump / config push).
+#   - repository_dispatch [space-rebake]: the WORKER fires this the moment a
+#     publish arrives baked with a non-current engine — the stale window is
+#     minutes, not until-the-next-deploy. The publisher is never involved.
+# Runtime chrome does NOT make this obsolete: serve-time composition fixes
+# marker-wrapped chrome, but pages baked before the markers existed — and all
+# baked generated markup (galleries, indexes) — only converge by republishing.
+# Drift-driven and idempotent: a converged space is a curl + skip, so over-firing
+# is harmless. Publishes from a dirty working tree are someone's live session and
+# are left alone; health.yml alarms if drift outlives its grace.
+name: Space re-bake
+on:
+  workflow_call: {}
+  workflow_dispatch:
+  repository_dispatch:
+    types: [space-rebake]
+concurrency:
+  group: space-rebake
+  cancel-in-progress: false
+jobs:
+  rebake:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: true          # the engine, at the pinned sha — bakes exactly it
+          token: ${{ secrets.SUBMODULE_PAT }}
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      # For each stale roster space: clone it (full history — publish.mjs dates
+      # cards from git), check out the LIVE published sha when the clone has it
+      # (a re-bake must republish what IS live, never quietly ship someone's
+      # pushed-but-unpublished work), and publish with the star token, the pinned
+      # engine, and an explicit AUGUR_ORIGIN. When live's sha isn't in the clone
+      # (a direct publish that never pushed), publish main — the client-side
+      # reconcile adopts the live bytes, so nothing is lost either way.
+      - name: Re-bake roster spaces whose baked chrome is behind the engine
+        env:
+          GH_TOKEN: ${{ secrets.SUBMODULE_PAT }}   # clone the space repos
+          AUGUR_TOKEN: ${{ secrets.AUGUR_TOKEN }}  # *-scoped: publishes any space's content
+        run: |
+          set -uo pipefail
+          if [ -z "${AUGUR_TOKEN:-}" ]; then echo "AUGUR_TOKEN unset (assets-mode) — nothing to re-bake"; exit 0; fi
+          NEW="$(git rev-parse 'HEAD:engine' 2>/dev/null || true)"
+          [ -n "$NEW" ] || { echo "no engine pin on disk — skipping"; exit 0; }
+          ORIGIN="$(jq -r '.siteOrigin // empty' deploy.config.json)"
+          [ -n "$ORIGIN" ] || { echo "no siteOrigin in deploy.config.json — skipping"; exit 0; }
+          STAMP="$(curl -fsS --max-time 30 "$ORIGIN/_build.json" 2>/dev/null || echo '{}')"
+          FAILED=""
+          while read -r ID REPO; do
+            [ -n "$ID" ] && [ -n "$REPO" ] || continue
+            BW="$(printf '%s' "$STAMP" | jq -r --arg id "$ID" '.spaces[$id].builtWithEngine // empty')"
+            DIRTY="$(printf '%s' "$STAMP" | jq -r --arg id "$ID" '.spaces[$id].dirty // false')"
+            LIVE_SHA="$(printf '%s' "$STAMP" | jq -r --arg id "$ID" '.spaces[$id].sha // empty')"
+            if [ "$BW" = "$NEW" ]; then echo "$ID already on ${NEW:0:12} — skip"; continue; fi
+            if [ "$DIRTY" = "true" ]; then echo "$ID is a working-tree publish — leaving it"; continue; fi
+            DIR="$RUNNER_TEMP/space-$ID"; rm -rf "$DIR"
+            if ! git clone --quiet "https://x-access-token:${GH_TOKEN}@github.com/${REPO}.git" "$DIR"; then
+              echo "::warning::clone of $REPO failed — skipping $ID"; FAILED="$FAILED $ID"; continue
+            fi
+            if [ -n "$LIVE_SHA" ] && git -C "$DIR" cat-file -e "$LIVE_SHA^{commit}" 2>/dev/null; then
+              git -C "$DIR" checkout --quiet "$LIVE_SHA"
+              echo "re-baking $ID at live sha ${LIVE_SHA:0:12} (${BW:-<none>}→${NEW:0:12})"
+            else
+              echo "re-baking $ID from main — live sha ${LIVE_SHA:-<none>} not in clone; reconcile adopts live bytes (${BW:-<none>}→${NEW:0:12})"
+            fi
+            if ( cd "$DIR" && AUGUR_ORIGIN="$ORIGIN" GV_SPACES_ROOT="$DIR" node "$GITHUB_WORKSPACE/engine/scripts/publish.mjs" ); then
+              echo "re-baked $ID"
+            else
+              echo "::warning::re-bake of $ID failed"; FAILED="$FAILED $ID"
+            fi
+          done < <(jq -r '.spaces[]? | "\(.id) \(.repo)"' deploy.config.json)
+          if [ -n "$FAILED" ]; then echo "::error::re-bake failed for:$FAILED — see warnings above"; exit 1; fi
+          echo "re-bake pass complete."

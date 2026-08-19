@@ -1,6 +1,6 @@
 # Plan: runtime chrome composition (retire per-space re-bake)
 
-**Status:** proposed
+**Status:** shipped 2026-08-19 (serve-time composition; markers required — see scope note at the end)
 **Problem it solves:** an engine update refreshes the serving worker + the shared
 engine-owned chrome bundle, but the **page-level chrome markup** (rail, tab bar, profile
 menu) is baked into each space's published HTML at publish time (`/_build.json`
@@ -70,3 +70,17 @@ its own spaces with its `*`-scoped token when the engine pin moves) and the `hea
 check (f) drift alarm. That interim needs no per-space token and works for repo-based
 instances; runtime composition is what makes it unnecessary — and is the only form that
 fits a multi-tenant host, where there are no per-space repos or CI at all.
+
+**Shipped scope note (2026-08-19).** Composition is marker-gated: pages baked by an
+engine before the `gv-chrome` markers existed carry no boundary and no `_chrome.*`
+refs, so the composer passes them through untouched. The re-bake therefore stays —
+drift-driven on every shell deploy AND event-driven (`space-rebake`
+repository_dispatch, fired by the worker when a publish arrives baked with a
+non-current engine; the publisher is never refused or involved). Re-bake also remains
+the only thing that refreshes baked GENERATED markup (galleries, indexes), which
+composition does not cover. Retiring re-bake entirely waits for the phase above
+("stop baking the rail") plus server-derived generated pages — the multi-tenant end
+state. The commit path additionally refuses an `_engine`/instance-config publish that
+would DOWNGRADE the live engine (drop `/sw.js`, `/_chrome.*`, or the
+`routing.chrome`/`runtimeChrome` switch, or move `builtWith.version` backwards) —
+intentional restores go through `rollback`.

@@ -137,9 +137,9 @@ jobs:
               echo "OK: $ID chrome ${BW:-<none>} vs engine ${ENG:0:12}, but engine deployed only ${ENG_AGE}s ago (grace)"; continue
             fi
             if [ -z "$BW" ]; then
-              echo "chrome drift: $ID has no builtWithEngine stamp ${ENG_AGE}s after the engine deployed — never re-baked; the $ID space's publish.yml should re-bake (check its Actions), or run \`augur publish\` from the $ID clone" >> "$FAILS"
+              echo "chrome drift: $ID has no builtWithEngine stamp ${ENG_AGE}s after the engine deployed — never re-baked; the shell's space-rebake should have converged this (check the 'Space re-bake' and 'Deploy site' runs), or run: gh workflow run space-rebake.yml" >> "$FAILS"
             else
-              echo "chrome drift: $ID serves baked chrome ${BW:0:12} but the engine is ${ENG:0:12} (deployed ${ENG_AGE}s ago) — the re-bake was missed; check the $ID space's publish.yml Actions" >> "$FAILS"
+              echo "chrome drift: $ID serves baked chrome ${BW:0:12} but the engine is ${ENG:0:12} (deployed ${ENG_AGE}s ago) — the re-bake was missed; the shell's space-rebake should have converged this (check the 'Space re-bake' and 'Deploy site' runs), or run: gh workflow run space-rebake.yml" >> "$FAILS"
             fi
           done
 
