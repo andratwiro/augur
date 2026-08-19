@@ -4463,12 +4463,20 @@
         : { x: b.x, y: b.y, x2: b.x + b.w, y2: b.y + b.h };
     }
     if (!r) return;
+    var w = r.x2 - r.x, h = r.y2 - r.y;
     if (opts && opts.cover) {
       var pad = 40;
-      var s = Math.min(1, Math.max((innerWidth - pad) / (r.x2 - r.x), (innerHeight - pad) / (r.y2 - r.y)));
-      flyTo((r.x + r.x2) / 2, (r.y + r.y2) / 2, s);
+      var s = Math.min(1, Math.max((innerWidth - pad) / w, (innerHeight - pad) / h));
+      if (w * s <= innerWidth && h * s <= innerHeight) {
+        // everything fits at this scale — center it, same as contain
+        flyTo(r.x + w / 2, r.y + h / 2, s);
+      } else {
+        // anchor at the content's top-left (the reading start): a wide or L-shaped
+        // board crops from its far edge, never through its middle
+        flyTo(r.x - pad / s + innerWidth / (2 * s), r.y - pad / s + innerHeight / (2 * s), s);
+      }
     } else {
-      flyToRect({ x: r.x, y: r.y, w: r.x2 - r.x, h: r.y2 - r.y });
+      flyToRect({ x: r.x, y: r.y, w: w, h: h });
     }
   }
 
