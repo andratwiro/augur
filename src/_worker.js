@@ -2498,7 +2498,40 @@ async function publishApi(request, url, env) {
     await env.BUNDLES.put(`spaces/${spaceId}/versions/${version}.json`, JSON.stringify(out));
     await env.BUNDLES.put(`spaces/${spaceId}/manifest.json`, JSON.stringify(out));
     MANIFESTS.at = 0; cfgAt = 0; // this isolate flips immediately; others within ~1.5s
-    return jsonResponse({ ok: true, version });
+    // ── Stale-bake self-heal. Pages are baked with the PUBLISHER's engine clone,
+    // and nothing constrains how old that clone is — runtime chrome recomposes
+    // marker-wrapped chrome at serve time, but pages baked before the markers
+    // existed (and all baked generated markup) can only be fixed by republishing
+    // with a current engine. So: accept the publish unconditionally (the publisher
+    // is never refused or told to update), then ask the deploy shell to re-bake.
+    // The shell's job is drift-driven and idempotent, so over-asking is harmless;
+    // a KV debounce keeps publish bursts from stampeding it. Absent dispatch
+    // config, drift still converges on the next shell deploy — degraded, not broken.
+    let rebake;
+    if (spaceId !== "_engine") {
+      try {
+        const engObj = await env.BUNDLES.get("spaces/_engine/manifest.json");
+        const engRef = engObj ? JSON.parse(await engObj.text()) : null;
+        const engineSha = (engRef && ((engRef.builtWith && engRef.builtWith.engine) || (engRef.source && engRef.source.sha))) || null;
+        const publishedWith = (out.builtWith && out.builtWith.engine) || null;
+        if (engineSha && publishedWith !== engineSha) {
+          const kv = kvFor(env);
+          const sentKey = `rebake:sent:${spaceId}`;
+          const already = kv ? await kv.get(sentKey).catch(() => null) : null;
+          if (already) {
+            rebake = "debounced";
+          } else {
+            rebake = await shellDispatch(env, "space-rebake", {
+              space: spaceId, publishedWith, engine: engineSha, by: who.label || "",
+            });
+            if (rebake === "dispatched" && kv) {
+              try { await kv.put(sentKey, "1", { expirationTtl: 300 }); } catch (e) {}
+            }
+          }
+        }
+      } catch (e) {} // healing is best-effort — it must never break a persisted publish
+    }
+    return jsonResponse({ ok: true, version, ...(rebake ? { rebake } : {}) });
   }
 
   if (op === "rollback" && request.method === "POST") {
