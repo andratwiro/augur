@@ -44,8 +44,8 @@ function makeSpace() {
   mkdirSync(proto2, { recursive: true });
   writeFileSync(path.join(proto2, "index.html"), "<!doctype html><title>World</title><p>hi</p>\n");
   git(dir, ["init", "-q", "-b", "main"]);
-  git(dir, ["config", "user.email", "rob@example.com"]);
-  git(dir, ["config", "user.name", "Rob"]);
+  git(dir, ["config", "user.email", "dev@example.test"]);
+  git(dir, ["config", "user.name", "Test Dev"]);
   return { ws, dir, proto, proto2 };
 }
 
