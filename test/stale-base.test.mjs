@@ -102,7 +102,10 @@ test("staleness is reported before the unpublish guard — reconcile first, then
   assert.equal((await res.json()).error, "stale-base");
 });
 
-test("the check response now speaks protocol 3", async () => {
+test("the check response speaks at least protocol 4 — the self-update nudge rides on it", async () => {
+  // 3 brought the revert guard; 4 is client-side safe adoption (authored-bytes peel,
+  // internal files preserved). Every older client compares this number to its own and
+  // self-updates, so the echoed protocol going BACKWARDS would silence that nudge.
   const env = envWithLive();
   const res = await W.publishApi(
     new Request("https://x.test/__publish/alpha/check", {
@@ -113,5 +116,5 @@ test("the check response now speaks protocol 3", async () => {
     new URL("https://x.test/__publish/alpha/check"),
     env);
   assert.equal(res.status, 200);
-  assert.equal((await res.json()).protocol, 3);
+  assert.ok((await res.json()).protocol >= 4);
 });

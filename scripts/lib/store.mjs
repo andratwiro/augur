@@ -108,4 +108,9 @@ export const ENGINE_ID = "_engine";
 //   1  the original digest protocol
 //   2  unpublish guard (`allowUnpublish`)
 //   3  revert guard (`baseVersion` + per-unit reconciliation)
-export const CLIENT_PROTOCOL = 3;
+//   4  safe adoption: the reconcile writes AUTHORED bytes back into the tree (full
+//      build-decoration peel) and never deletes internal files live can't testify
+//      about. A protocol-3 reconcile wrote dist-baked pages into a space repo as one
+//      person's authorship and deleted research material — an instance that has seen
+//      that once sets `minClientProtocol: 4` and old clients self-update on contact.
+export const CLIENT_PROTOCOL = 4;
