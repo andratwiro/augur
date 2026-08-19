@@ -3932,6 +3932,10 @@ async function assetApi(request, url, env) {
 // fallback: it persists via /__board to this instance's own KV).
 let RT_ORIGIN = "";
 function rtProxy(request, url, env) {
+  // Sandbox seal (offline mode without deploy creds): local KV alone is not a sandbox
+  // if the canvas still joins the shared rooms — board ops would half-escape while
+  // solo saves diverge locally. The flag beats a configured origin on purpose.
+  if (env && env.GV_RT_DISABLE) return jsonResponse({ error: "realtime-disabled" }, 501);
   if (!RT_ORIGIN) return jsonResponse({ error: "realtime-not-configured" }, 501);
   if (request.headers.get("Upgrade") !== "websocket") return jsonResponse({ error: "expected-websocket" }, 426);
   // Re-wrap so a header can be added; the Upgrade header and the socket handling ride
@@ -4818,6 +4822,6 @@ export const __testables = {
   pathOwnedBySpace, isPublishablePublicPrefix, removedPublicPrefixes, publishApi, LOGIN_MAX_FAILS,
   isPrefixBacked, backedPublicPrefixes,
   isPublicPath, isTrackPath, isRestrictedPath, versionFor, brandMark,
-  boardApi, canvasesApi, virtualCanvas, CANVASES_KEY, BOARD_PREFIX, BOARD_MAX_BYTES,
+  boardApi, canvasesApi, virtualCanvas, rtProxy, CANVASES_KEY, BOARD_PREFIX, BOARD_MAX_BYTES,
   composeChrome, renderAppChrome, renderSpaceContextScript, __setChromeTestState,
 };

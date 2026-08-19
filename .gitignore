@@ -5,7 +5,11 @@ node_modules/
 *.log
 
 # Local deploy secrets — NEVER commit. Copy .env.deploy.example → .env.deploy
+# The wildcard also catches parked copies (.env.deploy.online, .env.deploy.bak…) —
+# a renamed-for-sandbox creds file must not become committable by its new name.
 .env.deploy
+.env.deploy.*
+!.env.deploy.example
 .env*.local
 .dev.vars*
 

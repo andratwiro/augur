@@ -12,6 +12,11 @@
 //      the REAL production KV via a REST shim (LIVE_KV below), so overlay edits made offline
 //      are live for everyone — intentional (offline editing, shared live overlay). Rename
 //      .env.deploy for a safe local-only KV sandbox (it then logs `KV: local`).
+//      Canvas realtime follows the same split: live KV + RT_SHARED_SECRET in .env.deploy
+//      → boards join the instance's real rooms; sandbox → realtime disabled outright
+//      (GV_RT_DISABLE), so a sandbox board can't broadcast into shared prod rooms.
+//      wrangler is supervised: a workerd crash respawns it (crash-loop cutoff in
+//      lib/offline-respawn.mjs) instead of killing the whole offline server.
 //   3. Watches the build inputs (the design system, the workspace, build.js, the
 //      worker) and rebuilds on any change. Each build stamps a fresh BUILD_ID into
 //      dist/_worker.js; wrangler reloads the worker, and the page's live-reload poller
@@ -24,6 +29,7 @@ import { watch, existsSync, readFileSync, readdirSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { findShellDir } from "./lib/instance.mjs";
+import { respawnDelay } from "./lib/offline-respawn.mjs";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const PORT = process.env.OFFLINE_PORT || "8788";
@@ -52,6 +58,16 @@ const LIVE_KV_BINDINGS = LIVE_KV ? [
   "--binding", `GV_KV_ACCOUNT=${DEPLOY_ENV.CLOUDFLARE_ACCOUNT_ID}`,
   "--binding", `GV_KV_NS=${DEPLOY_ENV.GV_KV_NS}`,
 ] : [];
+// Realtime posture must MATCH the KV posture, or the two halves of a board's
+// persistence diverge silently. Live KV + the instance's shared secret → the canvas
+// joins the real rooms through /__rt (the secret gates the realtime worker; without
+// it every join is a 403 and the canvas quietly degrades to solo). Local-sandbox KV →
+// realtime is DISABLED outright (GV_RT_DISABLE, honoured by rtProxy), because a
+// "sandbox" whose boards still broadcast into the shared prod rooms is not a sandbox.
+const RT_SECRET = LIVE_KV && DEPLOY_ENV.RT_SHARED_SECRET;
+const RT_BINDINGS = RT_SECRET
+  ? ["--binding", `RT_SHARED_SECRET=${DEPLOY_ENV.RT_SHARED_SECRET}`]
+  : LIVE_KV ? [] : ["--binding", "GV_RT_DISABLE=1"];
 // Build from the canonical EDIT-HERE clones, not the pinned nested submodules.
 // One repo per space: a maintainer workspace puts each space repo — a self-contained
 // bundle with that space's design system AND prototypes at its root — as a sibling of
@@ -146,16 +162,45 @@ log(`serving on http://localhost:${PORT}  (Ctrl-C to stop)`);
 log(LIVE_KV
   ? "KV: \x1b[1mLIVE\x1b[0m\x1b[35m — comments/pins/status/renames read & write PRODUCTION KV (prototypes stay local)"
   : "KV: local (.env.deploy with Cloudflare creds absent → safe local sandbox)");
-const wrangler = spawn(
-  "npx",
-  ["--yes", "wrangler", "pages", "dev", "dist",
-    "--kv", "COMMENTS",
-    ...LIVE_KV_BINDINGS,
-    "--port", PORT,
-    "--compatibility-date", "2024-09-01",
-    "--persist-to", ".wrangler/state"],
-  { cwd: ROOT, stdio: "inherit" },
-);
+log(RT_SECRET
+  ? "realtime: LIVE — canvas boards join the instance's real rooms through /__rt"
+  : LIVE_KV
+    ? "realtime: \x1b[1mUNAVAILABLE\x1b[0m\x1b[35m — no RT_SHARED_SECRET in .env.deploy; canvas boards run SOLO (saves still land in prod KV)"
+    : "realtime: disabled (sandbox) — canvas boards run solo against local KV");
+let wrangler = null;
+let stopping = false;
+const crashTimes = [];
+function spawnWrangler() {
+  wrangler = spawn(
+    "npx",
+    ["--yes", "wrangler", "pages", "dev", "dist",
+      "--kv", "COMMENTS",
+      ...LIVE_KV_BINDINGS,
+      ...RT_BINDINGS,
+      "--port", PORT,
+      "--compatibility-date", "2024-09-01",
+      "--persist-to", ".wrangler/state"],
+    { cwd: ROOT, stdio: "inherit" },
+  );
+  // A workerd crash must not take the whole offline server with it — every open tab
+  // would lose its save rail AND its room at once, and unsaved board edits would sit
+  // in browser memory until someone noticed the port was dead. Respawn instead, with
+  // a crash-loop cutoff (policy in lib/offline-respawn.mjs) so an unstartable worker
+  // (port taken, broken build) fails loudly rather than restart-storming.
+  wrangler.on("close", (code) => {
+    if (stopping) process.exit(code ?? 0);
+    const now = Date.now();
+    const delay = respawnDelay(crashTimes, now);
+    crashTimes.push(now);
+    if (delay === null) {
+      log(`wrangler exited (${code}) — crash loop, giving up. Fix the cause and restart.`);
+      process.exit(code ?? 1);
+    }
+    log(`wrangler exited (${code}) — respawning in ${delay / 1000}s`);
+    setTimeout(spawnWrangler, delay);
+  });
+}
+spawnWrangler();
 
 // ── watch inputs, debounce, rebuild ──────────────────────────────────────────
 let timer = null;
@@ -180,9 +225,9 @@ log(`watching ${WATCH.length} input paths for changes`);
 // ── teardown ─────────────────────────────────────────────────────────────────
 function shutdown() {
   log("stopping.");
-  wrangler.kill("SIGINT");
-  process.exit(0);
+  stopping = true;
+  if (wrangler) wrangler.kill("SIGINT");
+  else process.exit(0);
 }
 process.on("SIGINT", shutdown);
 process.on("SIGTERM", shutdown);
-wrangler.on("close", (code) => { log(`wrangler exited (${code})`); process.exit(code ?? 0); });

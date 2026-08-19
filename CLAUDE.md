@@ -198,7 +198,13 @@ illustratively).**
 It auto-detects a sibling deploy shell's `identity.json` (login gate ON, same as live);
 without one the gate is open. **⚠️ If `.env.deploy` holds real KV credentials, the
 offline worker reads/writes the PRODUCTION KV** (comments/pins/statuses are live for
-everyone); rename `.env.deploy` for a local-only sandbox (logs `KV: local`). Only one
+everyone); rename `.env.deploy` for a local-only sandbox (logs `KV: local`). Canvas
+realtime follows the same split: live KV **plus `RT_SHARED_SECRET` in `.env.deploy`**
+joins the instance's real rooms (without the secret the realtime worker refuses the
+join and boards silently run solo — saves still land in prod KV); sandbox mode
+disables realtime outright (`GV_RT_DISABLE`), so sandbox boards never broadcast into
+shared rooms. The wrangler child is supervised — a workerd crash respawns it (loop
+cutoff in `scripts/lib/offline-respawn.mjs`) instead of killing the server. Only one
 offline server needs to run regardless of how many agents edit.
 
 ## Worker gate rules (list public overlay assets in `isPublicPath()`)

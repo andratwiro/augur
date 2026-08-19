@@ -369,7 +369,11 @@ hour's board edits existed only on screen.)
   documented at the top of its `index.js`. Redeploy it yourself when you touch it.
 - `src/_worker.js` `rtProxy` — `/__rt` proxies the WebSocket same-origin to that
   worker (no hardcoded URL; works offline too, where it reaches the REAL prod
-  rooms — same live-KV-while-offline posture as the overlay data).
+  rooms — same live-KV-while-offline posture as the overlay data — **but only when
+  `.env.deploy` also carries `RT_SHARED_SECRET`**: a secret-gated realtime worker
+  403s a proxy without it and the canvas silently degrades to solo). In offline
+  SANDBOX mode (no KV creds) the proxy is sealed shut (`GV_RT_DISABLE` → 501), so
+  sandbox boards can't half-escape into the shared prod rooms.
 - `src/canvas/canvas.js` "multiplayer" section — the client. **No hooks in the
   mutation paths**: a 120ms diff tick compares each node against a shadow signature
   (long strings collapsed, so image boards stay cheap) and broadcasts
