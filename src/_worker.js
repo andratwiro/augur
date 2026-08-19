@@ -2220,6 +2220,10 @@ async function publishApi(request, url, env) {
       filesUnchanged,
       liveSource: cur && cur.source
         ? { sha: cur.source.sha || null, dirty: !!cur.source.dirty } : null,
+      // Which engine baked what is live. filesUnchanged alone is not "no-op": an
+      // engine change that happens to bake identical bytes still needs a commit to
+      // advance builtWithEngine, or the drift alarm cries wolf forever after.
+      liveBuiltWith: (cur && cur.builtWith && cur.builtWith.engine) || null,
       protocol: PUBLISH_PROTOCOL,
       // The floor, so a client can find out it is too old BEFORE it spends a blob
       // upload finding out at commit. Advisory here, enforced there — same split as

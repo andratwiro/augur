@@ -696,10 +696,16 @@ async function publishOne(id, sourceDir) {
     if (DRY) return null;
 
     // True no-op: live already holds these exact files AND this exact provenance
-    // (sha + dirty) — a commit would bump the version without changing anything.
+    // (sha + dirty) AND was baked by this same engine — a commit would bump the
+    // version without changing anything. When only the ENGINE differs (identical
+    // bytes from a newer engine — worker-only changes do this), commit anyway:
+    // zero blobs upload, and builtWithEngine advances so the chrome-drift check
+    // stays truthful instead of re-flagging this space on every deploy.
     if (check.filesUnchanged && check.liveSource
       && check.liveSource.sha === manifest.source.sha
-      && !!check.liveSource.dirty === !!manifest.source.dirty) {
+      && !!check.liveSource.dirty === !!manifest.source.dirty
+      && (!check.liveBuiltWith || !(manifest.builtWith && manifest.builtWith.engine)
+        || check.liveBuiltWith === manifest.builtWith.engine)) {
       log(`${id}: unchanged — commit skipped (live v${check.liveVersion})`);
       await writePubCache(id, { version: check.liveVersion, files, source: manifest.source, protocol: check.protocol || 0, unresolved: [] });
       return check.liveVersion;

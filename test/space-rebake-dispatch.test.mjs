@@ -153,3 +153,21 @@ test("dispatch channel unconfigured: publish still succeeds and says so", async 
   assert.equal(res.status, 200);
   assert.equal((await res.json()).rebake, "unconfigured");
 });
+
+test("check reports liveBuiltWith, so a re-bake with identical output can restamp instead of skipping", async () => {
+  // Without this field the client's "unchanged — commit skipped" fires even when
+  // the live bake came from a DIFFERENT engine that happens to produce identical
+  // bytes — leaving builtWithEngine stale forever and the drift alarm crying wolf.
+  const res = await W.publishApi(
+    new Request("https://x.test/__publish/alpha/check", {
+      method: "POST",
+      headers: { Authorization: "Bearer tok", "content-type": "application/json" },
+      body: JSON.stringify({ files: LIVE.files }),
+    }),
+    new URL("https://x.test/__publish/alpha/check"),
+    baseEnv());
+  assert.equal(res.status, 200);
+  const body = await res.json();
+  assert.equal(body.filesUnchanged, true);
+  assert.equal(body.liveBuiltWith, ENGINE_SHA);
+});
