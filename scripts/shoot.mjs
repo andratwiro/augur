@@ -113,7 +113,7 @@ async function shootLiveCanvas(browser, dir, rel) {
       // Editing chrome (toolbar/topbar/zoom — all inside #gvc-ui) is not board
       // content; frame the whole board rather than whatever camera was saved last.
       await page.addStyleTag({ content: "#gvc-ui { display: none !important; }" });
-      await page.evaluate(() => { try { window.GVCanvas.fit(); } catch {} });
+      await page.evaluate(() => { try { window.GVCanvas.fit({ cover: true }); } catch {} });
       await page.waitForTimeout(700); // fit() animates ~320ms; let tiles re-rasterize
       await page.screenshot({ path: tmp, clip: { x: 0, y: 0, ...VIEWPORT } });
       const png = await fs.stat(tmp).catch(() => null);

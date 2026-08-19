@@ -4450,7 +4450,10 @@
   // Frame the whole board: union every node's box and fly there. Public because
   // anything rendering a board cold (a poster shot, a share landing with no target)
   // wants "show me everything", and only the engine knows every node's rect.
-  function fitAll() {
+  // {cover:true} fills the viewport instead (centered, excess cropped, still capped
+  // at 1:1) — what a fixed-size poster wants, where contain would shrink a wide
+  // board to a strip in dead space.
+  function fitAll(opts) {
     var r = null;
     for (var i = 0; i < board.nodes.length; i++) {
       var b = anyRect(board.nodes[i]);
@@ -4459,7 +4462,14 @@
         ? { x: Math.min(r.x, b.x), y: Math.min(r.y, b.y), x2: Math.max(r.x2, b.x + b.w), y2: Math.max(r.y2, b.y + b.h) }
         : { x: b.x, y: b.y, x2: b.x + b.w, y2: b.y + b.h };
     }
-    if (r) flyToRect({ x: r.x, y: r.y, w: r.x2 - r.x, h: r.y2 - r.y });
+    if (!r) return;
+    if (opts && opts.cover) {
+      var pad = 40;
+      var s = Math.min(1, Math.max((innerWidth - pad) / (r.x2 - r.x), (innerHeight - pad) / (r.y2 - r.y)));
+      flyTo((r.x + r.x2) / 2, (r.y + r.y2) / 2, s);
+    } else {
+      flyToRect({ x: r.x, y: r.y, w: r.x2 - r.x, h: r.y2 - r.y });
+    }
   }
 
   // ---- public API for the comment overlay + tools --------------------------
