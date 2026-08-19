@@ -540,8 +540,14 @@ function dieOutdated(id, minProtocol) {
 async function publishOne(id, sourceDir) {
   if (id !== "_engine") refuseShallow(sourceDir);
   const fetchBlob = async (h) => {
-    try { return Buffer.from(await (await req(api(`${id}/blob/${h}`))).arrayBuffer()); }
-    catch (e) { return null; }
+    // Adoption materializes units blob by blob — hundreds of reads back to back —
+    // and a single transient store hiccup aborted the whole publish (seen twice on
+    // one run, different blobs, both readable seconds later). Retry before giving up.
+    for (let t = 1; t <= 3; t++) {
+      try { return Buffer.from(await (await req(api(`${id}/blob/${h}`))).arrayBuffer()); }
+      catch (e) { if (t < 3) await new Promise((r) => setTimeout(r, 600 * t)); }
+    }
+    return null;
   };
   // Set once the live store has been reconciled against this tree; carried across
   // loop attempts (a rebuild re-reads the manifest, a stale-base retry re-checks).
