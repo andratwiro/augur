@@ -6341,6 +6341,9 @@ async function discoverSpaces() {
       name: meta.name || titleCase(e.name),
       default: !!meta.default,
       badge: meta.badge || "",
+      // One line for the front door's link preview (og:description on the gate) when
+      // this is the default space. Empty ⇒ the worker's engine tagline.
+      description: typeof meta.description === "string" ? meta.description.trim() : "",
       // Admin-only space: the switcher still lists it for everyone (spaceSwitcher()
       // renders every space unconditionally); the gate is the worker, which seals the
       // space's base path (RESTRICTED_BASES) so a non-admin who clicks through is
@@ -6719,6 +6722,9 @@ async function main() {
   NAV_STATE.spaces = spaces.map((s) => ({
     id: s.id, name: s.name, default: s.default, badge: s.badge, base: s.default ? "" : `/${s.id}`,
     adminOnly: s.adminOnly,
+    // Rides to the worker (routing.json + manifest space entry) for the gate's link
+    // preview — see previewHead() in _worker.js.
+    description: s.description || "",
     // Carried so the shared chrome renderer (build + serve worker) reproduces a space's
     // custom Projects label without a build global — renderAppChrome reads it off the
     // active space entry. Empty ⇒ the "Projects" default.

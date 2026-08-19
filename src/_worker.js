@@ -1332,6 +1332,48 @@ function brandMark() {
     : AUGUR_MARK_SVG;
 }
 
+// The engine's own one-line description, taken from the public repo's summary. The
+// default space's space.json "description" replaces it per instance (build.js carries
+// the field on the space entry, so it rides routing.json and published manifests alike).
+const ENGINE_TAGLINE = "Real, clickable prototypes and the design system they are built from, on one site with login, comments and live boards on top.";
+
+// <head> block for the gate: the <title> plus the meta an unfurl bot reads (a Notion
+// bookmark, a Slack/iMessage card). A gated instance's only public HTML is the gate,
+// so this IS the instance's link preview: the default space's name and description,
+// and the same public, KV-overridable /space-icon.png that brandMark() wears — an
+// icon changed from the admin panel updates the unfurl with no deploy. requestUrl
+// makes og:url/og:image absolute (unfurl bots require absolute image URLs); callers
+// without one simply get no og:url/og:image. robots stays noindex in the pages that
+// carry this: unfurlers read the meta regardless, search engines stay out.
+function previewHead(requestUrl) {
+  const def = SPACES.find((s) => s.default);
+  const name = (def && typeof def.name === "string" ? def.name : "").trim();
+  const desc = (def && typeof def.description === "string" ? def.description : "").trim() || ENGINE_TAGLINE;
+  let page = null;
+  try { page = new URL(requestUrl); } catch {}
+  const lines = [
+    `<title>${escapeHtml(name ? `${name} · Augur` : "Augur")}</title>`,
+    `<meta name="description" content="${escapeHtml(desc)}" />`,
+  ];
+  if (def) lines.push(`<link rel="icon" href="/space-icon.png" />`);
+  lines.push(
+    `<meta property="og:type" content="website" />`,
+    `<meta property="og:site_name" content="Augur" />`,
+    `<meta property="og:title" content="${escapeHtml(name || "Augur")}" />`,
+    `<meta property="og:description" content="${escapeHtml(desc)}" />`,
+  );
+  if (page) {
+    lines.push(`<meta property="og:url" content="${escapeHtml(page.origin + page.pathname)}" />`);
+    if (def) lines.push(`<meta property="og:image" content="${escapeHtml(page.origin + "/space-icon.png")}" />`);
+  }
+  lines.push(
+    `<meta name="twitter:card" content="summary" />`,
+    `<meta name="twitter:title" content="${escapeHtml(name || "Augur")}" />`,
+    `<meta name="twitter:description" content="${escapeHtml(desc)}" />`,
+  );
+  return lines.join("\n  ");
+}
+
 // GET /__invite?t=… — the set-password form. Deliberately says nothing about whether
 // the token is valid beyond "this link is no longer valid": no user enumeration.
 function invitePage(token, error, email) {
@@ -2872,7 +2914,7 @@ async function adminBackupApi(env, me) {
   });
 }
 
-function loginPage(redirect, error) {
+function loginPage(redirect, error, requestUrl) {
   const safeRedirect = String(redirect).replace(/"/g, "&quot;");
   return `<!doctype html>
 <html lang="en">
@@ -2880,7 +2922,7 @@ function loginPage(redirect, error) {
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="robots" content="noindex, nofollow" />
-  <title>Augur</title>
+  ${previewHead(requestUrl)}
   <link rel="preload" href="/fonts/inter-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin />
   <style>
     /* Self-hosted Inter (same woff2 the app ships) — no external font request, so the
@@ -2984,7 +3026,7 @@ function notFoundPage() {
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="robots" content="noindex, nofollow" />
-  <title>Not found · Augur</title>
+  <title>Not found · Augur</title>${SPACES.some((s) => s.default) ? `\n  <link rel="icon" href="/space-icon.png" />` : ""}
   <link rel="preload" href="/fonts/inter-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin />
   <style>
     :root {
@@ -4517,7 +4559,7 @@ export default {
         const email = form.get("email");
         const rlIds = loginRlIds(request, email);
         if (await loginThrottled(env, rlIds)) {
-          return htmlResponse(loginPage(redirect, "Too many attempts. Wait a few minutes and try again."), 429);
+          return htmlResponse(loginPage(redirect, "Too many attempts. Wait a few minutes and try again.", url.href), 429);
         }
         if (await loginSlowed(env, rlIds)) await new Promise((r) => setTimeout(r, LOGIN_SLOW_MS));
         const u = userByEmail(email);
@@ -4549,7 +4591,7 @@ export default {
         // reveal that a given address is on the roster and currently has no password;
         // for a team this size that is a worthwhile trade against nine people
         // re-checking a password manager for a credential we deleted.
-        return htmlResponse(loginPage(redirect, u && !real ? RESET_NOTICE : true), 401);
+        return htmlResponse(loginPage(redirect, u && !real ? RESET_NOTICE : true, url.href), 401);
       }
       // Legacy shared-password mode (no identity injected).
       const pass = (form.get("password") || "").toString();
@@ -4564,7 +4606,7 @@ export default {
           },
         });
       }
-      return htmlResponse(loginPage(redirect, true), 401);
+      return htmlResponse(loginPage(redirect, true, url.href), 401);
     }
 
     // These three data APIs key off a caller-supplied ?path=, and they are dispatched
@@ -4659,7 +4701,7 @@ export default {
     // visitor gets the login page. Skipped in legacy/open mode
     // (no users injected), same as the /admin gate.
     if (usersActive && isRestrictedPath(url.pathname)) {
-      if (!authed) return htmlResponse(loginPage(url.pathname + url.search, false), 200);
+      if (!authed) return htmlResponse(loginPage(url.pathname + url.search, false, url.href), 200);
       if (!me || me.role !== "admin") return Response.redirect(new URL("/", url).toString(), 303);
     }
 
@@ -4678,7 +4720,7 @@ export default {
     // validated at commit, but ordering makes that a second line of defence rather than
     // the only one.
     if (url.pathname === "/admin" || url.pathname.startsWith("/admin/")) {
-      if (!authed) return htmlResponse(loginPage(url.pathname + url.search, false), 200);
+      if (!authed) return htmlResponse(loginPage(url.pathname + url.search, false, url.href), 200);
       // Admin of ANY space is enough to reach the page — it scopes itself to a space
       // the caller actually administers, and the /__admin APIs re-check per space. A
       // global admin with no membership recorded administers everything, so this is
@@ -4737,7 +4779,7 @@ export default {
 
     // Otherwise show the login page, remembering where they were headed.
     // 200 (not 401) so password managers treat it as a normal login page.
-    return htmlResponse(loginPage(url.pathname + url.search, false), 200);
+    return htmlResponse(loginPage(url.pathname + url.search, false, url.href), 200);
   },
 };
 
@@ -4751,7 +4793,7 @@ export const __testables = {
   tokenFor, hmacToken, userToken, identify, effectiveSecret,
   mintInvite, readInvite, consumeInvite,
   invitePost, inviteGet, invitePage, setUserSecret, MIN_PASSWORD_LENGTH,
-  loginPage, RESET_NOTICE,
+  loginPage, RESET_NOTICE, previewHead, ENGINE_TAGLINE, notFoundPage,
   PBKDF2_ITERATIONS,
   INVITE_TTL_MS,
   adminUsersApi, adminBackupApi,

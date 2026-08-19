@@ -11,6 +11,9 @@ not restate it.
                              // /_build.json (lowercase [a-z0-9-]). The repo name is
                              // a free label.
   "name": "My Space",        // display name in the switcher / landing
+  "description": "…",        // one line for the site's link preview (the og:description
+                             // a Notion/Slack unfurl shows). Read from the DEFAULT
+                             // space only; empty ⇒ the engine's own tagline
   "default": true,           // exactly one space builds at the site ROOT;
                              // every other space serves under /<id>/
   "badge": "current",        // optional label rendered beside the name
