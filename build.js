@@ -719,13 +719,29 @@ function spaceDates(repoRoot) {
   let parsed = null;
   try {
     // -z: NUL-delimited (paths with spaces/quotes stay intact). Each commit emits a
-    // header record "\x01<epoch> <email>" followed by status records; a rename is
+    // header record "\x01<sha> <epoch> <email>" followed by status records; a rename is
     // "R<score>" NUL <old> NUL <new>.
-    const raw = execFileSync("git", ["-C", repoRoot, "log", "-M", "--name-status", "-z", "--format=%x01%ct %ae"], {
+    const raw = execFileSync("git", ["-C", repoRoot, "log", "-M", "--name-status", "-z", "--format=%x01%H %ct %ae"], {
       encoding: "utf8",
       stdio: ["ignore", "pipe", "ignore"],
       maxBuffer: 64 * 1024 * 1024,
     });
+    // A SHALLOW clone's boundary ("graft") commits are not history — git presents each
+    // one as the ENTIRE TREE added in a single commit, crediting its author with every
+    // file in the repo at that date. A space published from such a clone stamped one
+    // recent date on every card and put the boundary commit's author on every face
+    // pile site-wide (measured 2026-08-19, a collaborator publishing from a --depth
+    // clone). The graft hashes are exactly the contents of .git/shallow; commits in
+    // that set are the FLOOR of the clone, not edits, and are skipped — folders whose
+    // real history lies below the floor honestly fall back to filesystem mtime.
+    let grafts = new Set();
+    try {
+      const sp = execFileSync("git", ["-C", repoRoot, "rev-parse", "--git-path", "shallow"], {
+        encoding: "utf8", stdio: ["ignore", "pipe", "ignore"],
+      }).trim();
+      const abs = path.isAbsolute(sp) ? sp : path.join(repoRoot, sp);
+      grafts = new Set(readFileSync(abs, "utf8").split("\n").map((s) => s.trim()).filter(Boolean));
+    } catch { /* no shallow file — a full clone */ }
     const alias = new Map();   // historical path → today's path
     const file = new Map();    // today's path → {t, email} of last real change
     const by = new Map();      // today's path (file OR dir) → Map<email, {n, t}> commit tally
@@ -756,8 +772,9 @@ function spaceDates(repoRoot) {
       const cut = chunk.indexOf("\0");
       if (cut === -1) continue;
       const head = chunk.slice(0, cut).trim().split(" ");
-      const t = Number(head[0]) * 1000;
-      const email = (head[1] || "").toLowerCase();
+      if (grafts.has(head[0])) continue; // a shallow boundary is the clone's floor, not an edit
+      const t = Number(head[1]) * 1000;
+      const email = (head[2] || "").toLowerCase();
       const tokens = chunk.slice(cut + 1).split("\0");
       const touched = [];
       for (let i = 0; i < tokens.length; i++) {

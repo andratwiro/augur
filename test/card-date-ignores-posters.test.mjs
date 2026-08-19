@@ -11,7 +11,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
-import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, rmSync } from "node:fs";
+import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, rmSync, utimesSync, readdirSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -95,4 +95,38 @@ test("the filter is precise: a real edit riding alongside a poster still counts"
     assert.equal(vm["/demo/hello/"], String(SEC(HUMAN) * 1000), "hello only got a poster — stays at the human date");
     assert.equal(vm["/demo/world/"], String(SEC(MIXED) * 1000), "world got a real edit — advances, poster in the same commit notwithstanding");
   } finally { rmSync(ws, { recursive: true, force: true }); }
+});
+
+// A shallow clone's graft commit is not history. git presents the boundary commit of a
+// --depth clone as the ENTIRE TREE added at once — so a space published from such a
+// clone credited that commit's author with every folder and stamped its date on every
+// card ("everything edited just now, by one person", measured live 2026-08-19). The
+// graft must be skipped: commits inside the clone still count; folders whose history
+// lies below the floor fall back to filesystem mtime instead of inheriting the lie.
+test("a shallow clone's graft commit is not history", () => {
+  const { ws, dir, proto2 } = makeSpace();
+  const ws2 = mkdtempSync(path.join(tmpdir(), "card-date-shallow-"));
+  try {
+    const OLD = "2021-03-15T12:00:00Z", RECENT = "2024-09-20T12:00:00Z", FSTIME = "2019-06-01T00:00:00Z";
+    git(dir, ["add", "-A"], OLD);
+    git(dir, ["commit", "-q", "-m", "everything"], OLD);            // becomes the graft
+    writeFileSync(path.join(proto2, "index.html"), "<!doctype html><title>World</title><p>edited</p>\n");
+    git(dir, ["add", "-A"], RECENT);
+    git(dir, ["commit", "-q", "-m", "edit world"], RECENT);         // inside the clone — must still count
+    execFileSync("git", ["clone", "--quiet", "--depth", "2", "file://" + dir, path.join(ws2, "acme")], { stdio: ["ignore", "pipe", "pipe"] });
+    // pin every file's mtime so the below-the-floor fallback is deterministic
+    const stamp = new Date(FSTIME);
+    (function touch(d) {
+      for (const e of readdirSync(d, { withFileTypes: true })) {
+        if (e.name === ".git") continue;
+        const p = path.join(d, e.name);
+        if (e.isDirectory()) touch(p); else utimesSync(p, stamp, stamp);
+      }
+    })(path.join(ws2, "acme"));
+
+    const vm = versionMap(ws2);
+    assert.equal(vm["/demo/world/"], String(SEC(RECENT) * 1000), "a real commit inside the shallow clone still dates its card");
+    assert.equal(vm["/demo/hello/"], String(SEC(FSTIME) * 1000),
+      "a folder below the shallow floor falls back to fs mtime — never the graft author's wholesale stamp");
+  } finally { rmSync(ws, { recursive: true, force: true }); rmSync(ws2, { recursive: true, force: true }); }
 });
