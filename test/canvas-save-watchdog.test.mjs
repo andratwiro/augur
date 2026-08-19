@@ -40,8 +40,10 @@ test("the save POST aborts instead of hanging forever", () => {
 });
 
 test("a dead rail restarts itself: the watchdog kicks save() when dirty, roomless and idle", () => {
-  const i = JS.indexOf("saveDirtyTicks");
-  assert.ok(i > 0, "the save watchdog still exists");
+  const decl = JS.indexOf("saveDirtyTicks");
+  assert.ok(decl > 0, "the save watchdog still exists");
+  const i = JS.indexOf("setInterval(function () {", decl);
+  assert.ok(i > 0, "the watchdog interval still exists");
   const wd = JS.slice(i, JS.indexOf("}, 5000)", i));
   assert.ok(wd.length > 0 && wd.length < 2000, "the watchdog runs on a 5s interval");
   assert.match(wd, /mpLiveFresh\(\)/, "the room being live must stand the watchdog down");
@@ -50,10 +52,16 @@ test("a dead rail restarts itself: the watchdog kicks save() when dirty, roomles
 });
 
 test("a rail that isn't landing saves says so — persistently, not as a toast", () => {
-  assert.match(JS, /gvc-savewarn/, "the unsaved-changes pill exists in the js");
+  assert.match(JS, /gvc-savewarn/, "the unsaved-changes chip exists in the js");
   assert.match(CSS, /#gvc-savewarn/, "…and in the css");
   assert.match(CSS, /#gvc-savewarn\.show/, "…with a shown state");
-  // the pill clears the moment a save confirms — a stale warning is as bad as none
+  // it floats bottom-right, out of the way of the work — centre-screen blocked the board
+  assert.match(CSS, /#gvc-savewarn\s*{[^}]*right:/, "the chip anchors right, not centre-screen");
+  assert.doesNotMatch(CSS.match(/#gvc-savewarn\s*{[^}]*}/)[0], /left:/, "…and never centre");
+  // recovery is shown, not implied: a warning that just vanishes reads as \"still broken?\"
+  assert.match(CSS, /#gvc-savewarn\.ok/, "the green recovery-flash state exists");
+  assert.match(JS, /Offline — changes not saved/, "no network at all gets named as the reason");
+  // the chip clears the moment a save confirms — a stale warning is as bad as none
   const ok = JS.indexOf("lastSavedSig = sig");
   assert.ok(ok > 0, "the save-confirmed path still exists");
   assert.match(JS.slice(ok, ok + 200), /saveWarn\(false\)/, "a confirmed save must clear the warning");

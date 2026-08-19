@@ -349,8 +349,11 @@ watchdog): a save POST aborts after 20s instead of hanging forever, the in-fligh
 guard is a timestamp that expires rather than a boolean that can stick, and a 5s
 watchdog re-kicks the rail whenever the doc holds unconfirmed edits with no live
 room and nothing in flight, scheduled, or backing off. Once the dirt survives two
-ticks the client shows a persistent "Changes not saved — retrying" pill (cleared
-by the next 2xx or a live room), and closing the tab while it shows asks first.
+ticks the client shows a floating bottom-right chip — "Changes not saved —
+retrying", or "Offline — changes not saved" when the browser reports no network —
+that flips to a brief green "Saved" when the dirt lands (cleared by the next 2xx
+or a live room). Closing the tab while the warning shows asks first, and
+regaining connectivity kicks a save immediately instead of waiting out a backoff.
 (Born of a measured failure: a dev-server restart hung one save fetch, the old
 boolean guard then suppressed every save for the rest of the session, and an
 hour's board edits existed only on screen.)

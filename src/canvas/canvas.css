@@ -486,9 +486,11 @@ svg.stk { display: block; overflow: visible; }
 /* sits ABOVE the bottom toolbar pill, not on it */
 #gvc-toast { position: fixed; z-index: 90; left: 50%; bottom: 104px; transform: translate(-50%, 8px); background: #1f2430; color: #e8eaee; font-size: 13px; padding: 9px 15px; border-radius: 10px; box-shadow: 0 10px 30px rgba(0, 0, 0, .34); white-space: nowrap; opacity: 0; pointer-events: none; transition: opacity .16s, transform .16s; }
 #gvc-toast.show { opacity: 1; transform: translate(-50%, 0); }
-/* the save watchdog's pill — persistent while edits aren't landing, unlike the toast above */
-#gvc-savewarn { position: fixed; z-index: 90; left: 50%; bottom: 148px; transform: translate(-50%, 8px); background: #3a2024; color: #ffd9dd; border: 1px solid #b4525a; font-size: 13px; padding: 8px 14px; border-radius: 10px; box-shadow: 0 10px 30px rgba(0, 0, 0, .34); white-space: nowrap; opacity: 0; pointer-events: none; transition: opacity .16s, transform .16s; }
-#gvc-savewarn.show { opacity: 1; transform: translate(-50%, 0); }
+/* the save watchdog's chip — floating bottom-right, persistent while edits aren't landing,
+   out of the way of the work (unlike the toast above); green flash when the dirt lands */
+#gvc-savewarn { position: fixed; z-index: 90; right: 16px; bottom: 24px; transform: translateY(8px); background: #3a2024; color: #ffd9dd; border: 1px solid #b4525a; font-size: 12px; font-weight: 600; padding: 7px 13px; border-radius: 999px; box-shadow: 0 6px 20px rgba(0, 0, 0, .28); white-space: nowrap; opacity: 0; pointer-events: none; transition: opacity .16s, transform .16s, background .16s, border-color .16s; }
+#gvc-savewarn.show { opacity: 1; transform: translateY(0); }
+#gvc-savewarn.ok { background: #1d3327; color: #c9f0d6; border-color: #3f8f5f; }
 @keyframes gvc-linkpulse { 0%, 100% { box-shadow: 0 0 0 0 rgba(123, 97, 255, 0); } 22% { box-shadow: 0 0 0 7px rgba(123, 97, 255, .42); } 60% { box-shadow: 0 0 0 4px rgba(123, 97, 255, .22); } }
 .gvc-node.gvc-linked { animation: gvc-linkpulse 1.7s ease-out; }
 

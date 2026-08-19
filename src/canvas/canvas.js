@@ -4315,12 +4315,32 @@
   // room is persisting, kick the rail unless it's provably busy (in flight, scheduled, or
   // backing off); and once the dirt survives two ticks, SAY it. The pill is persistent
   // where a toast is missable, and it clears the moment a save confirms or a room adopts.
-  var saveWarnEl = null, saveDirtyTicks = 0, loadFailSig = null;
+  var saveWarnEl = null, saveWarnOkTimer = null, saveDirtyTicks = 0, loadFailSig = null;
+  // A floating chip, bottom-right, out of the way of the work: red while edits aren't
+  // landing (with the browser's own word on WHY — no network vs a server not answering),
+  // and a brief green "Saved" when the dirt finally lands, because a warning that just
+  // vanishes reads as "still broken?". Hidden entirely while everything is normal.
   function saveWarn(on) {
     saveDirtyTicks = on ? saveDirtyTicks : 0;
-    if (on && !saveWarnEl) { saveWarnEl = el("div", { id: "gvc-savewarn" }); saveWarnEl.textContent = "Changes not saved — retrying"; ui.appendChild(saveWarnEl); }
-    if (saveWarnEl) saveWarnEl.classList.toggle("show", !!on);
+    if (!saveWarnEl) {
+      if (!on) return;
+      saveWarnEl = el("div", { id: "gvc-savewarn" }); ui.appendChild(saveWarnEl);
+    }
+    if (on) {
+      if (saveWarnOkTimer) { clearTimeout(saveWarnOkTimer); saveWarnOkTimer = null; }
+      saveWarnEl.classList.remove("ok");
+      saveWarnEl.textContent = navigator.onLine === false ? "Offline — changes not saved" : "Changes not saved — retrying";
+      saveWarnEl.classList.add("show");
+      return;
+    }
+    if (saveWarnEl.classList.contains("show") && !saveWarnEl.classList.contains("ok")) {
+      saveWarnEl.classList.add("ok");
+      saveWarnEl.textContent = "Saved";
+      saveWarnOkTimer = setTimeout(function () { saveWarnOkTimer = null; if (saveWarnEl) saveWarnEl.classList.remove("show", "ok"); }, 1800);
+    }
   }
+  // the moment connectivity returns is the moment to stop waiting out a backoff
+  window.addEventListener("online", function () { if (loadOk && !mpLiveFresh() && docSig() !== lastSavedSig) save(); });
   setInterval(function () {
     if (!loadSettled) return;
     // with loadOk false there is no confirmed signature — the stand-in rendered by the
@@ -4335,7 +4355,7 @@
   // The unload beacon below is fire-and-forget and can miss; while the pill is up, the board
   // on screen may be the only copy of the work — leaving should be a decision, not a default.
   window.addEventListener("beforeunload", function (e) {
-    if (saveWarnEl && saveWarnEl.classList.contains("show")) { e.preventDefault(); e.returnValue = ""; }
+    if (saveWarnEl && saveWarnEl.classList.contains("show") && !saveWarnEl.classList.contains("ok")) { e.preventDefault(); e.returnValue = ""; }
   });
   // The viewport is PER-USER — the room never syncs it — so it has no business in the shared
   // doc, where every pan and every zoom step used to trigger a full-document KV write AND
