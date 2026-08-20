@@ -99,6 +99,15 @@ Nothing in any of this asks a question, and nothing is ever silently reverted.
 A publish that lands between your check and your commit is caught by the store
 (`stale-base`) and re-evaluated automatically.
 
+Everything the reconcile writes into your tree (adopted folders, conflict
+forks) is committed **immediately and on its own**, with an
+`Augur-Mechanical: true` trailer — it is repo surgery, not your authorship, and
+the trailer is what keeps the build's date/credit pass from stamping your face
+and "edited just now" on every folder it touched. Your own uncommitted work is
+left exactly as it was. If that commit fails (no git identity, mid-merge), the
+publish warns and lists the paths: commit them yourself in a commit of their
+own, carrying the same trailer — never fold them into a commit with real work.
+
 ## The URL is the contract — mechanics are yours, not the user's
 
 When someone asks for a change, they expect it live at the URL you hand back, with

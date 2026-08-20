@@ -133,7 +133,12 @@ Comparisons tolerate what the build injects (og/twitter meta, marker-delimited
 overlay chrome, the title emoji): `stripVolatileHead` is the comparator, and it is
 why an untouched page never reads as an edit. `_engine` is exempt (no authored
 units). `ship` additionally fetch+merges BEFORE its publish, so the common stale
-case ships the union without the store guard ever firing.
+case ships the union without the store guard ever firing. **Reconcile tree writes
+are committed immediately, alone, with an `Augur-Mechanical: true` trailer**
+(`commitReconcileResidue`): they are repo surgery, and left uncommitted they ride
+into the publisher's next real commit, whereupon the build's date/credit pass
+stamps that person's face and "edited just now" on every folder the reconcile
+touched (2026-08-19, twice). The publisher's own uncommitted work is untouched.
 
 **Durability.** The store is the only copy of live content, and R2 has no
 point-in-time restore. In-store: manifest versions are never pruned and blobs are

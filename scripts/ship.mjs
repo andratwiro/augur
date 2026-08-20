@@ -280,10 +280,15 @@ async function reconcile({ alreadyLive }) {
     forks.push({ folder, fork, theirs });
   }
   git("add", "-A");
+  // Augur-Mechanical: this is repo surgery, and the build's date/credit pass must
+  // skip it — counting it would put the ship-runner's face on every folder the
+  // reconcile touched. (A merge commit is skipped anyway; the trailer makes it
+  // explicit rather than an accident of `git log`'s merge handling.)
   commit("-m",
     `Reconcile a live edit conflict in ${forks.map((f) => path.basename(f.folder)).join(", ")}\n\n` +
     forks.map((f) => `${f.folder} kept ${f.theirs}'s version; yours forked to ${f.fork}.`).join("\n") +
-    `\n\nResolved by \`augur ship\`: prototype HTML is not textually merged.`);
+    `\n\nResolved by \`augur ship\`: prototype HTML is not textually merged.\n\n` +
+    `Augur-Mechanical: true`);
   return { merged: true, forks };
 }
 

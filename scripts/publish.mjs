@@ -22,7 +22,7 @@ import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { findShellDir, deployConfig, originHost } from "./lib/instance.mjs";
-import { isAncestor, resolvePublish, applyManifestPatches } from "./lib/publish-resolve.mjs";
+import { isAncestor, resolvePublish, applyManifestPatches, commitReconcileResidue } from "./lib/publish-resolve.mjs";
 import { CLIENT_PROTOCOL, buildStamp } from "./lib/store.mjs";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
@@ -677,6 +677,7 @@ async function publishOne(id, sourceDir) {
           canTouchTree: !!targetSpace, who: whoFor(sourceDir),
         });
         if (resolution.changedTree) {
+          commitReconcileResidue({ dir: sourceDir, resolution, id, log });
           await runBuild(`${id}: rebuilding with adopted live content…`);
           continue; // re-read the manifest; patches (if any) apply next pass
         }

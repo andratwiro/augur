@@ -227,6 +227,7 @@ export async function resolvePublish({
   const patches = { files: {}, prefixes: [], versionMap: {}, dirty: false };
   const unresolved = [];
   const forks = [];
+  const treePaths = []; // sourceDir-relative paths this resolve wrote — the caller commits them mechanically
   let changedTree = false;
 
   const adoptViaPatch = (unit) => {
@@ -243,6 +244,7 @@ export async function resolvePublish({
     if (canTouchTree && my.mode !== "none") {
       const dir = await materializeUnit({ unit: u, live, sourceDir, spaceBase, fetchBlob });
       changedTree = true;
+      treePaths.push(dir);
       log(`${id}: adopted ${u} from live (${theirName}'s work; now in your tree at ${dir}/)`);
     } else {
       adoptViaPatch(u);
@@ -264,6 +266,7 @@ export async function resolvePublish({
     if (!existsSync(mineAbs)) {
       const dir = await materializeUnit({ unit: u, live, sourceDir, spaceBase, fetchBlob });
       changedTree = true;
+      treePaths.push(dir);
       log(`${id}: adopted ${u} (contested but nothing local to fork; now at ${dir}/)`);
       continue;
     }
@@ -281,6 +284,7 @@ export async function resolvePublish({
       `folder. Nothing has been lost.\n`);
     await materializeUnit({ unit: u, live, sourceDir, spaceBase, fetchBlob });
     changedTree = true;
+    treePaths.push(mineDir, forkDir);
     forks.push({ unit: u, folder: mineDir, fork: forkDir, theirs: theirName });
     warn(`${id}: conflict on ${u} — kept ${theirName}'s version there; yours is now ${forkDir}/ (both will be live)`);
   }
@@ -294,6 +298,7 @@ export async function resolvePublish({
       mkdirSync(path.dirname(abs), { recursive: true });
       writeFileSync(abs, blob);
       changedTree = true;
+      treePaths.push(rel);
       log(`${id}: adopted ${p} from live (${theirName}'s newer version)`);
     } else {
       patches.files[p] = live.files[p];
@@ -319,7 +324,44 @@ export async function resolvePublish({
   }
 
   const hasPatches = patches.dirty || Object.keys(patches.files).length > 0;
-  return { acted: true, changedTree, patches: hasPatches ? patches : null, unresolved, forks };
+  return { acted: true, changedTree, patches: hasPatches ? patches : null, unresolved, forks, treePaths };
+}
+
+// Reconcile writes (adopted live folders, conflict forks) are repo surgery, not
+// authorship. Left uncommitted they ride into whoever's NEXT commit, and the
+// build's date/credit pass then stamps that person's face and "edited just now"
+// on every folder the reconcile touched (it happened twice on 2026-08-19). So
+// the caller commits the residue HERE, alone — exactly the paths the resolve
+// wrote — with the `Augur-Mechanical: true` trailer the credit pass skips. The
+// publisher's own uncommitted work stays uncommitted: a pathspec commit reads
+// the working tree for the named paths and nothing else, and leaves whatever
+// else is staged still staged.
+export function commitReconcileResidue({ dir, resolution, id, log }) {
+  const paths = [...new Set((resolution && resolution.treePaths) || [])];
+  if (!paths.length) return false;
+  const g = (...a) => execFileSync("git", ["-C", dir, ...a],
+    { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] });
+  try { g("rev-parse", "--git-dir"); } catch { return false; } // no repo — nothing to mis-credit
+  try {
+    g("add", "--", ...paths); // pathspec commits skip untracked files; adding first includes the forks
+    try { g("diff", "--cached", "--quiet", "--", ...paths); return false; } // nothing actually changed
+    catch { /* staged differences exist — commit them */ }
+    const forks = (resolution.forks || []).map((f) => f.fork);
+    g("commit",
+      "-m", `Publish reconcile: adopt live work${forks.length ? ` + fork ${forks.join(", ")}` : ""}`,
+      "-m", "Written by `augur publish` while reconciling this tree against the live space: " +
+            "adopted live folders and conflict forks, not this committer's authorship.",
+      "-m", "Augur-Mechanical: true",
+      "--", ...paths);
+    log(`${id}: reconcile residue committed on its own (Augur-Mechanical) — your uncommitted work is untouched`);
+    return true;
+  } catch (e) {
+    log(`${id}: ⚠ could not commit the reconcile residue (${String((e && e.message) || e).split("\n")[0]}).`);
+    log(`  AGENT: commit these paths in a commit of their OWN with an "Augur-Mechanical: true" trailer`);
+    log(`  (folded into a normal commit, the build credits the committer with every folder listed):`);
+    for (const p of paths) log(`    ${p}`);
+    return false;
+  }
 }
 
 export function applyManifestPatches(manifest, patches) {

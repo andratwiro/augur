@@ -16,6 +16,13 @@ The date is the day the update went live. The page works out "Today / 3 days ago
 
 ---
 
+## 2026-08-20 — Cards stop crediting the wrong person after a publish rescue
+When a publish has to rescue someone else's live work into your folder, that
+rescue is now filed away on its own, clearly labeled as machine housekeeping.
+Before, it could end up inside your next normal save — and then every card it
+touched showed your face and "edited just now", even though you never worked
+there.
+
 ## 2026-08-16 — Workspace settings, and a sidebar that says what it is
 The gear that used to sit under your own face is gone. Admin is now its own place
 in the sidebar, and it opens onto your workspace: the people in it, what's live,
