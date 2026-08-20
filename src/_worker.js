@@ -3751,6 +3751,7 @@ async function canvasesApi(request, url, env, me) {
       // name restores the board, so a mis-click never destroys anyone's work.
       delete map[path];
       await kv.put(CANVASES_KEY, JSON.stringify(map));
+      bustCanvasRegistry();
       return jsonResponse({ map });
     }
     // Rename in place: the display name changes, the path (and so the board doc)
@@ -3761,6 +3762,7 @@ async function canvasesApi(request, url, env, me) {
       if (!map[path] || !name) return jsonResponse({ error: "bad-input" }, 400);
       map[path].name = name;
       await kv.put(CANVASES_KEY, JSON.stringify(map));
+      bustCanvasRegistry();
       return jsonResponse({ map });
     }
 
@@ -3776,6 +3778,7 @@ async function canvasesApi(request, url, env, me) {
     if (await assetPathExists(env, new URL(path, url))) return jsonResponse({ error: "exists", path }, 409);
     map[path] = { name, by: me ? me.email : "", t: Date.now() };
     await kv.put(CANVASES_KEY, JSON.stringify(map));
+    bustCanvasRegistry();
     return jsonResponse({ map, path });
   }
   return jsonResponse({ error: "method-not-allowed" }, 405);
@@ -3843,6 +3846,29 @@ function canvasLoaderPage(name) {
 </html>`;
 }
 
+// The 404-path registry read, cached per isolate. Every asset miss lands in
+// virtualCanvas — every gated page an anonymous visitor opens, every genuinely
+// missing file — so an uncached read here is a steady KV consumer, and an UNCAUGHT
+// one is how the day the free-tier KV get() budget ran out (2026-08-20) turned
+// into error 1101 on those routes instead of the branded 404/login flow. A
+// throwing KV degrades: the last-read registry keeps serving if one was read (the
+// stamp is NOT advanced, so recovery is retried next call), fallthrough if not —
+// never a 500. Registry writes bust via bustCanvasRegistry(), so a just-created
+// canvas is live at once on its isolate; other isolates converge within the TTL.
+const CANVAS_REG_TTL_MS = 15_000;
+let canvasRegAt = 0;
+let canvasRegRaw = null;
+async function readCanvasRegistry(kv) {
+  if (!canvasRegAt || Date.now() - canvasRegAt >= CANVAS_REG_TTL_MS) {
+    try {
+      canvasRegRaw = await kv.get(CANVASES_KEY);
+      canvasRegAt = Date.now();
+    } catch (e) {}
+  }
+  return canvasRegRaw;
+}
+const bustCanvasRegistry = () => { canvasRegAt = 0; };
+
 // Serve a registered created-canvas path (null when the path isn't one). Called only
 // on asset 404s, so the extra kv.get never taxes a real page load. Bare
 // "/dir/slug" redirects to the trailing-slash form — the board doc and the room are
@@ -3855,9 +3881,10 @@ async function virtualCanvas(request, env, url) {
   if (p.endsWith("/index.html")) p = p.slice(0, -"index.html".length);
   const normalized = p.endsWith("/") ? p : p + "/";
   if (!CANVAS_DIR_RE.test(normalized)) return null;
-  const raw = await kv.get(CANVASES_KEY);
+  const raw = await readCanvasRegistry(kv);
   if (!raw) return null;
-  const entry = JSON.parse(raw)[normalized];
+  let entry;
+  try { entry = JSON.parse(raw)[normalized]; } catch (e) { return null; }
   if (!entry) return null;
   if (url.pathname !== normalized && !url.pathname.endsWith("/index.html")) {
     return Response.redirect(new URL(normalized, url).toString(), 301);
