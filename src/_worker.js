@@ -4326,6 +4326,10 @@ async function reviewExport(request, url, env) {
 // remarks older than 3 min are pruned on every write and the list is capped.
 const PITI_VIEW_KEY = "pt:view";
 const PITI_REMARKS_KEY = "pt:remarks";
+// Per-isolate poll cache — see the GET remarks path in pitiApi.
+const PITI_REMARKS_TTL_MS = 15_000;
+let pitiRemarksAt = 0;
+let pitiRemarksRaw = null;
 
 async function pitiApi(request, url, env) {
   const kv = kvFor(env);
@@ -4342,10 +4346,22 @@ async function pitiApi(request, url, env) {
       return jsonResponse({ view: raw ? JSON.parse(raw) : null });
     }
     // Browser polls the quips queued for its page (open). since=<last id seen>.
+    // Cached per isolate: every poll is a KV read on the daily quota, and open tabs
+    // keep whatever cadence their loaded piti.js shipped with — this cache is the
+    // only lever that reaches a stale tab (2026-08-20 quota outage). Remark/clear
+    // writes bust it, so delivery stays inside one client poll interval. A throwing
+    // KV serves the last-read list (the stamp is NOT advanced — recovery retries
+    // next poll), or empty — never a 500 at the cat.
     const path = clamp(url.searchParams.get("path") || "/", 600);
     const since = Number(url.searchParams.get("since")) || 0;
-    const raw = await kv.get(PITI_REMARKS_KEY);
-    const all = raw ? JSON.parse(raw) : [];
+    if (!pitiRemarksAt || Date.now() - pitiRemarksAt >= PITI_REMARKS_TTL_MS) {
+      try {
+        pitiRemarksRaw = await kv.get(PITI_REMARKS_KEY);
+        pitiRemarksAt = Date.now();
+      } catch (e) {}
+    }
+    let all;
+    try { all = pitiRemarksRaw ? JSON.parse(pitiRemarksRaw) : []; } catch (e) { all = []; }
     return jsonResponse({ remarks: all.filter((r) => r.path === path && r.id > since) });
   }
 
@@ -4394,6 +4410,7 @@ async function pitiApi(request, url, env) {
       });
       if (all.length > 24) all = all.slice(-24);
       await kv.put(PITI_REMARKS_KEY, JSON.stringify(all));
+      pitiRemarksAt = 0;
       return jsonResponse({ ok: true, id: all[all.length - 1].id });
     }
 
@@ -4401,6 +4418,7 @@ async function pitiApi(request, url, env) {
     if (body && body.type === "clear") {
       if (!authed) return jsonResponse({ error: "forbidden" }, 403);
       await kv.put(PITI_REMARKS_KEY, JSON.stringify([]));
+      pitiRemarksAt = 0;
       return jsonResponse({ ok: true });
     }
 
@@ -4875,5 +4893,5 @@ export const __testables = {
   isPublicPath, isTrackPath, isRestrictedPath, versionFor, brandMark,
   boardApi, canvasesApi, virtualCanvas, rtProxy, CANVASES_KEY, BOARD_PREFIX, BOARD_MAX_BYTES,
   composeChrome, renderAppChrome, renderSpaceContextScript, __setChromeTestState,
-  loadConfig, __setConfigTestState, __usersNow,
+  loadConfig, __setConfigTestState, __usersNow, pitiApi,
 };

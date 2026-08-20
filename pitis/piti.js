@@ -785,7 +785,13 @@
     if (isCommentable()) {
       publishView(true);
       pollRemarks();
-      pollTimer = setInterval(pollRemarks, 4000);                           // polling is a cheap GET
+      // Slow and visible-only: each poll is a KV READ on the instance's daily quota,
+      // and a forgotten background tab at the old 4s cadence burned ~21k reads/day
+      // doing nothing (part of the 2026-08-20 quota outage). onVis() below polls
+      // the instant the tab is foregrounded, so a returning user never waits.
+      pollTimer = setInterval(function () {
+        if (document.visibilityState === "visible") pollRemarks();
+      }, 30000);
       // Heartbeat refreshes view.ts so the agent knows you're still here — but it's a KV
       // WRITE, so keep it slow and only while the tab is visible (mind the write quota).
       // Screen changes still publish instantly via the observer below.
