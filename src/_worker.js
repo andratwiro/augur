@@ -400,6 +400,7 @@ function applyInstance(inst) {
 let CONFIG_LOADED = false;
 async function loadConfig(env) {
   if (!env || Date.now() - cfgAt < 1500) return;
+  const forced = !cfgAt; // a write handler busted the cache — roster must re-read now
   cfgAt = Date.now(); // stamp first — a failed load retries next tick, never stampedes
   // Bundle mode: instance config lives in the store (pushed via /__publish/
   // _instance/config) and routing derives from the live manifests.
@@ -412,7 +413,7 @@ async function loadConfig(env) {
       if (instObj) applyInstance(JSON.parse(await instObj.text()));
       applyDerivedRouting(manifests);
     } catch (e) {}
-    await applyRoster(env);
+    await applyRoster(env, forced);
     return;
   }
   if (!env.ASSETS) return;
@@ -442,7 +443,7 @@ async function loadConfig(env) {
     CHROME_POINTER = routing.chrome || null;
     RUNTIME_CHROME = !!routing.runtimeChrome;
   }
-  await applyRoster(env);
+  await applyRoster(env, forced);
 }
 
 // Legacy token derivation — SHA-256("gv:" + secret). Still ACCEPTED during migration
@@ -501,12 +502,35 @@ function mergeRoster(configUsers, roster) {
   return out;
 }
 
-async function applyRoster(env) {
+// The overlay reads ride their OWN clock, slower than the 1.5s config tick. Six KV
+// reads per tick was the site's dominant KV consumer (~4 reads/s under sustained
+// browsing ≈ 350k/day) and exhausted the free-tier daily get() budget, after which
+// every KV-touching route threw for the rest of the day (2026-08-20). The APPLY
+// still runs every tick — applyInstance resets USERS to the config list and counts
+// on the overlay landing on top — only the KV reads are cached. Freshness: any
+// admin write sets cfgAt = 0, which reaches here as `forced` and re-reads at once
+// on that isolate; other isolates converge within ROSTER_TTL_MS. None of this
+// touches auth: identify() resolves users:secrets per request, so a removal or
+// reset still bites immediately — the tombstone, not this overlay, is the boundary.
+const ROSTER_TTL_MS = 60_000;
+let rosterReadAt = 0;
+let rosterCache = null;
+// Test hooks: the cadence above is timing state a test can't reach otherwise.
+function __setConfigTestState({ cfgAt: c, rosterReadAt: r } = {}) {
+  if (c !== undefined) cfgAt = c;
+  if (r !== undefined) { rosterReadAt = r; if (!r) rosterCache = null; }
+}
+const __usersNow = () => USERS;
+async function applyRoster(env, forced) {
   try {
-    const [roster, avatars, names, roles, spaces, icons] = await Promise.all([
-      readRoster(env), readAvatars(env), readNames(env), readRoles(env), readSpaces(env),
-      readSpaceIcons(env),
-    ]);
+    if (forced || !rosterCache || Date.now() - rosterReadAt >= ROSTER_TTL_MS) {
+      rosterReadAt = Date.now();
+      rosterCache = await Promise.all([
+        readRoster(env), readAvatars(env), readNames(env), readRoles(env), readSpaces(env),
+        readSpaceIcons(env),
+      ]);
+    }
+    const [roster, avatars, names, roles, spaces, icons] = rosterCache;
     SPACE_ICONS = icons;
     SPACES = applySpaceIcons(SPACES, icons);
     USERS = applySpaces(
@@ -4824,4 +4848,5 @@ export const __testables = {
   isPublicPath, isTrackPath, isRestrictedPath, versionFor, brandMark,
   boardApi, canvasesApi, virtualCanvas, rtProxy, CANVASES_KEY, BOARD_PREFIX, BOARD_MAX_BYTES,
   composeChrome, renderAppChrome, renderSpaceContextScript, __setChromeTestState,
+  loadConfig, __setConfigTestState, __usersNow,
 };
