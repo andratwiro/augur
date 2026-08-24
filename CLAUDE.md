@@ -110,35 +110,32 @@ carries `allowUnpublish` (`augur publish|ship --allow-unpublish`) — the
 INSTANCE_SENTINELS rule widened from a path list to the whole public surface.
 Star-scope tokens included: a maintainer's stale tree removes as much as anyone's.
 
-**A publish may not silently REVERT either (protocol 3).** Same-page-set, older
-bytes was the guard's blind spot: a stale tree republishing an existing prototype
-quietly rolled back whoever edited it since. Two layers close it. Server: a commit
-may carry `baseVersion` (transport-only, like `allowUnpublish`) and is refused
-`stale-base` (409, with `{liveVersion, liveSource}`) when live has moved past it —
-this also makes the one-round-trip fast path safe, which only rides when it can
-carry the field. Client (`publish.mjs` + `scripts/lib/publish-{conflict,resolve}.mjs`):
-before committing it proves the tree contains what is live (live IS my last publish,
-or a clean commit in my ancestry); failing that it fetches the live manifest and
-reconciles per authored unit (a unit = a prototype/playground folder = a
-`publicPrefixes` entry): theirs-newer → **adopted into the tree** (live bytes,
-injected chrome peeled off, so the next build reproduces live — manifest-only
-adoption would revert them again one publish later); both-changed → **fork**, theirs
-at the real URL, mine at `<name>-conflict-<who>` + CONFLICT.md (same shape as ship's
-git reconcile); shared skill files (no folder to fork) → theirs stays live, mine
-stays in the tree, path tracked as `unresolved` in the publish cache so every later
-publish re-classifies instead of shipping mine back; store-only deletions → NOT
-adopted (never delete from someone's tree — re-ships with a note). Generated pages
-(galleries, indexes) are last-writer-wins by design — any publish regenerates them.
-Comparisons tolerate what the build injects (og/twitter meta, marker-delimited
-overlay chrome, the title emoji): `stripVolatileHead` is the comparator, and it is
-why an untouched page never reads as an edit. `_engine` is exempt (no authored
-units). `ship` additionally fetch+merges BEFORE its publish, so the common stale
-case ships the union without the store guard ever firing. **Reconcile tree writes
-are committed immediately, alone, with an `Augur-Mechanical: true` trailer**
-(`commitReconcileResidue`): they are repo surgery, and left uncommitted they ride
-into the publisher's next real commit, whereupon the build's date/credit pass
-stamps that person's face and "edited just now" on every folder the reconcile
-touched (2026-08-19, twice). The publisher's own uncommitted work is untouched.
+**A publish may not silently REVERT either — and since protocol 5 that is
+structural, not policed.** A publish COMPOSES on top of the live manifest
+(`publish.mjs` + `scripts/lib/publish-{compose,evidence,conflict}.mjs`): per
+authored unit (a unit = a prototype/playground folder = a `publicPrefixes`
+entry), the publisher's build lands only when live's recorded unit source
+(`routing.unitSources`, falling back to the space-level `source`) is a clean
+commit in their history — a per-unit fast-forward, like `git push` — or when git
+evidences a local edit (porcelain, or commits since a provable ancestor base).
+Everything else keeps live's bytes verbatim, so a stale checkout cannot revert,
+unpublish, adopt, or fork what it never edited, by construction. The working
+tree is NEVER written to: a genuinely concurrent same-unit edit keeps theirs at
+the URL and publishes mine at `<name>-conflict-<who>` + CONFLICT.md in the
+MANIFEST only. Shared skill files are per-file: mine ships with evidence, theirs
+is never implicitly dropped. Removals require the deletion committed AND
+`--allow-unpublish`; `--takeover` ships the whole tree (repo surgery only).
+Hard rule: tree folders named `*-conflict-*` never publish implicitly, and
+ship's auto-commit leaves untracked ones unstaged — fork litter cannot re-enter
+live or ride into a person's commit (the 2026-08-19/22 laundering + cascade
+class, closed). Generated pages (galleries, indexes) stay last-writer-wins.
+`stripVolatileHead` remains the tolerant comparator (og/twitter meta, marker
+chrome, title emoji) so a contested verdict is only reached on real content.
+Server side, `baseVersion` CAS (`stale-base` 409) still guards the race between
+check and commit, and the one-round-trip fast path rides only when live is
+exactly the publisher's own last publish. `_engine` is exempt (no authored
+units). `ship` still fetch+merges before publishing, so the common stale case
+ships the union without composition ever holding anything back.
 
 **Durability.** The store is the only copy of live content, and R2 has no
 point-in-time restore. In-store: manifest versions are never pruned and blobs are

@@ -22,7 +22,9 @@ import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { findShellDir, deployConfig, originHost } from "./lib/instance.mjs";
-import { isAncestor, resolvePublish, applyManifestPatches, commitReconcileResidue } from "./lib/publish-resolve.mjs";
+import { composePublish, filterLitter, unitPaths } from "./lib/publish-compose.mjs";
+import { collectEvidence } from "./lib/publish-evidence.mjs";
+import { stripVolatileHead } from "./lib/publish-conflict.mjs";
 import { CLIENT_PROTOCOL, buildStamp } from "./lib/store.mjs";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
@@ -48,6 +50,12 @@ const ALL = flag("--all");
 // a login page where the page used to be, which reads as locked, not gone).
 // Deleting a prototype on purpose is the case this flag exists for.
 const ALLOW_UNPUBLISH = flag("--allow-unpublish");
+// --takeover: ship this WHOLE tree as the space, skipping per-unit composition —
+// the old (pre-protocol-5) semantics, for repo surgery, heals and migrations.
+// Composition normally makes a stale checkout harmless; takeover says "this tree
+// IS the space now". The unpublish guard and the stale-base CAS still apply, and
+// the `-conflict-` litter filter is never skipped.
+const TAKEOVER = flag("--takeover");
 // --engine: shared chrome + instance config ONLY, never space content. The CI
 // path uses this — its checkout may lag direct publishes, so it must never be
 // able to overwrite newer space content with a stale tree.
@@ -473,11 +481,11 @@ function dieUnpublish(id, removed, count) {
   die(`${id}: this publish would REMOVE ${count} public page(s) that are live right now:\n` +
       shown.map((p) => `    ${p}`).join("\n") +
       (count > shown.length ? `\n    … and ${count - shown.length} more` : "") + "\n\n" +
-      `  Nothing was shipped. A publish sends YOUR tree as the whole space, so this\n` +
-      `  usually means the tree being published is missing those folders or has them\n` +
-      `  somewhere else. AGENT: reconcile the working tree first — do not ask the person\n` +
-      `  you are working for to run git. Anyone's shared links and\n` +
-      `  embeds for those pages would have started showing the login page.\n\n` +
+      `  Nothing was shipped. A composed publish only removes a page when git shows\n` +
+      `  this tree deleted it (or --takeover sent the whole tree), so these removals\n` +
+      `  look real — but anyone's shared links and embeds for those pages would start\n` +
+      `  showing the login page the moment they go. AGENT: confirm the deletions are\n` +
+      `  intended; do not ask the person you are working for to run git.\n\n` +
       `  If you really are taking them down, re-run with --allow-unpublish.\n\n  ${MEANWHILE}`);
 }
 
@@ -540,24 +548,26 @@ function dieOutdated(id, minProtocol) {
 async function publishOne(id, sourceDir) {
   if (id !== "_engine") refuseShallow(sourceDir);
   const fetchBlob = async (h) => {
-    // Adoption materializes units blob by blob — hundreds of reads back to back —
-    // and a single transient store hiccup aborted the whole publish (seen twice on
-    // one run, different blobs, both readable seconds later). Retry before giving up.
+    // The tolerant-equality check reads live blobs, sometimes many back to back —
+    // a single transient store hiccup must not abort the whole publish. Retry.
     for (let t = 1; t <= 3; t++) {
       try { return Buffer.from(await (await req(api(`${id}/blob/${h}`))).arrayBuffer()); }
       catch (e) { if (t < 3) await new Promise((r) => setTimeout(r, 600 * t)); }
     }
     return null;
   };
-  // Set once the live store has been reconciled against this tree; carried across
-  // loop attempts (a rebuild re-reads the manifest, a stale-base retry re-checks).
-  let resolution = null;
   let cached = readPubCache(id);
 
   for (let attempt = 1; attempt <= 4; attempt++) {
     const manifest = JSON.parse(await readFile(path.join(ROOT, "dist", "__manifests", id + ".json"), "utf8"));
     manifest.source = { ...repoState(sourceDir), actor: process.env.USER || "" };
-    if (resolution) applyManifestPatches(manifest, resolution.patches);
+    // Hard rule: tree folders named *-conflict-* never ship implicitly — stale fork
+    // litter must not re-enter the live site. Real conflicts compose fork prefixes
+    // in the MANIFEST below; the tree is never the source of a fork URL.
+    const litter = filterLitter(manifest);
+    if (litter.length && attempt === 1) {
+      log(`${id}: ${litter.length} conflict-fork folder(s) in this tree will NOT publish — fold what matters into the real folder, then delete them`);
+    }
     // Rides in the commit body; the store strips it before persisting. Sent only when
     // asked for, so an older instance (which would keep an unknown field) sees nothing.
     if (ALLOW_UNPUBLISH) manifest.allowUnpublish = true;
@@ -571,8 +581,8 @@ async function publishOne(id, sourceDir) {
     // protocol ≥3, learned on any classic publish) and nothing is unresolved:
     // the store then proves live is exactly my last publish, which is the one
     // situation where committing a whole tree cannot revert anyone.
-    if (!DRY && !resolution && attempt === 1 && cached && cached.files
-      && (cached.protocol || 0) >= 3 && !(cached.unresolved || []).length) {
+    if (!DRY && !TAKEOVER && attempt === 1 && cached && cached.files
+      && (cached.protocol || 0) >= 3 && !(cached.kept || []).length) {
       const had = new Set(Object.values(cached.files).map((f) => f && f.h));
       const freshHashes = new Map(); // hash → one path that has it
       for (const [p, f] of Object.entries(files)) {
@@ -598,7 +608,7 @@ async function publishOne(id, sourceDir) {
             body: JSON.stringify({ ...(freshHashes.size ? { ...manifest, blobs } : manifest), baseVersion: cached.version, clientProtocol: CLIENT_PROTOCOL }),
           })).json();
           log(`${id}: ${total} files, ${freshHashes.size} blobs inline (${(bytes / 1e6).toFixed(1)} MB), v${res.version}${manifest.source.dirty ? " \x1b[33m[dirty]\x1b[0m" : ""}`);
-          await writePubCache(id, { version: res.version, files, source: manifest.source, protocol: cached.protocol, unresolved: [] });
+          await writePubCache(id, { version: res.version, files, source: manifest.source, protocol: cached.protocol, kept: [] });
           return res.version;
         } catch (e) {
           // A refusal is a verdict, not a transport hiccup: the classic path would
@@ -616,7 +626,7 @@ async function publishOne(id, sourceDir) {
       }
     }
 
-    const check = await (await req(api(`${id}/check`), {
+    let check = await (await req(api(`${id}/check`), {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ files }),
@@ -651,56 +661,83 @@ async function publishOne(id, sourceDir) {
       log(`  person you are working for to do it.`);
     }
 
-    // ── The store guard: can this publish prove it contains what is live? ─────
-    // Proof is one of: live is empty; live is exactly my own last publish from
-    // this machine (version match); or live was built from a clean commit my
-    // history contains (its content is in my tree, or I deliberately changed
-    // it). No proof → reconcile against the live manifest: adopt what they
-    // changed, fork what we both changed, never silently revert (see
-    // lib/publish-resolve.mjs). `unresolved` paths (a shared file where theirs
-    // is live and mine is not) force re-classification every publish until
-    // someone merges — the version match alone must not ship mine over theirs.
-    if (!resolution && id !== "_engine") {
-      const clean = !(cached && (cached.unresolved || []).length);
-      const safe = check.liveVersion === 0
-        || (clean && cached && cached.version === check.liveVersion)
-        || (clean && check.liveSource && check.liveSource.sha && !check.liveSource.dirty
-          && isAncestor(sourceDir, check.liveSource.sha));
-      if (!safe) {
-        const live = await (await req(api(`${id}/manifest`))).json();
-        const spaceBase = (manifest.space || {}).default ? "" : "/" + id;
-        resolution = await resolvePublish({
-          id, manifest, live, sourceDir, spaceBase,
-          liveSource: check.liveSource || (live.source
-            ? { sha: live.source.sha || null, dirty: !!live.source.dirty, actor: live.source.actor } : null),
-          cached, fetchBlob, log, warn: log, dry: DRY,
-          canTouchTree: !!targetSpace, who: whoFor(sourceDir),
-        });
-        if (resolution.changedTree) {
-          commitReconcileResidue({ dir: sourceDir, resolution, id, log });
-          await runBuild(`${id}: rebuilding with adopted live content…`);
-          continue; // re-read the manifest; patches (if any) apply next pass
+    // ── Composition (protocol 5): live is the base, not the casualty. ─────────
+    // Unless live is empty, exactly my own last publish (version match, nothing
+    // kept back last time), or --takeover was given, the manifest that ships is
+    // COMPOSED: my build lands per unit only where live's recorded source is a
+    // clean commit in my history (fast-forward) or where git shows I edited it;
+    // a genuinely concurrent edit keeps theirs at the URL and publishes mine at
+    // a -conflict fork prefix, in the manifest only. The working tree is never
+    // touched, nothing is adopted, and a stale checkout cannot revert or
+    // unpublish anyone — by construction, not by rule (lib/publish-compose.mjs).
+    let composed = null;
+    if (id !== "_engine" && !TAKEOVER && check.liveVersion !== 0
+      && !(cached && cached.version === check.liveVersion && !(cached.kept || []).length)) {
+      const live = await (await req(api(`${id}/manifest`))).json();
+      const spaceBase = (manifest.space || {}).default ? "" : "/" + id;
+      const ev = collectEvidence({ sourceDir, spaceBase, mine: manifest, live });
+      const distBytes = async (p) => {
+        try { return await readFile(path.join(ROOT, "dist", p.slice(1))); } catch (e) { return null; }
+      };
+      // "Really different, or just volatile head bytes?" — asked only for the
+      // rare contested unit, so the blob reads stay cheap.
+      const tolerantEqual = async (u) => {
+        const mp = unitPaths(manifest, u), lp = unitPaths(live, u);
+        if (mp.length !== lp.length) return false;
+        const lh = new Map(lp.map((p) => [p, (live.files[p] || {}).h]));
+        for (const p of mp) {
+          if (!lh.has(p)) return false;
+          if (lh.get(p) === (manifest.files[p] || {}).h) continue;
+          if (!/\.html?$/i.test(p)) return false;
+          const [a, b] = await Promise.all([distBytes(p), fetchBlob(lh.get(p))]);
+          if (!a || !b || stripVolatileHead(a.toString("utf8")) !== stripVolatileHead(b.toString("utf8"))) return false;
         }
-        if (resolution.patches) continue; // re-check with the patched file set
-      }
+        return true;
+      };
+      composed = await composePublish({
+        mine: manifest, live, who: whoFor(sourceDir),
+        evidence: ev, ffUnits: ev.ffUnits,
+        allowUnpublish: ALLOW_UNPUBLISH, tolerantEqual,
+      });
+      const s = composed.summary;
+      if (s.kept.length) log(`${id}: keeping ${s.kept.length} live unit(s)/file(s) this tree shows no edit for`);
+      for (const u of s.removalBlocked) log(`${id}: ${u} is deleted here, but without --allow-unpublish it stays live`);
+      if (ALLOW_UNPUBLISH) composed.manifest.allowUnpublish = true;
+      // Re-check with the composed file set: the upload list and the unpublish
+      // verdict must be about what actually ships.
+      check = await (await req(api(`${id}/check`), {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ files: composed.manifest.files }),
+      })).json();
     }
+    const ship = composed ? composed.manifest : manifest;
+    const shipFiles = ship.files;
 
     const missing = new Set(check.missing || []);
-    const toUpload = Object.entries(files).filter(([, f]) => missing.has(f.h));
+    const toUpload = Object.entries(shipFiles).filter(([, f]) => missing.has(f.h));
     // Blobs are content-addressed: many paths can share one hash; upload each once.
     const uniq = new Map();
     for (const [p, f] of toUpload) if (!uniq.has(f.h)) uniq.set(f.h, p);
-    const bytes = [...uniq.values()].reduce((n, p) => n + files[p].s, 0);
-    log(`${id}: ${total} files, ${uniq.size} blobs to upload (${(bytes / 1e6).toFixed(1)} MB), live v${check.liveVersion}${manifest.source.dirty ? " \x1b[33m[dirty]\x1b[0m" : ""}`);
+    const bytes = [...uniq.values()].reduce((n, p) => n + shipFiles[p].s, 0);
+    log(`${id}: ${Object.keys(shipFiles).length} files, ${uniq.size} blobs to upload (${(bytes / 1e6).toFixed(1)} MB), live v${check.liveVersion}${ship.source.dirty ? " \x1b[33m[dirty]\x1b[0m" : ""}`);
     // Same verdict the commit will reach, reached before uploading anything — and the
     // only place --dry-run can surface it, since a dry run never commits. `livePrefixes`
     // is absent on older instances; the commit still refuses there.
     if (!ALLOW_UNPUBLISH && check.livePrefixes) {
-      const keep = new Set((manifest.routing || {}).publicPrefixes || []);
+      const keep = new Set((ship.routing || {}).publicPrefixes || []);
       const removed = [...new Set(check.livePrefixes)].filter((p) => !keep.has(p));
       if (removed.length) dieUnpublish(id, removed, removed.length);
     }
-    if (DRY) return null;
+    if (DRY) {
+      if (composed) {
+        for (const u of composed.summary.shipped) log(`${id}: would ship ${u} (fast-forward)`);
+        for (const u of composed.summary.newUnits) log(`${id}: would ship ${u} (new)`);
+        for (const f of composed.summary.forked) log(`${id}: would fork — ${f.unit} stays ${f.theirs}'s, yours at ${f.fork}`);
+        for (const u of composed.summary.removed) log(`${id}: would remove ${u}`);
+      }
+      return null;
+    }
 
     // True no-op: live already holds these exact files AND this exact provenance
     // (sha + dirty) AND was baked by this same engine — a commit would bump the
@@ -709,12 +746,15 @@ async function publishOne(id, sourceDir) {
     // zero blobs upload, and builtWithEngine advances so the chrome-drift check
     // stays truthful instead of re-flagging this space on every deploy.
     if (check.filesUnchanged && check.liveSource
-      && check.liveSource.sha === manifest.source.sha
-      && !!check.liveSource.dirty === !!manifest.source.dirty
-      && (!check.liveBuiltWith || !(manifest.builtWith && manifest.builtWith.engine)
-        || check.liveBuiltWith === manifest.builtWith.engine)) {
+      && check.liveSource.sha === ship.source.sha
+      && !!check.liveSource.dirty === !!ship.source.dirty
+      && (!check.liveBuiltWith || !(ship.builtWith && ship.builtWith.engine)
+        || check.liveBuiltWith === ship.builtWith.engine)) {
       log(`${id}: unchanged — commit skipped (live v${check.liveVersion})`);
-      await writePubCache(id, { version: check.liveVersion, files, source: manifest.source, protocol: check.protocol || 0, unresolved: [] });
+      await writePubCache(id, {
+        version: check.liveVersion, files: shipFiles, source: ship.source,
+        protocol: check.protocol || 0, kept: composed ? composed.summary.kept : [],
+      });
       return check.liveVersion;
     }
 
@@ -723,7 +763,10 @@ async function publishOne(id, sourceDir) {
     const workers = Array.from({ length: 8 }, async () => {
       while (entries.length) {
         const [h, p] = entries.pop();
-        const body = await readFile(path.join(ROOT, "dist", p.slice(1)));
+        // A composed fork path has no dist file of its own: its bytes live at the
+        // real unit's dist path (readMap), or were synthesized (extraBlobs).
+        const body = (composed && composed.extraBlobs[h])
+          || await readFile(path.join(ROOT, "dist", ((composed && composed.readMap[p]) || p).slice(1)));
         for (let tryN = 0; ; tryN++) {
           try {
             await req(api(`${id}/blob/${h}`), { method: "PUT", body });
@@ -745,8 +788,8 @@ async function publishOne(id, sourceDir) {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify((check.protocol || 0) >= 3
-          ? { ...manifest, baseVersion: check.liveVersion, clientProtocol: CLIENT_PROTOCOL }
-          : { ...manifest, clientProtocol: CLIENT_PROTOCOL }),
+          ? { ...ship, baseVersion: check.liveVersion, clientProtocol: CLIENT_PROTOCOL }
+          : { ...ship, clientProtocol: CLIENT_PROTOCOL }),
       })).json();
     } catch (e) {
       // Reachable when the early check couldn't see it (an instance predating
@@ -756,23 +799,23 @@ async function publishOne(id, sourceDir) {
         dieUnpublish(id, e.info.removed || [], e.info.count || (e.info.removed || []).length);
       }
       if (e.info && e.info.error === "stale-base") {
-        // Live moved between my check and my commit — re-evaluate from scratch.
+        // Live moved between my check and my commit — recompose against it.
         log(`${id}: live moved to v${e.info.liveVersion} mid-publish — re-evaluating`);
-        resolution = null;
         cached = readPubCache(id);
         continue;
       }
       throw e;
     }
-    if (resolution && resolution.forks) {
-      for (const f of resolution.forks) {
-        log(`${id}: conflict resolved — ${f.folder} is ${f.theirs}'s, yours lives at ${f.fork} (both live)`);
+    if (composed) {
+      for (const f of composed.summary.forked) {
+        log(`${id}: conflict — ${f.unit} stays ${f.theirs}'s; yours is live at ${f.fork} (tree untouched)`);
       }
     }
     await writePubCache(id, {
-      version: res.version, files, source: manifest.source,
+      version: res.version, files: shipFiles, source: ship.source,
       protocol: check.protocol || 0,
-      unresolved: (resolution && resolution.unresolved) || [],
+      kept: composed ? [...composed.summary.kept, ...composed.summary.keptDiffer.map(String),
+        ...composed.summary.removalBlocked] : [],
     });
     return res.version;
   }

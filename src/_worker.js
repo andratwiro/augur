@@ -1736,10 +1736,11 @@ const INLINE_MAX_BYTES = 1_000_000;
 // Publish-protocol version, echoed in check responses so a CLI can detect skew
 // against the deployed worker. History: 1 = check/blob/commit; 2 = + inline-blob
 // commits, filesUnchanged/liveSource on check; 3 = revert guard (baseVersion);
-// 4 = client-side safe adoption (authored-bytes peel, internal files preserved).
-// Echoing 4 makes every older client's next publish attempt a self-update nudge
-// even on instances that set no hard floor.
-const PUBLISH_PROTOCOL = 4;
+// 4 = client-side safe adoption (authored-bytes peel, internal files preserved);
+// 5 = composed publish (live manifest is the base; per-unit fast-forwards only,
+// no adoption, no tree writes, manifest-only forks). Echoing it makes every older
+// client's next publish attempt a self-update nudge even without a hard floor.
+const PUBLISH_PROTOCOL = 5;
 
 let MANIFESTS = { at: 0, spaces: {} };
 async function loadManifests(env, force) {

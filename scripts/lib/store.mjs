@@ -113,4 +113,10 @@ export const ENGINE_ID = "_engine";
 //      about. A protocol-3 reconcile wrote dist-baked pages into a space repo as one
 //      person's authorship and deleted research material — an instance that has seen
 //      that once sets `minClientProtocol: 4` and old clients self-update on contact.
-export const CLIENT_PROTOCOL = 4;
+//   5  composed publish: the live manifest is the base and the client ships per-unit
+//      fast-forwards only (git evidence), so adoption and tree writes are GONE — a
+//      stale checkout can no longer revert, unpublish, or fork what it never edited.
+//      The protocol-4 reconcile still mass-forked under a cache base (the 2026-08-22
+//      cascade: 392 false -conflict- units live); a pre-5 client re-litters, so the
+//      reference instance floors at 5.
+export const CLIENT_PROTOCOL = 5;

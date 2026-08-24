@@ -83,30 +83,32 @@ A conflict outside a prototype folder (a design-system file, `space.json`) stops
 the merge instead — it isn't safe to resolve mechanically. Your work stays
 committed; resolve it and ship again.
 
-The same protection exists **against the live store itself**, because live can
-hold work git has never seen (someone published an uncommitted tree). Before
-committing, `publish` proves your tree contains what is live — live is your own
-last publish, or a clean commit in your history. When it can't prove that, it
-reconciles instead of overwriting: a prototype **they** changed and you didn't is
-**adopted** — their files are written into your tree (so your next build carries
-them) and ship's commit records it; a prototype you **both** changed forks
-exactly like the git case (theirs at the real URL, yours at
-`<name>-conflict-<you>` with a `CONFLICT.md`); a shared design-system file you
-both changed keeps **theirs** live and warns you loudly — your version stays in
-your tree and git, merge it and ship again. Their store-only *deletions* are not
-adopted: your publish puts the folder back and says whose removal it undid.
-Nothing in any of this asks a question, and nothing is ever silently reverted.
-A publish that lands between your check and your commit is caught by the store
-(`stale-base`) and re-evaluated automatically.
+The same protection exists **against the live store itself**, and since publish
+protocol 5 it is structural: a publish COMPOSES on top of the live manifest and
+only writes, per prototype, what it can ship safely. Your build lands on a unit
+when live's recorded source is a clean commit in your history (a fast-forward,
+like `git push`) or when git shows you edited it; everything else keeps live's
+bytes verbatim. Your working tree is **never touched** — nothing is adopted,
+nothing is written, no mechanical commits exist. A stale checkout therefore
+cannot revert, unpublish, or fork anything it never edited, by construction.
 
-Everything the reconcile writes into your tree (adopted folders, conflict
-forks) is committed **immediately and on its own**, with an
-`Augur-Mechanical: true` trailer — it is repo surgery, not your authorship, and
-the trailer is what keeps the build's date/credit pass from stamping your face
-and "edited just now" on every folder it touched. Your own uncommitted work is
-left exactly as it was. If that commit fails (no git identity, mid-merge), the
-publish warns and lists the paths: commit them yourself in a commit of their
-own, carrying the same trailer — never fold them into a commit with real work.
+A prototype you **both** changed keeps **theirs** at the real URL — any shared
+link still resolves — and publishes **yours** at `<name>-conflict-<you>` with a
+`CONFLICT.md`, in the live manifest only: your tree still has your copy at its
+real folder. Fold what should survive, then ship — the next fast-forward publish
+retires the fork URL. A shared design-system file you both changed keeps theirs
+live and warns you; merge and ship again. A committed edit whose live base can't
+be proven (its publisher never pushed) stays local with a note — pull/merge,
+then ship, and it goes out as the union. Nothing asks a question, nothing is
+silently reverted, and a publish that lands between your check and your commit
+is caught by the store (`stale-base`) and recomposed automatically.
+
+Two hard rules replace the old cleanup discipline: a tree folder named
+`*-conflict-*` NEVER publishes implicitly (fold what matters into the real
+folder, then delete it), and ship's auto-commit leaves untracked `*-conflict-*`
+folders unstaged. Removing a live prototype needs the deletion committed AND
+`--allow-unpublish`. `augur publish --takeover` ships the whole tree under the
+old semantics — repo surgery and migrations only, never routine.
 
 ## The URL is the contract — mechanics are yours, not the user's
 

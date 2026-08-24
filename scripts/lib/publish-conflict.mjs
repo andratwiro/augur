@@ -1,28 +1,14 @@
-// Conflict classification for store-aware publishing — the pure half.
+// Unit helpers + build-decoration tolerance — pure, shared by the publish stack.
 //
-// A publish ships one built tree as the WHOLE space, so whatever is live that the
-// tree does not contain gets reverted, bytes replacing bytes, no guard tripped.
-// Before committing, the publish CLI compares its manifest against the live one
-// and classifies every difference so nothing is ever reverted silently:
-//
-//   they changed it, I did not   → adopt theirs (their hashes ride my manifest)
-//   they deleted it, I did not   → adopt the deletion
-//   I changed it, they did not   → mine ships, as always
-//   we both changed it          → contested: the caller verifies and forks mine
-//   generated pages             → noise: mine wins, regenerated on any publish
-//
-// The UNIT of all of this is a prototype/playground folder — the thing a URL
-// names, a person edits, and ship's git-side reconcile already forks — never a
-// lone file. Units are exactly the routing fragment's publicPrefixes (galleries
-// get versionMap entries but no prefix, which is what keeps them out).
-//
-// Everything impure (git, the store, the working tree) is the caller's problem:
-// this module sees two manifests plus "what I changed" and answers what to do.
-// `myChangedUnits: null` means the base is unknowable (no git object for the
-// live sha, no publish cache) — then differing units are adopted (the safe
-// direction: my version still exists in my tree and git; theirs may exist only
-// in the store) and deletions are never adopted (a unit only I have may simply
-// be my new work).
+// The UNIT of publishing is a prototype/playground folder — the thing a URL
+// names and a person edits, never a lone file. Units are exactly the routing
+// fragment's publicPrefixes (galleries get versionMap entries but no prefix,
+// which is what keeps them out). Since protocol 5 the per-unit decisions live in
+// publish-compose.mjs; what remains here is the vocabulary (units, repo-dir
+// mapping) and the two views of what the build decorates authored HTML with:
+// stripVolatileHead (a COMPARATOR: does this content really differ?) and
+// stripBuildDecorations (a TRANSFORMER: undo the decoration exactly — kept for
+// repo-debake tooling, e.g. peeling dist-flavored bytes out of a space repo).
 
 const dec = (s) => { try { return decodeURIComponent(String(s)); } catch (e) { return String(s); } };
 const norm = (p) => String(p == null ? "" : p).replace(/\/?$/, "/");
@@ -102,93 +88,4 @@ export function stripBuildDecorations(html, relDir) {
     .replace(/[ \t]*<script>window\.__GV_LINKED=\[[^\n]*?\];<\/script>\s*\n?/g, "")
     .replace(/(<title>)\s*(?:[\p{Extended_Pictographic}‍️]+\s*)+/gu, "$1")
     .replace(/(?:\.\.\/)+skills\//g, up + "skills/");
-}
-
-// Mirror of build.js's internal-material predicates (isInternalOnly + the secret/VCS
-// screens). These files NEVER ship, so live's manifest cannot testify about them —
-// an adopt that syncs a repo folder to "exactly what live has" must leave them be.
-// (The 2026-08-19 adopt deleted 54 research/context files this way.)
-const INTERNAL_SECRET_RE = /(^\.env(\.|$)|\.env$|\.(pem|key|p12|pfx|ppk|keystore|jks)$|(^|[._-])(secret|secrets|credentials?)([._-]|$)|^id_(rsa|dsa|ecdsa|ed25519)$|^\.(npmrc|netrc|pgpass|htpasswd|ssh|aws|gnupg)$)/i;
-const INTERNAL_VCS_RE = /^\.(git|hg|svn|bzr)$/i;
-export function isInternalPath(rel) {
-  return String(rel).split("/").some((name) =>
-    name === "research" || name === "context" || name === "research.md" || name === "context.md" ||
-    name === ".DS_Store" || name.endsWith(".zip") || INTERNAL_VCS_RE.test(name) || INTERNAL_SECRET_RE.test(name));
-}
-
-const hashesOf = (manifest, unit) => {
-  const out = new Map();
-  for (const p of unitPaths(manifest, unit)) out.set(p, (manifest.files[p] || {}).h);
-  return out;
-};
-
-const unitDiffers = (mine, live, unit) => {
-  const a = hashesOf(mine, unit), b = hashesOf(live, unit);
-  if (a.size !== b.size) return true;
-  for (const [p, h] of a) if (b.get(p) !== h) return true;
-  return false;
-};
-
-export function classifyPublish({ mine, live, myChangedUnits = null, myChangedPaths = null }) {
-  const mineUnits = authoredUnits(mine);
-  const liveUnits = authoredUnits(live);
-  const knownUnits = myChangedUnits instanceof Set;
-  const changedU = (u) => knownUnits && myChangedUnits.has(u);
-
-  const adoptUnits = [], dropUnits = [], contestedUnits = [];
-  for (const u of new Set([...mineUnits, ...liveUnits])) {
-    const inMine = mineUnits.has(u), inLive = liveUnits.has(u);
-    if (inLive && !inMine) {
-      // Their addition — or my deletion, which only my base can prove.
-      if (!changedU(u)) adoptUnits.push(u);
-    } else if (inMine && !inLive) {
-      // My new work — or their deletion, adopted only with a base to prove it.
-      if (knownUnits && !changedU(u)) dropUnits.push(u);
-    } else if (unitDiffers(mine, live, u)) {
-      if (changedU(u)) contestedUnits.push(u);
-      else adoptUnits.push(u);
-    }
-  }
-
-  // Shared skill assets (the DS files prototypes load) are authored too, but have
-  // no folder unit to fork — classification is per file; the caller decides what
-  // a contested one means (today: theirs wins, loudly).
-  const skillPrefixes = new Set();
-  for (const m of [mine, live]) {
-    for (const p of ((m || {}).routing || {}).publicSkillPrefixes || []) skillPrefixes.add(norm(p));
-  }
-  const underSkill = (p) => { const d = dec(p); return [...skillPrefixes].some((s) => d.startsWith(dec(s))); };
-  const knownPaths = myChangedPaths instanceof Set;
-  const skillAdoptPaths = [], skillContestedPaths = [];
-  const mineFiles = (mine || {}).files || {}, liveFiles = (live || {}).files || {};
-  for (const p of new Set([...Object.keys(mineFiles), ...Object.keys(liveFiles)])) {
-    if (!underSkill(p)) continue;
-    const a = mineFiles[p], b = liveFiles[p];
-    if (!b) continue; // only mine: new DS file, ships
-    const differs = !a || a.h !== b.h;
-    if (!differs) continue;
-    if (knownPaths && myChangedPaths.has(p)) skillContestedPaths.push(p);
-    else skillAdoptPaths.push(p);
-  }
-
-  // Everything else that differs is generated output — galleries, indexes, cards.
-  // Mine wins by construction (the next publish regenerates them all); recorded so
-  // the caller can say so instead of nothing.
-  const inUnits = (p) => unitOfPath(p, mineUnits) || unitOfPath(p, liveUnits);
-  const noisePaths = [];
-  for (const p of new Set([...Object.keys(mineFiles), ...Object.keys(liveFiles)])) {
-    if (inUnits(p) || underSkill(p)) continue;
-    const a = mineFiles[p], b = liveFiles[p];
-    if (a && b && a.h === b.h) continue;
-    noisePaths.push(p);
-  }
-
-  return {
-    adoptUnits: adoptUnits.sort(),
-    dropUnits: dropUnits.sort(),
-    contestedUnits: contestedUnits.sort(),
-    skillAdoptPaths: skillAdoptPaths.sort(),
-    skillContestedPaths: skillContestedPaths.sort(),
-    noisePaths: noisePaths.sort(),
-  };
 }

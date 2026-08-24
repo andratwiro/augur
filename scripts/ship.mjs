@@ -149,10 +149,25 @@ function foldersOf(paths) {
   return [...out];
 }
 
-const dirtyPaths = git("status", "--porcelain").split("\n").filter(Boolean)
-  .map((l) => l.slice(3).replace(/^"|"$/g, ""));
+const porcelainLines = git("status", "--porcelain").split("\n").filter(Boolean);
+// Stale conflict-fork folders never ride into a person's commit: publish
+// (protocol 5) never writes tree forks, so an UNTRACKED `*-conflict-*` folder is
+// leftover litter — sweeping it would stamp this person's face and "edited just
+// now" on pages they never touched (2026-08-19/22, three times). Tracked ones
+// follow git normally (deleting them is a real change worth committing).
+const LITTER_RE = /(^|\/)[^/]+-conflict-[a-z0-9][a-z0-9-]*(\/|$)/;
+const untrackedLitter = porcelainLines
+  .filter((l) => l.startsWith("??"))
+  .map((l) => l.slice(3).replace(/^"|"$/g, ""))
+  .filter((p) => LITTER_RE.test(p));
+const dirtyPaths = porcelainLines
+  .map((l) => l.slice(3).replace(/^"|"$/g, ""))
+  .filter((p) => !untrackedLitter.includes(p));
 let committed = null;
 
+if (untrackedLitter.length) {
+  warn(`${untrackedLitter.length} stale conflict folder(s) left uncommitted — they never publish; fold what matters into the real folder, then delete them`);
+}
 if (dirtyPaths.length) {
   const touched = foldersOf(dirtyPaths);
   const subject = MSG || `Ship ${touched.slice(0, 3).join(", ")}${touched.length > 3 ? ` +${touched.length - 3} more` : ""}`;
@@ -160,6 +175,8 @@ if (dirtyPaths.length) {
   if (!DRY) {
     runGenerate();          // refresh derived files first, so `git add -A` stages them
     git("add", "-A");
+    // `add -A` staged any untracked litter too; put it back to untracked.
+    if (untrackedLitter.length) gitQuiet("reset", "-q", "--", ...untrackedLitter);
     runGateAdvisory();      // gates see the staged tree; findings never block the ship
     const body = MSG ? "" : "\n\nCommitted automatically by `augur ship` so the live site is never\nserving anything that exists only in a working folder.";
     commit("-m", subject + body);

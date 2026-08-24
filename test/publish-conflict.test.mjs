@@ -1,21 +1,14 @@
-// Publish-conflict classification: the pure half of the store-aware publish guard.
+// Unit geometry + build-decoration tolerance (lib/publish-conflict.mjs).
 //
-// A publish ships one tree as the whole space, so a publisher whose tree does not
-// contain what is live right now would revert it — silently, because bytes
-// replacing bytes trips no guard. The classifier compares MY built manifest with
-// the LIVE one, unit by unit (a unit = one prototype/playground folder, the thing
-// people think in), and sorts every difference into: adopt theirs (they changed
-// it, I did not), drop (they deleted it), contested (we both changed it — the
-// caller verifies and forks mine), or noise (generated pages, mine wins).
-//
-// The classifier is deliberately pure: git, the network and the store are the
-// caller's problem. It receives what I changed (myChangedUnits, from git; null
-// when unknowable) and answers what to do.
+// Since protocol 5 the per-unit publish decisions live in publish-compose.mjs
+// (tested in publish-compose.test.mjs); this file covers the shared vocabulary —
+// units, repo-dir mapping — and the two views of build decoration:
+// stripVolatileHead (comparator) and stripBuildDecorations (transformer).
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
   authoredUnits, unitOfPath, unitPaths, repoDirCandidates, stripVolatileHead,
-  stripInjectedChrome, stripBuildDecorations, isInternalPath, classifyPublish,
+  stripInjectedChrome, stripBuildDecorations,
 } from "../scripts/lib/publish-conflict.mjs";
 
 const entry = (h) => ({ h: String(h).repeat(64).slice(0, 64), ct: "text/html", s: 1 });
@@ -131,15 +124,6 @@ test("stripBuildDecorations returns a dist page to its authored shape", () => {
   assert.equal(stripBuildDecorations(dist, "demo/prototypes/hello"), authored);
 });
 
-test("isInternalPath shields what live can never testify about", () => {
-  for (const p of ["demo/prototypes/x/research/notes.md", "demo/prototypes/x/context.md",
-    "demo/prototypes/x/research/deep/file.png", "playground/y/context.md", "a/b/export.zip", "a/.env.local"]) {
-    assert.equal(isInternalPath(p), true, `${p} is internal`);
-  }
-  for (const p of ["demo/prototypes/x/index.html", "demo/prototypes/x/preview.webp", "skills/acme-ui/acme-ui.css"]) {
-    assert.equal(isInternalPath(p), false, `${p} ships`);
-  }
-});
 
 test("full built-page shape: emoji title + og + overlay markers vs raw source", () => {
   const source = `<!doctype html><html><head><title>alpha</title></head><body>alpha v1</body></html>\n`;
@@ -178,90 +162,3 @@ test("stripInjectedChrome removes only marker blocks — og meta and content sta
 
 const U = "/toolkit/map/";
 const liveWith = (h) => mani({ [U + "index.html"]: entry(h) }, [U]);
-
-test("identical manifests classify to nothing at all", () => {
-  const c = classifyPublish({ mine: liveWith("a"), live: liveWith("a"), myChangedUnits: new Set() });
-  assert.deepEqual(c, {
-    adoptUnits: [], dropUnits: [], contestedUnits: [],
-    skillAdoptPaths: [], skillContestedPaths: [], noisePaths: [],
-  });
-});
-
-test("they edited a unit I did not touch → adopt theirs (the silent-revert case)", () => {
-  const c = classifyPublish({ mine: liveWith("a"), live: liveWith("b"), myChangedUnits: new Set() });
-  assert.deepEqual(c.adoptUnits, [U]);
-  assert.deepEqual(c.contestedUnits, []);
-});
-
-test("they added a unit my tree has never seen → adopt it, files and all", () => {
-  const mine = mani({}, []);
-  const live = mani({ "/toolkit/new/index.html": entry("n") }, ["/toolkit/new/"]);
-  const c = classifyPublish({ mine, live, myChangedUnits: new Set() });
-  assert.deepEqual(c.adoptUnits, ["/toolkit/new/"]);
-});
-
-test("they deleted a unit I did not touch → adopt the deletion", () => {
-  const mine = liveWith("a");
-  const live = mani({}, []);
-  const c = classifyPublish({ mine, live, myChangedUnits: new Set() });
-  assert.deepEqual(c.dropUnits, [U]);
-});
-
-test("my brand-new unit ships — never mistaken for their deletion", () => {
-  const mine = liveWith("a");
-  const live = mani({}, []);
-  const c = classifyPublish({ mine, live, myChangedUnits: new Set([U]) });
-  assert.deepEqual(c.dropUnits, []);
-  assert.deepEqual(c.adoptUnits, []);
-});
-
-test("my deliberate deletion stands — a unit I changed is never adopted back", () => {
-  const mine = mani({}, []);
-  const live = liveWith("a");
-  const c = classifyPublish({ mine, live, myChangedUnits: new Set([U]) });
-  assert.deepEqual(c.adoptUnits, [], "the unpublish guard owns deletions, not adoption");
-});
-
-test("both changed the same unit → contested, for the caller to verify and fork", () => {
-  const c = classifyPublish({ mine: liveWith("a"), live: liveWith("b"), myChangedUnits: new Set([U]) });
-  assert.deepEqual(c.contestedUnits, [U]);
-  assert.deepEqual(c.adoptUnits, []);
-});
-
-test("unknown base (myChangedUnits null) adopts their differing units, keeps my new ones, drops nothing", () => {
-  const mine = mani({ [U + "index.html"]: entry("a"), "/toolkit/fresh/index.html": entry("f") }, [U, "/toolkit/fresh/"]);
-  const live = mani({ [U + "index.html"]: entry("b"), "/toolkit/gone/index.html": entry("g") }, [U, "/toolkit/gone/"]);
-  const c = classifyPublish({ mine, live, myChangedUnits: null });
-  assert.deepEqual(c.adoptUnits.sort(), [U, "/toolkit/gone/"].sort());
-  assert.deepEqual(c.dropUnits, [], "never adopt a deletion without a base to prove it");
-  assert.deepEqual(c.contestedUnits, []);
-});
-
-test("generated pages differing outside any unit are noise — mine wins, recorded only", () => {
-  const mine = mani({ "/components/button/index.html": entry("a"), [U + "index.html"]: entry("s") }, [U]);
-  const live = mani({ "/components/button/index.html": entry("b"), [U + "index.html"]: entry("s") }, [U]);
-  const c = classifyPublish({ mine, live, myChangedUnits: new Set() });
-  assert.deepEqual(c.noisePaths, ["/components/button/index.html"]);
-  assert.deepEqual(c.adoptUnits, []);
-});
-
-test("shared skill assets: theirs adopted when I did not touch them, contested when I did", () => {
-  const skills = ["/skills/ui/"];
-  const mine = mani({ "/skills/ui/ui.css": entry("a"), "/skills/ui/ui.js": entry("x") }, [], skills);
-  const live = mani({ "/skills/ui/ui.css": entry("b"), "/skills/ui/ui.js": entry("y") }, [], skills);
-  const c = classifyPublish({
-    mine, live, myChangedUnits: new Set(),
-    myChangedPaths: new Set(["/skills/ui/ui.js"]),
-  });
-  assert.deepEqual(c.skillAdoptPaths, ["/skills/ui/ui.css"]);
-  assert.deepEqual(c.skillContestedPaths, ["/skills/ui/ui.js"]);
-});
-
-test("a skill asset only live has → adopted; only mine has → ships silently", () => {
-  const skills = ["/skills/ui/"];
-  const mine = mani({ "/skills/ui/new.css": entry("n") }, [], skills);
-  const live = mani({ "/skills/ui/old.css": entry("o") }, [], skills);
-  const c = classifyPublish({ mine, live, myChangedUnits: new Set(), myChangedPaths: new Set() });
-  assert.deepEqual(c.skillAdoptPaths, ["/skills/ui/old.css"]);
-  assert.deepEqual(c.skillContestedPaths, []);
-});
