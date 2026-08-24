@@ -1742,19 +1742,36 @@ const INLINE_MAX_BYTES = 1_000_000;
 // client's next publish attempt a self-update nudge even without a hard floor.
 const PUBLISH_PROTOCOL = 5;
 
-let MANIFESTS = { at: 0, spaces: {} };
+let MANIFESTS = { at: 0, spaces: {}, etags: {} };
 async function loadManifests(env, force) {
   if (!force && Date.now() - MANIFESTS.at < 1500) return MANIFESTS.spaces;
   MANIFESTS.at = Date.now();
   try {
     const list = await env.BUNDLES.list({ prefix: "spaces/", delimiter: "/" });
     const ids = (list.delimitedPrefixes || []).map((p) => p.slice("spaces/".length, -1));
-    const out = {};
+    const out = {}, etags = {};
+    // Parse cost must not ride the request path: JSON.parse of a multi-MB manifest
+    // on the refresh tick is what blew the CPU budget when the 2026-08-22 cascade
+    // doubled the go-vocal manifest (error 1102 on live). head+etag per manifest is
+    // metadata-only — the body is fetched and parsed ONLY when the etag moved, i.e.
+    // once per publish rather than once per tick. `force` (the publish API's own
+    // callers) still bypasses the parse skip via the etag change it just caused.
     await Promise.all(ids.map(async (id) => {
-      const obj = await env.BUNDLES.get(`spaces/${id}/manifest.json`);
-      if (obj) out[id] = JSON.parse(await obj.text());
+      const key = `spaces/${id}/manifest.json`;
+      const head = env.BUNDLES.head ? await env.BUNDLES.head(key) : null;
+      const etag = head && (head.etag || head.httpEtag);
+      if (etag && MANIFESTS.etags[id] === etag && MANIFESTS.spaces[id]) {
+        out[id] = MANIFESTS.spaces[id];
+        etags[id] = etag;
+        return;
+      }
+      const obj = await env.BUNDLES.get(key);
+      if (!obj) return;
+      out[id] = JSON.parse(await obj.text());
+      etags[id] = etag || (obj.etag || obj.httpEtag) || "";
     }));
     MANIFESTS.spaces = out;
+    MANIFESTS.etags = etags;
   } catch (e) {} // a transient list/get failure keeps serving the last good view
   return MANIFESTS.spaces;
 }
@@ -2378,6 +2395,32 @@ async function publishApi(request, url, env) {
     try { m = await request.json(); } catch (e) { return jsonResponse({ error: "bad-json" }, 400); }
     if (!m || m.id !== spaceId || !m.files || typeof m.files !== "object") {
       return jsonResponse({ error: "bad-manifest" }, 400);
+    }
+    // ── Manifest ceilings: refuse instead of degrade. ─────────────────────────
+    // An oversized manifest is not merely rude — every request on the instance
+    // pays for it (the refresh tick re-parses it; 1102s on live within hours of
+    // the 2026-08-22 cascade doubling one manifest), which multi-tenant means one
+    // space degrading everyone. And a manifest sprouting -conflict- prefixes is
+    // the signature of that cascade itself: protocol-5 clients cannot produce one
+    // (the litter filter), so arrival here means an old, patched, or hostile
+    // client — the write is refused, the litter never goes live. Ceilings sit
+    // ~4-8x above the reference instance's real size (3.8k files, 142 prefixes,
+    // 0.7MB manifest, 0 conflict prefixes at v499): headroom for growth, a wall
+    // against runaway. `sanity` names the failing limit so a legitimate giant
+    // space raises the ceiling deliberately, in code, not by quiet erosion.
+    const ceiling = (() => {
+      const files = Object.keys(m.files).length;
+      if (files > 30000) return { limit: "files", value: files, max: 30000 };
+      const prefixes = ((m.routing || {}).publicPrefixes || []);
+      if (prefixes.length > 1000) return { limit: "prefixes", value: prefixes.length, max: 1000 };
+      const litter = prefixes.filter((p) => /-conflict-[a-z0-9][a-z0-9-]*\/?$/.test(String(p))).length;
+      if (litter > 20) return { limit: "conflict-prefixes", value: litter, max: 20 };
+      const bytes = JSON.stringify(m).length;
+      if (bytes > 8_000_000) return { limit: "manifest-bytes", value: bytes, max: 8_000_000 };
+      return null;
+    })();
+    if (ceiling) {
+      return jsonResponse({ error: "manifest-ceiling", ...ceiling }, 413);
     }
     // ── Protocol floor. Off by default (see MIN_CLIENT_PROTOCOL) — a floor nobody set
     // must never be why a publish fails. Where it IS set, refusing here beats accepting
@@ -4889,7 +4932,7 @@ export const __testables = {
   assetFetch, withAssetCache, ASSET_REVALIDATE,
   deleteUrlPrefix, removeFromStore,
   revokePublishTokens, loginThrottled, loginSlowed, loginFail, DUMMY_HASH,
-  pathOwnedBySpace, isPublishablePublicPrefix, removedPublicPrefixes, publishApi, LOGIN_MAX_FAILS,
+  pathOwnedBySpace, isPublishablePublicPrefix, removedPublicPrefixes, publishApi, loadManifests, LOGIN_MAX_FAILS,
   isPrefixBacked, backedPublicPrefixes,
   isPublicPath, isTrackPath, isRestrictedPath, versionFor, brandMark,
   boardApi, canvasesApi, virtualCanvas, rtProxy, CANVASES_KEY, BOARD_PREFIX, BOARD_MAX_BYTES,
