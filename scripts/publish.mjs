@@ -701,6 +701,15 @@ async function publishOne(id, sourceDir) {
       });
       const s = composed.summary;
       if (s.kept.length) log(`${id}: keeping ${s.kept.length} live unit(s)/file(s) this tree shows no edit for`);
+      // A unit that differs, where nothing proves whose work is newer (live was
+      // published from history this clone has never seen), stays live — say so
+      // per unit, because "kept" here can mean a committed local edit did NOT
+      // ship. The fix is always the same and always agent-side.
+      for (const u of ev.unprovable || []) {
+        if (s.kept.includes(u)) {
+          log(`${id}: ${u} differs from live but neither side is provable — live stays. AGENT: git pull/merge in ${sourceDir}, then ship (it goes out as the union).`);
+        }
+      }
       for (const u of s.removalBlocked) log(`${id}: ${u} is deleted here, but without --allow-unpublish it stays live`);
       if (ALLOW_UNPUBLISH) composed.manifest.allowUnpublish = true;
       // Re-check with the composed file set: the upload list and the unpublish
