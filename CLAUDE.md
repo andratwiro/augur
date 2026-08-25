@@ -98,8 +98,10 @@ build.js emits `dist/__config/instance.json` (users from `GV_IDENTITY_PATH`; fro
 `rtOrigin`, `sentinels`, plus a `tenantId` — the deploy config's if it sets one,
 otherwise the id of the space mounted at the root) and
 `dist/__config/routing.json` (public prefixes,
-version map, restricted bases, space list, the mcp allowlist union spaces declare via
-`space.json "mcpAllowlists"`). The worker fills these via `loadConfig()` (~1.5s
+version map, restricted bases, space list, the mcp host + path allowlist union spaces
+declare via `space.json "mcpAllowlists"` — the engine's own path floor is the three
+paths the MCP/OAuth protocol speaks, and no platform's API endpoint is named in it).
+The worker fills these via `loadConfig()` (~1.5s
 per-isolate cache) and seals `/__config/*` from external requests. Build.js also
 emits `dist/__manifests/<id>.json` per space (+ pseudo-space `_engine` for shared
 chrome): `{files: {path → {sha256, mime, size}}}` + the space's routing fragment.

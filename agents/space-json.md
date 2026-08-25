@@ -43,9 +43,10 @@ not restate it.
                              // the skill's own call: see ui-skill.md (skill.json)
   "ignore": ["big-exports"], // extra top-level dirs the build must never treat
                              // as project folders
-  "mcpAllowlists": ["path/to/mcp-allowlist.json"],  // hosts this space's
-                             // prototypes may reach through the /__mcp/ proxy
-                             // (union across spaces at build time)
+  "mcpAllowlists": ["path/to/mcp-allowlist.json"],  // hosts AND paths this
+                             // space's prototypes may reach through the /__mcp/
+                             // proxy (union across spaces at build time) — see
+                             // "The MCP proxy allowlist" below
   "publishTracks": true,     // ship the space's tracks/ session music. Default false:
                              // music plays in local preview (`augur dev` / offline) and
                              // never leaves the machine. Published tracks are served to
@@ -60,6 +61,31 @@ not restate it.
 Only `id` is required. A design system is optional — plain self-contained HTML
 builds fine. The parse lives in `build.js` (`discoverSpaces()`); if you add a
 field there, document it here in the same commit.
+
+## The MCP proxy allowlist
+
+`mcpAllowlists` names JSON files this space ships. Each is shaped:
+
+```json
+{
+  "hosts": ["platform.example.com", "city.example.org"],
+  "paths": ["/api/v1/configuration"]
+}
+```
+
+Either key may be omitted; a file with neither is an error. `/__mcp/<host>/<path>`
+forwards a browser call to `https://<host>/<path>` from this origin, so a prototype
+can reach a platform that sends no CORS headers. Both halves have to match: the host
+must be declared (here, or by the deployment's own suffix/URL knobs) and the path must
+be declared or be one of the three the MCP/OAuth protocol itself speaks — `/mcp`,
+`/oauth/registrations`, `/oauth/token`, which every deployment always allows.
+
+Declare the rest yourself. A platform's own endpoints are a fact about that platform
+and the prototype talking to it, not something a shared engine should know, so the
+engine ships no product's API path and adding one costs you a line in your own repo
+rather than a change to everybody's. Paths are compared whole and exactly against the
+request's pathname — no prefixes, no query strings — and must be absolute, with no
+`..` and no `//`. A missing or malformed file fails the build rather than degrading.
 
 **Retired: `methodPages`.** It named `pages/<name>` entries for one group of the
 Pages tab's front-office / method / back-office / upsell taxonomy. That taxonomy is

@@ -69,12 +69,14 @@ let USERS = [];
 // engine build): gate-exempt skill-asset path prefixes, MCP-proxy host allowlist
 // (suffix rule + space-declared exact hosts + the URL of an exact-host list), and
 // vanity-host redirects.
-// MCP_HOST_ALLOWLIST alone comes from routing.json: the union of the {"hosts":[…]}
-// files the spaces declare via space.json "mcpAllowlists" (see build.js).
+// MCP_HOST_ALLOWLIST and MCP_PATH_ALLOWLIST alone come from routing.json: the union of
+// the {"hosts":[…], "paths":[…]} files the spaces declare via space.json "mcpAllowlists"
+// (see build.js).
 let PUBLIC_SKILL_PREFIXES = [];
 let MCP_HOST_SUFFIXES = [];
 let MCP_HOST_ALLOWLIST = [];
 let MCP_HOST_ALLOWLIST_URL = "";
+let MCP_PATH_ALLOWLIST = [];
 let VANITY_REDIRECTS = {};
 // The session cookie: value "<email>.<token>". `__Host-` is a name PREFIX the browser
 // enforces — it stores a cookie under such a name only when it is Secure, has Path=/,
@@ -507,6 +509,7 @@ function applyTenantContext(ctx) {
   MCP_HOST_ALLOWLIST = ctx.MCP_HOST_ALLOWLIST;
   MCP_HOST_ALLOWLIST_URL = ctx.MCP_HOST_ALLOWLIST_URL;
   mcpStaticHosts = ctx.mcpStaticHosts;
+  MCP_PATH_ALLOWLIST = ctx.MCP_PATH_ALLOWLIST;
   VANITY_REDIRECTS = ctx.VANITY_REDIRECTS;
   RT_ORIGIN = ctx.RT_ORIGIN;
   INSTANCE_SENTINELS = ctx.INSTANCE_SENTINELS;
@@ -1969,7 +1972,7 @@ async function loadManifests(env, force) {
 // reaches loadConfig's catch with nothing written, which is the keep-last-good behaviour
 // the cache was always trying to have.
 function derivedRoutingFields(manifests, spaceIcons) {
-  const vmap = {}, prefixes = [], mcp = new Set(), spacesList = [];
+  const vmap = {}, prefixes = [], mcp = new Set(), mcpPaths = new Set(), spacesList = [];
   const sigs = [];
   const catalog = [], tracks = [];
   let skillPrefixes = [], loaderExtras = "";
@@ -2000,6 +2003,7 @@ function derivedRoutingFields(manifests, spaceIcons) {
     // admin-only too (isTrackPath), so the workspace's tracks merge for an admin to see.
     tracks.push(...(r.canvasTracks || []));
     for (const h of r.mcpAllowlist || []) mcp.add(h);
+    for (const p of r.mcpPaths || []) mcpPaths.add(p);
     if (r.publicSkillPrefixes) skillPrefixes = r.publicSkillPrefixes;
     spacesList.push(sp);
     sigs.push(`${id}:${r.shellSig || m.version || 0}`);
@@ -2024,6 +2028,7 @@ function derivedRoutingFields(manifests, spaceIcons) {
     CANVAS_TRACKS: tracks,
     MCP_HOST_ALLOWLIST: allowlist,
     mcpStaticHosts: new Set(allowlist),
+    MCP_PATH_ALLOWLIST: [...mcpPaths].sort(),
     SPACES: applySpaceIcons(spaces, spaceIcons),
     CHROME_POINTER: chromePointer,
     RUNTIME_CHROME: runtimeChrome,
@@ -2046,6 +2051,7 @@ function applyDerivedRouting(manifests) {
   CANVAS_TRACKS = f.CANVAS_TRACKS;
   MCP_HOST_ALLOWLIST = f.MCP_HOST_ALLOWLIST;
   mcpStaticHosts = f.mcpStaticHosts;
+  MCP_PATH_ALLOWLIST = f.MCP_PATH_ALLOWLIST;
   SPACES = f.SPACES;
   CHROME_POINTER = f.CHROME_POINTER;
   RUNTIME_CHROME = f.RUNTIME_CHROME;
@@ -2723,12 +2729,13 @@ async function publishApi(request, url, env) {
             }
           }
         }
-        // NOTE: a space's declared MCP hosts (rf.mcpAllowlist) are NOT constrained here.
-        // A space legitimately declares its clients' own domains (the planner names
-        // hundreds, on their own TLDs — not under any instance suffix), and that IS the
-        // feature. The proxy's real controls live in mcpProxy: only a DECLARED host is
-        // reachable, redirects aren't followed, IP-literal targets are rejected, and only
-        // four fixed MCP paths pass with a sanitized response. Constraining which hosts a
+        // NOTE: a space's declared MCP targets (rf.mcpAllowlist, rf.mcpPaths) are NOT
+        // constrained here. A space legitimately declares its clients' own domains (one
+        // planner prototype names hundreds, on their own TLDs — not under any instance
+        // suffix) and the API endpoints it talks to, and that IS the feature. The proxy's
+        // real controls live in mcpProxy: only a DECLARED host is reachable, redirects
+        // aren't followed, IP-literal targets are rejected, and only a declared path
+        // passes, whole and exact, with a sanitized response. Constraining which targets a
         // space may declare added little over those and broke clients on their own domains.
       }
       // adminOnly/default are NOT self-asserted from a non-star manifest — a token scoped
@@ -3528,13 +3535,19 @@ function __setChromeTestState(pointer, spaces, on) {
 // never logs a token. Allowlist is tight: subdomains of the injected
 // MCP_HOST_SUFFIXES, the exact hosts the spaces declared at build time
 // (MCP_HOST_ALLOWLIST), plus the exact hosts published at MCP_HOST_ALLOWLIST_URL,
-// and exactly the paths the OAuth flows need.
+// and exactly the paths the MCP/OAuth flows need plus the ones the spaces declared
+// alongside their hosts (MCP_PATH_ALLOWLIST).
 
+// The engine's floor: the three paths the protocol itself speaks, which are the same
+// three whatever a platform is. Anything past them is a fact about ONE platform's API
+// and the prototype calling it, so it is declared where that prototype lives —
+// space.json "mcpAllowlists" → {"paths":[…]} → routing → MCP_PATH_ALLOWLIST. A
+// workspace's endpoint has no business being spelled out in a shared engine, and an
+// engine pin bump has no business being what it takes to add one.
 const MCP_PROXY_PATHS = new Set([
   "/mcp",
   "/oauth/registrations",
   "/oauth/token",
-  "/web_api/v1/app_configuration",
 ]);
 
 // Exact-host allowlist, fetched once per isolate from MCP_HOST_ALLOWLIST_URL — a
@@ -3586,7 +3599,11 @@ async function mcpProxy(request, url) {
       || /^\d+\.\d+\.\d+\.\d+$/.test(host) || !host.includes(".")
       || !(await mcpHostAllowed(host)))
     return jsonResponse({ error: "host not allowed" }, 403);
-  if (!MCP_PROXY_PATHS.has(path)) return jsonResponse({ error: "path not allowed" }, 403);
+  // Exact match, against the protocol floor and then the workspace's own declarations.
+  // `path` is url.pathname: already normalised (no "..", no "." segments) and carrying
+  // no query string, so this compares a whole endpoint, never a prefix.
+  if (!MCP_PROXY_PATHS.has(path) && !MCP_PATH_ALLOWLIST.includes(path))
+    return jsonResponse({ error: "path not allowed" }, 403);
   if (request.method !== "POST" && request.method !== "GET")
     return jsonResponse({ error: "method not allowed" }, 405);
   const headers = new Headers();
@@ -5182,6 +5199,7 @@ export const __testables = {
   AVATAR_MAX_CHARS,
   isEmailish, nameFromEmail, initialsFor,
   applyDerivedRouting, canvasAggregate, synthBuildStamp,
+  mcpProxy, MCP_PROXY_PATHS,
   assetFetch, withAssetCache, ASSET_REVALIDATE,
   deleteUrlPrefix, removeFromStore,
   revokePublishTokens, loginThrottled, loginSlowed, loginFail, DUMMY_HASH,

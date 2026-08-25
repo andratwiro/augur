@@ -6918,16 +6918,29 @@ async function main() {
   // UI skill, the MCP-proxy host allowlist, vanity redirects) ride the runtime
   // config documents below instead of worker stamping.
   //
-  // Space-declared MCP hosts: space.json "mcpAllowlists" names shipped JSON
-  // documents ({"hosts":[…]}, e.g. a generated client list) whose union ships in
-  // routing.json. Mounting a space is the trust act — its declared hosts ride
-  // in with it, no per-instance config and no runtime fetch to go stale. Failures
-  // are loud: a DECLARED list that is missing or malformed is a broken space, not
-  // a knob to degrade past (unlike the URL knob, whose runtime fetch fails soft
-  // by design). Hosts are validated against the worker's own host pattern and
-  // stored bare (lowercase, no leading "www.") to match its exact-match lookup.
+  // Space-declared MCP targets: space.json "mcpAllowlists" names shipped JSON
+  // documents ({"hosts":[…], "paths":[…]}, e.g. a generated client list) whose
+  // union ships in routing.json. Mounting a space is the trust act — its declared
+  // targets ride in with it, no per-instance config and no runtime fetch to go
+  // stale. Failures are loud: a DECLARED list that is missing or malformed is a
+  // broken space, not a knob to degrade past (unlike the URL knob, whose runtime
+  // fetch fails soft by design). Hosts are validated against the worker's own host
+  // pattern and stored bare (lowercase, no leading "www.") to match its exact-match
+  // lookup.
+  //
+  // PATHS are the same declaration for the other half of the proxy's allowlist. The
+  // engine ships the MCP/OAuth paths the protocol itself needs and knows no other:
+  // which further endpoint a platform exposes is a fact about that platform and the
+  // prototype talking to it, so it is declared beside the hosts it goes with, in the
+  // workspace that ships the prototype. Shape is checked here (absolute, no "..", no
+  // "//", unreserved characters only) — the proxy compares a declared path to
+  // `url.pathname`, which is already normalised and carries no query string, so a
+  // path that cannot be spelled that way could only ever be an entry that never
+  // matches.
   const MCP_HOST_RE = /^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$/;
+  const MCP_PATH_RE = /^\/[A-Za-z0-9._~/-]*$/;
   const mcpSpaceHosts = new Set();
+  const mcpSpacePaths = new Set();
   for (const space of spaces) {
     for (const rel of space.mcpAllowlists) {
       const file = path.resolve(space.root, rel);
@@ -6939,14 +6952,21 @@ async function main() {
       } catch (e) {
         throw new Error(`[mcp] space "${space.id}": cannot read allowlist ${rel}: ${e.message}`);
       }
-      if (!doc || !Array.isArray(doc.hosts))
-        throw new Error(`[mcp] space "${space.id}": allowlist ${rel} must be shaped {"hosts": […]}`);
-      for (const h of doc.hosts) {
+      if (!doc || (!Array.isArray(doc.hosts) && !Array.isArray(doc.paths)))
+        throw new Error(`[mcp] space "${space.id}": allowlist ${rel} must be shaped {"hosts": […]} and/or {"paths": […]}`);
+      for (const h of doc.hosts || []) {
         const bare = String(h).toLowerCase().replace(/^www\./, "");
         if (!MCP_HOST_RE.test(bare))
           throw new Error(`[mcp] space "${space.id}": allowlist ${rel} carries an invalid host: ${JSON.stringify(h)}`);
         mcpSpaceHosts.add(bare);
         if (spaceRouting[space.id]) (spaceRouting[space.id].mcpHosts ||= new Set()).add(bare);
+      }
+      for (const p of doc.paths || []) {
+        const s = String(p);
+        if (!MCP_PATH_RE.test(s) || s.includes("//") || s.split("/").includes(".."))
+          throw new Error(`[mcp] space "${space.id}": allowlist ${rel} carries an invalid path: ${JSON.stringify(p)}`);
+        mcpSpacePaths.add(s);
+        if (spaceRouting[space.id]) (spaceRouting[space.id].mcpPaths ||= new Set()).add(s);
       }
     }
   }
@@ -6990,6 +7010,7 @@ async function main() {
     publicSkillPrefixes: gateExempt,
     restrictedBases,
     mcpAllowlist: [...mcpSpaceHosts].sort(),
+    mcpPaths: [...mcpSpacePaths].sort(),
     // Assets mode's copy of the two canvas aggregates, merged here across every
     // space this build saw. (Bundle mode ignores routing.json entirely and merges
     // the same per-space fragments off the live manifests instead — one worker
@@ -7315,6 +7336,7 @@ async function main() {
       versionMap: sr.versionMap,
       shellSig: sigOf(sr.sigParts),
       mcpAllowlist: [...(sr.mcpHosts || [])].sort(),
+      mcpPaths: [...(sr.mcpPaths || [])].sort(),
       canvasCatalog: sr.canvasCatalog || [],
       canvasTracks: sr.canvasTracks || [],
       ...(m.space.default ? { publicSkillPrefixes: gateExempt } : {}),

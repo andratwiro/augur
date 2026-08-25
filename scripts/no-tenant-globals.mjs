@@ -61,6 +61,7 @@ const IN_FLIGHT = {
   MCP_HOST_ALLOWLIST:      "exact proxy hosts the spaces declared at build time — A-thread-mcp",
   MCP_HOST_ALLOWLIST_URL:  "where to fetch the remote proxy allowlist — A-thread-mcp",
   mcpStaticHosts:          "Set(MCP_HOST_ALLOWLIST), derived at config load — A-thread-mcp",
+  MCP_PATH_ALLOWLIST:      "extra proxy paths the spaces declared at build time — A-thread-mcp",
   CANVAS_LOADER_EXTRAS:    "extra scripts the virtual canvas loader injects — A-thread-canvas",
   CANVAS_CATALOG:          "the insert picker's aggregate — A-thread-canvas",
   CANVAS_TRACKS:           "the music aggregate — A-thread-canvas",

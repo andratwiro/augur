@@ -69,6 +69,7 @@ const FIELDS = {
   MCP_HOST_ALLOWLIST:      { source: "routing",  make: () => [] },
   MCP_HOST_ALLOWLIST_URL:  { source: "instance", make: () => "" },
   mcpStaticHosts:          { source: "derived",  make: () => new Set() }, // Set(MCP_HOST_ALLOWLIST)
+  MCP_PATH_ALLOWLIST:      { source: "routing",  make: () => [] }, // paths the spaces declared, on top of the protocol's own
 
   // ---- canvas ------------------------------------------------------------------
   CANVAS_LOADER_EXTRAS:    { source: "routing",  make: () => "" },
@@ -146,7 +147,9 @@ export function instanceFields(inst) {
 
 // routing.json -> the fields it owns. Mirrors the worker's assets-mode routing block.
 // `mcpStaticHosts` is derived here rather than at the read site so the two can never
-// disagree about which hosts are allowed.
+// disagree about which hosts are allowed. `MCP_PATH_ALLOWLIST` needs no such twin: a
+// workspace declares a handful of paths, not hundreds of hosts, so the read site scans
+// the array itself and there is no second copy to fall out of step.
 export function routingFields(routing) {
   const doc = routing && typeof routing === "object" ? routing : {};
   const allowlist = doc.mcpAllowlist || [];
@@ -161,6 +164,7 @@ export function routingFields(routing) {
     CANVAS_TRACKS: doc.canvasTracks || [],
     MCP_HOST_ALLOWLIST: allowlist,
     mcpStaticHosts: new Set(allowlist),
+    MCP_PATH_ALLOWLIST: doc.mcpPaths || [],
     SPACES: Array.isArray(doc.spaces) ? doc.spaces : [],
     CHROME_POINTER: doc.chrome || null,
     RUNTIME_CHROME: !!doc.runtimeChrome,
