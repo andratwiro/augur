@@ -345,11 +345,40 @@ plurality (D1–D9); the membership maps degenerate cleanly to one workspace
 the "behaviour change riding a mechanical refactor" the baselines forbid. S5 therefore
 resolves the gate to the one workspace and stops there.
 
-**Q3 — What shape is the per-request tenant context? STILL OPEN — and it is now the
-next thing to decide.** The sweep needs a context object to thread; whether it is a plain
-struct filled by the config load or a class affects the ergonomics of every threading
-commit. The first slice only deleted, so it never had to answer. It is now the head of
-the remaining work.
+**Q3 — What shape is the per-request tenant context? RESOLVED: a frozen plain object
+whose field names are the current global names, with free functions taking it as a
+parameter.** It lives in `src/tenant-context.mjs`. Three properties carry the decision,
+and each was chosen against a specific failure:
+
+- **Names match the globals exactly** (`USERS`, not `users`). Every one of the ~110 read
+  sites then becomes `ctx.USERS` — a rename, not a rewrite — which is what keeps the
+  byte-level snapshots meaningful. Tidier names would hide real changes inside cosmetic
+  ones, and the whole method here depends on the diff being boring.
+- **Defaults are factories, never values.** A shared `new Set()` in a defaults object
+  would be handed to every tenant, so one workspace's icon hash would become everyone's —
+  reintroducing the exact leak inside the fix for it. Tested by asserting two contexts
+  share no reference.
+- **No methods.** `isPublicPath(ctx, path)` stays a free function rather than
+  `ctx.isPublicPath(path)`, because moving behaviour onto the container would make the
+  sweep a behaviour change as well as a mechanical one — precisely what the baselines
+  forbid.
+
+The object is frozen, so a stray `ctx.USERS = …` throws rather than rewriting one
+tenant's identity from another's request. Values are not deep-frozen: code still rebuilds
+these arrays in place, and the guarantee actually needed is against reassignment, which
+is what module-scope `let` was violating.
+
+A rejected alternative worth recording: a class with a `load()` method. It reads better in
+isolation but makes the context responsible for fetching, which is what the fail-open-stale
+cache needs to keep separate — the caller must be able to decide that a failed read is not
+worth swapping the cached context for. `buildTenantContext` therefore takes documents that
+already parsed and never performs I/O.
+
+The completeness guard lives in `test/tenant-context.test.mjs`: it reads the worker's own
+source, and any module-scope `let` that is neither a declared context field nor a declared
+per-isolate runtime cache fails the suite. That is the check for the one failure mode the
+snapshots cannot see — threading 27 of 28 globals and leaving the 28th shared, with
+everything green because a single-tenant era cannot observe the difference.
 
 **Q4 — Snapshot corpus authority. PARTLY SETTLED.** The harness ships a fixed 14-request
 corpus (§3b): the signed-out and signed-in index, a public prototype, a gated internal
