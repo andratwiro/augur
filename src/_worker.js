@@ -69,7 +69,25 @@ let MCP_HOST_SUFFIXES = [];
 let MCP_HOST_ALLOWLIST = [];
 let MCP_HOST_ALLOWLIST_URL = "";
 let VANITY_REDIRECTS = {};
-const USER_COOKIE = "gv_user";              // value: "<email>.<token>"
+// The session cookie: value "<email>.<token>". `__Host-` is a name PREFIX the browser
+// enforces — it stores a cookie under such a name only when it is Secure, has Path=/,
+// and carries NO Domain attribute. That last rule is the point: several workspaces share
+// one apex, so a page published on one of them can otherwise set `Domain=.<apex>` and
+// have the browser send that cookie to a sibling workspace too. It could never FORGE a
+// session (the token HMACs on SESSION_SECRET plus the user's effective secret), but it
+// could SHADOW the real cookie and break login on the sibling — identify() reads the
+// first match. Under the prefixed name the browser refuses to store the tossed cookie at
+// all. Every issue site already set Path=/, HttpOnly and Secure with no Domain, so this
+// is a name, not a redesign — and it stays a name: never issue this cookie without all
+// three, or the browser will silently drop every session the deployment hands out.
+const USER_COOKIE = "__Host-gv_user";
+// ⏳ MIGRATION WINDOW — the old, unprefixed name. Sessions issued before the rename live
+// under it, so it is READ by identify() and CLEARED by /__logout, and NEVER issued: every
+// login from here on lands under the prefixed name, and the old one drains away as the
+// sessions holding it expire (MAX_AGE, one week). To finish the rename, delete this
+// constant and the two ⏳ sites that mention it — the fallback in identify() and the
+// second clear in /__logout. Nothing else refers to it.
+const LEGACY_USER_COOKIE = "gv_user";
 // KV {email: "pbkdf2$…"} — the credential store, written only by a user redeeming an
 // invite. A key PRESENT holding null/"" is a REVOCATION TOMBSTONE (admin reset): it
 // means "no secret", and must never fall through to the roster's seed. Only an ABSENT
@@ -1743,14 +1761,23 @@ async function userToken(env, u, resolved) {
   return tokenFor(u.email + ":" + secret);
 }
 
-// Resolve the signed-in user from the gv_user cookie ("<email>.<token>"). Stateless —
+// The value of one named cookie out of a Cookie header, or null when it is absent.
+// First match wins, as it always has.
+function cookieValue(cookies, name) {
+  const c = cookies.split(/;\s*/).find((x) => x.startsWith(name + "="));
+  return c === undefined ? null : c.slice(name.length + 1);
+}
+
+// Resolve the signed-in user from the session cookie ("<email>.<token>"). Stateless —
 // no session store. `users` defaults to the injected USERS; tests pass their own list.
 async function identify(request, env, users = USERS) {
   if (!users.length) return null;
   const cookies = request.headers.get("Cookie") || "";
-  const c = cookies.split(/;\s*/).find((x) => x.startsWith(USER_COOKIE + "="));
-  if (!c) return null;
-  const val = c.slice(USER_COOKIE.length + 1);
+  // ⏳ MIGRATION WINDOW — the prefixed name first, the old one only if it is absent, so a
+  // session that predates the rename keeps working and a re-login upgrades it in place.
+  // Delete the second half of this line with LEGACY_USER_COOKIE.
+  const val = cookieValue(cookies, USER_COOKIE) ?? cookieValue(cookies, LEGACY_USER_COOKIE);
+  if (val === null) return null;
   const dot = val.lastIndexOf(".");
   if (dot < 1) return null;
   const u = userByEmail(val.slice(0, dot), users);
@@ -4830,14 +4857,13 @@ export default {
 
     // Sign out — clear the identity cookie and bounce home.
     if (url.pathname === "/__logout") {
-      return new Response(null, {
-        status: 303,
-        headers: {
-          Location: "/",
-          "Set-Cookie": `${USER_COOKIE}=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0`,
-          "Cache-Control": "no-store",
-        },
-      });
+      const out = new Headers({ Location: "/", "Cache-Control": "no-store" });
+      out.append("Set-Cookie", `${USER_COOKIE}=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0`);
+      // ⏳ MIGRATION WINDOW — clear the old name too. Sign-out has to reach the cookie the
+      // browser is actually holding, or a session issued before the rename survives its
+      // own sign-out. Delete this line with LEGACY_USER_COOKIE.
+      out.append("Set-Cookie", `${LEGACY_USER_COOKIE}=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0`);
+      return new Response(null, { status: 303, headers: out });
     }
 
     // Admin users/passwords API — admin-only (adminUsersApi re-checks me.role).

@@ -53,7 +53,7 @@ async function post(env, user, op) {
   const headers = { "Content-Type": "application/json" };
   if (user) {
     const token = await W.userToken(env, user);
-    headers.Cookie = `gv_user=${user.email}.${token}`;
+    headers.Cookie = `__Host-gv_user=${user.email}.${token}`;
   }
   const url = new URL(`https://example.test/__review/api?path=${encodeURIComponent(PATH)}`);
   const request = new Request(url, { method: "POST", headers, body: JSON.stringify(op) });
@@ -68,7 +68,7 @@ test("setup: the roster is live so identify() can resolve a cookie", async () =>
   const { env } = seed([]);
   const token = await W.userToken(env, A);
   const me = await W.identify(new Request("https://example.test/", {
-    headers: { Cookie: `gv_user=${A.email}.${token}` },
+    headers: { Cookie: `__Host-gv_user=${A.email}.${token}` },
   }), env);
   assert.ok(me, "A's cookie identifies");
   assert.equal(me.email, A.email);

@@ -394,7 +394,7 @@ test("redeeming an invite stores a hash and signs the user in", async () => {
   const res = await W.invitePost(invitePostRequest(t, "a good long password"), new URL("https://example.test/__invite"), env, ROSTER);
   assert.equal(res.status, 303);
   const cookie = res.headers.get("Set-Cookie") || "";
-  assert.match(cookie, /^gv_user=a%40example\.test\.|^gv_user=a@example\.test\./, "session cookie issued");
+  assert.match(cookie, /^__Host-gv_user=a%40example\.test\.|^__Host-gv_user=a@example\.test\./, "session cookie issued");
   const stored = JSON.parse(await kv.get("users:secrets"))["a@example.test"];
   assert.ok(W.isPassHash(stored), "stored as a hash, never plaintext");
   assert.equal(await W.verifyPassword("a good long password", stored), true);
@@ -512,7 +512,10 @@ test("invitePost success sets a hardened cookie: Path=/, HttpOnly, Secure, SameS
   assert.match(cookie, /HttpOnly/, "HttpOnly present");
   assert.match(cookie, /Secure/, "Secure present");
   assert.match(cookie, /SameSite=Lax/, "SameSite=Lax present");
-  const rawValue = cookie.split(";")[0].slice("gv_user=".length);
+  // The three the `__Host-` prefix makes mandatory: Path=/ and Secure above, and no
+  // Domain at all. A browser drops the whole cookie if any of them is missing.
+  assert.equal(/;\s*Domain=/i.test(cookie), false, "no Domain attribute");
+  const rawValue = cookie.split(";")[0].slice("__Host-gv_user=".length);
   const value = decodeURIComponent(rawValue);
   assert.match(value, /^a@example\.test\.[0-9a-fA-F]+$/, "<email>.<token> shape");
 });

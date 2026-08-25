@@ -303,6 +303,24 @@ name, initials, colour and role. Passwords live in KV as PBKDF2 hashes under
     that does not fail closed: "no binding at all" is the *offline build* case, which
     falls straight through to whatever the roster seeds. Wait the outage out, or fix the
     binding — never remove it.
+- **⚠️ The session cookie is `__Host-gv_user`, and the prefix is load-bearing.** `__Host-`
+  is a name prefix the BROWSER enforces: it stores a cookie so named only when the cookie
+  is `Secure`, has `Path=/`, and carries **no `Domain` attribute**. That last rule is the
+  point — several workspaces share one apex host, so a page published on one of them can
+  otherwise set `Domain=.<apex>` and have the browser send that cookie to a sibling
+  workspace too. It could never forge a session (the token HMACs on `SESSION_SECRET` plus
+  the user's effective secret), but it could *shadow* the real one and break login next
+  door. Issue this cookie without all three attributes and the browser silently drops
+  every session the deployment hands out, so never add a `Domain`, never narrow the
+  `Path`, never drop `Secure`. One workspace host therefore cannot share a session with
+  another by cookie, on purpose; spanning them is a central sign-in minting a separate
+  session per host, never a weaker cookie.
+  - **⏳ Migration window.** The old, unprefixed `gv_user` is still READ by `identify()`
+    and CLEARED by `/__logout` so sessions predating the rename survive the deploy — and
+    is never ISSUED, so every login lands on the prefixed name and the old one drains
+    away within `MAX_AGE` (a week). `LEGACY_USER_COOKIE` in `src/_worker.js` names the two
+    ⏳ sites that end it; `test/host-cookie-prefix.test.mjs` covers both names, and its
+    own ⏳ cases go at the same time.
 - Sessions are HMACs keyed on the runtime `SESSION_SECRET`, bound to the user's effective
   secret, so changing or clearing a password invalidates that user's cookies for free.
   This holds only when `SESSION_SECRET` is actually set on the project — `userToken()`

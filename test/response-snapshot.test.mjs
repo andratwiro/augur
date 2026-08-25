@@ -84,6 +84,12 @@ function memKV(initial = {}) {
 // secret — a literal, checked in, exactly as a build would inject one at runtime.
 const SESSION_SECRET = "s0-snapshot-fixed-session-secret";
 
+// The session cookie's wire name, spelled out rather than imported: the corpus records
+// what a real browser sends, and pinning the literal is what makes a rename show up here
+// instead of sliding through. The `__Host-` prefix is browser-enforced — see USER_COOKIE
+// in the worker.
+const SESSION_COOKIE = "__Host-gv_user";
+
 // The one roster user, mirrored into instance.json below. Its passHash need only be a
 // truthy fixed string: with KV bound but no users:secrets key, effectiveSecret() falls
 // back to u.passHash, so the cookie derivation and identify() agree on this value.
@@ -211,7 +217,7 @@ async function record(fetchImpl, env, ctx, { method = "GET", path, cookie } = {}
 async function signedInCookie(env) {
   const secret = USER.passHash; // effectiveSecret() with no users:secrets key
   const token = await W.userToken(env, USER, secret);
-  return `gv_user=${USER.email}.${token}`;
+  return `${SESSION_COOKIE}=${USER.email}.${token}`;
 }
 
 // The fixed request corpus. Each entry names WHY it is here.
