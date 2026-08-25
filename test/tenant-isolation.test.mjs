@@ -772,6 +772,140 @@ test("a workspace with no default cannot borrow its neighbour's", async () => {
   );
 });
 
+// ---- the canvas surfaces, per workspace ----------------------------------------------
+//
+// WHY THIS IS HERE AND NOT LEFT TO THE SNAPSHOT. The byte-level response snapshot pins no
+// canvas board — its corpus has no registered canvas path, no insert picker and no
+// realtime upgrade — so the ratchet is green whatever these three routes answer. The
+// canvas cluster is therefore proved at the RESPONSE level here instead: the bytes a
+// board's loader page carries, the bodies the two aggregates return, and the origin the
+// multiplayer proxy dials.
+//
+// Every case drives the surface with two contexts and ONE shared environment, which is
+// what an isolate serving both workspaces has: the same KV, the same canvas registry, the
+// same per-isolate memos. The only thing that differs between the two calls is the
+// workspace handed in — so an answer that names the wrong workspace can only have come
+// from state the two shared.
+
+function sharedCanvasEnv(registry) {
+  const store = new Map(Object.entries(registry));
+  return {
+    COMMENTS: {
+      async get(k) { return store.has(k) ? store.get(k) : null; },
+      async put(k, v) { store.set(k, v); },
+      async delete(k) { store.delete(k); },
+    },
+    ASSETS: { async fetch() { return new Response("", { status: 404 }); } },
+  };
+}
+
+const boardPath = "/boards/shared-board/";
+
+test("a board's loader page carries the CALLING workspace's tags, not its neighbour's", async () => {
+  const ctx = {};
+  for (const n of NAMES) {
+    resetSharedCaches();
+    ctx[n] = await load(n, envFor(n));
+    assert.equal(
+      ctx[n].CANVAS_LOADER_EXTRAS, `<script src="/${n}-loader.js"></script>`,
+      `${n}'s context does not carry its own loader tags — the case would assert nothing`,
+    );
+  }
+
+  // One registry, one KV: the board exists once and both workspaces can reach it, exactly
+  // as they would inside one isolate. What must differ is the page rendered for it.
+  const env = sharedCanvasEnv({
+    canvases: JSON.stringify({ [boardPath]: { name: "Shared Board", by: "", t: 1 } }),
+  });
+  const req = () => new Request("https://x.test" + boardPath);
+  const url = () => new URL("https://x.test" + boardPath);
+
+  for (const plan of [["alpha", "beta"], ["beta", "alpha"]]) {
+    for (const n of plan) {
+      const res = await W.virtualCanvas(ctx[n], req(), env, url());
+      assert.ok(res, `${n} was not served the board at all`);
+      const html = await res.text();
+      assert.ok(
+        html.includes(`<script src="/${n}-loader.js"></script>`),
+        `order ${plan.join(",")}: ${n}'s board page lost its own overlay stack`,
+      );
+      const other = NAMES.find((x) => x !== n);
+      assert.equal(
+        html.includes(`/${other}-loader.js`), false,
+        `order ${plan.join(",")}: ${n}'s board page injected ${other}'s scripts — a script tag from the neighbouring workspace running on this workspace's board`,
+      );
+    }
+  }
+});
+
+test("the insert picker and the track list answer the CALLING workspace", async () => {
+  const ctx = {};
+  for (const n of NAMES) {
+    resetSharedCaches();
+    ctx[n] = await load(n, envFor(n));
+  }
+
+  for (const plan of [["alpha", "beta"], ["beta", "alpha"]]) {
+    for (const n of plan) {
+      const where = `order ${plan.join(",")}: ${n}`;
+      assert.deepStrictEqual(
+        await (await W.canvasAggregate(ctx[n], "catalog", true)).json(), [{ id: `${n}-card` }],
+        `${where} was handed another workspace's catalogue — every prototype URL that workspace ships`,
+      );
+      assert.deepStrictEqual(
+        await (await W.canvasAggregate(ctx[n], "tracks", true)).json(), [{ id: `${n}-track` }],
+        `${where} was handed another workspace's tracks`,
+      );
+    }
+  }
+
+  // The unauthenticated answers stay empty per workspace: a signed-out viewer gets the
+  // board, never the directory of everything else that exists.
+  assert.deepStrictEqual(await (await W.canvasAggregate(ctx.alpha, "catalog", false)).json(), []);
+  assert.deepStrictEqual(await (await W.canvasAggregate(ctx.alpha, "tracks", false)).json(), []);
+});
+
+test("the multiplayer proxy dials the CALLING workspace's realtime worker", async () => {
+  const ctx = {};
+  for (const n of NAMES) {
+    resetSharedCaches();
+    ctx[n] = await load(n, envFor(n));
+  }
+
+  // The proxy calls global fetch. Stubbed so the case records the URL it would have dialled
+  // and reaches no network — a realtime origin must never be contacted from the suite. The
+  // stub answers 200 rather than the real 101: the workers runtime returns the upgrade
+  // response, and node's Response constructor refuses a status below 200.
+  const dialled = [];
+  const realFetch = globalThis.fetch;
+  globalThis.fetch = async (req) => { dialled.push(req.url); return new Response(null, { status: 200 }); };
+  try {
+    const env = { RT_SHARED_SECRET: "s3cret" };
+    for (const n of ["alpha", "beta", "beta", "alpha"]) {
+      const url = new URL(`https://x.test/__rt?path=${boardPath}`);
+      const req = new Request(url, { headers: { Upgrade: "websocket" } });
+      await W.rtProxy(ctx[n], req, url, env);
+      assert.equal(
+        dialled.at(-1).startsWith(`https://rt.${n}.invalid/room`), true,
+        `${n}'s board joined ${dialled.at(-1)} — a room in another workspace's realtime worker, carrying this worker's shared secret`,
+      );
+    }
+  } finally {
+    globalThis.fetch = realFetch;
+  }
+
+  // And a workspace that configures no realtime origin is told so, rather than falling
+  // through to whichever neighbour configured one.
+  resetSharedCaches();
+  const silent = await load("beta", fixture("beta", {
+    instance: { ...instanceDoc("beta"), rtOrigin: "" },
+  }));
+  const url = new URL("https://x.test/__rt");
+  const res = W.rtProxy(silent, new Request(url, { headers: { Upgrade: "websocket" } }), url, {});
+  assert.equal(res.status, 501);
+  assert.equal((await res.json()).error, "realtime-not-configured");
+});
+
 // ---- KNOWN GAP: the roster overlay cache is shared -----------------------------------
 //
 // `rosterFields()` reads its six KV documents through the module-scope `rosterCache` /

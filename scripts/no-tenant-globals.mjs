@@ -46,10 +46,6 @@ import { TENANT_FIELD_NAMES } from "../src/tenant-context.mjs";
 const IN_FLIGHT = {
   CHROME_POINTER:          "which shared chrome bundle this deployment serves",
   RUNTIME_CHROME:          "whether chrome is composed at serve time for this deployment",
-  CANVAS_LOADER_EXTRAS:    "extra scripts the virtual canvas loader injects — A-thread-canvas",
-  CANVAS_CATALOG:          "the insert picker's aggregate — A-thread-canvas",
-  CANVAS_TRACKS:           "the music aggregate — A-thread-canvas",
-  RT_ORIGIN:               "the realtime worker this deployment proxies to — A-thread-canvas",
   MIN_CLIENT_PROTOCOL:     "the publish protocol floor this deployment demands",
   LOGIN_HINT:              "the line under the login form",
   LOGIN_PREFILL_EMAIL:     "demo credentials prefilled on the login form",

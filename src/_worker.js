@@ -455,7 +455,6 @@ let TENANT_CTX = emptyTenantContext(null);
 // disagreeing, which is the one failure a green test suite could not show.
 function applyInstance(inst) {
   TENANT_CTX = withTenantFields(TENANT_CTX, instanceFields(inst));
-  RT_ORIGIN = inst.rtOrigin || "";
   MIN_CLIENT_PROTOCOL = Number.isInteger(inst.minClientProtocol) && inst.minClientProtocol > 0
     ? inst.minClientProtocol : 0;
   LOGIN_HINT = typeof inst.loginHint === "string" ? inst.loginHint : "";
@@ -527,16 +526,13 @@ async function loadTenantContext(tenantId, env, { prev = null, forced = false } 
 // The workspace cluster is gone from here: SPACES, the icon index and the hashes it
 // vouches for, the sentinels and the engine-version/update-feed pair are read off the
 // context at every site that wants them, so there is nothing left to mirror. So is the
-// whole MCP-proxy allowlist, hosts and paths alike.
+// whole MCP-proxy allowlist, hosts and paths alike, and so is the canvas cluster — the
+// two aggregates, the loader tags and the realtime origin.
 function applyTenantContext(ctx) {
-  RT_ORIGIN = ctx.RT_ORIGIN;
   MIN_CLIENT_PROTOCOL = ctx.MIN_CLIENT_PROTOCOL;
   LOGIN_HINT = ctx.LOGIN_HINT;
   LOGIN_PREFILL_EMAIL = ctx.LOGIN_PREFILL_EMAIL;
   LOGIN_PREFILL_PASSWORD = ctx.LOGIN_PREFILL_PASSWORD;
-  CANVAS_LOADER_EXTRAS = ctx.CANVAS_LOADER_EXTRAS;
-  CANVAS_CATALOG = ctx.CANVAS_CATALOG;
-  CANVAS_TRACKS = ctx.CANVAS_TRACKS;
   CHROME_POINTER = ctx.CHROME_POINTER;
   RUNTIME_CHROME = ctx.RUNTIME_CHROME;
 }
@@ -2106,9 +2102,6 @@ function derivedRoutingFields(manifests, spaceIcons) {
 function applyDerivedRouting(manifests) {
   const f = derivedRoutingFields(manifests, TENANT_CTX.SPACE_ICONS);
   TENANT_CTX = withTenantFields(TENANT_CTX, f);
-  CANVAS_LOADER_EXTRAS = f.CANVAS_LOADER_EXTRAS;
-  CANVAS_CATALOG = f.CANVAS_CATALOG;
-  CANVAS_TRACKS = f.CANVAS_TRACKS;
   CHROME_POINTER = f.CHROME_POINTER;
   RUNTIME_CHROME = f.RUNTIME_CHROME;
   // Returns the CONTEXT, not the bare field patch. It is a superset — every field of the
@@ -4176,23 +4169,26 @@ async function canvasesApi(request, url, env, me) {
   return jsonResponse({ error: "method-not-allowed" }, 405);
 }
 
-// From routing.json: the extra tags every BUILT prototype page carries — the
+// The three canvas fields are read off the CALLING workspace's context
+// (`tctx.CANVAS_LOADER_EXTRAS`, `tctx.CANVAS_CATALOG`, `tctx.CANVAS_TRACKS`), never out
+// of module scope. Each is that workspace's own routing talking, and a board is served
+// to whoever holds its link — so a shared copy would hand an anonymous visitor of one
+// workspace the neighbouring workspace's script tags, insert picker and track list.
+//
+// CANVAS_LOADER_EXTRAS — the extra tags every BUILT prototype page carries: the
 // review/comment overlay (graph.js + comments.js, which power C-to-comment and
 // Shift+C provenance) plus any build addon's tags. Without this a worker-served
 // canvas page mounts the engine but loses the overlay stack that real prototype
 // files get injected at build.
-let CANVAS_LOADER_EXTRAS = "";
-
-// The two site-wide canvas aggregates — every embeddable thing across all spaces
-// (the insert picker's catalog) and every track any space installs. They are
-// SYNTHESIZED here, never shipped as files, because no single publisher ever holds
-// the whole picture: content publishes one space at a time, so a space that wrote
-// the whole file would blank every other space's entries. Each space contributes
-// its own slice in its routing fragment; these hold the merge. Both modes feed
-// them: bundle mode from the live manifests (applyDerivedRouting), assets mode
-// from routing.json (loadConfig).
-let CANVAS_CATALOG = [];
-let CANVAS_TRACKS = [];
+//
+// CANVAS_CATALOG / CANVAS_TRACKS — the two site-wide canvas aggregates: every
+// embeddable thing across all spaces (the insert picker's catalog) and every track
+// any space installs. They are SYNTHESIZED, never shipped as files, because no single
+// publisher ever holds the whole picture: content publishes one space at a time, so a
+// space that wrote the whole file would blank every other space's entries. Each space
+// contributes its own slice in its routing fragment; the merge lands on the context.
+// Both modes feed it: bundle mode from the live manifests (derivedRoutingFields),
+// assets mode from routing.json (routingFields).
 
 // Serve one of the aggregates. Reachable without a login, matching what the files were:
 // canvas boards are shareable links that render for a signed-out viewer, so their insert
@@ -4373,7 +4369,11 @@ async function assetApi(request, url, env) {
 // intact returns the 101 + socket, passed through. Injected at build from the deploy
 // config's `realtimeOrigin`; without one, boards run solo (the client's socket-down
 // fallback: it persists via /__board to this instance's own KV).
-let RT_ORIGIN = "";
+//
+// The origin is `tctx.RT_ORIGIN` — the CALLING workspace's, read per request. Rooms are
+// keyed by board path inside the realtime worker, so a shared module binding would have
+// let one workspace's board join a neighbour's room under the same path, carrying this
+// worker's shared secret with it.
 function rtProxy(tctx, request, url, env) {
   // Sandbox seal (offline mode without deploy creds): local KV alone is not a sandbox
   // if the canvas still joins the shared rooms — board ops would half-escape while

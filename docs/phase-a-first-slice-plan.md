@@ -148,12 +148,8 @@ and assignment sites (measured by `grep -ow` count, then discounting decl + assi
 | `LOGIN_HINT` | `346` | ~2 | login page |
 | `LOGIN_PREFILL_EMAIL` | `351` | ~2 | login page |
 | `LOGIN_PREFILL_PASSWORD` | `352` | ~2 | login page |
-| `CANVAS_LOADER_EXTRAS` | `3554` | ~3 | virtual canvas loader |
-| `CANVAS_CATALOG` | `3564` | ~3 | insert picker aggregate |
-| `CANVAS_TRACKS` | `3565` | ~3 | music aggregate |
-| `RT_ORIGIN` | `3722` | ~3 | realtime proxy target |
 
-The sweep opened on **28 config-shaped globals** (the plan's "~25"). Four clusters have
+The sweep opened on **28 config-shaped globals** (the plan's "~25"). Five clusters have
 since been threaded and their `let`s deleted, so the rows above are what is left.
 
 The identity cluster — `CONFIG_USERS`, `USERS` and the `CONFIG_LOADED` flag that rides
@@ -194,6 +190,25 @@ costs a re-fetch and can only narrow what is allowed). The evidence is three cas
 `test/tenant-isolation.test.mjs`: a host only one workspace's document names is refused to
 the other, the memo is still one fetch per workspace rather than one per request, and a
 failed read retries instead of poisoning that workspace — or reaching its neighbour.
+
+And the canvas cluster — `CANVAS_LOADER_EXTRAS`, `CANVAS_CATALOG`, `CANVAS_TRACKS` and
+`RT_ORIGIN`. `canvasLoaderPage`, `canvasAggregate` and `rtProxy` were already taking the
+workspace they answer for, so all four `let`s were write-only mirrors and deleting them
+deleted the bindings. The work was the EVIDENCE, because this is the one cluster the
+byte-level snapshot cannot see: its corpus pins no registered canvas path, no insert
+picker and no realtime upgrade, so the ratchet stays green whatever those three routes
+answer. Three cases in `test/tenant-isolation.test.mjs` drive the surfaces themselves with
+two contexts over ONE shared KV and registry — the loader page carries the calling
+workspace's script tags and none of its neighbour's, the two aggregates answer that
+workspace's catalogue and tracks (and still answer a signed-out viewer with neither), and
+the multiplayer proxy dials that workspace's realtime worker rather than a neighbour's
+room. Checked by sabotage, not by the pass: memoising the first context inside those three
+functions turns all three red and leaves the snapshot green.
+
+The two aggregate globals also stated the multi-space era in their own comment — "every
+embeddable thing across all spaces". The merge is unchanged (each workspace still
+contributes its slice through its routing fragment), but the value it produces belongs to
+the workspace that asked for it, not to the isolate.
 
 Excluded as pure per-isolate runtime caches, not config: `cfgAt` (`358`), `MANIFESTS` (`1654`),
 `STORAGE_CACHE` (`2654`), `AVATAR_KEYS` (`837`). Total config-global occurrences ≈ 200,
@@ -482,7 +497,11 @@ harder than the deletion did:
   that probe unnecessary. Partly covered since: `test/config-keep-last-good.test.mjs`
   drives the bundle branch at the value level, which catches a load that reloads from
   empty — but not the bytes of a bundle-mode response.
-- **No canvas board and no OG card** are in the corpus, so nothing pins them.
+- **No canvas board and no OG card** are in the corpus, so the ratchet pins neither. The
+  canvas surfaces are covered instead by the three response-level cases in
+  `test/tenant-isolation.test.mjs` (loader page, the two aggregates, the multiplayer
+  proxy), which drive the routes directly with two workspaces. The OG card is still
+  unpinned by anything.
 
 **Q5 — KV key tenant-scoping was explicitly NOT this slice, and is not. CONFIRMED.**
 The single-tenant KV shapes
@@ -494,8 +513,8 @@ untouched, as it should have. Retiring the *path-mount* tier must not be conflat
 *tenant-scoping the KV*; they are different axes and doing both here would violate the
 one-change-per-commit rule.
 
-**Risk — the realtime DO room key.** `rtProxy` (`_worker.js:3724`) forwards to
-`RT_ORIGIN + "/room" + url.search`; the realtime worker keys rooms by board path only
+**Risk — the realtime DO room key.** `rtProxy` forwards to
+`tctx.RT_ORIGIN + "/room" + url.search`; the realtime worker keys rooms by board path only
 (`realtime/src/index.js:101`, `idFromName(path)`) with no tenant segment. This is
 single-tenant-shaped but is isolated per-instance by a separate worker deployment +
 shared secret (the closed realtime hole). It is **out of scope for the tier retirement**
