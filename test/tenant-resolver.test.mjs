@@ -156,7 +156,7 @@ test("the resolver is declared once and called once, before the config load", ()
 });
 
 // The config load's own text, so both "can it fire" tests move together with it.
-const LOAD = "    await loadConfig(tenantId, env);";
+const LOAD = "    const tctx = await loadConfig(tenantId, env);";
 
 test("the checker can actually fire — a second call site fails it", () => {
   const src = readFileSync(WORKER, "utf8");

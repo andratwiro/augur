@@ -441,7 +441,14 @@ let TENANT_CTX = emptyTenantContext(null);
 // (instanceFields), but the gate, publish and admin baselines drive this to seed the
 // module globals directly. test/tenant-context.test.mjs pins the two to the same
 // coercions, so a change to either without the other is a red test.
+//
+// ⚠️ It also advances TENANT_CTX, and must keep doing so. The router now hands the
+// context down, and a read site reached through it must see exactly what the global it
+// replaces would have said. A seam that wrote only the globals would give a threaded
+// site one answer and an unthreaded one another — the two halves of a half-done sweep
+// disagreeing, which is the one failure a green test suite could not show.
 function applyInstance(inst) {
+  TENANT_CTX = withTenantFields(TENANT_CTX, instanceFields(inst));
   CONFIG_USERS = Array.isArray(inst.users) ? inst.users : [];
   USERS = CONFIG_USERS; // rosterFields() overlays the KV additions/removals next
   INSTANCE_ENGINE_VERSION = inst.engineVersion || "";
@@ -558,14 +565,21 @@ function applyTenantContext(ctx) {
 //   KEEP-LAST-GOOD — the mirror runs only when the load handed back a different context.
 //   A read that produced nothing returns the reference it was given, and the gate keeps
 //   serving the last config that worked.
+//
+// It RETURNS the context it settled on — the value fetch() hands down. Every exit
+// returns one, including the two that do no work: "the clock says this tenant's config
+// is fresh" and "nothing parsed" both mean the caller should serve from the context
+// already in hand, not from an empty one. Returning nothing there would hand the router
+// a hole where its config should be.
 async function loadConfig(tenantId, env) {
-  if (!env || Date.now() - cfgAt < 1500) return;
+  if (!env || Date.now() - cfgAt < 1500) return TENANT_CTX;
   const forced = !cfgAt; // a write handler busted the cache — roster must re-read now
   cfgAt = Date.now(); // stamp first — a failed load retries next tick, never stampedes
   const next = await loadTenantContext(tenantId, env, { prev: TENANT_CTX, forced });
-  if (next === TENANT_CTX) return;
+  if (next === TENANT_CTX) return TENANT_CTX;
   TENANT_CTX = next;
   applyTenantContext(next);
+  return TENANT_CTX;
 }
 
 // ---- The tenant resolver seam -----------------------------------------------
@@ -2070,8 +2084,13 @@ function derivedRoutingFields(manifests, spaceIcons) {
 // sites still use. The request path no longer calls this — loadTenantContext takes the
 // same value and puts it on a context — but the gate, board and link-preview baselines
 // drive it directly to seed a routing table. It goes when the globals do.
+//
+// ⚠️ It advances TENANT_CTX for the same reason applyInstance does: the router hands the
+// context down now, so a seam that seeded only the globals would let a threaded read site
+// and an unthreaded one answer differently from the same fixture.
 function applyDerivedRouting(manifests) {
   const f = derivedRoutingFields(manifests, SPACE_ICONS);
+  TENANT_CTX = withTenantFields(TENANT_CTX, f);
   BUILD_ID = f.BUILD_ID;
   VERSION_MAP = f.VERSION_MAP;
   PUBLIC_PREFIXES = f.PUBLIC_PREFIXES;
@@ -3552,6 +3571,12 @@ async function composeChrome(res, url) {
 // Test seam: loadConfig sets CHROME_POINTER/SPACES/RUNTIME_CHROME from routing.json in a
 // live isolate; this lets a unit test drive composeChrome without a config load.
 function __setChromeTestState(pointer, spaces, on) {
+  // ⚠️ TENANT_CTX moves with the globals — see applyInstance. A seam that seeded one and
+  // not the other would give composeChrome a different answer through the threaded
+  // context than through the binding it is replacing.
+  TENANT_CTX = withTenantFields(TENANT_CTX, {
+    CHROME_POINTER: pointer, SPACES: spaces, RUNTIME_CHROME: on,
+  });
   CHROME_POINTER = pointer;
   SPACES = spaces;
   RUNTIME_CHROME = on;
@@ -4551,6 +4576,10 @@ async function adminUsersApi(request, url, env, me, users = USERS, configUsers =
       const nextRoles = await readRoles(env);
       if (users === USERS) {
         USERS = applyRoles(mergeRoster(configUsers, roster), nextRoles);
+        // ⚠️ The context moves with the binding it is replacing. The router hands the
+        // context down now, so leaving TENANT_CTX behind here would make this isolate's
+        // freshened roster visible through the global and invisible through the context.
+        TENANT_CTX = withTenantFields(TENANT_CTX, { USERS });
       }
       cfgAt = 0;
 
@@ -4781,11 +4810,17 @@ export default {
     // (The /__config refusal above comes first because it is the same answer for every
     // workspace and costs no read.)
     const { tenantId } = await resolveTenant(request, env);
-    // Config is now loaded FOR a workspace: the answer above picks which one, and the
-    // load returns that workspace's context as one value. It is still mirrored onto the
-    // module globals the read sites use — A-fetch-entrypoint hands the value down
-    // instead and the globals go with it.
-    await loadConfig(tenantId, env);
+    // ONE context for this request, for THAT workspace, built here and handed down.
+    // `tctx` is the config half of the request — users, prefixes, versions, the gate's
+    // flag — as a single frozen value, and from here on the router reads it instead of
+    // reaching for a module binding. The bindings still exist and still mirror it (see
+    // applyTenantContext): the later A-thread-* items take the last read sites and delete
+    // them. Until then the two are held equal on purpose — every seam that writes one
+    // writes the other — so a half-threaded router cannot answer two ways.
+    //
+    // Note what is NOT here: no second resolve, and no config read that picks its own
+    // workspace. Everything below is downstream of these two lines.
+    const tctx = await loadConfig(tenantId, env);
 
     // Direct-publish API — self-authed (bearer tokens), before the gate like
     // the other tooling routes.
@@ -4801,7 +4836,7 @@ export default {
     // Pages project + added as a custom domain runs this worker. DNS can't target
     // a path, so land each such host's root on its configured page. Scoped to the
     // exact hosts in the map — never affects pages.dev or any other domain.
-    const vanityPath = VANITY_REDIRECTS[url.hostname];
+    const vanityPath = tctx.VANITY_REDIRECTS[url.hostname];
     if (vanityPath && (url.pathname === "/" || url.pathname === "")) {
       return Response.redirect(`https://${url.hostname}${vanityPath}`, 302);
     }
@@ -4820,7 +4855,7 @@ export default {
     // the gate) so public prototypes can poll it too; no-store so the id is never stale.
     if (url.pathname === "/__version") {
       const p = url.searchParams.get("path");
-      return new Response(p ? versionFor(p) : BUILD_ID, {
+      return new Response(p ? versionFor(p) : tctx.BUILD_ID, {
         headers: { "Content-Type": "text/plain; charset=utf-8", "Cache-Control": "no-store" },
       });
     }
@@ -4838,9 +4873,9 @@ export default {
     if (url.pathname.startsWith("/__mcp/")) return mcpProxy(request, url);
 
     const expected = env.SITE_PASSWORD;
-    const usersActive = USERS.length > 0;
+    const usersActive = tctx.USERS.length > 0;
     // Resolve identity once (identity mode); null in legacy/open mode.
-    const me = usersActive ? await identify(request, env) : null;
+    const me = usersActive ? await identify(request, env, tctx.USERS) : null;
     // Is this request past the gate? identity mode → a known user; legacy → the
     // shared-password cookie; neither configured → open (raw/local build, no gate).
     let authed;
@@ -4857,7 +4892,7 @@ export default {
       // site open until the next 1.5s tick. Once config loads (even with an empty user
       // list, an intentionally-open instance), CONFIG_LOADED flips and this opens.
       const expectsConfig = !!(env && (env.BUNDLES || env.ASSETS));
-      authed = expectsConfig ? CONFIG_LOADED : true;
+      authed = expectsConfig ? tctx.CONFIG_LOADED : true;
     }
 
     // The canvas insert-picker catalog and the session-music list: merged from every
@@ -4883,7 +4918,7 @@ export default {
       // answer names them — which means a signed-out visitor is told nothing at all.
       return jsonResponse({
         user: publicUser(me), accounts: usersActive,
-        spaces: me ? meSpaces(me, SPACES) : [],
+        spaces: me ? meSpaces(me, tctx.SPACES) : [],
       });
     }
 
@@ -4895,7 +4930,7 @@ export default {
     }
     if (url.pathname === "/__admin/space-icon") {
       if (!authed) return jsonResponse({ error: "unauthorized" }, 401);
-      return spaceIconApi(request, env, me);
+      return spaceIconApi(request, env, me, tctx.SPACES);
     }
 
     // My own profile photo — set or clear. Ahead of the gate for the same reason
@@ -4913,7 +4948,7 @@ export default {
     // one would be dead code the gate never sees.
     if (url.pathname === "/__people") {
       if (request.method !== "GET") return jsonResponse({ error: "method-not-allowed" }, 405);
-      return peopleApi(url);
+      return peopleApi(url, tctx.USERS);
     }
 
     // A user's avatar image: either a self-set photo out of KV ("u/<hash>") or one
@@ -4924,7 +4959,7 @@ export default {
       if (key.startsWith(AVATAR_KV_PREFIX)) {
         return serveKvAvatar(env, key.slice(AVATAR_KV_PREFIX.length));
       }
-      const u = USERS.find((x) => x.avatar && x.avatar.startsWith("data:") && avatarKey(x) === key);
+      const u = tctx.USERS.find((x) => x.avatar && x.avatar.startsWith("data:") && avatarKey(x) === key);
       const m = u && /^data:([^;,]+);base64,(.*)$/.exec(u.avatar);
       if (!m) return new Response("Not found", { status: 404 });
       const bin = Uint8Array.from(atob(m[2]), (c) => c.charCodeAt(0));
@@ -4951,7 +4986,9 @@ export default {
     }
 
     // Admin users/passwords API — admin-only (adminUsersApi re-checks me.role).
-    if (url.pathname === "/__admin/users") return adminUsersApi(request, url, env, me);
+    if (url.pathname === "/__admin/users") {
+      return adminUsersApi(request, url, env, me, tctx.USERS, tctx.CONFIG_USERS, tctx.SPACES);
+    }
 
     // Admin publish-token API — mint/list/revoke per-space publish tokens.
     if (url.pathname === "/__admin/tokens") return adminTokensApi(request, env, me);
@@ -4968,7 +5005,7 @@ export default {
     // Invite redemption is reachable WITHOUT a session — that is the whole point.
     if (url.pathname === "/__invite") {
       if (request.method === "GET") return inviteGet(url, env);
-      if (request.method === "POST") return invitePost(request, url, env);
+      if (request.method === "POST") return invitePost(request, url, env, tctx.USERS);
       return new Response("Method Not Allowed", { status: 405 });
     }
 
@@ -4987,7 +5024,7 @@ export default {
           return htmlResponse(loginPage(redirect, "Too many attempts. Wait a few minutes and try again.", url.href), 429);
         }
         if (await loginSlowed(env, rlIds)) await new Promise((r) => setTimeout(r, LOGIN_SLOW_MS));
-        const u = userByEmail(email);
+        const u = userByEmail(email, tctx.USERS);
         const pass = (form.get("password") || "").toString();
         // Resolve through effectiveSecret even when no user matched (a throwaway address),
     // so an unknown email pays the SAME users:secrets KV read as a known one — without
@@ -5060,7 +5097,7 @@ export default {
     // viewer in one workspace and an editor in another.
     if (url.pathname === "/__status") {
       if (!authed) return jsonResponse({ error: "unauthorized" }, 401);
-      const denied = viewerWriteRefusal(request, url, me, "status");
+      const denied = viewerWriteRefusal(request, url, me, "status", tctx.SPACES);
       if (denied) return denied;
       return statusApi(request, url, env);
     }
@@ -5070,7 +5107,7 @@ export default {
     }
     if (url.pathname === "/__name") {
       if (!authed) return jsonResponse({ error: "unauthorized" }, 401);
-      const denied = viewerWriteRefusal(request, url, me, "name");
+      const denied = viewerWriteRefusal(request, url, me, "name", tctx.SPACES);
       if (denied) return denied;
       return nameApi(request, url, env);
     }
@@ -5079,7 +5116,7 @@ export default {
     // somewhere public on purpose).
     if (url.pathname === "/__spaces") {
       if (!authed) return jsonResponse({ error: "unauthorized" }, 401);
-      return jsonResponse({ spaces: SPACES });
+      return jsonResponse({ spaces: tctx.SPACES });
     }
     // Created-canvases registry — gated like /__status: any signed-in user (or anyone,
     // in legacy/open mode) can create/rename/remove a board. The board PAGES it
@@ -5088,7 +5125,7 @@ export default {
       if (!authed) return jsonResponse({ error: "unauthorized" }, 401);
       // Creating a canvas is creating content. A viewer looks and comments; it does
       // not add things other people will find in the gallery.
-      const denied = viewerWriteRefusal(request, url, me, "canvas");
+      const denied = viewerWriteRefusal(request, url, me, "canvas", tctx.SPACES);
       if (denied) return denied;
       return canvasesApi(request, url, env, me);
     }
@@ -5111,7 +5148,7 @@ export default {
       if (request.method === "POST" && usersActive && !authed) return jsonResponse({ error: "unauthorized" }, 401);
       // A viewer's canvas rights stop where an anonymous visitor's do, and an
       // anonymous visitor cannot upload (the check above). So neither can a viewer.
-      const denied = viewerWriteRefusal(request, url, me, "asset");
+      const denied = viewerWriteRefusal(request, url, me, "asset", tctx.SPACES);
       if (denied) return denied;
       return assetApi(request, url, env);
     }
@@ -5150,7 +5187,7 @@ export default {
       // the caller actually administers, and the /__admin APIs re-check per space. A
       // global admin with no membership recorded administers everything, so this is
       // the same door it has always been on an instance that never set memberships.
-      if (usersActive && (!me || !administersAny(me, SPACES))) {
+      if (usersActive && (!me || !administersAny(me, tctx.SPACES))) {
         return Response.redirect(new URL("/", url).toString(), 303);
       }
       const asset = await assetFetch(env, request);
@@ -5182,7 +5219,7 @@ export default {
     // public-prototype door on purpose: share links stay open, so a signed-in
     // non-member never fares worse than a signed-out stranger looking at the same URL.
     if (usersActive && me) {
-      const sid = (SPACES.find((s) => s.default) || {}).id || null;
+      const sid = (tctx.SPACES.find((s) => s.default) || {}).id || null;
       if (sid && !isMemberOf(me, sid)) return notFoundResponse();
     }
 
