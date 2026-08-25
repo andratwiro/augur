@@ -26,14 +26,21 @@ augur/
 
 A **space** is a separate git repo: a self-contained design system + prototypes bundle.
 `build.js` enumerates every dir with a `space.json` under `GV_SPACES_ROOT` (default:
-`./spaces`). The default space builds at the site root; every other space under
-`/<id>/`.
+`./spaces`). **One instance serves exactly one space, at the site root.** The
+path-mount tier — several spaces in one deploy, the default at `/` and the rest under
+`/<id>/` — is RETIRED (Phase A). A build still discovers siblings so a local workspace
+can preview any of them, but nothing routes to a non-default space: name the one you
+mean with `GV_SPACES_ROOT` or `GV_ONLY_SPACE`. Serving several workspaces from one
+deploy is Phase B's job, resolved by Host, not by path.
 
 `space.json` contract: **single source = [agents/space-json.md](agents/space-json.md)**
 (all fields incl. `siteOrigin` + `mcpAllowlists`, with semantics). Load-bearing
 highlights: `id` is the only required field (mount name + URL prefix; repo name is a
-free label); `adminOnly: true` seals the space behind the admin login (worker
-`RESTRICTED_BASES`); the UI skill is auto-detected from `skills/<prefix>-ui/` and every
+free label); **`adminOnly` no longer seals anything** — it only ever sealed a
+NON-default mount, and there are no non-default mounts, so `RESTRICTED_BASES` is
+permanently empty and the field is still parsed but inert (who may see a workspace is a
+membership question, not a path one); the UI skill is auto-detected from
+`skills/<prefix>-ui/` and every
 canonical asset name derives from that prefix (`designSystem.skill` overrides). If you
 change what `discoverSpaces()` parses, update agents/space-json.md in the same commit.
 

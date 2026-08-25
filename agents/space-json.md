@@ -14,10 +14,15 @@ not restate it.
   "description": "…",        // one line for the site's link preview (the og:description
                              // a Notion/Slack unfurl shows). Read from the DEFAULT
                              // space only; empty ⇒ the engine's own tagline
-  "default": true,           // exactly one space builds at the site ROOT;
-                             // every other space serves under /<id>/
+  "default": true,           // the space that builds at the site ROOT. An instance
+                             // serves exactly ONE space; the /<id>/ path mount for
+                             // additional spaces is RETIRED and nothing routes to it
   "badge": "current",        // optional label rendered beside the name
-  "adminOnly": true,         // seals EVERY URL under the space behind admin login
+  "adminOnly": true,         // INERT — parsed and carried, but it seals nothing. It
+                             // only ever sealed a NON-default /<id>/ mount, and those
+                             // are gone. Do not use it to make a workspace private:
+                             // that is what membership does. Kept only so an existing
+                             // space.json keeps parsing.
   "projectsLabel": "Projects", // what the UI calls top-level prototype folders
                              // (rail section + landing). Internal code keeps the
                              // historical identifiers; only user-facing strings change.

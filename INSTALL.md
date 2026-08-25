@@ -141,8 +141,12 @@ gh repo create <owner>/<space-repo> --private --source=. --push
   do add one (`skills/<x>-ui/`), the space also needs a `registry.json` overlay catalog
   at its root — the build refuses to ship an unlabeled overlay. See
   [agents/ui-skill.md](./agents/ui-skill.md).
-- `"adminOnly": true` seals a space behind the admin login. `"default": true` puts it at
-  the site root — exactly one space per instance should have it.
+- `"default": true` puts the space at the site root. **An instance serves exactly one
+  space**, so exactly one space must have it — the old `/<id>/` mount for additional
+  spaces is retired and nothing routes to it. Run a second workspace as a second deploy.
+- `"adminOnly"` is **inert** — it still parses, but it seals nothing. It only ever
+  applied to a non-default `/<id>/` mount, and those are gone. A workspace is private
+  because of who is a member of it, not because of a flag on its path.
 - Every field, with semantics: [agents/space-json.md](./agents/space-json.md).
 
 **No CI belongs in a space repo.** Content ships by publishing, not by pushing.

@@ -11,8 +11,9 @@ A design system is optional — plain self-contained HTML builds fine without on
 Prototypes and library demos reference skill assets by the canonical relative
 path — `../../../skills/<prefix>-ui/<file>` (any `../` depth) — never by absolute
 URL. The build rewrites those references so they resolve everywhere the page can
-be opened: on disk (`file://`), as the default space at the site root, and
-mounted under `/<id>/`. Each space ships its own copy of its skill, so
+be opened: on disk (`file://`) and at the site root. (The rewrite still handles a
+`/<id>/` prefix, but no instance mounts a space there any more — that tier is
+retired.) Each space ships its own copy of its skill, so
 primitives → components → pages stay hardwired to one source per space and a
 space can diverge its design system without touching another. Prototypes may
 instead carry a byte-identical copy of an asset — they are the one tier allowed
