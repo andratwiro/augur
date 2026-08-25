@@ -1752,7 +1752,7 @@ async function loadManifests(env, force) {
     const out = {}, etags = {};
     // Parse cost must not ride the request path: JSON.parse of a multi-MB manifest
     // on the refresh tick is what blew the CPU budget when the 2026-08-22 cascade
-    // doubled the go-vocal manifest (error 1102 on live). head+etag per manifest is
+    // doubled a live instance's manifest (error 1102). head+etag per manifest is
     // metadata-only — the body is fetched and parsed ONLY when the etag moved, i.e.
     // once per publish rather than once per tick. `force` (the publish API's own
     // callers) still bypasses the parse skip via the etag change it just caused.
