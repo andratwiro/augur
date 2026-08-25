@@ -44,11 +44,8 @@ import { TENANT_FIELD_NAMES } from "../src/tenant-context.mjs";
 // eventually leave: a thread-* commit deletes the `let` in the worker and the line here
 // in the same change.
 const IN_FLIGHT = {
-  SPACES:                  "the workspaces this deployment serves — A-thread-spaces-admin",
   CHROME_POINTER:          "which shared chrome bundle this deployment serves",
   RUNTIME_CHROME:          "whether chrome is composed at serve time for this deployment",
-  SPACE_ICON_KEYS:         "the icon hashes the index vouches for — A-thread-spaces-admin",
-  SPACE_ICONS:             "the last-read icon index — A-thread-spaces-admin",
   MCP_HOST_SUFFIXES:       "proxy host suffixes from instance.json — A-thread-mcp",
   MCP_HOST_ALLOWLIST:      "exact proxy hosts the spaces declared at build time — A-thread-mcp",
   MCP_HOST_ALLOWLIST_URL:  "where to fetch the remote proxy allowlist — A-thread-mcp",
@@ -58,13 +55,10 @@ const IN_FLIGHT = {
   CANVAS_CATALOG:          "the insert picker's aggregate — A-thread-canvas",
   CANVAS_TRACKS:           "the music aggregate — A-thread-canvas",
   RT_ORIGIN:               "the realtime worker this deployment proxies to — A-thread-canvas",
-  INSTANCE_SENTINELS:      "publish unpublish-guard paths — A-thread-spaces-admin",
   MIN_CLIENT_PROTOCOL:     "the publish protocol floor this deployment demands",
   LOGIN_HINT:              "the line under the login form",
   LOGIN_PREFILL_EMAIL:     "demo credentials prefilled on the login form",
   LOGIN_PREFILL_PASSWORD:  "demo credentials prefilled on the login form",
-  INSTANCE_ENGINE_VERSION: "the engine version the update nudge compares against — A-thread-spaces-admin",
-  UPDATE_FEED:             "where the update nudge looks — A-thread-spaces-admin",
 };
 
 // CACHES — per-isolate memos and clocks. Sharing one between workspaces costs at worst a

@@ -189,10 +189,12 @@ const USER_SPACES_KEY = "users:spaces";
 // SPACE_ICON_BLOB_PREFIX so this document stays small enough to re-read every config
 // tick. Served at /__space-icon/<hash>, content-addressed so a new icon is a new URL
 // and the immutable caching downstream stays honest.
+// The index itself (`SPACE_ICONS`) and the hashes it vouches for (`SPACE_ICON_KEYS`)
+// are fields of the tenant context, not module bindings: both are read out of ONE
+// workspace's KV, and a shared hash allowlist would let any workspace's icon be fetched
+// through any other workspace's serve route.
 const SPACE_ICONS_KEY = "spaces:icons";
 const SPACE_ICON_BLOB_PREFIX = "spaceicon:";
-let SPACE_ICON_KEYS = new Set(); // hashes the index vouches for — see the serve route
-let SPACE_ICONS = {};       // last-read icon index, re-applied whenever SPACES is rebuilt
 // The three roles, and the one rule that turns a stored value into one of them.
 //
 // `user` is the legacy spelling of `editor` — it was the only non-admin value the
@@ -415,8 +417,6 @@ async function verifyPassword(password, stored) {
 // the call is a sync timestamp check). A missing or unreadable document leaves the current
 // values in place — so a raw copy (no config emitted) keeps its empty defaults, and a
 // transient read failure never wipes a working gate.
-let SPACES = [];
-let INSTANCE_SENTINELS = [];
 // The oldest publish protocol this instance will accept a commit from
 // (deploy.config.json "minClientProtocol"). 0 = accept anything, which is the
 // default and the right one for a single-operator instance: a floor that nobody
@@ -431,10 +431,9 @@ let LOGIN_HINT = "";
 // default, so a normal instance's form renders with no values, same as before.
 let LOGIN_PREFILL_EMAIL = "";
 let LOGIN_PREFILL_PASSWORD = "";
-// Engine version of the build that produced the live config/chrome (from
-// package.json via build.js) + the release feed the update nudge polls.
-let INSTANCE_ENGINE_VERSION = "";
-let UPDATE_FEED = "";
+// The release feed the update nudge falls back to when a workspace names none. The
+// version it compares against and the feed it prefers are both per-workspace
+// (`tctx.INSTANCE_ENGINE_VERSION`, `tctx.UPDATE_FEED`); only this fallback is fixed.
 const DEFAULT_UPDATE_FEED = "https://api.github.com/repos/andratwiro/augur/releases/latest";
 let cfgAt = 0;
 // The context this isolate is currently serving from — config as ONE value instead of
@@ -457,12 +456,9 @@ let TENANT_CTX = emptyTenantContext(null);
 // disagreeing, which is the one failure a green test suite could not show.
 function applyInstance(inst) {
   TENANT_CTX = withTenantFields(TENANT_CTX, instanceFields(inst));
-  INSTANCE_ENGINE_VERSION = inst.engineVersion || "";
-  UPDATE_FEED = inst.updateFeed || "";
   MCP_HOST_SUFFIXES = inst.mcpHostSuffixes || [];
   MCP_HOST_ALLOWLIST_URL = inst.mcpHostAllowlistUrl || "";
   RT_ORIGIN = inst.rtOrigin || "";
-  INSTANCE_SENTINELS = Array.isArray(inst.sentinels) ? inst.sentinels : [];
   MIN_CLIENT_PROTOCOL = Number.isInteger(inst.minClientProtocol) && inst.minClientProtocol > 0
     ? inst.minClientProtocol : 0;
   LOGIN_HINT = typeof inst.loginHint === "string" ? inst.loginHint : "";
@@ -527,23 +523,20 @@ async function loadTenantContext(tenantId, env, { prev = null, forced = false } 
   return withTenantFields(next, await rosterFields(next, env, forced));
 }
 
-// Transitional: mirror a loaded context onto the module globals the ~110 read sites still
-// read. Every threading commit shrinks this function; A-fetch-entrypoint deletes it along
-// with the bindings it writes.
+// Transitional: mirror a loaded context onto the module globals the remaining read sites
+// still read. Every threading commit shrinks this function; A-fetch-entrypoint deletes it
+// along with the bindings it writes.
 //
-// SPACE_ICON_KEYS is deliberately absent: applySpaceIcons still writes it as a side
-// effect of building the space list, so mirroring the context's (unfilled) copy over it
-// would blank the hash allowlist the icon route checks.
+// The workspace cluster is gone from here: SPACES, the icon index and the hashes it
+// vouches for, the sentinels and the engine-version/update-feed pair are read off the
+// context at every site that wants them, so there is nothing left to mirror.
 function applyTenantContext(ctx) {
-  INSTANCE_ENGINE_VERSION = ctx.INSTANCE_ENGINE_VERSION;
-  UPDATE_FEED = ctx.UPDATE_FEED;
   MCP_HOST_SUFFIXES = ctx.MCP_HOST_SUFFIXES;
   MCP_HOST_ALLOWLIST = ctx.MCP_HOST_ALLOWLIST;
   MCP_HOST_ALLOWLIST_URL = ctx.MCP_HOST_ALLOWLIST_URL;
   mcpStaticHosts = ctx.mcpStaticHosts;
   MCP_PATH_ALLOWLIST = ctx.MCP_PATH_ALLOWLIST;
   RT_ORIGIN = ctx.RT_ORIGIN;
-  INSTANCE_SENTINELS = ctx.INSTANCE_SENTINELS;
   MIN_CLIENT_PROTOCOL = ctx.MIN_CLIENT_PROTOCOL;
   LOGIN_HINT = ctx.LOGIN_HINT;
   LOGIN_PREFILL_EMAIL = ctx.LOGIN_PREFILL_EMAIL;
@@ -551,8 +544,6 @@ function applyTenantContext(ctx) {
   CANVAS_LOADER_EXTRAS = ctx.CANVAS_LOADER_EXTRAS;
   CANVAS_CATALOG = ctx.CANVAS_CATALOG;
   CANVAS_TRACKS = ctx.CANVAS_TRACKS;
-  SPACES = ctx.SPACES;
-  SPACE_ICONS = ctx.SPACE_ICONS;
   CHROME_POINTER = ctx.CHROME_POINTER;
   RUNTIME_CHROME = ctx.RUNTIME_CHROME;
 }
@@ -742,7 +733,8 @@ async function rosterFields(ctx, env, forced) {
     const [roster, avatars, names, roles, spaces, icons] = rosterCache;
     return {
       SPACE_ICONS: icons,
-      SPACES: applySpaceIcons(ctx.SPACES, icons),
+      // SPACES + SPACE_ICON_KEYS, together — see applySpaceIcons.
+      ...applySpaceIcons(ctx.SPACES, icons),
       USERS: applySpaces(
         applyRoles(applyAvatars(applyNames(mergeRoster(ctx.CONFIG_USERS, roster), names), avatars), roles),
         spaces,
@@ -870,7 +862,7 @@ const spacesFor = (u, spaces) => (spaces || []).filter((s) => isMemberOf(u, s.id
 // The role is resolved against the space that owns the TARGET path (?path=), so this
 // stays correct once one person can hold different roles in different workspaces. An
 // unowned or missing path falls back to the global role rather than failing open.
-function viewerWriteRefusal(request, url, me, what, spaces = SPACES) {
+function viewerWriteRefusal(request, url, me, what, spaces) {
   if (!me || request.method === "GET" || request.method === "HEAD") return null;
   const target = url.searchParams.get("path") || url.pathname;
   const sid = spaceIdForPath(target, spaces);
@@ -897,9 +889,14 @@ async function readSpaceIcons(env) {
   } catch (e) { return {}; }
 }
 
-// Stamp each space's icon URL and refresh the hash allowlist the serve route checks.
+// Stamp each space's icon URL and derive the hash allowlist the serve route checks.
 // Same copy-never-mutate rule as applyAvatars: SPACES entries come from the live
 // manifests, so writing onto them would outlive the overlay.
+//
+// Returns a context PATCH — both fields it owns — rather than the stamped list plus a
+// module-scope side effect. The two have to move together: the allowlist is exactly the
+// hashes THIS list was stamped with, and a shared Set would have let a hash one
+// workspace vouched for open the icon route of every other one.
 function applySpaceIcons(spaces, index) {
   const keys = new Set();
   const out = (spaces || []).map((s) => {
@@ -909,15 +906,15 @@ function applySpaceIcons(spaces, index) {
     keys.add(k);
     return { ...s, icon: "/__space-icon/" + k };
   });
-  SPACE_ICON_KEYS = keys;
-  return out;
+  return { SPACES: out, SPACE_ICON_KEYS: keys };
 }
 
 // Serve a workspace icon. The allowlist check comes FIRST for the same reason it does
 // on /__avatar/: an ungated route must not become a KV read amplifier for anyone
-// typing hashes at it.
-async function serveSpaceIcon(env, k) {
-  if (!SPACE_ICON_KEYS.has(k)) return new Response("Not found", { status: 404 });
+// typing hashes at it. It is asked of the CALLING workspace's context, so a hash is
+// only ever served by the workspace whose index vouches for it.
+async function serveSpaceIcon(tctx, env, k) {
+  if (!tctx.SPACE_ICON_KEYS.has(k)) return new Response("Not found", { status: 404 });
   const kv = kvFor(env);
   const raw = kv ? await kv.get(SPACE_ICON_BLOB_PREFIX + k) : null;
   const parsed = raw && parseAvatarDataUri(raw);
@@ -933,14 +930,17 @@ async function serveSpaceIcon(env, k) {
 
 // POST {space, icon: "data:image/…"} sets it; DELETE {space} restores the repo's seed.
 // Admin of THAT workspace only — the same authority that edits its people.
-async function spaceIconApi(request, env, me, spaces = SPACES) {
+async function spaceIconApi(request, env, me, spaces) {
   if (!me) return jsonResponse({ error: "unauthorized" }, 401);
   const kv = kvFor(env);
   if (!kv) return jsonResponse({ error: "no-kv-binding" }, 500);
   let body;
   try { body = await request.json(); } catch (e) { return jsonResponse({ error: "bad-json" }, 400); }
   const sid = String((body && body.space) || "");
-  if (!spaces.some((s) => s.id === sid)) return jsonResponse({ error: "unknown-space" }, 400);
+  // `spaces` is the CALLER's workspace list and has no default: with no list there is no
+  // workspace to be an admin of, so the answer is "unknown space", never a fall-through
+  // to whatever list some other request left in module scope.
+  if (!(spaces || []).some((s) => s.id === sid)) return jsonResponse({ error: "unknown-space" }, 400);
   if (roleIn(me, sid) !== "admin") return jsonResponse({ error: "forbidden" }, 403);
 
   if (request.method === "DELETE") {
@@ -1006,7 +1006,7 @@ function lastAdminOf(users, spaceId, email) {
 // resetting is a route into a space the actor was never given, which is exactly the
 // boundary per-space roles exist to draw. A target with no membership recorded belongs
 // to every space, so only someone who administers all of them may reset it.
-function mayResetPassword(users, actorEmail, targetEmail, spaces = SPACES) {
+function mayResetPassword(users, actorEmail, targetEmail, spaces) {
   const actor = (users || []).find((u) => lcEmail(u.email) === lcEmail(actorEmail));
   const target = (users || []).find((u) => lcEmail(u.email) === lcEmail(targetEmail));
   if (!actor || !target) return false;
@@ -2091,7 +2091,8 @@ function derivedRoutingFields(manifests, spaceIcons) {
     MCP_HOST_ALLOWLIST: allowlist,
     mcpStaticHosts: new Set(allowlist),
     MCP_PATH_ALLOWLIST: [...mcpPaths].sort(),
-    SPACES: applySpaceIcons(spaces, spaceIcons),
+    // SPACES + SPACE_ICON_KEYS, together — see applySpaceIcons.
+    ...applySpaceIcons(spaces, spaceIcons),
     CHROME_POINTER: chromePointer,
     RUNTIME_CHROME: runtimeChrome,
   };
@@ -2106,7 +2107,7 @@ function derivedRoutingFields(manifests, spaceIcons) {
 // context down now, so a seam that seeded only the globals would let a threaded read site
 // and an unthreaded one answer differently from the same fixture.
 function applyDerivedRouting(manifests) {
-  const f = derivedRoutingFields(manifests, SPACE_ICONS);
+  const f = derivedRoutingFields(manifests, TENANT_CTX.SPACE_ICONS);
   TENANT_CTX = withTenantFields(TENANT_CTX, f);
   CANVAS_LOADER_EXTRAS = f.CANVAS_LOADER_EXTRAS;
   CANVAS_CATALOG = f.CANVAS_CATALOG;
@@ -2114,7 +2115,6 @@ function applyDerivedRouting(manifests) {
   MCP_HOST_ALLOWLIST = f.MCP_HOST_ALLOWLIST;
   mcpStaticHosts = f.mcpStaticHosts;
   MCP_PATH_ALLOWLIST = f.MCP_PATH_ALLOWLIST;
-  SPACES = f.SPACES;
   CHROME_POINTER = f.CHROME_POINTER;
   RUNTIME_CHROME = f.RUNTIME_CHROME;
   // Returns the CONTEXT, not the bare field patch. It is a superset — every field of the
@@ -3591,17 +3591,18 @@ async function composeChrome(tctx, res, url) {
   return new Response(html, { status: res.status, statusText: res.statusText, headers });
 }
 
-// Test seam: loadConfig sets CHROME_POINTER/SPACES/RUNTIME_CHROME from routing.json in a
-// live isolate; this lets a unit test drive composeChrome without a config load.
+// Test seam: loadConfig fills the chrome pointer, the workspace list and the runtime-
+// chrome flag from routing.json in a live isolate; this lets a unit test drive
+// composeChrome without a config load. It hands back the seeded CONTEXT, which is the
+// only place the workspace list now lives.
 function __setChromeTestState(pointer, spaces, on) {
-  // ⚠️ TENANT_CTX moves with the globals — see applyInstance. A seam that seeded one and
-  // not the other would give composeChrome a different answer through the threaded
-  // context than through the binding it is replacing.
+  // ⚠️ TENANT_CTX moves with the globals that are left — see applyInstance. A seam that
+  // seeded one and not the other would give composeChrome a different answer through the
+  // threaded context than through the binding it is replacing.
   TENANT_CTX = withTenantFields(TENANT_CTX, {
     CHROME_POINTER: pointer, SPACES: spaces, RUNTIME_CHROME: on,
   });
   CHROME_POINTER = pointer;
-  SPACES = spaces;
   RUNTIME_CHROME = on;
   return TENANT_CTX; // the seeded context, for a caller that has to hand one down
 }
@@ -4962,7 +4963,7 @@ export default {
     // the login page too, and the allowlist check inside stops hash-guessing); setting
     // it is admin-of-that-workspace only, re-checked inside spaceIconApi.
     if (url.pathname.startsWith("/__space-icon/")) {
-      return serveSpaceIcon(env, url.pathname.slice("/__space-icon/".length));
+      return serveSpaceIcon(tctx, env, url.pathname.slice("/__space-icon/".length));
     }
     if (url.pathname === "/__admin/space-icon") {
       if (!authed) return jsonResponse({ error: "unauthorized" }, 401);

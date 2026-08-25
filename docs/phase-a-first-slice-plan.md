@@ -98,9 +98,10 @@ naïve "delete all `SPACES` references" sweep would wrongly take:
   for the rail, the switcher header, `/_build.json` (`build.js:7447`), manifests.
 - **Workspace icon cluster** — `SPACE_ICONS_KEY`/`SPACE_ICON_BLOB_PREFIX` (`_worker.js:122–123`),
   `readSpaceIcons`/`applySpaceIcons`/`serveSpaceIcon`/`spaceIconApi` (`_worker.js:634–712`),
-  `SPACE_ICON_KEYS`/`SPACE_ICONS` (`124–125`). This is per-workspace state, KEEP. It is
-  keyed by `spaceId` in KV (`{spaceId: {k,mime,at}}`) — that key **is the tenant axis**,
-  which Phase A/B keeps and later scopes; it is NOT the path-mount tier.
+  and the `SPACE_ICON_KEYS`/`SPACE_ICONS` pair, now context fields rather than globals.
+  This is per-workspace state, KEEP. It is keyed by `spaceId` in KV
+  (`{spaceId: {k,mime,at}}`) — that key **is the tenant axis**, which Phase A/B keeps and
+  later scopes; it is NOT the path-mount tier.
 - **Per-space membership cluster** — `USER_SPACES_KEY` (`_worker.js:114`), `readSpaces`,
   `applySpaces`, `membershipOf`, `isMemberOf`, `roleIn`, `spacesFor`, `clearSpaces`,
   `meSpaces`, `administersAny`, `lastAdminOf`, `mayResetPassword`, `viewerWriteRefusal`
@@ -146,16 +147,10 @@ and assignment sites (measured by `grep -ow` count, then discounting decl + assi
 | `MCP_HOST_SUFFIXES` | `51` | ~3 | MCP proxy |
 | `MCP_HOST_ALLOWLIST` | `52` | ~4 | union; also feeds `mcpStaticHosts` |
 | `MCP_HOST_ALLOWLIST_URL` | `53` | ~4 | MCP proxy |
-| `SPACE_ICON_KEYS` | `124` | ~2 | icon serve allowlist (KEEP, per-workspace) |
-| `SPACE_ICONS` | `125` | ~2 | re-applied on `SPACES` rebuild (`490`,`1719`) |
-| `SPACES` | `337` | ~21 | **the tier axis; D1–D9 shrink its read sites first** |
-| `INSTANCE_SENTINELS` | `338` | ~3 | publish unpublish guard |
 | `MIN_CLIENT_PROTOCOL` | `343` | ~5 | publish protocol floor |
 | `LOGIN_HINT` | `346` | ~2 | login page |
 | `LOGIN_PREFILL_EMAIL` | `351` | ~2 | login page |
 | `LOGIN_PREFILL_PASSWORD` | `352` | ~2 | login page |
-| `INSTANCE_ENGINE_VERSION` | `355` | ~4 | update nudge |
-| `UPDATE_FEED` | `356` | ~2 | update nudge |
 | `CANVAS_LOADER_EXTRAS` | `3554` | ~3 | virtual canvas loader |
 | `CANVAS_CATALOG` | `3564` | ~3 | insert picker aggregate |
 | `CANVAS_TRACKS` | `3565` | ~3 | music aggregate |
@@ -163,10 +158,11 @@ and assignment sites (measured by `grep -ow` count, then discounting decl + assi
 | `mcpStaticHosts` | `3067` | ~4 | derived Set from `MCP_HOST_ALLOWLIST` |
 | `mcpHostAllowlist` | `3051` | ~4 | fetched remote allowlist cache |
 
-The sweep opened on **28 config-shaped globals** (the plan's "~25"). Two clusters have
-since been threaded and their `let`s deleted, so the rows above are what is left. The
-identity cluster — `CONFIG_USERS`, `USERS` and the `CONFIG_LOADED` flag that rides with
-them. And the gate cluster — `PUBLIC_PREFIXES`, `PUBLIC_SKILL_PREFIXES`, `VERSION_MAP`,
+The sweep opened on **28 config-shaped globals** (the plan's "~25"). Three clusters have
+since been threaded and their `let`s deleted, so the rows above are what is left.
+
+The identity cluster — `CONFIG_USERS`, `USERS` and the `CONFIG_LOADED` flag that rides
+with them. The gate cluster — `PUBLIC_PREFIXES`, `PUBLIC_SKILL_PREFIXES`, `VERSION_MAP`,
 `BUILD_ID` and `VANITY_REDIRECTS`, whose read sites are `isPublicPath`, `versionFor` and
 the vanity lookup in `fetch()`, each taking the context as a required first argument.
 `RESTRICTED_BASES` went with them as a DELETION rather than a threading: the path-mount
@@ -174,13 +170,25 @@ tier left it permanently empty, so its global was a write-only copy of an empty 
 `isRestrictedPath` and the context field stay — an empty seal is still a seal, and assets
 mode still reads a `routing.restrictedBases` the build no longer emits.
 
+And the workspace cluster — `SPACES`, the icon pair `SPACE_ICONS`/`SPACE_ICON_KEYS`,
+`INSTANCE_SENTINELS`, and the update-nudge pair `INSTANCE_ENGINE_VERSION`/`UPDATE_FEED`.
+`SPACES` had already lost every read site to the router's threading, so what was left of
+it, of the sentinels and of the nudge pair was a write-only mirror: deleting the `let`
+deleted the whole binding. Two things were real work. `applySpaceIcons` now RETURNS
+`{SPACES, SPACE_ICON_KEYS}` as a context patch instead of stamping the list and leaving
+the hash allowlist in module scope, so `serveSpaceIcon` asks the calling workspace's
+context and a hash one workspace vouches for cannot be fetched through another's icon
+route. And `viewerWriteRefusal`, `spaceIconApi` and `mayResetPassword` lost their
+`spaces = SPACES` default: every caller already passed the list, and the default was the
+only thing keeping the global alive.
+
 Excluded as pure per-isolate runtime caches, not config: `cfgAt` (`358`), `MANIFESTS` (`1654`),
 `STORAGE_CACHE` (`2654`), `AVATAR_KEYS` (`837`). Total config-global occurrences ≈ 200,
 i.e. ~110–120 read sites once decls/assigns are removed — matching the plan's "~110".
 
 **The enumeration of record is `scripts/no-tenant-globals.mjs`, not this table.** Line
 numbers here drift; the lint reads the worker and counts what is actually declared —
-today 40 module-scope bindings: 21 config globals still in flight, 13 per-isolate caches,
+today 34 module-scope bindings: 15 config globals still in flight, 13 per-isolate caches,
 and 6 mutable-container constants that never
 vary by workspace. It fails CI, and therefore the deploy, on a binding it has never been
 told about, and equally on an allowlist entry whose binding is gone — so the list shrinks

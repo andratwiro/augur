@@ -9,6 +9,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { __testables as W } from "../src/_worker.js";
+import { emptyTenantContext, withTenantFields } from "../src/tenant-context.mjs";
 
 // The workspace whose admin panel this is. adminUsersApi defaults its roster, config
 // list and workspace list off the context now; every case here passes its own lists
@@ -205,16 +206,36 @@ test("a payload whose bytes do not match its declared type is refused", async ()
 });
 
 test("applySpaceIcons stamps a URL and vouches for only the hashes it stamped", () => {
-  const out = W.applySpaceIcons(SPACES, { alpha: { k: "abc123" } });
+  const { SPACES: out, SPACE_ICON_KEYS: keys } = W.applySpaceIcons(SPACES, { alpha: { k: "abc123" } });
   assert.equal(out[0].icon, "/__space-icon/abc123");
   assert.equal("icon" in out[1], false, "a workspace with no icon keeps its repo seed");
   assert.notEqual(out, SPACES, "copies, never in-place — the overlay must not outlive itself");
+  // The allowlist is exactly the hashes this list was stamped with, and it comes back
+  // WITH the list rather than as a side effect — the two describe one workspace and a
+  // caller cannot take one without the other.
+  assert.deepStrictEqual([...keys], ["abc123"]);
 });
 
 test("the serve route refuses a hash the index never vouched for", async () => {
-  W.applySpaceIcons(SPACES, { alpha: { k: "known" } });
-  const res = await W.serveSpaceIcon({ COMMENTS: memKV() }, "guessed");
+  const vouched = W.applySpaceIcons(SPACES, { alpha: { k: "known" } });
+  const ctx = withTenantFields(emptyTenantContext("alpha"), vouched);
+  const res = await W.serveSpaceIcon(ctx, { COMMENTS: memKV() }, "guessed");
   assert.equal(res.status, 404, "an ungated route must not become a KV read amplifier");
+});
+
+test("a hash one workspace vouches for is not served by another workspace", async () => {
+  // The reason the allowlist is a context field: it used to be one module-scope Set, so
+  // whichever workspace loaded last decided which hashes every OTHER workspace's icon
+  // route would serve.
+  const alpha = withTenantFields(emptyTenantContext("alpha"), W.applySpaceIcons(SPACES, { alpha: { k: "alphaicon" } }));
+  const beta = withTenantFields(emptyTenantContext("beta"), W.applySpaceIcons(SPACES, { beta: { k: "betaicon" } }));
+  assert.equal(alpha.SPACE_ICON_KEYS.has("alphaicon"), true, "alpha does not vouch for its own hash");
+  assert.equal(
+    beta.SPACE_ICON_KEYS.has("alphaicon"), false,
+    "beta vouches for a hash only alpha's index names",
+  );
+  const res = await W.serveSpaceIcon(beta, { COMMENTS: memKV() }, "alphaicon");
+  assert.equal(res.status, 404, "beta's icon route served a hash alpha vouched for");
 });
 
 // ---- a viewer may look, not change -------------------------------------------

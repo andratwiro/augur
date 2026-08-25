@@ -173,8 +173,6 @@ function sameValue(a, b) {
 const SHARED_BY_NATURE = {
   CONFIG_LOADED:
     "true for any workspace whose instance document parsed — a difference here would mean one of the two failed to load, not that they are isolated",
-  SPACE_ICON_KEYS:
-    "never written onto the context at all: applySpaceIcons() sets the module-scope global as a side effect and the context keeps its empty default, so both workspaces hold their own empty Set (see A-thread-spaces-admin)",
 };
 
 test("the harness is wired to the real loader — signature, order, coverage", async () => {
