@@ -194,3 +194,95 @@ export function withTenantFields(ctx, patch) {
   }
   return freeze(next);
 }
+
+// ---- the per-tenant context cache ---------------------------------------------------
+//
+// Replaces the worker's single `cfgAt` timestamp. One stamp for the whole isolate is
+// fine while an isolate only ever serves one workspace; with two, the first workspace's
+// load stamps the clock and the second is told its config is fresh when it has never
+// been read at all. The cache is therefore keyed by tenant, and every semantic of the
+// old single stamp is reproduced deliberately rather than reinvented:
+//
+//   STAMP-FIRST. `stamp()` is called BEFORE the async read, so a failing config read
+//   retries on the next tick instead of every concurrent request stampeding the store.
+//
+//   KEEP-LAST-GOOD. `put()` is only called with a context that actually parsed. A failed
+//   read simply never calls it, so the previous good context stays in place — the
+//   fail-open-stale half of the old cache, preserved by leaving a reference alone rather
+//   than by half-applying an object a concurrent request could observe mid-write.
+//
+//   FORCED. A write handler busts the cache (`cfgAt = 0` in twelve places today) so its
+//   own write is visible on the very next request. `bust()` is that, per tenant, and
+//   `due()` reports `forced` for it — which the roster read uses to skip its own longer
+//   clock. A cold tenant reports forced too, exactly as `!cfgAt` does today.
+//
+// What is NEW, because one global stamp could not have the problem: the cache is BOUNDED.
+// A worker serving many workspaces would otherwise hold every context it ever built for
+// the isolate's lifetime. Eviction is safe in the direction that matters — an evicted
+// tenant rebuilds from `emptyTenantContext`, whose CONFIG_LOADED is false, so the gate
+// fails CLOSED while it reloads. Eviction can cost a config read; it can never open a door.
+
+export const TENANT_CONTEXT_TTL_MS = 1500;
+export const TENANT_CONTEXT_CACHE_MAX = 256;
+
+export function createTenantContextCache(options = {}) {
+  const ttlMs = options.ttlMs ?? TENANT_CONTEXT_TTL_MS;
+  const max = options.max ?? TENANT_CONTEXT_CACHE_MAX;
+  const now = options.now ?? (() => Date.now());
+  // Insertion-ordered, so the oldest touched entry is the first key — the eviction victim.
+  const entries = new Map(); // tenantId -> { at, ctx }
+
+  const touch = (key, entry) => {
+    entries.delete(key);
+    entries.set(key, entry);
+    while (entries.size > max) entries.delete(entries.keys().next().value);
+  };
+
+  return {
+    // Should this tenant load its config now? `forced` means the cache was busted by a
+    // write (or this tenant has never loaded), so dependent reads must not ride their
+    // own longer clocks.
+    due(tenantId) {
+      const e = entries.get(tenantId);
+      if (!e || !e.at) return { due: true, forced: true };
+      return { due: now() - e.at >= ttlMs, forced: false };
+    },
+
+    // Mark the attempt BEFORE doing it. Never call this after a load — that is the
+    // stampede the ordering exists to prevent.
+    stamp(tenantId) {
+      const e = entries.get(tenantId) || { at: 0, ctx: null };
+      touch(tenantId, { at: now(), ctx: e.ctx });
+    },
+
+    // Only ever called with a context built from documents that actually parsed.
+    put(tenantId, ctx) {
+      const e = entries.get(tenantId);
+      touch(tenantId, { at: e ? e.at : now(), ctx });
+      return ctx;
+    },
+
+    // The last good context for this tenant, or null if it has none yet. A null answer
+    // must become emptyTenantContext at the call site — never a shared fallback, and
+    // never another tenant's.
+    get(tenantId) {
+      const e = entries.get(tenantId);
+      return e && e.ctx ? e.ctx : null;
+    },
+
+    // A write handler making its own change visible on the next request. The context is
+    // KEPT: busting asks for a re-read, it does not blank the gate in the meantime.
+    bust(tenantId) {
+      const e = entries.get(tenantId);
+      if (e) entries.set(tenantId, { at: 0, ctx: e.ctx });
+    },
+
+    // Config that is not tenant-scoped changed (an engine or instance-wide push).
+    bustAll() {
+      for (const [k, e] of entries) entries.set(k, { at: 0, ctx: e.ctx });
+    },
+
+    get size() { return entries.size; },
+    has(tenantId) { return entries.has(tenantId); },
+  };
+}

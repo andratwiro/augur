@@ -21,6 +21,7 @@ import {
   instanceFields,
   routingFields,
   withTenantFields,
+  createTenantContextCache,
 } from "../src/tenant-context.mjs";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -197,4 +198,127 @@ test("every field declares where its value comes from", () => {
       `${name} has no declared source`,
     );
   }
+});
+
+// ---- the per-tenant cache -----------------------------------------------------------
+
+// A controllable clock, so these assert real time semantics instead of sleeping.
+function fakeClock(start = 1_000_000) {
+  let t = start;
+  return { now: () => t, advance: (ms) => { t += ms; } };
+}
+
+test("one tenant's load does not make another tenant's config look fresh", () => {
+  // This is the bug the whole item exists to fix: a single `cfgAt` stamped by workspace
+  // A tells workspace B its config is current when B has never been read at all.
+  const clock = fakeClock();
+  const cache = createTenantContextCache({ now: clock.now });
+
+  cache.stamp("alpha");
+  cache.put("alpha", buildTenantContext("alpha", { instance: { users: [] } }));
+
+  assert.equal(cache.due("alpha").due, false, "alpha just loaded — not due");
+  assert.equal(cache.due("beta").due, true, "beta has never loaded — MUST be due");
+  assert.equal(cache.due("beta").forced, true, "a tenant that never loaded is forced");
+  assert.equal(cache.get("beta"), null, "beta must not see alpha's context");
+});
+
+test("the TTL is per tenant and expires on its own clock", () => {
+  const clock = fakeClock();
+  const cache = createTenantContextCache({ ttlMs: 1500, now: clock.now });
+
+  cache.stamp("alpha");
+  assert.equal(cache.due("alpha").due, false);
+  clock.advance(1499);
+  assert.equal(cache.due("alpha").due, false, "still inside the window");
+  clock.advance(1);
+  assert.equal(cache.due("alpha").due, true, "1500ms elapsed — due again");
+});
+
+test("stamp-first: a failing load does not stampede on the next request", () => {
+  const clock = fakeClock();
+  const cache = createTenantContextCache({ now: clock.now });
+
+  // The worker stamps, then the read throws, so put() is never reached.
+  cache.stamp("alpha");
+  assert.equal(cache.due("alpha").due, false, "a failed load must not retry immediately");
+  assert.equal(cache.get("alpha"), null, "and it stored no context");
+});
+
+test("keep-last-good: a failed reload leaves the previous context serving", () => {
+  const clock = fakeClock();
+  const cache = createTenantContextCache({ now: clock.now });
+  const good = buildTenantContext("alpha", { instance: { users: [{ email: "a@example.com" }] } });
+
+  cache.stamp("alpha");
+  cache.put("alpha", good);
+
+  clock.advance(2000);
+  cache.stamp("alpha"); // the reload is attempted...
+  // ...and throws, so put() is never called.
+  assert.equal(cache.get("alpha"), good, "a transient failure must not wipe a working gate");
+  assert.equal(cache.get("alpha").CONFIG_LOADED, true);
+});
+
+test("bust forces a re-read on the next request but keeps the gate serving", () => {
+  const clock = fakeClock();
+  const cache = createTenantContextCache({ now: clock.now });
+  const ctx = buildTenantContext("alpha", { instance: { users: [{ email: "a@example.com" }] } });
+  cache.stamp("alpha");
+  cache.put("alpha", ctx);
+
+  cache.bust("alpha");
+  const due = cache.due("alpha");
+  assert.equal(due.due, true, "a busted tenant re-reads at once");
+  assert.equal(due.forced, true, "and reports forced, so dependent reads skip their own clocks");
+  assert.equal(cache.get("alpha"), ctx, "busting asks for a re-read; it must not blank the gate");
+});
+
+test("bustAll busts every tenant and no tenant's context is lost", () => {
+  const clock = fakeClock();
+  const cache = createTenantContextCache({ now: clock.now });
+  for (const id of ["alpha", "beta"]) {
+    cache.stamp(id);
+    cache.put(id, buildTenantContext(id, { instance: { users: [] } }));
+  }
+  cache.bustAll();
+  for (const id of ["alpha", "beta"]) {
+    assert.equal(cache.due(id).forced, true);
+    assert.notEqual(cache.get(id), null, `${id} lost its context to a bust`);
+  }
+});
+
+test("the cache is bounded, and eviction fails CLOSED rather than open", () => {
+  const clock = fakeClock();
+  const cache = createTenantContextCache({ now: clock.now, max: 3 });
+
+  for (const id of ["a", "b", "c", "d"]) {
+    cache.stamp(id);
+    cache.put(id, buildTenantContext(id, { instance: { users: [{ email: `${id}@example.com` }] } }));
+  }
+
+  assert.equal(cache.size, 3, "the cache must not grow without bound");
+  assert.equal(cache.has("a"), false, "the oldest entry was evicted");
+
+  // The safety property: an evicted tenant does not inherit anything. Its next request
+  // rebuilds from empty, whose CONFIG_LOADED is false, so the gate fails closed while it
+  // reloads. Eviction can cost a read; it must never open a door.
+  assert.equal(cache.get("a"), null);
+  assert.equal(emptyTenantContext("a").CONFIG_LOADED, false);
+  assert.equal(cache.get("d").USERS[0].email, "d@example.com", "the newest is intact");
+});
+
+test("a re-put moves a tenant to the back of the eviction queue", () => {
+  const clock = fakeClock();
+  const cache = createTenantContextCache({ now: clock.now, max: 2 });
+  for (const id of ["a", "b"]) {
+    cache.stamp(id);
+    cache.put(id, buildTenantContext(id, { instance: { users: [] } }));
+  }
+  cache.put("a", buildTenantContext("a", { instance: { users: [] } })); // a is touched
+  cache.stamp("c");
+  cache.put("c", buildTenantContext("c", { instance: { users: [] } }));
+
+  assert.equal(cache.has("a"), true, "recently used must survive");
+  assert.equal(cache.has("b"), false, "least recently used is the victim");
 });
