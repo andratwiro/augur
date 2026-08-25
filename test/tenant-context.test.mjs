@@ -4,8 +4,11 @@
 // reads of one per-request value. The failure mode that would survive every other test is
 // INCOMPLETENESS: thread 27 of 28 globals and the 28th stays module-scope, still shared
 // between tenants, still wrong — with the whole suite green, because nothing in a
-// single-tenant era can observe it. The first test below is the guard for that. It reads
-// the worker's own source and refuses to pass on a global it has never been told about.
+// single-tenant era can observe it. The guard for that is scripts/no-tenant-globals.mjs,
+// which reads the worker's own source and refuses to pass on a global it has never been
+// told about. It is a script rather than only a test because a live deploy is gated on
+// the `check` workflow, not on the test suite; the tests below exercise the same checker
+// so a local `npm test` reports the same answer CI will.
 
 import test from "node:test";
 import assert from "node:assert/strict";
@@ -23,57 +26,63 @@ import {
   withTenantFields,
   createTenantContextCache,
 } from "../src/tenant-context.mjs";
+import { ALLOWED, checkWorkerGlobals } from "../scripts/no-tenant-globals.mjs";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const WORKER = readFileSync(join(HERE, "..", "src", "_worker.js"), "utf8");
 
-// Module-scope `let`s that are per-isolate RUNTIME CACHES, not tenant config. They are
-// not part of the context and are excluded deliberately — each one is a timestamp or a
-// memo whose worst behaviour under multi-tenancy is a wasted re-read, not a wrong answer.
-// Phase B tenant-keys the ones that cache per-tenant DATA (the manifest and storage
-// caches); this list is what `A-ci-lint-no-globals-tighten` later shrinks toward the true
-// tenant-invariant set. Adding a name here is a claim that it is safe to share across
-// tenants — make it deliberately.
-const RUNTIME_CACHES = new Set([
-  "cfgAt",            // config TTL stamp
-  "rosterReadAt",     // roster read clock
-  "rosterCache",      // roster memo
-  "MANIFESTS",        // manifest cache — Phase B tenant-keys this
-  "STORAGE_CACHE",    // bundle store cache — Phase B tenant-keys this
-  "AVATAR_KEYS",      // avatar hash allowlist
-  "mcpHostAllowlist", // fetched remote allowlist, time-based cache
-  "canvasRegAt",      // canvas registry clock
-  "canvasRegRaw",     // canvas registry memo
-  "pitiRemarksAt",    // remark poll clock
-  "pitiRemarksRaw",   // remark poll memo
-]);
+const report = (problems) => problems.map((p) => `${p.kind}:${p.name}`);
 
-test("every module-scope global in the worker is either a context field or a declared runtime cache", () => {
-  const declared = [...WORKER.matchAll(/^let\s+([A-Za-z_$][\w$]*)/gm)].map((m) => m[1]);
-  assert.ok(declared.length > 20, `expected to find the worker's globals, found ${declared.length}`);
+test("every module-scope binding in the worker is on the allowlist, with a reason", () => {
+  const { bindings, problems } = checkWorkerGlobals(WORKER);
+  assert.ok(bindings.length > 20, `expected to find the worker's globals, found ${bindings.length}`);
+  assert.deepEqual(
+    report(problems),
+    [],
+    problems.map((p) => `${p.name}: ${p.message}`).join("\n"),
+  );
+  for (const [name, entry] of Object.entries(ALLOWED)) {
+    assert.ok(entry.why && entry.why.length > 10, `${name} is allowlisted without a reason`);
+  }
+});
 
-  const unclassified = declared.filter(
-    (name) => !TENANT_FIELD_NAMES.includes(name) && !RUNTIME_CACHES.has(name),
+test("the guard can actually fire — a new global is reported, not shrugged off", () => {
+  // Proving the guard is capable of failing, per the plan's rule that a guard which
+  // cannot fire is worse than no guard. A `let`, a mutable-container `const` and a second
+  // binding smuggled onto an existing line all have to be caught.
+  assert.deepEqual(
+    report(checkWorkerGlobals("let SOMETHING_UNTHREADED = [];\n" + WORKER).problems),
+    ["unlisted:SOMETHING_UNTHREADED"],
   );
   assert.deepEqual(
-    unclassified,
-    [],
-    `unclassified module-scope global(s): ${unclassified.join(", ")}. ` +
-      "A new one is either tenant config (add it to FIELDS in src/tenant-context.mjs, " +
-      "and thread it) or a per-isolate runtime cache (add it to RUNTIME_CACHES here, " +
-      "which asserts it is safe to share across tenants).",
+    report(checkWorkerGlobals("const SNEAKY = new Map();\n" + WORKER).problems),
+    ["unlisted:SNEAKY"],
+  );
+  assert.deepEqual(
+    report(checkWorkerGlobals(WORKER.replace("let cfgAt = 0;", "let cfgAt = 0, SNEAKY = [];")).problems),
+    ["multi:cfgAt"],
   );
 });
 
-test("the guard can actually fire — an unknown global is reported, not shrugged off", () => {
-  // Proving the guard is capable of failing, per the plan's rule that a guard which
-  // cannot fire is worse than no guard.
-  const withNewGlobal = "let SOMETHING_UNTHREADED = [];\n" + WORKER;
-  const declared = [...withNewGlobal.matchAll(/^let\s+([A-Za-z_$][\w$]*)/gm)].map((m) => m[1]);
-  const unclassified = declared.filter(
-    (name) => !TENANT_FIELD_NAMES.includes(name) && !RUNTIME_CACHES.has(name),
-  );
-  assert.deepEqual(unclassified, ["SOMETHING_UNTHREADED"]);
+test("a const that holds no state is not flagged — the lint stays usable", () => {
+  const noise = 'const A_NUMBER = 42;\nconst A_STRING = "x";\nconst A_FN = (x) => ({ x });\n';
+  assert.deepEqual(report(checkWorkerGlobals(noise + WORKER).problems), []);
+});
+
+test("the allowlist shrinks with the sweep — a threaded-away global cannot linger on it", () => {
+  // Each thread-* commit deletes a `let` from the worker AND its line here. Without this
+  // direction the list would rot into standing permission for whatever gets added later.
+  const threaded = WORKER.replace("let pitiRemarksRaw = null;", "");
+  assert.deepEqual(report(checkWorkerGlobals(threaded).problems), ["stale:pitiRemarksRaw"]);
+});
+
+test("every in-flight entry is a real field of the tenant context", () => {
+  // The sweep's other silent failure: a config global listed as "being threaded" that no
+  // context field exists for, so threading it has nowhere to land.
+  for (const [name, entry] of Object.entries(ALLOWED)) {
+    if (entry.kind !== "in-flight") continue;
+    assert.ok(TENANT_FIELD_NAMES.includes(name), `${name} is in flight but is not a context field`);
+  }
 });
 
 test("two contexts share no mutable value — the leak this phase exists to close", () => {

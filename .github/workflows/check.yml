@@ -12,6 +12,15 @@ jobs:
           node-version: 20
       - name: Doc drift (doc-lint)
         run: node scripts/doc-lint.mjs
+      - name: No new module-scope tenant state (no-tenant-globals)
+        # The worker's config globals are being replaced by a per-request tenant context.
+        # That sweep spans many commits, and the way it gets undone is one convenient new
+        # global added while it is half done — invisible to every other test, because a
+        # single-tenant deployment cannot observe it. This lint holds the line, and it
+        # lives HERE rather than only in the suite because a live deploy is gated on this
+        # workflow: a guard in `test` reports the problem, a guard in `check` stops it
+        # shipping.
+        run: node scripts/no-tenant-globals.mjs
       - name: No instance, product, or personal words in the engine
         # The engine is generic — instance-specific values belong in deploy.config.json /
         # space.json, never in engine code, scripts, docs, or shipped chrome. Scan the

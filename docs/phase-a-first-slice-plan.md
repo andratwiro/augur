@@ -165,6 +165,15 @@ runtime caches, not config: `cfgAt` (`358`), `MANIFESTS` (`1654`), `STORAGE_CACH
 (`2654`), `AVATAR_KEYS` (`837`). Total config-global occurrences ≈ 200, i.e. ~110–120
 read sites once decls/assigns are removed — matching the plan's "~110".
 
+**The enumeration of record is `scripts/no-tenant-globals.mjs`, not this table.** Line
+numbers here drift; the lint reads the worker and counts what is actually declared —
+today 46 module-scope bindings: 29 config globals still in flight (the 28 above plus
+`CONFIG_LOADED`), 11 per-isolate caches, and 6 mutable-container constants that never
+vary by workspace. It fails CI, and therefore the deploy, on a binding it has never been
+told about, and equally on an allowlist entry whose binding is gone — so the list shrinks
+as the threading lands rather than turning into standing permission. Each thread-\* commit
+deletes a `let` from the worker and its line from the allowlist in the same change.
+
 ### 2a. The fail-open-stale config cache — `loadConfig()` `_worker.js:384–424`
 
 ```
