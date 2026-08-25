@@ -66,7 +66,7 @@ ok("reset returns a single-use invite link");
 // 3. Redeeming sets a hash and signs in.
 res = await W.invitePost(redeem(token, "a properly long password"), new URL(`${ORIGIN}/__invite`), env, ROSTER);
 assert.equal(res.status, 303);
-assert.match(res.headers.get("Set-Cookie") || "", /^__Host-gv_user=/);
+assert.match(res.headers.get("Set-Cookie") || "", /^__Host-augur_user=/);
 const stored = JSON.parse(await kv.get("users:secrets"))[USER.email];
 assert.ok(W.isPassHash(stored), "stored as a hash");
 ok("redemption stores a hash and issues a session");
@@ -89,7 +89,7 @@ ok("state flips to accepted, no secret in the API response");
 assert.equal(await W.verifyPassword("a properly long password", stored), true);
 const sessionToken = await W.userToken(env, USER);
 const identified = await W.identify(
-  new Request(ORIGIN, { headers: { Cookie: `__Host-gv_user=${USER.email}.${sessionToken}` } }), env, ROSTER);
+  new Request(ORIGIN, { headers: { Cookie: `__Host-augur_user=${USER.email}.${sessionToken}` } }), env, ROSTER);
 assert.equal(identified && identified.email, USER.email);
 ok("password verifies and the session identifies the user");
 
@@ -107,7 +107,7 @@ const revokedSecret = await W.effectiveSecret(env, USER);
 assert.equal(revokedSecret, "");
 assert.notEqual(revokedSecret, "leaked-seed-2026", "must not fall back to the leaked roster password");
 assert.equal(await W.identify(
-  new Request(ORIGIN, { headers: { Cookie: `__Host-gv_user=${USER.email}.${sessionToken}` } }), env, ROSTER), null);
+  new Request(ORIGIN, { headers: { Cookie: `__Host-augur_user=${USER.email}.${sessionToken}` } }), env, ROSTER), null);
 ok("reset writes a tombstone (not a deletion), revokes the password with no fallback, and kills the live session");
 
 console.log("\nall good.");

@@ -87,8 +87,11 @@ const SESSION_SECRET = "s0-snapshot-fixed-session-secret";
 // The session cookie's wire name, spelled out rather than imported: the corpus records
 // what a real browser sends, and pinning the literal is what makes a rename show up here
 // instead of sliding through. The `__Host-` prefix is browser-enforced — see USER_COOKIE
-// in the worker.
-const SESSION_COOKIE = "__Host-gv_user";
+// in the worker. ⏳ The older names the worker still READS are not exercised here: they
+// resolve to the same user through the same identify(), so they would move no byte, and
+// pinning them here would make this file a second place a migration window has to end.
+// test/host-cookie-prefix.test.mjs owns them.
+const SESSION_COOKIE = "__Host-augur_user";
 
 // The one roster user, mirrored into instance.json below. Its passHash need only be a
 // truthy fixed string: with KV bound but no users:secrets key, effectiveSecret() falls

@@ -312,7 +312,7 @@ name, initials, colour and role. Passwords live in KV as PBKDF2 hashes under
     that does not fail closed: "no binding at all" is the *offline build* case, which
     falls straight through to whatever the roster seeds. Wait the outage out, or fix the
     binding — never remove it.
-- **⚠️ The session cookie is `__Host-gv_user`, and the prefix is load-bearing.** `__Host-`
+- **⚠️ The session cookie is `__Host-augur_user`, and the prefix is load-bearing.** `__Host-`
   is a name prefix the BROWSER enforces: it stores a cookie so named only when the cookie
   is `Secure`, has `Path=/`, and carries **no `Domain` attribute**. That last rule is the
   point — several workspaces share one apex host, so a page published on one of them can
@@ -324,12 +324,17 @@ name, initials, colour and role. Passwords live in KV as PBKDF2 hashes under
   `Path`, never drop `Secure`. One workspace host therefore cannot share a session with
   another by cookie, on purpose; spanning them is a central sign-in minting a separate
   session per host, never a weaker cookie.
-  - **⏳ Migration window.** The old, unprefixed `gv_user` is still READ by `identify()`
-    and CLEARED by `/__logout` so sessions predating the rename survive the deploy — and
-    is never ISSUED, so every login lands on the prefixed name and the old one drains
-    away within `MAX_AGE` (a week). `LEGACY_USER_COOKIE` in `src/_worker.js` names the two
-    ⏳ sites that end it; `test/host-cookie-prefix.test.mjs` covers both names, and its
-    own ⏳ cases go at the same time.
+  - **⏳ Migration window — the read set is THREE names, the write set is one.**
+    `LEGACY_USER_COOKIES` in `src/_worker.js` lists the two names this cookie used to be
+    issued under (`__Host-gv_user`, then the pre-prefix `gv_user`). Both are READ by
+    `identify()` — always AFTER `USER_COOKIE`, so a stale name can never shadow a live
+    session — and CLEARED by `/__logout`, and neither is ever ISSUED, so each drains away
+    within `MAX_AGE` (a week) once the last instance issuing it has moved off it.
+    **Adding a name to the read set is free; removing one signs people out**, so an entry
+    goes only after checking what a live instance actually SETS — an instance whose engine
+    pin is frozen can still be minting the oldest name, and its week has not started. The
+    constant's comment carries the per-entry condition; `test/host-cookie-prefix.test.mjs`
+    covers all three, and its ⏳ cases retire name by name with the list.
 - Sessions are HMACs keyed on the runtime `SESSION_SECRET`, bound to the user's effective
   secret, so changing or clearing a password invalidates that user's cookies for free.
   This holds only when `SESSION_SECRET` is actually set on the project — `userToken()`

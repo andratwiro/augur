@@ -90,14 +90,30 @@ let VANITY_REDIRECTS = {};
 // all. Every issue site already set Path=/, HttpOnly and Secure with no Domain, so this
 // is a name, not a redesign — and it stays a name: never issue this cookie without all
 // three, or the browser will silently drop every session the deployment hands out.
-const USER_COOKIE = "__Host-gv_user";
-// ⏳ MIGRATION WINDOW — the old, unprefixed name. Sessions issued before the rename live
-// under it, so it is READ by identify() and CLEARED by /__logout, and NEVER issued: every
-// login from here on lands under the prefixed name, and the old one drains away as the
-// sessions holding it expire (MAX_AGE, one week). To finish the rename, delete this
-// constant and the two ⏳ sites that mention it — the fallback in identify() and the
-// second clear in /__logout. Nothing else refers to it.
-const LEGACY_USER_COOKIE = "gv_user";
+const USER_COOKIE = "__Host-augur_user";
+// ⏳ MIGRATION WINDOW — the names this cookie used to be issued under, oldest last. They
+// are OPAQUE WIRE STRINGS, not identity: a live browser is holding one right now, so the
+// engine must keep answering to it or that person is signed out mid-sentence. They are
+// READ by identify() (after USER_COOKIE, never before it) and CLEARED by /__logout, and
+// NEVER issued — every login from here on lands on USER_COOKIE, so each old name drains
+// away as the sessions holding it expire (MAX_AGE, one week).
+//
+// WHAT DELETES EACH ENTRY — an entry goes one week after the LAST instance still issuing
+// it has taken an engine that no longer does, which is a fact about deployed pins, not
+// about this repo:
+//   "__Host-gv_user"  the name every instance issued before this rename. It stops being
+//                     issued the moment an instance takes this engine, so it can go a
+//                     week after the slowest live pin has moved past this commit.
+//   "gv_user"         the pre-`__Host-` name. An instance whose engine pin is frozen can
+//                     still be ISSUING it — a frozen pin means old sessions keep being
+//                     minted, so this entry's week does not even START until that pin
+//                     moves. Check what a live instance actually sets before removing it;
+//                     a local build proves nothing about it.
+// Removing one is: drop it from this list, drop its ⏳ case from
+// test/host-cookie-prefix.test.mjs. The read fallback in identify() and the clear loop in
+// /__logout are written over the list, so they need no edit until it is empty — at which
+// point delete the constant and the two ⏳ sites that name it. Nothing else refers to it.
+const LEGACY_USER_COOKIES = Object.freeze(["__Host-gv_user", "gv_user"]);
 // KV {email: "pbkdf2$…"} — the credential store, written only by a user redeeming an
 // invite. A key PRESENT holding null/"" is a REVOCATION TOMBSTONE (admin reset): it
 // means "no secret", and must never fall through to the roster's seed. Only an ABSENT
@@ -1784,10 +1800,16 @@ function cookieValue(cookies, name) {
 async function identify(request, env, users = USERS) {
   if (!users.length) return null;
   const cookies = request.headers.get("Cookie") || "";
-  // ⏳ MIGRATION WINDOW — the prefixed name first, the old one only if it is absent, so a
-  // session that predates the rename keeps working and a re-login upgrades it in place.
-  // Delete the second half of this line with LEGACY_USER_COOKIE.
-  const val = cookieValue(cookies, USER_COOKIE) ?? cookieValue(cookies, LEGACY_USER_COOKIE);
+  // ⏳ MIGRATION WINDOW — the current name first, then each older name in turn, so a
+  // session that predates a rename keeps working and a re-login upgrades it in place.
+  // Order is the whole point: an older name is consulted only when the current one is
+  // ABSENT, so a cookie tossed under a legacy name can never shadow a live session.
+  // Delete the second half of this expression with LEGACY_USER_COOKIES.
+  let val = cookieValue(cookies, USER_COOKIE);
+  for (const name of LEGACY_USER_COOKIES) {
+    if (val !== null) break;
+    val = cookieValue(cookies, name);
+  }
   if (val === null) return null;
   const dot = val.lastIndexOf(".");
   if (dot < 1) return null;
@@ -4919,10 +4941,12 @@ export default {
     if (url.pathname === "/__logout") {
       const out = new Headers({ Location: "/", "Cache-Control": "no-store" });
       out.append("Set-Cookie", `${USER_COOKIE}=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0`);
-      // ⏳ MIGRATION WINDOW — clear the old name too. Sign-out has to reach the cookie the
-      // browser is actually holding, or a session issued before the rename survives its
-      // own sign-out. Delete this line with LEGACY_USER_COOKIE.
-      out.append("Set-Cookie", `${LEGACY_USER_COOKIE}=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0`);
+      // ⏳ MIGRATION WINDOW — clear every older name too. Sign-out has to reach the cookie
+      // the browser is actually holding, or a session issued before a rename survives its
+      // own sign-out. Delete this loop with LEGACY_USER_COOKIES.
+      for (const name of LEGACY_USER_COOKIES) {
+        out.append("Set-Cookie", `${name}=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0`);
+      }
       return new Response(null, { status: 303, headers: out });
     }
 

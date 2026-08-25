@@ -111,7 +111,7 @@ export const TENANT_FIELD_SOURCES = Object.freeze(
 // Nothing here names a company or reads a hostname — a vintage manifest of ANY workspace
 // gets the same floor, which is exactly what those manifests were serving yesterday.
 //
-// This is the same shape as LEGACY_USER_COOKIE in src/_worker.js: read, never written.
+// This is the same shape as LEGACY_USER_COOKIES in src/_worker.js: read, never written.
 // Every current build emits the key unconditionally (build.js writes `mcpPaths` into
 // routing.json and into every per-space manifest fragment, `[]` when a workspace declares
 // none), so a single publish from a current clone retires the shim for that workspace on
