@@ -5,9 +5,15 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { __testables as W } from "../src/_worker.js";
+import { emptyTenantContext } from "../src/tenant-context.mjs";
 
-test("placeholders are inert at import time (raw copy gates nothing)", () => {
-  assert.equal(W.userByEmail("nobody@example.test"), null); // USERS = []
+// There is no module roster left to be inert: identity belongs to a workspace, and a
+// workspace nothing has configured is `emptyTenantContext()` — whose USERS is empty, so
+// a raw copy resolves nobody and therefore gates nothing. Same claim as before, asked of
+// the value that now holds it rather than of a global.
+test("an unconfigured workspace resolves nobody (raw copy gates nothing)", () => {
+  assert.deepEqual(emptyTenantContext().USERS, []);
+  assert.equal(W.userByEmail("nobody@example.test", emptyTenantContext().USERS), null);
 });
 
 test("hash/verify roundtrip (PBKDF2, random salt)", async () => {

@@ -44,9 +44,6 @@ import { TENANT_FIELD_NAMES } from "../src/tenant-context.mjs";
 // eventually leave: a thread-* commit deletes the `let` in the worker and the line here
 // in the same change.
 const IN_FLIGHT = {
-  CONFIG_USERS:            "identity as written in instance.json — A-thread-identity",
-  USERS:                   "identity with the KV roster overlaid — A-thread-identity",
-  CONFIG_LOADED:           "the fail-closed cold-isolate flag; per-tenant by definition once an isolate serves two",
   PUBLIC_PREFIXES:         "gate exemptions from routing.json — A-thread-gate",
   PUBLIC_SKILL_PREFIXES:   "gate exemptions for skill assets — A-thread-gate",
   RESTRICTED_BASES:        "permanently empty since the path-mount tier retired; deleted outright, not threaded",

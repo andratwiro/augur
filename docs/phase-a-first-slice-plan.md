@@ -135,15 +135,14 @@ builds a context and `applyTenantContext()` mirrors it onto them — so each one
 exactly one writer, and threading a cluster means deleting its line from that mirror and
 taking `ctx.<NAME>` at the read sites instead. **Every seam that writes a binding writes
 the context in the same statement** (`applyInstance`, `applyDerivedRouting`,
-`__setChromeTestState`, and the two in-isolate roster writes in `adminUsersApi`), so a
-threaded read site and a not-yet-threaded one can never answer differently from the same
-fixture — which is the half-done-sweep failure no single-workspace test can observe. "Reads" = occurrences minus the declaration
+`__setChromeTestState`), so a threaded read site and a not-yet-threaded one can never
+answer differently from the same fixture — which is the half-done-sweep failure no
+single-workspace test can observe. A cluster with no binding left writes the context
+alone: the two in-isolate roster writes in `adminUsersApi` are the worked example. "Reads" = occurrences minus the declaration
 and assignment sites (measured by `grep -ow` count, then discounting decl + assigns).
 
 | Global | Decl | ~reads | Notes for threading |
 |--------|------|-------:|---------------------|
-| `CONFIG_USERS` | `42` | ~5 | roster base; paired with `USERS` |
-| `USERS` | `43` | ~22 | the hottest identity global; the `rosterFields` overlay target |
 | `PUBLIC_SKILL_PREFIXES` | `50` | ~2 | gate exemption; assets from `routing.json` (`409`) |
 | `MCP_HOST_SUFFIXES` | `51` | ~3 | MCP proxy |
 | `MCP_HOST_ALLOWLIST` | `52` | ~4 | union; also feeds `mcpStaticHosts` |
@@ -163,7 +162,6 @@ and assignment sites (measured by `grep -ow` count, then discounting decl + assi
 | `LOGIN_PREFILL_PASSWORD` | `352` | ~2 | login page |
 | `INSTANCE_ENGINE_VERSION` | `355` | ~4 | update nudge |
 | `UPDATE_FEED` | `356` | ~2 | update nudge |
-| `CONFIG_LOADED` | `381` | ~3 | **fail-closed gate flag — see below** |
 | `CANVAS_LOADER_EXTRAS` | `3554` | ~3 | virtual canvas loader |
 | `CANVAS_CATALOG` | `3564` | ~3 | insert picker aggregate |
 | `CANVAS_TRACKS` | `3565` | ~3 | music aggregate |
@@ -171,15 +169,17 @@ and assignment sites (measured by `grep -ow` count, then discounting decl + assi
 | `mcpStaticHosts` | `3067` | ~4 | derived Set from `MCP_HOST_ALLOWLIST` |
 | `mcpHostAllowlist` | `3051` | ~4 | fetched remote allowlist cache |
 
-That is **28 config-shaped globals** (the plan's "~25"). Excluded as pure per-isolate
-runtime caches, not config: `cfgAt` (`358`), `MANIFESTS` (`1654`), `STORAGE_CACHE`
-(`2654`), `AVATAR_KEYS` (`837`). Total config-global occurrences ≈ 200, i.e. ~110–120
-read sites once decls/assigns are removed — matching the plan's "~110".
+The sweep opened on **28 config-shaped globals** (the plan's "~25"). The identity cluster
+— `CONFIG_USERS`, `USERS` and the `CONFIG_LOADED` flag that rides with them — has since
+been threaded and its three `let`s deleted, so the rows above are what is left. Excluded
+as pure per-isolate runtime caches, not config: `cfgAt` (`358`), `MANIFESTS` (`1654`),
+`STORAGE_CACHE` (`2654`), `AVATAR_KEYS` (`837`). Total config-global occurrences ≈ 200,
+i.e. ~110–120 read sites once decls/assigns are removed — matching the plan's "~110".
 
 **The enumeration of record is `scripts/no-tenant-globals.mjs`, not this table.** Line
 numbers here drift; the lint reads the worker and counts what is actually declared —
-today 47 module-scope bindings: 29 config globals still in flight (the 28 above plus
-`CONFIG_LOADED`), 12 per-isolate caches, and 6 mutable-container constants that never
+today 46 module-scope bindings: 27 config globals still in flight, 13 per-isolate caches,
+and 6 mutable-container constants that never
 vary by workspace. It fails CI, and therefore the deploy, on a binding it has never been
 told about, and equally on an allowlist entry whose binding is gone — so the list shrinks
 as the threading lands rather than turning into standing permission. Each thread-\* commit
@@ -221,9 +221,11 @@ actually runs has no byte-level baseline watching it.
 The one **fail-CLOSED** counterweight lives beside it: `CONFIG_LOADED` lets the gate
 distinguish "genuinely no identity" (raw build → open) from "config not loaded yet in this
 cold isolate" (deployment → must fail closed), consumed in `fetch()` as
-`authed = expectsConfig ? CONFIG_LOADED : true`. It starts FALSE and only an instance
-document that actually parsed sets it true — that default now comes from the context
-factory (`emptyTenantContext`), and `instanceFields` is the only thing that flips it.
+`authed = expectsConfig ? tctx.CONFIG_LOADED : true`. It starts FALSE and only an instance
+document that actually parsed sets it true — that default comes from the context factory
+(`emptyTenantContext`), and `instanceFields` is the only thing that flips it. It lives
+nowhere else: there is no module binding mirroring it, so a second workspace starts
+un-loaded rather than inheriting the first one's verdict.
 **This cold-isolate fail-closed semantics is the single most dangerous thing in the sweep
 to regress** — a context that defaults to "loaded/empty" instead of "not yet loaded"
 reopens the gate on a cold isolate whose first config read failed. The baseline snapshot

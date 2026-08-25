@@ -49,9 +49,13 @@ function seed(threads) {
   return { kv, env: { COMMENTS: kv, SESSION_SECRET: "s3cret" } };
 }
 
-// The workspace these comments belong to. reviewApi resolves author names against that
-// workspace's roster now, so the fixture names one instead of leaving it to module scope.
-const CTX = W.applyDerivedRouting({});
+// The workspace these comments belong to. reviewApi resolves author names — and now the
+// deleting caller's own session — against THAT workspace's roster, so the fixture has to
+// name a workspace rather than seed a module-scope one. `roster()` seeds it and hands
+// back the context every call below passes down; `applyInstance` returns the context it
+// just wrote, which is what makes "who exists here" a property of this workspace.
+let CTX = W.applyDerivedRouting({});
+const roster = (users = ROSTER) => { CTX = W.applyInstance({ users }); };
 
 async function post(env, user, op) {
   const headers = { "Content-Type": "application/json" };
@@ -68,18 +72,18 @@ async function post(env, user, op) {
 const idsIn = (kv) => JSON.parse(kv.store.get(KEY)).map((t) => t.id);
 
 test("setup: the roster is live so identify() can resolve a cookie", async () => {
-  W.applyInstance({ users: ROSTER });
+  roster();
   const { env } = seed([]);
   const token = await W.userToken(env, A);
   const me = await W.identify(new Request("https://example.test/", {
     headers: { Cookie: `__Host-augur_user=${A.email}.${token}` },
-  }), env);
+  }), env, CTX.USERS);
   assert.ok(me, "A's cookie identifies");
   assert.equal(me.email, A.email);
 });
 
 test("a teammate cannot delete a thread they did not author", async () => {
-  W.applyInstance({ users: ROSTER });
+  roster();
   const { kv, env } = seed([threadBy("t1", A)]);
   const res = await post(env, B, { op: "delete", id: "t1" });
   assert.equal(res.status, 403, "B deleting A's thread must be refused (was: 200, silently deleted)");
@@ -87,7 +91,7 @@ test("a teammate cannot delete a thread they did not author", async () => {
 });
 
 test("an author can delete their own thread", async () => {
-  W.applyInstance({ users: ROSTER });
+  roster();
   const { kv, env } = seed([threadBy("t1", A), threadBy("t2", B)]);
   const res = await post(env, B, { op: "delete", id: "t2" });
   assert.equal(res.status, 200);
@@ -95,7 +99,7 @@ test("an author can delete their own thread", async () => {
 });
 
 test("an admin can delete anyone's thread", async () => {
-  W.applyInstance({ users: ROSTER });
+  roster();
   const { kv, env } = seed([threadBy("t1", A)]);
   const res = await post(env, ADMIN, { op: "delete", id: "t1" });
   assert.equal(res.status, 200);
@@ -103,7 +107,7 @@ test("an admin can delete anyone's thread", async () => {
 });
 
 test("delmsg index 0 removes the whole thread, so it carries the same ownership rule", async () => {
-  W.applyInstance({ users: ROSTER });
+  roster();
   const { kv, env } = seed([threadBy("t1", A)]);
 
   const refused = await post(env, B, { op: "delmsg", id: "t1", index: 0 });
@@ -116,7 +120,7 @@ test("delmsg index 0 removes the whole thread, so it carries the same ownership 
 });
 
 test("an anonymously-authored thread (no `by`) is admin-only to delete", async () => {
-  W.applyInstance({ users: ROSTER });
+  roster();
   const anon = threadBy("t1", null);
   {
     const { kv, env } = seed([anon]);
@@ -133,7 +137,7 @@ test("an anonymously-authored thread (no `by`) is admin-only to delete", async (
 });
 
 test("a thread predating the `by` field is admin-only, not free-for-all", async () => {
-  W.applyInstance({ users: ROSTER });
+  roster();
   const legacy = { id: "t1", messages: [{ author: "Ada", verified: true, body: "old", at: "then" }] };
   const { kv, env } = seed([legacy]);
   const res = await post(env, A, { op: "delete", id: "t1" });
@@ -142,7 +146,7 @@ test("a thread predating the `by` field is admin-only, not free-for-all", async 
 });
 
 test("a signed-out caller is still refused outright", async () => {
-  W.applyInstance({ users: ROSTER });
+  roster();
   const { kv, env } = seed([threadBy("t1", A)]);
   const url = new URL(`https://example.test/__review/api?path=${encodeURIComponent(PATH)}`);
   const request = new Request(url, {
@@ -155,7 +159,7 @@ test("a signed-out caller is still refused outright", async () => {
 });
 
 test("deleting a REPLY keeps the older signed-in-only rule (not this item's scope)", async () => {
-  W.applyInstance({ users: ROSTER });
+  roster();
   const t = threadBy("t1", A);
   t.messages.push({ author: "Bo", verified: true, body: "reply", at: "now", by: W.personId(B.email) });
   const { kv, env } = seed([t]);
@@ -168,7 +172,7 @@ test("deleting a REPLY keeps the older signed-in-only rule (not this item's scop
 // be an admin. Requiring ownership there would make comments undeletable in every
 // open build and in `augur dev`. Openness is the documented posture for that mode.
 test("an open build with no roster stays open", async () => {
-  W.applyInstance({ users: [] });
+  roster([]);
   const kv = memKV({ [KEY]: JSON.stringify([threadBy("t1", null)]) });
   const env = { COMMENTS: kv };
   const url = new URL(`https://example.test/__review/api?path=${encodeURIComponent(PATH)}`);

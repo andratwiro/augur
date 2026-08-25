@@ -1,7 +1,7 @@
 // Source for dist/_worker.js — copied VERBATIM by build.js into the deploy dir.
 // Cloudflare Pages Advanced Mode: this Worker runs in front of every request.
 //
-// RUNTIME CONFIG: everything deployment- or build-specific (USERS, PUBLIC_PREFIXES,
+// RUNTIME CONFIG: everything deployment- or build-specific (the roster, PUBLIC_PREFIXES,
 // RESTRICTED_BASES, VERSION_MAP, BUILD_ID, deploy knobs) is DATA, not code. It loads
 // from /__config/{instance,routing}.json — emitted by build.js next to the assets —
 // at request time via loadTenantContext(), cached per isolate for ~1.5s. It loads config
@@ -52,20 +52,26 @@ const MAX_AGE = 60 * 60 * 24 * 7; // 7 days
 // ---- Users / identity -------------------------------------------------------
 // Augur is a private internal tool — the only real risk is impersonation, and the
 // real work happens through git commits, so this is a casual identity layer, not
-// auth hardening. USERS is the ROSTER — who exists, not what they know — filled at
-// runtime from instance.json (loadConfig). Empty in a raw copy → no users → the gate
-// stays open (offline/local builds with no identity configured). Each entry:
+// auth hardening. `ctx.USERS` is the ROSTER — who exists, not what they know — read
+// from instance.json for the workspace this request is for (loadTenantContext). Empty
+// in a raw copy → no users → the gate stays open (offline/local builds with no identity
+// configured). Each entry:
 //   { email, name, initials, color, role?, passHash? }
 // role:"admin" gates the admin API and admin-only spaces; admins can NOT set or read
 // passwords, only reset a user (which revokes and mints an invite link). `passHash` is a
 // seed consulted only when users:secrets has no key for that email — it exists so a NEW
 // instance's first admin can log in, since there is nobody to invite them.
 // Credentials live in KV, never here — see effectiveSecret for the exact precedence.
-// CONFIG_USERS is what instance.json named; USERS is that list with the KV roster
-// overlay applied (people the admin panel invited or removed since). Everything that
-// resolves a person reads USERS.
-let CONFIG_USERS = [];
-let USERS = [];
+// `ctx.CONFIG_USERS` is what instance.json named; `ctx.USERS` is that list with the KV
+// roster overlay applied (people the admin panel invited or removed since). Everything
+// that resolves a person reads `ctx.USERS`.
+//
+// ⚠️ Neither is a module binding any more, and neither may become one again. A roster
+// in module scope is the whole leak this phase closes: an isolate that resolved a second
+// workspace would answer it with the first workspace's people, i.e. with the first
+// workspace's admins. Every function that resolves a person therefore takes the list as
+// a REQUIRED parameter — no default — so a call site that forgot which workspace it is
+// answering for is a crash here, not a cross-tenant answer in production.
 // Deploy-specific knobs, filled at runtime from instance.json (all empty in a raw
 // engine build): gate-exempt skill-asset path prefixes, MCP-proxy host allowlist
 // (suffix rule + space-declared exact hosts + the URL of an exact-host list), and
@@ -453,8 +459,6 @@ let TENANT_CTX = emptyTenantContext(null);
 // disagreeing, which is the one failure a green test suite could not show.
 function applyInstance(inst) {
   TENANT_CTX = withTenantFields(TENANT_CTX, instanceFields(inst));
-  CONFIG_USERS = Array.isArray(inst.users) ? inst.users : [];
-  USERS = CONFIG_USERS; // rosterFields() overlays the KV additions/removals next
   INSTANCE_ENGINE_VERSION = inst.engineVersion || "";
   UPDATE_FEED = inst.updateFeed || "";
   MCP_HOST_SUFFIXES = inst.mcpHostSuffixes || [];
@@ -468,17 +472,19 @@ function applyInstance(inst) {
   const prefill = inst.loginPrefill && typeof inst.loginPrefill === "object" ? inst.loginPrefill : {};
   LOGIN_PREFILL_EMAIL = typeof prefill.email === "string" ? prefill.email : "";
   LOGIN_PREFILL_PASSWORD = typeof prefill.password === "string" ? prefill.password : "";
-  CONFIG_LOADED = true; // an instance document was actually applied this isolate
+  // ⚠️ `CONFIG_LOADED` is NOT set here any more, and must never be set anywhere but
+  // `instanceFields`. It answers "has an instance document actually parsed for THIS
+  // workspace", which is what lets the gate tell "genuinely no identity" (raw build →
+  // open by design) from "config has not loaded yet in this cold isolate" (deployment →
+  // fail closed). Its default is FALSE and it lives on the context, so a second
+  // workspace starts un-loaded rather than inheriting the first one's answer. A copy in
+  // module scope would hand every workspace the first one's verdict — which, on the
+  // cold-isolate path, is the verdict that opens the gate.
   // The seeded CONTEXT, for the same reason applyDerivedRouting hands one back: a caller
   // that has to give a threaded function a workspace gets one from the seed it already
   // wrote, instead of reaching into module scope for it.
   return TENANT_CTX;
 }
-// Has a real instance config ever loaded in THIS isolate? A cold isolate whose first
-// config read fails would otherwise leave USERS empty and default the gate to "open"
-// (the raw/offline case). This flag lets the gate tell "genuinely no identity" (raw
-// build) from "config not loaded yet" (deployment, must fail closed). See the gate.
-let CONFIG_LOADED = false;
 // ONE config load for ONE workspace: read whichever documents this serving mode keeps
 // config in, and RETURN the context they describe. It does the I/O and nothing else —
 // no global is written here, which is what lets the same function answer for a second
@@ -532,9 +538,6 @@ async function loadTenantContext(tenantId, env, { prev = null, forced = false } 
 // effect of building the space list, so mirroring the context's (unfilled) copy over it
 // would blank the hash allowlist the icon route checks.
 function applyTenantContext(ctx) {
-  CONFIG_USERS = ctx.CONFIG_USERS;
-  USERS = ctx.USERS;
-  CONFIG_LOADED = ctx.CONFIG_LOADED;
   INSTANCE_ENGINE_VERSION = ctx.INSTANCE_ENGINE_VERSION;
   UPDATE_FEED = ctx.UPDATE_FEED;
   MCP_HOST_SUFFIXES = ctx.MCP_HOST_SUFFIXES;
@@ -671,8 +674,8 @@ async function hmacToken(secret, message) {
 // admin panel has invited or removed since, so neither takes a commit + redeploy.
 //
 // ⚠️ The overlay is a CONVENIENCE, never the security boundary. A KV read that fails
-// leaves USERS as the config list, which would resurrect a removed CONFIG user in the
-// list — so `remove` ALSO writes the users:secrets tombstone that reset writes. That
+// leaves `ctx.USERS` as the config list, which would resurrect a removed CONFIG user in
+// the list — so `remove` ALSO writes the users:secrets tombstone that reset writes. That
 // tombstone fails closed on a KV error (see effectiveSecret) and identify() refuses any
 // user without an effective secret, so a removed person cannot sign in even if this
 // overlay is momentarily unreadable. Never "simplify" removal down to the list alone.
@@ -713,7 +716,7 @@ function mergeRoster(configUsers, roster) {
 // reads per tick was the site's dominant KV consumer (~4 reads/s under sustained
 // browsing ≈ 350k/day) and exhausted the free-tier daily get() budget, after which
 // every KV-touching route threw for the rest of the day (2026-08-20). The APPLY
-// still runs every tick — applyInstance resets USERS to the config list and counts
+// still runs every tick — instanceFields resets `USERS` to the config list and counts
 // on the overlay landing on top — only the KV reads are cached. Freshness: any
 // admin write sets cfgAt = 0, which reaches here as `forced` and re-reads at once
 // on that isolate; other isolates converge within ROSTER_TTL_MS. None of this
@@ -727,7 +730,10 @@ function __setConfigTestState({ cfgAt: c, rosterReadAt: r } = {}) {
   if (c !== undefined) cfgAt = c;
   if (r !== undefined) { rosterReadAt = r; if (!r) rosterCache = null; }
 }
-const __usersNow = () => USERS;
+// The roster this isolate last loaded, out of the context rather than out of a module
+// binding — the cadence tests need to see what the config tick settled on, and there is
+// no global left to read it from.
+const __usersNow = () => TENANT_CTX.USERS;
 // The overlay as a VALUE: it reads KV and returns the three fields the overlay owns, on
 // top of the context the config documents just produced. Nothing is written here, so a
 // throw anywhere in the chain reaches the caller having changed nothing — and the answer
@@ -1100,9 +1106,9 @@ async function readAvatars(env) {
   } catch (e) { return {}; }
 }
 
-// Copies, never in-place mutation: USERS entries are the very objects instance.json
+// Copies, never in-place mutation: roster entries are the very objects instance.json
 // produced, so stamping `avatar` onto them would outlive the overlay — a photo removed
-// from KV would keep serving until the next config reload replaced CONFIG_USERS.
+// from KV would keep serving until the next config reload replaced `CONFIG_USERS`.
 function applyAvatars(users, index) {
   const keys = new Set();
   const out = (users || []).map((u) => {
@@ -1347,7 +1353,12 @@ async function loginFail(env, ids) {
 const DUMMY_HASH = "pbkdf2$100000$5aALUzhjxbNTCTcgJHalAQ==$Wgd6/GtQGV9mmS44yPIBL52yDryksKrR7piP+96LYW0=";
 
 // ---- Identity helpers -------------------------------------------------------
-function userByEmail(email, users = USERS) {
+// `users` is REQUIRED. It used to default to the module roster, and that default is
+// exactly what a cross-workspace answer would have hidden: a call site that forgot to
+// say which workspace it was resolving for still got an answer, and in a single-tenant
+// era that answer was always right. Without the default the same omission is a
+// TypeError on the first request instead.
+function userByEmail(email, users) {
   const e = String(email == null ? "" : email).trim().toLowerCase();
   return users.find((u) => u.email.toLowerCase() === e) || null;
 }
@@ -1383,7 +1394,7 @@ function publicUser(u) {
 // Ungated for the same reason /__avatar/ is: a gated fetch from a public prototype
 // would return the login page instead of the data.
 const PEOPLE_LOOKUP_MAX = 50;
-function peopleApi(url, users = USERS) {
+function peopleApi(url, users) {
   const csv = (k) => (url.searchParams.get(k) || "").split(",").map((s) => s.trim()).filter(Boolean);
   const ids = csv("ids"), names = csv("names");
   if (ids.length + names.length > PEOPLE_LOOKUP_MAX) {
@@ -1818,8 +1829,15 @@ function cookieValue(cookies, name) {
 }
 
 // Resolve the signed-in user from the session cookie ("<email>.<token>"). Stateless —
-// no session store. `users` defaults to the injected USERS; tests pass their own list.
-async function identify(request, env, users = USERS) {
+// no session store.
+//
+// ⚠️ `users` is REQUIRED — the roster of the workspace this request is for. It used to
+// default to the module roster, and of every default dropped in this sweep this is the
+// one that mattered: "which people may this cookie name" IS the auth boundary, so a
+// caller that omitted the workspace would, the day an isolate serves two, resolve a
+// cookie against a NEIGHBOUR's roster — matching a stranger's admin by address. No
+// default means such a caller cannot exist.
+async function identify(request, env, users) {
   if (!users.length) return null;
   const cookies = request.headers.get("Cookie") || "";
   // ⏳ MIGRATION WINDOW — the current name first, then each older name in turn, so a
@@ -2397,7 +2415,11 @@ function synthBuildStamp(tctx, manifests) {
 // Bearer-token authed (per-space tokens minted in the admin panel, hashed in
 // KV; "*" = every space). PUBLISH_BOOTSTRAP_TOKEN is a local-dev binding for
 // wrangler dev only — never configure it on a deployed instance.
-async function publishAuth(request, env, spaceId, anySpace) {
+// `tctx` is here for the two role re-checks below: a token's label is an email, and an
+// email only means a person relative to ONE workspace's roster. Resolving it against a
+// module roster would let a neighbour's admin vouch for a token scoped to this
+// workspace's content.
+async function publishAuth(tctx, request, env, spaceId, anySpace) {
   const m = /^Bearer\s+(.+)$/.exec(request.headers.get("Authorization") || "");
   if (!m) return null;
   const token = m[1].trim();
@@ -2419,7 +2441,7 @@ async function publishAuth(request, env, spaceId, anySpace) {
     // demotion is the one transition that left one live.) Labels an admin typed by hand
     // — "ci", "backup" — match no roster user and are unaffected.
     if (e.space === "*" && e.label) {
-      const u = userByEmail(e.label);
+      const u = userByEmail(e.label, tctx.USERS);
       if (u && roleOf(u) !== "admin") return null;
     }
     // The same reasoning one rung down, and the reason it is here rather than only at
@@ -2428,7 +2450,7 @@ async function publishAuth(request, env, spaceId, anySpace) {
     // paths that never go through it — a hand-edited identity.json, a config push that
     // lands before the revoke, a token minted while the overlay was mid-write.
     if (e.label) {
-      const u = userByEmail(e.label);
+      const u = userByEmail(e.label, tctx.USERS);
       if (u && roleOf(u) === "viewer") return null;
     }
     if (!anySpace && e.space !== "*" && e.space !== spaceId) return null;
@@ -2500,7 +2522,7 @@ async function publishApi(tctx, request, url, env) {
   // URLs resolve at runtime against the instance's real identity, so a build
   // from a bare space clone renders the same faces an identity-file build does.
   if (spaceId === "_instance" && op === "profiles" && request.method === "GET") {
-    if (!(await publishAuth(request, env, spaceId, true))) return jsonResponse({ error: "forbidden" }, 403);
+    if (!(await publishAuth(tctx, request, env, spaceId, true))) return jsonResponse({ error: "forbidden" }, 403);
     // No `role` here: any valid publish token (including a non-admin default-space one)
     // can read this, and it only needs the fields that render editor faces — leaking
     // who the admins are is gratuitous.
@@ -2513,7 +2535,7 @@ async function publishApi(tctx, request, url, env) {
     return jsonResponse({ profiles });
   }
 
-  const who = await publishAuth(request, env, spaceId);
+  const who = await publishAuth(tctx, request, env, spaceId);
   if (!who) return jsonResponse({ error: "forbidden" }, 403);
 
   // Instance config push (star-scope tokens only): the deploy shell's identity +
@@ -3872,7 +3894,7 @@ async function reviewApi(tctx, request, url, env, authed) {
     // Resolve the caller's session so authorship is stamped from the cookie, not the
     // body. Reads/writes stay open (public reviewers carry no login) — this only fixes
     // WHO a message is attributed to, so a forged trusted name can't slip in.
-    const me = await identify(request, env);
+    const me = await identify(request, env, tctx.USERS);
     const raw = await kv.get(key);
     let threads = raw ? JSON.parse(raw) : [];
     // Removing a thread erases someone else's words, so "is anyone signed in" is not a
@@ -4373,10 +4395,13 @@ async function adminUsersApi(tctx, request, url, env, me, users = tctx.USERS, co
   // its own roster (tests) gets its list back untouched.
   const commitRoster = (roster) => {
     const next = mergeRoster(configUsers, roster);
-    // ⚠️ The context moves with the binding — see applyInstance. The router serves from
-    // the context now, so a roster written here has to land in both or this isolate
-    // answers one way through the threaded read sites and another through the rest.
-    if (users === USERS) { USERS = next; TENANT_CTX = withTenantFields(TENANT_CTX, { USERS: next }); }
+    // ⚠️ Only when this call is answering for the LIVE roster of the workspace it was
+    // handed. `users === tctx.USERS` is what says so: the router lets the parameter
+    // default to the context's list, while a caller that injected its own (tests, and
+    // anything answering for a workspace other than the one it is about to write) gets
+    // its list back untouched. The isolate's own context advances so the next request
+    // sees the write without waiting for the tick.
+    if (users === tctx.USERS) TENANT_CTX = withTenantFields(TENANT_CTX, { USERS: next });
     cfgAt = 0;
   };
 
@@ -4594,14 +4619,13 @@ async function adminUsersApi(tctx, request, url, env, me, users = tctx.USERS, co
       if (role === "viewer") await revokePublishTokens(env, email);
       else if (from === "admin") await revokePublishTokens(env, email);
 
-      // USERS in this isolate, then everywhere on the next tick — same as invite/remove.
+      // This isolate's roster now, everywhere on the next tick — same as invite/remove,
+      // and gated on the same "am I answering for the live list" test as commitRoster.
       const nextRoles = await readRoles(env);
-      if (users === USERS) {
-        USERS = applyRoles(mergeRoster(configUsers, roster), nextRoles);
-        // ⚠️ The context moves with the binding it is replacing. The router hands the
-        // context down now, so leaving TENANT_CTX behind here would make this isolate's
-        // freshened roster visible through the global and invisible through the context.
-        TENANT_CTX = withTenantFields(TENANT_CTX, { USERS });
+      if (users === tctx.USERS) {
+        TENANT_CTX = withTenantFields(TENANT_CTX, {
+          USERS: applyRoles(mergeRoster(configUsers, roster), nextRoles),
+        });
       }
       cfgAt = 0;
 
