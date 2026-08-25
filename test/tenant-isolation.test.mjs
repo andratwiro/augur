@@ -495,6 +495,125 @@ test("CONFIG_LOADED is false unless THIS workspace's instance document parsed", 
   assert.equal(unloaded.CONFIG_LOADED, false, "a neighbour's successful load opened this workspace's gate");
 });
 
+// ---- the publish-token exchange, per workspace ---------------------------------------
+//
+// `/__publish/_login/token` trades a web login for a publish token, and for anyone who is
+// not an admin the token is scoped to THE DEFAULT WORKSPACE — a read of the workspace
+// list. While that list was a module global, the isolate's LAST CONFIG LOAD decided which
+// workspace every exchange scoped to, whoever was asking: an editor signing in to one
+// workspace could walk away with a token that publishes to its neighbour, and the grant
+// written to KV would say so too. A single-tenant era has no second workspace to observe
+// that, so it is pinned here rather than left to a route test.
+//
+// This still does not go through the router — `publishApi` takes the workspace as its
+// first argument, which is the seam this file exists to hold. The two workspaces share
+// ONE KV, as an isolate serving both would: the same token store, the same secrets, the
+// same rate-limit counters, so a leak has somewhere to come from.
+
+const EXCHANGE_PASSWORD = "correct horse battery staple";
+
+// The exchange's interesting branch is the NON-admin one: an admin gets "*" and never
+// consults the list at all.
+const editorInstanceDoc = (n) => ({
+  ...instanceDoc(n),
+  users: [{ email: `editor@${n}.invalid`, name: `Editor of ${n}`, role: "editor" }],
+});
+
+async function exchangeEnv(names) {
+  const store = new Map();
+  const secrets = {};
+  for (const n of names) secrets[`editor@${n}.invalid`] = await W.hashPassword(EXCHANGE_PASSWORD);
+  store.set("users:secrets", JSON.stringify(secrets));
+  const kv = {
+    async get(k) { return store.has(k) ? store.get(k) : null; },
+    async put(k, v) { store.set(k, v); },
+    async delete(k) { store.delete(k); },
+  };
+  // BUNDLES bound: the publish routes answer 501 without it, and every deployed instance
+  // serves in bundle mode.
+  return { store, env: { COMMENTS: kv, BUNDLES: {} } };
+}
+
+const exchange = (ctx, env, n) => W.publishApi(
+  ctx,
+  new Request("https://x.test/__publish/_login/token", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email: `editor@${n}.invalid`, password: EXCHANGE_PASSWORD }),
+  }),
+  new URL("https://x.test/__publish/_login/token"),
+  env,
+);
+
+function shuffled(items) {
+  const out = [...items];
+  for (let j = out.length - 1; j > 0; j--) {
+    const r = Math.floor(Math.random() * (j + 1));
+    [out[j], out[r]] = [out[r], out[j]];
+  }
+  return out;
+}
+
+test("the publish-token exchange scopes to the CALLING workspace, under interleaving", async () => {
+  const { store, env } = await exchangeEnv(NAMES);
+
+  const ctx = {};
+  for (const n of NAMES) {
+    resetSharedCaches();
+    ctx[n] = await load(n, fixture(n, { instance: editorInstanceDoc(n) }));
+    assert.deepStrictEqual(
+      ctx[n].SPACES.map((s) => s.id), [n],
+      `${n}'s context does not carry its own workspace list — the case would assert nothing`,
+    );
+  }
+
+  const ITERATIONS = 10;
+  for (let i = 0; i < ITERATIONS; i++) {
+    const plan = shuffled([...NAMES, ...NAMES, ...NAMES]);
+    const got = await Promise.all(plan.map((n) => exchange(ctx[n], env, n)));
+    for (const [idx, res] of got.entries()) {
+      const n = plan[idx];
+      const where = `iteration ${i} (order ${plan.join(",")}): ${n}`;
+      assert.equal(res.status, 200, `${where} was refused a token it is entitled to`);
+      const body = await res.json();
+      assert.equal(body.space, n, `${where} was handed a token scoped to another workspace`);
+    }
+  }
+
+  // …and the grant that was WRITTEN says the same thing. A token that answered "alpha" to
+  // its holder while storing "beta" would publish next door on its first use, and the
+  // holder would have been told otherwise.
+  const { token, space } = await (await exchange(ctx.alpha, env, "alpha")).json();
+  const map = JSON.parse(store.get("publish:tokens"));
+  const record = map[await W.tokenFor("pub:" + token)];
+  assert.equal(space, "alpha");
+  assert.equal(record.space, "alpha", "the stored grant names a workspace the response did not");
+  assert.equal(record.label, "editor@alpha.invalid");
+});
+
+test("a workspace with no default cannot borrow its neighbour's", async () => {
+  // The null-when-no-workspace contract, at the one place it decides who may publish
+  // what: with no default there is nothing to scope a token to, and the refusal has to be
+  // a refusal rather than a fall-through to whichever workspace loaded last.
+  const { env } = await exchangeEnv(NAMES);
+
+  resetSharedCaches();
+  const alpha = await load("alpha", fixture("alpha", { instance: editorInstanceDoc("alpha") }));
+  resetSharedCaches();
+  const beta = await load("beta", fixture("beta", {
+    instance: editorInstanceDoc("beta"),
+    routing: { ...routingDoc("beta"), spaces: [] },
+  }));
+
+  assert.equal((await exchange(alpha, env, "alpha")).status, 200, "alpha's own exchange broke");
+  const res = await exchange(beta, env, "beta");
+  assert.equal(res.status, 500);
+  assert.equal(
+    (await res.json()).error, "no-default-space",
+    "a workspace with no default was handed a scope, which could only have come from its neighbour",
+  );
+});
+
 // ---- KNOWN GAP: the roster overlay cache is shared -----------------------------------
 //
 // `rosterFields()` reads its six KV documents through the module-scope `rosterCache` /
