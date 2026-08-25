@@ -1204,7 +1204,7 @@ test("the canvas catalogue is not a site index for a signed-out caller", async (
 // ---- The front door wears the deployment's brand ----------------------------
 
 test("the gate and the invite form show the default space's icon, not the engine mark", () => {
-  W.applyDerivedRouting({
+  const ctx = W.applyDerivedRouting({
     alpha: { id: "alpha", format: 1, files: {}, space: { id: "alpha", default: true } },
     beta: { id: "beta", format: 1, files: {}, space: { id: "beta" } },
   });
@@ -1213,11 +1213,11 @@ test("the gate and the invite form show the default space's icon, not the engine
     assert.doesNotMatch(html, /aria-label="Augur"/, `${what} drops the engine mark`);
   }
   // …and the icon has to clear the gate, or that <img> fetches the login HTML instead.
-  assert.equal(W.isPublicPath("/space-icon.png"), true);
+  assert.equal(W.isPublicPath(ctx, "/space-icon.png"), true);
   // the review overlay's own assets, for the same reason: a gated cursor image falls
   // back to a keyword silently, a gated avatar renders as a broken <img>
   for (const p of ["/__review/comments.js", "/__review/cat.png", "/__review/comment-cursor.svg"])
-    assert.equal(W.isPublicPath(p), true, `${p} must clear the gate`);
+    assert.equal(W.isPublicPath(ctx, p), true, `${p} must clear the gate`);
 });
 
 test("with no space mounted the front door falls back to the engine mark", () => {
@@ -1233,8 +1233,9 @@ test("session music is admin-only — never public, whatever the space is called
   // isPublicPath made every published track downloadable by anyone who asked.
   // Root-only now (Phase A, S4): the "/<space>/tracks/" mount was retired with the
   // path-mount tier, so "/space-2/tracks/theme.m4a" is no longer a track.
+  const ctx = W.applyDerivedRouting({});
   for (const p of ["/tracks/01 Ambient.mp3", "/tracks/deep/sub.opus"]) {
-    assert.equal(W.isPublicPath(p), false, `${p} must not be public`);
+    assert.equal(W.isPublicPath(ctx, p), false, `${p} must not be public`);
     assert.equal(W.isTrackPath(p), true, `${p} must be recognised as music`);
   }
   assert.equal(W.isTrackPath("/space-2/tracks/theme.m4a"), false, "no /<space>/ mount survives");

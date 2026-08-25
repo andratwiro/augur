@@ -97,39 +97,41 @@ function bundleBinding(seed, { fail = false } = {}) {
 // What a request would actually see: who can sign in, what the gate opens, what version
 // a page is told it is. Comparing this whole shape is the point — a partial apply that
 // updated one field and not another would show up as a difference here.
-const served = () => ({
-  users: W.__usersNow().map((u) => u.email).sort(),
-  openPath: W.isPublicPath("/open/thing.html"),
-  gatedPath: W.isPublicPath("/internal/thing.html"),
-  version: W.versionFor("/open/"),
-  fallbackVersion: W.versionFor("/not-in-the-map"),
+//
+// It takes the CONTEXT the load handed back, because that is now what a request holds:
+// fetch() binds loadConfig's return and asks the gate through it. Reading the module
+// bindings here instead would test the mirror rather than the thing being served.
+const served = (ctx) => ({
+  users: ctx.USERS.map((u) => u.email).sort(),
+  openPath: W.isPublicPath(ctx, "/open/thing.html"),
+  gatedPath: W.isPublicPath(ctx, "/internal/thing.html"),
+  version: W.versionFor(ctx, "/open/"),
+  fallbackVersion: W.versionFor(ctx, "/not-in-the-map"),
 });
 
 test("assets mode: a read that fails leaves the working gate exactly as it was", async () => {
   const kv = memKV();
   W.__setConfigTestState({ cfgAt: 0, rosterReadAt: 0 });
-  await W.loadConfig(T, { ASSETS: assetsBinding(), COMMENTS: kv });
-  const good = served();
+  const good = served(await W.loadConfig(T, { ASSETS: assetsBinding(), COMMENTS: kv }));
   assert.deepEqual(good.users, ["known@x.test"], "the fixture actually loaded");
   assert.equal(good.openPath, true);
   assert.equal(good.version, "v-open");
 
   // The very next tick: the config documents are unreadable.
   W.__setConfigTestState({ cfgAt: 0 });
-  await W.loadConfig(T, { ASSETS: assetsBinding({ fail: true }), COMMENTS: kv });
-  assert.deepEqual(served(), good, "a transient read failure must not wipe a working gate");
+  const afterFailure = await W.loadConfig(T, { ASSETS: assetsBinding({ fail: true }), COMMENTS: kv });
+  assert.deepEqual(served(afterFailure), good, "a transient read failure must not wipe a working gate");
 
   // ...and the instance heals on its own when the read comes back.
   W.__setConfigTestState({ cfgAt: 0 });
-  await W.loadConfig(T, { ASSETS: assetsBinding(), COMMENTS: kv });
-  assert.deepEqual(served(), good);
+  const healed = await W.loadConfig(T, { ASSETS: assetsBinding(), COMMENTS: kv });
+  assert.deepEqual(served(healed), good);
 });
 
 test("assets mode: a 404 or a non-JSON document contributes nothing either", async () => {
   const kv = memKV();
   W.__setConfigTestState({ cfgAt: 0, rosterReadAt: 0 });
-  await W.loadConfig(T, { ASSETS: assetsBinding(), COMMENTS: kv });
-  const good = served();
+  const good = served(await W.loadConfig(T, { ASSETS: assetsBinding(), COMMENTS: kv }));
 
   // Not a throw — a 200 that is not JSON, and a 404. grab() answers null for both.
   const junk = {
@@ -137,13 +139,13 @@ test("assets mode: a 404 or a non-JSON document contributes nothing either", asy
     async fetch() { this.reads += 1; return new Response("<html>a login page, not config</html>", { status: 200 }); },
   };
   W.__setConfigTestState({ cfgAt: 0 });
-  await W.loadConfig(T, { ASSETS: junk, COMMENTS: kv });
-  assert.deepEqual(served(), good, "an unparseable document is not an empty document");
+  assert.deepEqual(served(await W.loadConfig(T, { ASSETS: junk, COMMENTS: kv })), good,
+    "an unparseable document is not an empty document");
 
   const gone = { reads: 0, async fetch() { this.reads += 1; return new Response("Not Found", { status: 404 }); } };
   W.__setConfigTestState({ cfgAt: 0 });
-  await W.loadConfig(T, { ASSETS: gone, COMMENTS: kv });
-  assert.deepEqual(served(), good, "a missing document is not an empty document");
+  assert.deepEqual(served(await W.loadConfig(T, { ASSETS: gone, COMMENTS: kv })), good,
+    "a missing document is not an empty document");
 });
 
 test("stamp-first: concurrent requests behind a broken read cost ONE attempt, not one each", async () => {
@@ -168,29 +170,27 @@ test("stamp-first: concurrent requests behind a broken read cost ONE attempt, no
 test("bundle mode: the store going down keeps the last good config", async () => {
   const kv = memKV();
   W.__setConfigTestState({ cfgAt: 0, rosterReadAt: 0 });
-  await W.loadConfig(T, { GV_ASSET_SOURCE: "r2", BUNDLES: bundleBinding(MANIFESTS), COMMENTS: kv });
-  const good = served();
+  const good = served(await W.loadConfig(T, { GV_ASSET_SOURCE: "r2", BUNDLES: bundleBinding(MANIFESTS), COMMENTS: kv }));
   assert.deepEqual(good.users, ["known@x.test"], "the fixture actually loaded");
   assert.equal(good.openPath, true);
   assert.equal(good.version, "v-open");
 
   W.__setConfigTestState({ cfgAt: 0 });
-  await W.loadConfig(T, { GV_ASSET_SOURCE: "r2", BUNDLES: bundleBinding(MANIFESTS, { fail: true }), COMMENTS: kv });
-  assert.deepEqual(served(), good, "a store outage must not empty the roster or close the public doors");
+  const afterOutage = await W.loadConfig(T, { GV_ASSET_SOURCE: "r2", BUNDLES: bundleBinding(MANIFESTS, { fail: true }), COMMENTS: kv });
+  assert.deepEqual(served(afterOutage), good, "a store outage must not empty the roster or close the public doors");
 });
 
 test("bundle mode: a corrupt instance document changes nothing, routing included", async () => {
   const kv = memKV();
   W.__setConfigTestState({ cfgAt: 0, rosterReadAt: 0 });
-  await W.loadConfig(T, { GV_ASSET_SOURCE: "r2", BUNDLES: bundleBinding(MANIFESTS), COMMENTS: kv });
-  const good = served();
+  const good = served(await W.loadConfig(T, { GV_ASSET_SOURCE: "r2", BUNDLES: bundleBinding(MANIFESTS), COMMENTS: kv }));
 
   // The parse throws inside the load's try, so routing is not derived on this tick
   // either — all of it or none of it, never half a routing table.
   const corrupt = bundleBinding({ ...MANIFESTS, "config/instance.json": "{ not json at all" });
   W.__setConfigTestState({ cfgAt: 0 });
-  await W.loadConfig(T, { GV_ASSET_SOURCE: "r2", BUNDLES: corrupt, COMMENTS: kv });
-  assert.deepEqual(served(), good, "a half-written config document must not be half-applied");
+  assert.deepEqual(served(await W.loadConfig(T, { GV_ASSET_SOURCE: "r2", BUNDLES: corrupt, COMMENTS: kv })), good,
+    "a half-written config document must not be half-applied");
 });
 
 test("the KV overlay failing leaves the config roster, never an empty one", async () => {

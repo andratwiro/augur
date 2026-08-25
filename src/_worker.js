@@ -227,15 +227,19 @@ let RUNTIME_CHROME = false;
 // reload it. versionFor() returns the longest-prefix match, else BUILD_ID.
 let VERSION_MAP = {};
 
-function versionFor(pathname) {
+// The context comes FIRST and is not optional. These three predicates decide who gets
+// past the gate, so a default would let a call site that forgot to pass a workspace's
+// config keep working — answering from whichever workspace the isolate looked at last,
+// which is the whole bug. Missing it is a TypeError instead.
+function versionFor(tctx, pathname) {
   let best = null, bestLen = -1;
-  for (const k in VERSION_MAP) {
+  for (const k in tctx.VERSION_MAP) {
     if ((pathname === k || pathname === k.slice(0, -1) || pathname.startsWith(k)) && k.length > bestLen) {
-      best = VERSION_MAP[k];
+      best = tctx.VERSION_MAP[k];
       bestLen = k.length;
     }
   }
-  return best == null ? BUILD_ID : best;
+  return best == null ? tctx.BUILD_ID : best;
 }
 
 // PUBLIC prototype path-prefixes — served WITHOUT the password. routing.json carries
@@ -248,7 +252,7 @@ let PUBLIC_PREFIXES = [];
 // A request is public if it lands inside a published prototype folder (the index
 // page or any asset it loads), or is the dormant review-overlay script that every
 // prototype embeds. Everything else falls through to the password gate.
-function isPublicPath(pathname) {
+function isPublicPath(tctx, pathname) {
   // The build stamp ({builtAt, spaces:{<id>:{sha}}}). Space-repo collaborators can't
   // see this repo's CI, so this is their only way to verify "my commit is live" —
   // curl it and compare sha to git rev-parse HEAD. Public by design; contains nothing
@@ -295,7 +299,7 @@ function isPublicPath(pathname) {
   // unstyled for anyone without the password. Scope to RENDERED ASSET extensions only
   // — never a blanket prefix — so any doc that ships into this dir (e.g. an
   // img/.../MANIFEST.md, gallery.html) stays gated, not exposed.
-  if (PUBLIC_SKILL_PREFIXES.some((p) => pathname.startsWith(p)) &&
+  if (tctx.PUBLIC_SKILL_PREFIXES.some((p) => pathname.startsWith(p)) &&
       /\.(css|js|mjs|woff2?|ttf|otf|svg|png|jpe?g|webp|gif|ico|json|map)$/i.test(pathname)) return true;
   // Composed OG/unfurl card for any page — always fetchable so link-preview bots
   // (Slack, iMessage, Twitter) can load the image even if its folder is gated.
@@ -305,7 +309,7 @@ function isPublicPath(pathname) {
   // load their assets from already-public paths (the public skill dir, /fonts/), so
   // the whole subtree — index pages and any page-local assets — bypasses the gate.
   if (pathname === "/pages" || pathname.startsWith("/pages/")) return true;
-  return PUBLIC_PREFIXES.some(
+  return tctx.PUBLIC_PREFIXES.some(
     (p) => pathname === p || pathname === p.slice(0, -1) || pathname.startsWith(p)
   );
 }
@@ -331,8 +335,8 @@ function isTrackPath(pathname) { return TRACK_PATH.test(pathname); }
 
 // Does this path live inside an admin-only space? Matches the base ("/space-2"),
 // its root ("/space-2/") and everything beneath it.
-function isRestrictedPath(pathname) {
-  return RESTRICTED_BASES.some(
+function isRestrictedPath(tctx, pathname) {
+  return tctx.RESTRICTED_BASES.some(
     (b) => pathname === b || pathname.startsWith(b + "/")
   );
 }
@@ -2105,7 +2109,11 @@ function applyDerivedRouting(manifests) {
   SPACES = f.SPACES;
   CHROME_POINTER = f.CHROME_POINTER;
   RUNTIME_CHROME = f.RUNTIME_CHROME;
-  return f;
+  // Returns the CONTEXT, not the bare field patch. It is a superset — every field of the
+  // patch is a field of the context — so a caller reading `f.MCP_PATH_ALLOWLIST` reads the
+  // same value, and a caller that now has to hand a context to a threaded predicate has
+  // one without seeding anything twice.
+  return TENANT_CTX;
 }
 
 // Does a path (or routing prefix) belong to a publishable workspace? This keeps a publish
@@ -3512,7 +3520,10 @@ function withAssetCache(res, url) {
   return out;
 }
 
-function withLiveReload(res, url) {
+// Takes the context only to hand it to versionFor: the token stamped into a page is
+// that workspace's version for that path, and a page composed for one workspace must
+// never carry another's.
+function withLiveReload(tctx, res, url) {
   const ct = res.headers.get("Content-Type") || "";
   if (!ct.includes("text/html") || url.searchParams.has("raw")) return res;
   // Offline mode (`npm run offline` → wrangler pages dev) is served from localhost;
@@ -3520,7 +3531,7 @@ function withLiveReload(res, url) {
   const fast = url.hostname === "localhost" || url.hostname === "127.0.0.1" ||
     url.hostname === "::1" || url.hostname.endsWith(".localhost");
   return new HTMLRewriter()
-    .on("body", { element(el) { el.append(liveReloadSnippet(versionFor(url.pathname), fast), { html: true }); } })
+    .on("body", { element(el) { el.append(liveReloadSnippet(versionFor(tctx, url.pathname), fast), { html: true }); } })
     .transform(res);
 }
 
@@ -4855,7 +4866,7 @@ export default {
     // the gate) so public prototypes can poll it too; no-store so the id is never stale.
     if (url.pathname === "/__version") {
       const p = url.searchParams.get("path");
-      return new Response(p ? versionFor(p) : tctx.BUILD_ID, {
+      return new Response(p ? versionFor(tctx, p) : tctx.BUILD_ID, {
         headers: { "Content-Type": "text/plain; charset=utf-8", "Cache-Control": "no-store" },
       });
     }
@@ -5076,7 +5087,7 @@ export default {
     // read or overwrite a restricted space's boards/threads by naming its path directly.
     // Seal any path inside an admin-only space to admins (identity mode only).
     const dataPath = clamp(url.searchParams.get("path"), 600);
-    if (usersActive && dataPath && isRestrictedPath(dataPath)
+    if (usersActive && dataPath && isRestrictedPath(tctx, dataPath)
         && (url.pathname === "/__review/api" || url.pathname === "/__board" || url.pathname === "/__rt")
         && (!me || me.role !== "admin")) {
       return jsonResponse({ error: "forbidden" }, 403);
@@ -5162,7 +5173,7 @@ export default {
     // gets through; a signed-in non-admin is bounced home; a signed-out
     // visitor gets the login page. Skipped in legacy/open mode
     // (no users injected), same as the /admin gate.
-    if (usersActive && isRestrictedPath(url.pathname)) {
+    if (usersActive && isRestrictedPath(tctx, url.pathname)) {
       if (!authed) return htmlResponse(loginPage(url.pathname + url.search, false, url.href), 200);
       if (!me || me.role !== "admin") return Response.redirect(new URL("/", url).toString(), 303);
     }
@@ -5192,16 +5203,16 @@ export default {
       }
       const asset = await assetFetch(env, request);
       if (asset.status === 404) return notFoundResponse();
-      return withAssetCache(await composeChrome(withLiveReload(asset, url), url), url);
+      return withAssetCache(await composeChrome(withLiveReload(tctx, asset, url), url), url);
     }
 
     // Published prototypes are public — never gated, regardless of the cookie.
     // The open door is for easy link-sharing, NOT public discovery, so tag every
     // public response as non-indexable (covers HTML and assets alike).
-    if (isPublicPath(url.pathname)) {
+    if (isPublicPath(tctx, url.pathname)) {
       const asset = await assetFetch(env, request);
       if (asset.status === 404) return notFoundResponse();
-      const res = withAssetCache(await composeChrome(withLiveReload(asset, url), url), url);
+      const res = withAssetCache(await composeChrome(withLiveReload(tctx, asset, url), url), url);
       const out = new Response(res.body, res);
       out.headers.set("X-Robots-Tag", "noindex, nofollow, noarchive");
       return out;
@@ -5232,7 +5243,7 @@ export default {
         if (virt) return virt;
         return notFoundResponse();
       }
-      return withAssetCache(await composeChrome(withLiveReload(asset, url), url), url);
+      return withAssetCache(await composeChrome(withLiveReload(tctx, asset, url), url), url);
     }
 
     // Created canvas boards are public like published prototypes — same obscure

@@ -26,9 +26,12 @@ test("sw.js is NOT immutable (it must stay updatable / killable)", () => {
 });
 
 test("chrome bundle and sw.js bypass the login gate (public paths)", () => {
-  assert.equal(W.isPublicPath("/sw.js"), true);
-  assert.equal(W.isPublicPath("/_chrome.1.13.a570b7c3.js"), true);
-  assert.equal(W.isPublicPath("/_chrome.1.13.d174ff9a.css"), true);
+  // An empty routing table on purpose: these doors are fixed engine paths and must not
+  // depend on what any workspace published. The context is what isPublicPath reads now.
+  const ctx = W.applyDerivedRouting({});
+  assert.equal(W.isPublicPath(ctx, "/sw.js"), true);
+  assert.equal(W.isPublicPath(ctx, "/_chrome.1.13.a570b7c3.js"), true);
+  assert.equal(W.isPublicPath(ctx, "/_chrome.1.13.d174ff9a.css"), true);
   // A normal gated content page is still gated.
-  assert.equal(W.isPublicPath("/delta/"), false);
+  assert.equal(W.isPublicPath(ctx, "/delta/"), false);
 });

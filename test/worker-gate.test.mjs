@@ -1,7 +1,8 @@
 // The gate: which paths bypass the password (isPublicPath), which need an admin
 // (isRestrictedPath, isTrackPath), and which live-reload token a page gets
-// (versionFor). All four read module-scope routing globals that the tenant-context
-// refactor is about to replace with a passed-in value.
+// (versionFor). All four used to read module-scope routing globals; three of them now
+// take the tenant context as their first argument instead, so every assertion below
+// names the config it is asking about.
 //
 // These tests are therefore a BASELINE, written before that refactor and describing
 // what the gate does TODAY — warts included, and noted where they are warts. Their job
@@ -10,7 +11,8 @@
 // mechanical refactor must never ride in the same commit, or neither is reviewable.
 //
 // Routing is seeded through applyDerivedRouting(), the same function bundle mode uses
-// to derive routing from live manifests — so the fixtures are the real input shape.
+// to derive routing from live manifests — so the fixtures are the real input shape. It
+// hands back the CONTEXT it derived, which is what the threaded predicates take.
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { __testables as W } from "../src/_worker.js";
@@ -27,7 +29,7 @@ function space(id, routing, opts = {}) {
 // The instance the whole file is described against: a default space with two public
 // prototypes and a UI skill, plus a sealed second space.
 function seedRouting() {
-  W.applyDerivedRouting({
+  return W.applyDerivedRouting({
     _engine: { routing: { canvasLoaderExtras: "" } },
     delta: space("delta", {
       publicPrefixes: ["/prototypes/garden/", "/prototypes/gate/"],
@@ -46,7 +48,7 @@ function seedRouting() {
 // ---- isPublicPath: the fixed doors -----------------------------------------
 
 test("the fixed public doors are public", () => {
-  seedRouting();
+  const ctx = seedRouting();
   for (const p of [
     "/_build.json",
     "/__review/comments.js",
@@ -56,92 +58,92 @@ test("the fixed public doors are public", () => {
     "/space-icon.png",
     "/piti.js",
     "/fonts/anything.woff2",
-  ]) assert.equal(W.isPublicPath(p), true, `${p} must be public`);
+  ]) assert.equal(W.isPublicPath(ctx, p), true, `${p} must be public`);
 });
 
 test("/__invite is NOT listed as public — its route intercepts first", () => {
-  seedRouting();
+  const ctx = seedRouting();
   // Deliberate: an entry here would be unreachable code reading as a safety net.
   // Pinned so nobody "fixes" the omission and creates a real second door.
-  assert.equal(W.isPublicPath("/__invite"), false);
+  assert.equal(W.isPublicPath(ctx, "/__invite"), false);
 });
 
 // ---- isPublicPath: the extension-scoped doors ------------------------------
 
 test("/__canvas/ is public for rendered assets only, never as a blanket prefix", () => {
-  seedRouting();
+  const ctx = seedRouting();
   for (const ok of ["/__canvas/canvas.js", "/__canvas/canvas.css", "/__canvas/a.mjs",
     "/__canvas/catalog.json", "/__canvas/x.map", "/__canvas/i.svg", "/__canvas/i.png",
     "/__canvas/i.webp", "/__canvas/f.woff", "/__canvas/f.woff2"])
-    assert.equal(W.isPublicPath(ok), true, `${ok} must be public`);
+    assert.equal(W.isPublicPath(ctx, ok), true, `${ok} must be public`);
   for (const no of ["/__canvas/README.md", "/__canvas/notes.txt", "/__canvas/",
     "/__canvas/secret.html"])
-    assert.equal(W.isPublicPath(no), false, `${no} must stay gated`);
+    assert.equal(W.isPublicPath(ctx, no), false, `${no} must stay gated`);
 });
 
 test("the extension guard is case-insensitive", () => {
-  seedRouting();
-  assert.equal(W.isPublicPath("/__canvas/CANVAS.JS"), true);
-  assert.equal(W.isPublicPath("/skills/delta-ui/MAIN.CSS"), true);
+  const ctx = seedRouting();
+  assert.equal(W.isPublicPath(ctx, "/__canvas/CANVAS.JS"), true);
+  assert.equal(W.isPublicPath(ctx, "/skills/delta-ui/MAIN.CSS"), true);
 });
 
 test("the public skill dir opens rendered assets and keeps its docs gated", () => {
-  seedRouting();
+  const ctx = seedRouting();
   for (const ok of ["/skills/delta-ui/delta-ui.css", "/skills/delta-ui/img/logo.svg",
     "/skills/delta-ui/f.woff2", "/skills/delta-ui/f.ttf", "/skills/delta-ui/f.otf",
     "/skills/delta-ui/a.jpg", "/skills/delta-ui/a.jpeg", "/skills/delta-ui/a.gif",
     "/skills/delta-ui/a.ico", "/skills/delta-ui/skill.json"])
-    assert.equal(W.isPublicPath(ok), true, `${ok} must be public`);
+    assert.equal(W.isPublicPath(ctx, ok), true, `${ok} must be public`);
   // The whole reason the guard is extension-scoped rather than a prefix: docs and
   // galleries ship into this same dir and must stay behind the password.
   for (const no of ["/skills/delta-ui/img/MANIFEST.md", "/skills/delta-ui/gallery.html",
     "/skills/delta-ui/notes.txt", "/skills/delta-ui/"])
-    assert.equal(W.isPublicPath(no), false, `${no} must stay gated`);
+    assert.equal(W.isPublicPath(ctx, no), false, `${no} must stay gated`);
 });
 
 test("a skill dir that is not in publicSkillPrefixes opens nothing", () => {
-  seedRouting();
-  assert.equal(W.isPublicPath("/skills/other-ui/other.css"), false);
+  const ctx = seedRouting();
+  assert.equal(W.isPublicPath(ctx, "/skills/other-ui/other.css"), false);
 });
 
 test("any /og.jpg is public so unfurl bots can load it from a gated folder", () => {
-  seedRouting();
-  assert.equal(W.isPublicPath("/prototypes/private-thing/og.jpg"), true);
-  assert.equal(W.isPublicPath("/og.jpg"), true);
-  assert.equal(W.isPublicPath("/prototypes/private-thing/og.png"), false);
+  const ctx = seedRouting();
+  assert.equal(W.isPublicPath(ctx, "/prototypes/private-thing/og.jpg"), true);
+  assert.equal(W.isPublicPath(ctx, "/og.jpg"), true);
+  assert.equal(W.isPublicPath(ctx, "/prototypes/private-thing/og.png"), false);
 });
 
 test("the whole /pages subtree is public, and only as a folder", () => {
-  seedRouting();
-  assert.equal(W.isPublicPath("/pages"), true);
-  assert.equal(W.isPublicPath("/pages/"), true);
-  assert.equal(W.isPublicPath("/pages/buttons/"), true);
-  assert.equal(W.isPublicPath("/pages/buttons/local.css"), true);
+  const ctx = seedRouting();
+  assert.equal(W.isPublicPath(ctx, "/pages"), true);
+  assert.equal(W.isPublicPath(ctx, "/pages/"), true);
+  assert.equal(W.isPublicPath(ctx, "/pages/buttons/"), true);
+  assert.equal(W.isPublicPath(ctx, "/pages/buttons/local.css"), true);
   // A sibling that merely starts with the same letters is a different path.
-  assert.equal(W.isPublicPath("/pages-internal/x"), false);
+  assert.equal(W.isPublicPath(ctx, "/pages-internal/x"), false);
 });
 
 // ---- isPublicPath: the published-prototype prefixes ------------------------
 
 test("a public prototype prefix covers the folder, its bare form and everything under it", () => {
-  seedRouting();
-  assert.equal(W.isPublicPath("/prototypes/garden/"), true, "the folder");
-  assert.equal(W.isPublicPath("/prototypes/garden"), true, "the bare form (no trailing slash)");
-  assert.equal(W.isPublicPath("/prototypes/garden/index.html"), true);
-  assert.equal(W.isPublicPath("/prototypes/garden/deep/asset.png"), true, "any depth");
+  const ctx = seedRouting();
+  assert.equal(W.isPublicPath(ctx, "/prototypes/garden/"), true, "the folder");
+  assert.equal(W.isPublicPath(ctx, "/prototypes/garden"), true, "the bare form (no trailing slash)");
+  assert.equal(W.isPublicPath(ctx, "/prototypes/garden/index.html"), true);
+  assert.equal(W.isPublicPath(ctx, "/prototypes/garden/deep/asset.png"), true, "any depth");
 });
 
 test("an unpublished sibling stays gated", () => {
-  seedRouting();
-  assert.equal(W.isPublicPath("/prototypes/secret/"), false);
-  assert.equal(W.isPublicPath("/prototypes/"), false);
-  assert.equal(W.isPublicPath("/"), false);
+  const ctx = seedRouting();
+  assert.equal(W.isPublicPath(ctx, "/prototypes/secret/"), false);
+  assert.equal(W.isPublicPath(ctx, "/prototypes/"), false);
+  assert.equal(W.isPublicPath(ctx, "/"), false);
 });
 
 test("with no routing at all nothing prototype-shaped is public", () => {
-  W.applyDerivedRouting({});
-  assert.equal(W.isPublicPath("/prototypes/garden/"), false);
-  assert.equal(W.isPublicPath("/_build.json"), true, "the fixed doors do not depend on routing");
+  const ctx = W.applyDerivedRouting({});
+  assert.equal(W.isPublicPath(ctx, "/prototypes/garden/"), false);
+  assert.equal(W.isPublicPath(ctx, "/_build.json"), true, "the fixed doors do not depend on routing");
 });
 
 // ---- isRestrictedPath ------------------------------------------------------
@@ -152,23 +154,23 @@ test("with no routing at all nothing prototype-shaped is public", () => {
 // answers false for every path. This inverts the S1 baseline (a sealed "/sealed" used to
 // be restricted); the flip is the deliberate diff a reviewer should see land with D4.
 test("an admin-only space no longer seals anything (tier + adminOnly retired)", () => {
-  seedRouting();
-  assert.equal(W.isRestrictedPath("/sealed"), false, "the bare base is not sealed");
-  assert.equal(W.isRestrictedPath("/sealed/"), false, "nor its root");
-  assert.equal(W.isRestrictedPath("/sealed/prototypes/x/"), false, "nor anything beneath");
+  const ctx = seedRouting();
+  assert.equal(W.isRestrictedPath(ctx, "/sealed"), false, "the bare base is not sealed");
+  assert.equal(W.isRestrictedPath(ctx, "/sealed/"), false, "nor its root");
+  assert.equal(W.isRestrictedPath(ctx, "/sealed/prototypes/x/"), false, "nor anything beneath");
 });
 
 test("with the tier retired, no path is restricted at all", () => {
-  seedRouting();
-  assert.equal(W.isRestrictedPath("/sealed-public/"), false);
-  assert.equal(W.isRestrictedPath("/sealedx"), false);
-  W.applyDerivedRouting({
+  const ctx = seedRouting();
+  assert.equal(W.isRestrictedPath(ctx, "/sealed-public/"), false);
+  assert.equal(W.isRestrictedPath(ctx, "/sealedx"), false);
+  const onlyCtx = W.applyDerivedRouting({
     only: space("only", { publicPrefixes: [], versionMap: {} }, { default: true, adminOnly: true }),
   });
-  assert.equal(W.isRestrictedPath("/only"), false, "an adminOnly default space is not restricted either");
-  assert.equal(W.isRestrictedPath("/"), false);
-  W.applyDerivedRouting({ delta: space("delta", { publicPrefixes: [], versionMap: {} }, { default: true }) });
-  assert.equal(W.isRestrictedPath("/anything"), false);
+  assert.equal(W.isRestrictedPath(onlyCtx, "/only"), false, "an adminOnly default space is not restricted either");
+  assert.equal(W.isRestrictedPath(onlyCtx, "/"), false);
+  const plainCtx = W.applyDerivedRouting({ delta: space("delta", { publicPrefixes: [], versionMap: {} }, { default: true }) });
+  assert.equal(W.isRestrictedPath(plainCtx, "/anything"), false);
 });
 
 // ---- isTrackPath -----------------------------------------------------------
@@ -198,38 +200,38 @@ test("isTrackPath matches only the root tracks/ folder, at any depth below it", 
 // ---- versionFor ------------------------------------------------------------
 
 test("versionFor takes the LONGEST matching prefix, not the first", () => {
-  seedRouting();
-  assert.equal(W.versionFor("/prototypes/garden/deep/x.png"), "v-deep",
+  const ctx = seedRouting();
+  assert.equal(W.versionFor(ctx, "/prototypes/garden/deep/x.png"), "v-deep",
     "the deeper entry wins over its parent");
-  assert.equal(W.versionFor("/prototypes/garden/x.png"), "v-garden");
+  assert.equal(W.versionFor(ctx, "/prototypes/garden/x.png"), "v-garden");
 });
 
 test("versionFor matches the folder and its bare form", () => {
-  seedRouting();
-  assert.equal(W.versionFor("/prototypes/garden/"), "v-garden");
-  assert.equal(W.versionFor("/prototypes/garden"), "v-garden");
+  const ctx = seedRouting();
+  assert.equal(W.versionFor(ctx, "/prototypes/garden/"), "v-garden");
+  assert.equal(W.versionFor(ctx, "/prototypes/garden"), "v-garden");
 });
 
 test("an unmapped path falls back to the build id, and the build id is derived", () => {
-  seedRouting();
-  const fallback = W.versionFor("/");
+  const ctx = seedRouting();
+  const fallback = W.versionFor(ctx, "/");
   assert.equal(typeof fallback, "string");
   assert.ok(fallback.length, "there is always a fallback token");
-  assert.equal(W.versionFor("/prototypes/gate/index.html"), fallback,
+  assert.equal(W.versionFor(ctx, "/prototypes/gate/index.html"), fallback,
     "a public prototype with no versionMap entry still gets the fallback");
 });
 
 test("the build id is stable for the same manifests and moves when a slice does", () => {
-  seedRouting();
-  const a = W.versionFor("/");
-  seedRouting();
-  assert.equal(W.versionFor("/"), a, "same input, same id");
-  W.applyDerivedRouting({
+  const ctx = seedRouting();
+  const a = W.versionFor(ctx, "/");
+  const again = seedRouting();
+  assert.equal(W.versionFor(again, "/"), a, "same input, same id");
+  const moved = W.applyDerivedRouting({
     _engine: { routing: { canvasLoaderExtras: "" } },
     delta: space("delta", { publicPrefixes: [], versionMap: {}, shellSig: "sig-MOVED" }, { default: true }),
     sealed: space("sealed", { publicPrefixes: [], versionMap: {}, shellSig: "sig-sealed" }, { adminOnly: true }),
   });
-  assert.notEqual(W.versionFor("/"), a, "a changed slice changes the id");
+  assert.notEqual(W.versionFor(moved, "/"), a, "a changed slice changes the id");
 });
 
 // ---- the public canvas catalog, with the admin-only exclusion retired -------
@@ -277,7 +279,7 @@ test("with adminOnly retired, every space contributes to the public canvas catal
 // The fixture the whole section is described against: a DEFAULT space "alpha" at
 // the root, plus a NON-DEFAULT admin-only space "beta" mounted under "/beta/".
 function seedTier() {
-  W.applyDerivedRouting({
+  return W.applyDerivedRouting({
     _engine: { routing: { canvasLoaderExtras: "" } },
     alpha: space("alpha", {
       publicPrefixes: ["/prototypes/home/"],
@@ -357,10 +359,10 @@ test("[tier] isPublishablePublicPrefix owns any non-root subtree for the one wor
 // space contributes NOTHING to RESTRICTED_BASES — it is permanently empty. This inverts
 // the S1 baseline (the "/beta" base used to be sealed).
 test("[tier] an adminOnly non-default space no longer seals its base", () => {
-  seedTier();
-  assert.equal(W.isRestrictedPath("/beta"), false, "the base is not sealed any more");
-  assert.equal(W.isRestrictedPath("/beta/secret"), false, "nor anything beneath it");
-  assert.equal(W.isRestrictedPath("/prototypes/home/"), false, "and the default's paths never were");
+  const ctx = seedTier();
+  assert.equal(W.isRestrictedPath(ctx, "/beta"), false, "the base is not sealed any more");
+  assert.equal(W.isRestrictedPath(ctx, "/beta/secret"), false, "nor anything beneath it");
+  assert.equal(W.isRestrictedPath(ctx, "/prototypes/home/"), false, "and the default's paths never were");
 });
 
 // D5 RETIRED (S4): the leading optional "(\/<space>)" mount group is gone, so a
