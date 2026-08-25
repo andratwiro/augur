@@ -50,6 +50,16 @@ review overlay's layer drilldown (Shift+C, then the arrow keys) badges exactly
 what the graph knows: components, then base atoms, then token usage down to
 spacing. Skills with no manifest get a fixed default prefix pair.
 
+Declaring them is what makes the generated **Tokens** tab yours. That page groups
+by what a value IS — a colour is a colour, a single length is a size, a stack
+ending in a generic family is a font family, a colour with three or more offsets
+is a shadow — so it works with no naming convention at all. The one convention it
+does recognise is a type scale: `--<prefix>-type-<role>-size`, `-lh` and
+`-weight` are paired into one live sample per role, ordered by the size each role
+resolves to. `<role>` is whatever you call it. Without `cssPrefixes`, the graph
+looks for the default prefixes and finds none of your tokens, and the tab is
+empty — that is the same one line that costs you the layer badges above.
+
 The build additionally generates `graph.js` (the composition graph) into the
 shipped skill directory; that is derived output, not something to declare.
 
