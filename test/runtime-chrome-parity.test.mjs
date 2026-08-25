@@ -15,10 +15,16 @@ import { __testables as W } from "../src/_worker.js";
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 
 // One default space WITH a playground, so the baker's hasPlayground matches the value
-// composeChrome uses (true) — i.e. the realistic instance shape.
+// composeChrome uses (true) — i.e. the realistic instance shape. It also declares
+// space.json "help": anything the BAKE reads from a build global the worker cannot see
+// is exactly the drift this file exists to catch, so the workspace's own Help sections
+// are part of the fixture rather than a separate case.
 function buildFixture() {
   const spacesRoot = mkdtempSync(path.join(tmpdir(), "rcp-space-"));
-  writeFileSync(path.join(spacesRoot, "space.json"), JSON.stringify({ id: "acme", name: "Acme", default: true }));
+  writeFileSync(path.join(spacesRoot, "space.json"), JSON.stringify({
+    id: "acme", name: "Acme", default: true,
+    help: [{ title: "House rules", items: ["Ask before renaming a token."] }],
+  }));
   mkdirSync(path.join(spacesRoot, "demo", "prototypes", "hello"), { recursive: true });
   writeFileSync(path.join(spacesRoot, "demo", "prototypes", "hello", "index.html"), "<!doctype html><title>Hello</title><p>hi</p>\n");
   mkdirSync(path.join(spacesRoot, "playground", "pg"), { recursive: true });
@@ -44,6 +50,8 @@ test("compose == bake: the worker re-render equals the baked marked region", () 
     const state = { spaces: fx.routing.spaces, activeSpace: spaceId, opportunities: [], hasPlayground: true };
     const rerendered = renderAppChrome(active, state, {});
     assert.equal(rerendered, m[2], "compose-of-current must byte-match the bake");
+    // Not silent coverage: the space's Help section really is in the region compared.
+    assert.match(m[2], /<h4>House rules<\/h4>/);
   } finally { fx.cleanup(); }
 });
 

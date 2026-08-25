@@ -106,6 +106,15 @@ function projectsLabelOf(state) {
   const a = activeSpaceOf(state);
   return (a && a.projectsLabel) || "Projects";
 }
+// What the WORKSPACE has to say for itself in the Help drawer — space.json "help",
+// already normalised by discoverSpaces() to [{title, items[]}]. Read off the active
+// space entry exactly as projectsLabel is, so the serve worker renders it from the
+// routing/manifest data it already has and needs no build global. Absent ⇒ [] ⇒ the
+// drawer is the engine's own two sections and nothing else.
+function spaceHelpOf(state) {
+  const a = activeSpaceOf(state);
+  return Array.isArray(a && a.help) ? a.help : [];
+}
 
 // ── Research/context surface — gated metadata only (count + filenames on click) ──
 function researchLabel(n) { return `${n} research ${n === 1 ? "file" : "files"}`; }
@@ -278,8 +287,24 @@ function mobileProfileSheet(state) {
   </div>`;
 }
 
+// The workspace's own Help sections, appended AFTER the engine's. Plain text, escaped:
+// space.json is a config file, not a place to author markup, and this string is baked
+// into every page of the site. A section with no title or no lines renders nothing.
+// The shape checks repeat parseSpaceHelp's on purpose — the worker reads these entries
+// off a manifest some other build wrote, so the renderer never assumes a well-formed one.
+function spaceHelpSections(state) {
+  return spaceHelpOf(state).map((s) => {
+    const title = escAttr(String((s && s.title) || "").trim());
+    const items = (Array.isArray(s && s.items) ? s.items : [])
+      .filter((i) => typeof i === "string" && i.trim())
+      .map((i) => `<li>${escAttr(i.trim())}</li>`)
+      .join("");
+    return title && items ? `\n\n          <h4>${title}</h4>\n          <ul>${items}</ul>` : "";
+  }).join("");
+}
+
 // The Help drawer — a right-side slide-in panel opened from the rail footer.
-function helpDrawer() {
+function helpDrawer(state) {
   return `<div class="gvhelp" data-help hidden>
     <div class="gvhelp__scrim" data-help-scrim></div>
     <div class="gvhelp__panel" role="dialog" aria-modal="true" aria-label="Help">
@@ -342,7 +367,7 @@ function helpDrawer() {
             <li><code>npm run review --open</code> lists open threads.</li>
             <li>The agent fixes, replies, resolves in-thread. Put it on <code>/loop</code> to keep watching.</li>
             <li>Not automated. You steer it.</li>
-          </ul>
+          </ul>${spaceHelpSections(state)}
         </section>
       </div>
     </div>
@@ -496,7 +521,7 @@ export function renderAppChrome(active, state, opts = {}) {
   const rail = active === "admin" ? adminRail()
     : LIB_KEYS.includes(active) ? libraryRail(active, state)
     : sideRail(active, state);
-  return `${top}${rail}<div class="gvscrim" data-side-scrim></div>${tabBar(active, state)}${mobilePinnedSheet()}${mobileProfileSheet(state)}${helpDrawer()}${settingsModal()}`;
+  return `${top}${rail}<div class="gvscrim" data-side-scrim></div>${tabBar(active, state)}${mobilePinnedSheet()}${mobileProfileSheet(state)}${helpDrawer(state)}${settingsModal()}`;
 }
 
 // Per-page data script: this space's base + the other spaces' bases, for the pins filter.

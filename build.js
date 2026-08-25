@@ -6321,6 +6321,23 @@ function renderChangelogPage(entries) {
   return shell({ title: "Changelog", activeTab: "changelog", body });
 }
 
+// space.json "help": the sections a WORKSPACE adds to the Help drawer, after the
+// engine's own. The engine documents the engine; anything about how THIS workspace works
+// — its skills, its conventions, its own URL tricks — is the workspace's to say, and this
+// is where it says it. Normalised here so the renderer (shared with the serve worker) can
+// stay a plain map: [{title, items[]}], plain text, sections without both dropped.
+function parseSpaceHelp(v) {
+  if (!Array.isArray(v)) return [];
+  return v
+    .map((s) => ({
+      title: typeof (s && s.title) === "string" ? s.title.trim() : "",
+      items: (Array.isArray(s && s.items) ? s.items : [])
+        .filter((i) => typeof i === "string" && i.trim())
+        .map((i) => i.trim()),
+    }))
+    .filter((s) => s.title && s.items.length);
+}
+
 // Discover the spaces under SPACES_ROOT. Each space dir (a per-space repo, mounted as a
 // submodule at spaces/<id> — or a sibling clone when offline points SPACES_ROOT at the
 // multi-space parent) holds a space.json ({id,name,default,badge}) at its root; dirs
@@ -6348,6 +6365,7 @@ async function discoverSpaces() {
       methodPages: Array.isArray(meta.methodPages) ? meta.methodPages : [],
       designSystem: meta.designSystem || null,
       projectsLabel: typeof meta.projectsLabel === "string" ? meta.projectsLabel : "",
+      help: parseSpaceHelp(meta.help),
       ignore: Array.isArray(meta.ignore) ? meta.ignore : [],
       mcpAllowlists: Array.isArray(meta.mcpAllowlists) ? meta.mcpAllowlists : [],
       publishTracks: meta.publishTracks === true,
@@ -6387,6 +6405,8 @@ async function discoverSpaces() {
       methodPages: Array.isArray(meta.methodPages) ? meta.methodPages : [],
       designSystem: meta.designSystem || null,
       projectsLabel: typeof meta.projectsLabel === "string" ? meta.projectsLabel : "",
+      // The workspace's own Help-drawer sections — see parseSpaceHelp above.
+      help: parseSpaceHelp(meta.help),
       ignore: Array.isArray(meta.ignore) ? meta.ignore : [],
       // Paths (space-relative) of {"hosts":[…]} documents the space ships — exact
       // hosts its prototypes need the /__mcp/ proxy to forward (see main()).
@@ -6766,6 +6786,9 @@ async function main() {
     // custom Projects label without a build global — renderAppChrome reads it off the
     // active space entry. Empty ⇒ the "Projects" default.
     projectsLabel: s.projectsLabel || "",
+    // Same trip, same reason: the Help drawer's workspace sections. Absent ⇒ [] ⇒ the
+    // drawer shows the engine's own sections and nothing else.
+    help: s.help || [],
   }));
 
   // Worker inputs accumulate ACROSS spaces — one gate, one version map for the whole site.

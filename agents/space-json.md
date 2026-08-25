@@ -26,6 +26,14 @@ not restate it.
   "projectsLabel": "Projects", // what the UI calls top-level prototype folders
                              // (rail section + landing). Internal code keeps the
                              // historical identifiers; only user-facing strings change.
+  "help": [                  // this workspace's own sections in the Help drawer,
+    { "title": "Skills",     // rendered after the engine's under the Building tab.
+      "items": ["…", "…"] }  // The engine documents the engine; how THIS workspace
+  ],                         // works — its skills, conventions, URL tricks — is
+                             // yours to say, and this is where. Plain text, escaped
+                             // (a config file is not a place to author markup); a
+                             // section needs both a title and at least one item or
+                             // it is dropped. Absent ⇒ nothing renders.
   "methodPages": ["…"],      // pages/<name> entries surfaced as method exemplars
   "pendingPages": ["…"],     // pages badged "pending" in the gallery — a roadmap
                              // badge, NOT absence; the pages may exist

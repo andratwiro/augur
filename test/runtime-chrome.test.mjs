@@ -12,10 +12,11 @@ import { __testables as W } from "../src/_worker.js";
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 
-// Build a one-space site into a temp dist, optionally with GV_RUNTIME_CHROME set.
-function buildSite(extraEnv = {}) {
+// Build a one-space site into a temp dist, optionally with GV_RUNTIME_CHROME set and
+// extra space.json keys.
+function buildSite(extraEnv = {}, spaceMeta = {}) {
   const spacesRoot = mkdtempSync(path.join(tmpdir(), "rc-space-"));
-  writeFileSync(path.join(spacesRoot, "space.json"), JSON.stringify({ id: "acme", name: "Acme", default: true }));
+  writeFileSync(path.join(spacesRoot, "space.json"), JSON.stringify({ id: "acme", name: "Acme", default: true, ...spaceMeta }));
   const proto = path.join(spacesRoot, "demo", "prototypes", "hello");
   mkdirSync(proto, { recursive: true });
   writeFileSync(path.join(proto, "index.html"), "<!doctype html><title>Hello</title><p>hi</p>\n");
@@ -107,4 +108,78 @@ test("composeChrome leaves ?raw and non-HTML untouched even when on", async () =
   assert.match(await (await W.composeChrome(raw, new URL("https://x/?raw"))).text(), /OLDRAIL/);
   const json = new Response('{"a":1}', { headers: { "Content-Type": "application/json" } });
   assert.equal(await (await W.composeChrome(json, new URL("https://x/"))).text(), '{"a":1}');
+});
+
+// ---- space.json "help" — the workspace's own Help-drawer sections -------------
+// The engine documents the engine. A workspace says the rest itself, through the same
+// space-entry channel projectsLabel already rides, so build and serve worker agree.
+
+test("no help declared: the drawer is the engine's own sections and nothing else", () => {
+  const html = renderAppChrome("prototypes", STATE, {});
+  assert.match(html, /data-help-track="build"/);
+  assert.match(html, /Comment loop/);
+  // The last thing in the Building track is the engine's own final bullet.
+  assert.match(html, /Not automated\. You steer it\.<\/li>\s*<\/ul>\s*<\/section>/);
+});
+
+test("declared help renders after the engine's sections, in the Building track", () => {
+  const state = {
+    ...STATE,
+    spaces: [{ id: "demo", name: "Demo", default: true, base: "",
+      help: [{ title: "Skills", items: ["The a11y skill: contrast, zoom, target size."] }] }],
+  };
+  const html = renderAppChrome("prototypes", state, {});
+  const track = html.slice(html.indexOf('data-help-track="build"'));
+  const section = track.slice(0, track.indexOf("</section>"));
+  assert.ok(section.includes("<h4>Skills</h4>"), "the workspace's heading is in the Building track");
+  assert.ok(section.indexOf("Comment loop") < section.indexOf("<h4>Skills</h4>"),
+    "it comes AFTER the engine's own sections");
+  assert.match(section, /<li>The a11y skill: contrast, zoom, target size\.<\/li>/);
+});
+
+test("help is plain text: a workspace cannot inject markup into every page", () => {
+  const state = {
+    ...STATE,
+    spaces: [{ id: "demo", name: "Demo", default: true, base: "",
+      help: [{ title: "<script>x</script>", items: ["<img src=x onerror=alert(1)>"] }] }],
+  };
+  const html = renderAppChrome("prototypes", state, {});
+  assert.doesNotMatch(html, /<script>x<\/script>/);
+  assert.doesNotMatch(html, /<img src=x/);
+  assert.match(html, /&lt;script&gt;x&lt;\/script&gt;/);
+});
+
+test("a section missing a title or its items renders nothing", () => {
+  const state = {
+    ...STATE,
+    spaces: [{ id: "demo", name: "Demo", default: true, base: "",
+      help: [{ title: "", items: ["orphan"] }, { title: "Empty", items: [] }] }],
+  };
+  const html = renderAppChrome("prototypes", state, {});
+  assert.doesNotMatch(html, /orphan/);
+  assert.doesNotMatch(html, /<h4>Empty<\/h4>/);
+});
+
+test("the build normalises space.json help and ships it to the worker in routing.json", () => {
+  const b = buildSite({}, {
+    help: [
+      { title: "  Conventions  ", items: ["  one  ", "", 7, "two"] },
+      { title: "Dropped", items: [] },
+      "not a section",
+    ],
+  });
+  try {
+    const acme = b.routing.spaces.find((s) => s.id === "acme");
+    assert.deepEqual(acme.help, [{ title: "Conventions", items: ["one", "two"] }]);
+    const page = readFileSync(path.join(b.out, "index.html"), "utf8");
+    assert.ok(page.includes("<h4>Conventions</h4>"), "baked into the page's drawer too");
+  } finally { b.cleanup(); }
+});
+
+test("a space that declares no help ships an empty list, not a missing key", () => {
+  const b = buildSite();
+  try {
+    assert.deepEqual(b.routing.spaces.find((s) => s.id === "acme").help, []);
+    assert.ok(!readFileSync(path.join(b.out, "index.html"), "utf8").includes("<h4>Conventions</h4>"));
+  } finally { b.cleanup(); }
 });
