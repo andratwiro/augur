@@ -18,7 +18,13 @@ export const UI_VERSION = "1.14";
 export const escAttr = (s) =>
   String(s).replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 
-const ACRONYMS = new Set(["sms", "ui", "ux", "uxui", "api", "url", "faq", "sso", "cta", "pdf", "csv", "riot", "fo", "bo"]);
+// Words titleCase() shouts instead of capitalising, so a folder named `api-explorer`
+// reads "API Explorer". The bar is deliberately high: an entry here changes how EVERY
+// workspace's cards, breadcrumbs, search results and rail entries are spelled, so only
+// acronyms that are general web vocabulary belong. A workspace's own slug prefixes do
+// not — they read as ordinary words everywhere else, and the engine has no business
+// knowing which two letters one team puts in front of half its folders.
+const ACRONYMS = new Set(["sms", "ui", "ux", "uxui", "api", "url", "faq", "sso", "cta", "pdf", "csv"]);
 export function titleCase(slug) {
   return slug
     .replace(/[-_]/g, " ")
