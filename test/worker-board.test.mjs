@@ -235,13 +235,18 @@ test("canvasesApi answers 405 to other methods and warns with no KV", async () =
 
 // ---- virtualCanvas: serving a registered canvas with no repo file ----------
 
+// The workspace whose loader page these boards get. virtualCanvas renders it for a
+// named workspace now (the loader carries that workspace's canvas extras), so the
+// fixture supplies one instead of leaving it to whatever module scope was holding.
+const VC_CTX = W.applyDerivedRouting({});
+
 const get = (p) => ({ req: new Request("https://example.test" + p), url: new URL("https://example.test" + p) });
 
 test("a registered path serves the canvas loader, named and noindexed", async () => {
   const kv = memKV();
   await create(kv, { dir: "/x/", name: "My Board" });
   const { req, url } = get("/x/my-board/");
-  const res = await W.virtualCanvas(req, envWith(kv), url);
+  const res = await W.virtualCanvas(VC_CTX, req, envWith(kv), url);
   assert.ok(res, "a response, not a fallthrough");
   assert.equal(res.status, 200);
   assert.match(res.headers.get("Content-Type"), /text\/html/);
@@ -253,14 +258,14 @@ test("a registered path serves the canvas loader, named and noindexed", async ()
 test("an unregistered path falls through to the ordinary routing", async () => {
   const kv = memKV();
   const { req, url } = get("/x/nothing-here/");
-  assert.equal(await W.virtualCanvas(req, envWith(kv), url), null);
+  assert.equal(await W.virtualCanvas(VC_CTX, req, envWith(kv), url), null);
 });
 
 test("/index.html serves the loader directly rather than redirecting", async () => {
   const kv = memKV();
   await create(kv, { dir: "/x/", name: "B" });
   const { req, url } = get("/x/b/index.html");
-  const res = await W.virtualCanvas(req, envWith(kv), url);
+  const res = await W.virtualCanvas(VC_CTX, req, envWith(kv), url);
   assert.equal(res.status, 200);
 });
 
@@ -268,7 +273,7 @@ test("the slashless form redirects to the canonical folder URL", async () => {
   const kv = memKV();
   await create(kv, { dir: "/x/", name: "B" });
   const { req, url } = get("/x/b");
-  const res = await W.virtualCanvas(req, envWith(kv), url);
+  const res = await W.virtualCanvas(VC_CTX, req, envWith(kv), url);
   assert.equal(res.status, 301);
   assert.match(res.headers.get("Location"), /\/x\/b\/$/);
 });
@@ -277,19 +282,19 @@ test("virtualCanvas only answers GET and HEAD", async () => {
   const kv = memKV();
   await create(kv, { dir: "/x/", name: "B" });
   const url = new URL("https://example.test/x/b/");
-  const res = await W.virtualCanvas(new Request(url, { method: "POST" }), envWith(kv), url);
+  const res = await W.virtualCanvas(VC_CTX, new Request(url, { method: "POST" }), envWith(kv), url);
   assert.equal(res, null, "a write to a canvas URL is not this route's business");
 });
 
 test("a path that is not a slug directory is never a virtual canvas", async () => {
   const kv = memKV({ [W.CANVASES_KEY]: JSON.stringify({ "/Caps/x/": { name: "X" } }) });
   const { req, url } = get("/Caps/x/");
-  assert.equal(await W.virtualCanvas(req, envWith(kv), url), null,
+  assert.equal(await W.virtualCanvas(VC_CTX, req, envWith(kv), url), null,
     "the path guard runs before the registry lookup, so a bad entry can never be served");
 });
 
 test("with no KV, or an empty registry, virtualCanvas falls through", async () => {
   const { req, url } = get("/x/b/");
-  assert.equal(await W.virtualCanvas(req, {}, url), null);
-  assert.equal(await W.virtualCanvas(req, envWith(memKV()), url), null);
+  assert.equal(await W.virtualCanvas(VC_CTX, req, {}, url), null);
+  assert.equal(await W.virtualCanvas(VC_CTX, req, envWith(memKV()), url), null);
 });

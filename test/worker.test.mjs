@@ -809,27 +809,27 @@ const manifestOf = (id, { def = false, catalog = [], tracks = [], ...rest } = {}
 });
 
 test("canvas catalog merges every space's slice, not just the last publisher's", async () => {
-  W.applyDerivedRouting({
+  const ctx = W.applyDerivedRouting({
     _engine: { id: "_engine", routing: { canvasLoaderExtras: "<!--x-->" } },
     alpha: manifestOf("alpha", { def: true, catalog: [{ url: "/a/", title: "A" }], tracks: [{ id: "t1" }] }),
     beta: manifestOf("beta", { catalog: [{ url: "/beta/b/", title: "B" }] }),
   });
-  const merged = await W.canvasAggregate("catalog").json();
+  const merged = await W.canvasAggregate(ctx, "catalog").json();
   assert.deepEqual(merged.map((e) => e.url), ["/a/", "/beta/b/"],
     "both spaces contribute — publishing one must not blank the other");
-  assert.deepEqual((await W.canvasAggregate("tracks").json()).map((t) => t.id), ["t1"]);
+  assert.deepEqual((await W.canvasAggregate(ctx, "tracks").json()).map((t) => t.id), ["t1"]);
 });
 
 test("a space that has never published contributes nothing rather than erasing others", async () => {
-  W.applyDerivedRouting({
+  const ctx = W.applyDerivedRouting({
     alpha: manifestOf("alpha", { def: true, catalog: [{ url: "/a/" }] }),
     beta: { id: "beta", format: 1, files: {}, space: { id: "beta" } }, // no routing at all
   });
-  assert.deepEqual((await W.canvasAggregate("catalog").json()).map((e) => e.url), ["/a/"]);
+  assert.deepEqual((await W.canvasAggregate(ctx, "catalog").json()).map((e) => e.url), ["/a/"]);
 });
 
 test("the build stamp reports publish provenance, and flags a working-tree publish", () => {
-  const stamp = W.synthBuildStamp({
+  const stamp = W.synthBuildStamp(BARE, {
     _engine: { id: "_engine", version: 27, publishedAt: "2026-08-09T08:00:00.000Z", source: { sha: "e".repeat(40) } },
     alpha: {
       id: "alpha", version: 15, publishedAt: "2026-08-09T07:00:00.000Z", publishedBy: "ben",
@@ -844,7 +844,7 @@ test("the build stamp reports publish provenance, and flags a working-tree publi
 });
 
 test("a clean publish carries no dirty flag at all (absent, not false)", () => {
-  const stamp = W.synthBuildStamp({ alpha: { id: "alpha", version: 2, source: { sha: "a".repeat(40) } } });
+  const stamp = W.synthBuildStamp(BARE, { alpha: { id: "alpha", version: 2, source: { sha: "a".repeat(40) } } });
   assert.equal("dirty" in stamp.spaces.alpha, false);
 });
 
@@ -1113,7 +1113,7 @@ test("synthBuildStamp redacts the publisher email to a display name", () => {
   const manifests = {
     "space-alpha": { source: { sha: "abc" }, version: 3, publishedAt: "2026-08-09T00:00:00Z", publishedBy: "ben@example.test" },
   };
-  const stamp = W.synthBuildStamp(manifests);
+  const stamp = W.synthBuildStamp(BARE, manifests);
   const s = JSON.stringify(stamp);
   assert.ok(!s.includes("ben@example.test"), "raw email must not appear");
   // With no roster loaded it falls back to the local-part — still no domain.
@@ -1192,17 +1192,17 @@ test("the login throttle blocks a source but never locks an account out", async 
 });
 
 test("the canvas catalogue is not a site index for a signed-out caller", async () => {
-  W.applyDerivedRouting({
+  const ctx = W.applyDerivedRouting({
     alpha: {
       id: "alpha", format: 1, files: {}, space: { id: "alpha", default: true },
       routing: { canvasCatalog: [{ url: "/departments/secret-thing/", title: "secret-thing" }] },
     },
   });
   // Signed in: the picker needs the full inventory.
-  assert.equal((await W.canvasAggregate("catalog", true).json()).length, 1);
+  assert.equal((await W.canvasAggregate(ctx, "catalog", true).json()).length, 1);
   // Signed out: the board they were sent still renders, but they get no directory of
   // every URL on the site. Empty array, not a 401 — the client's fetch must still parse.
-  const anon = W.canvasAggregate("catalog", false);
+  const anon = W.canvasAggregate(ctx, "catalog", false);
   assert.equal(anon.status, 200);
   assert.deepEqual(await anon.json(), []);
 });
@@ -1255,18 +1255,18 @@ test("session music is admin-only — never public, whatever the space is called
   // adminOnly retired (Q1), a formerly-sealed space now contributes its CATALOG too —
   // the admin-only exclusion was the multi-space tier, and the track LIST already only
   // ever answered admins, so nothing leaks that the default space did not already.
-  W.applyDerivedRouting({
+  const trackCtx = W.applyDerivedRouting({
     alpha: { id: "alpha", format: 1, files: {}, space: { id: "alpha", default: true },
              routing: { canvasTracks: [{ id: "alpha:one", name: "One", url: "/tracks/one.mp3" }] } },
     vault: { id: "vault", format: 1, files: {}, space: { id: "vault", adminOnly: true },
              routing: { canvasTracks: [{ id: "vault:two", name: "Two", url: "/vault/tracks/two.mp3" }],
                         canvasCatalog: [{ title: "secret", url: "/vault/x/" }] } },
   });
-  assert.deepEqual(await (await W.canvasAggregate("catalog", true)).json(),
+  assert.deepEqual(await (await W.canvasAggregate(trackCtx, "catalog", true)).json(),
     [{ title: "secret", url: "/vault/x/" }],
     "with adminOnly retired, the formerly-sealed space now appears in the catalogue");
-  assert.deepEqual(await (await W.canvasAggregate("tracks", false)).json(), []);
-  assert.equal((await (await W.canvasAggregate("tracks", true)).json()).length, 2);
+  assert.deepEqual(await (await W.canvasAggregate(trackCtx, "tracks", false)).json(), []);
+  assert.equal((await (await W.canvasAggregate(trackCtx, "tracks", true)).json()).length, 2);
 });
 
 // ---- Self-set profile photos ------------------------------------------------
@@ -1589,7 +1589,7 @@ test("the build stamp says which engine BUILT each space, not just which one is 
       builtWith: { engine: "o".repeat(40) }, // built by an older engine
     },
   };
-  const stamp = W.synthBuildStamp(manifests);
+  const stamp = W.synthBuildStamp(BARE, manifests);
   assert.equal(stamp.spaces.alpha.builtWithEngine, "o".repeat(40),
     "a space must report the engine that composed its pages");
   assert.notEqual(stamp.spaces.alpha.builtWithEngine, stamp.engine.sha,
@@ -1599,7 +1599,7 @@ test("the build stamp says which engine BUILT each space, not just which one is 
 test("a manifest with no builtWith omits the field rather than reporting a false one", () => {
   // Every space published before this field existed has no builtWith. Reporting null or
   // the current engine would both be lies — absent is the only honest answer.
-  const stamp = W.synthBuildStamp({
+  const stamp = W.synthBuildStamp(BARE, {
     alpha: { version: 1, space: { id: "alpha", default: true }, source: { sha: "abc" } },
   });
   assert.equal("builtWithEngine" in stamp.spaces.alpha, false);

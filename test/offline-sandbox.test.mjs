@@ -16,18 +16,22 @@ import assert from "node:assert/strict";
 import { __testables as W } from "../src/_worker.js";
 import { respawnDelay } from "../scripts/lib/offline-respawn.mjs";
 
+// A workspace with no realtime origin configured — the sandbox case these tests are
+// about. rtProxy takes the workspace it is proxying for, so the fixture names one.
+const CTX = W.applyDerivedRouting({});
+
 const rtReq = (headers = {}) =>
   new Request("https://example.test/__rt?path=/x/", { headers });
 const rtUrl = () => new URL("https://example.test/__rt?path=/x/");
 
 test("GV_RT_DISABLE seals /__rt shut, before any origin or upgrade check", async () => {
-  const res = W.rtProxy(rtReq({ Upgrade: "websocket" }), rtUrl(), { GV_RT_DISABLE: "1" });
+  const res = W.rtProxy(CTX, rtReq({ Upgrade: "websocket" }), rtUrl(), { GV_RT_DISABLE: "1" });
   assert.equal(res.status, 501);
   assert.deepEqual(await res.json(), { error: "realtime-disabled" });
 });
 
 test("without the disable flag, an unconfigured origin still answers not-configured", async () => {
-  const res = W.rtProxy(rtReq({ Upgrade: "websocket" }), rtUrl(), {});
+  const res = W.rtProxy(CTX, rtReq({ Upgrade: "websocket" }), rtUrl(), {});
   assert.equal(res.status, 501);
   assert.deepEqual(await res.json(), { error: "realtime-not-configured" });
 });

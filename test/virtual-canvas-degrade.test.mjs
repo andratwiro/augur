@@ -29,6 +29,9 @@ const envWith = (kv) => ({
   COMMENTS: kv,
   ASSETS: { async fetch() { return new Response("", { status: 404 }); } },
 });
+// The workspace these boards belong to. virtualCanvas renders the loader page for a
+// workspace now, so the fixture names one rather than leaving it to module scope.
+const CTX = W.applyDerivedRouting({});
 const ME = { email: "a@example.test", name: "Ada", role: "admin" };
 const canvasesUrl = new URL("https://example.test/__canvases");
 const create = (kv, body) => W.canvasesApi(new Request(canvasesUrl, {
@@ -39,7 +42,7 @@ const get = (p) => ({ req: new Request("https://example.test" + p), url: new URL
 // Order matters: this file's first test needs the cold-cache state of a fresh process.
 test("a throwing KV with nothing cached falls through — never a 500", async () => {
   const { req, url } = get("/x/whatever/");
-  assert.equal(await W.virtualCanvas(req, envWith(throwingKV()), url), null);
+  assert.equal(await W.virtualCanvas(CTX, req, envWith(throwingKV()), url), null);
 });
 
 test("repeat lookups inside the TTL cost one registry read, and a write busts", async () => {
@@ -47,14 +50,14 @@ test("repeat lookups inside the TTL cost one registry read, and a write busts", 
   await create(kv, { dir: "/x/", name: "My Board" });
   const { req, url } = get("/x/my-board/");
   const before = kv.gets;
-  assert.equal((await W.virtualCanvas(req, envWith(kv), url)).status, 200);
-  assert.equal((await W.virtualCanvas(req, envWith(kv), url)).status, 200);
+  assert.equal((await W.virtualCanvas(CTX, req, envWith(kv), url)).status, 200);
+  assert.equal((await W.virtualCanvas(CTX, req, envWith(kv), url)).status, 200);
   assert.equal(kv.gets, before + 1, "second lookup rides the cache");
   // A registry write makes the next lookup re-read immediately (no TTL wait).
   await create(kv, { dir: "/x/", name: "Second" });
   const mid = kv.gets;
   const two = get("/x/second/");
-  assert.equal((await W.virtualCanvas(two.req, envWith(kv), two.url)).status, 200, "new canvas live at once");
+  assert.equal((await W.virtualCanvas(CTX, two.req, envWith(kv), two.url)).status, 200, "new canvas live at once");
   assert.ok(kv.gets > mid, "the bust forced a fresh registry read");
 });
 
@@ -62,9 +65,9 @@ test("a throwing KV serves the last-read registry rather than erroring", async (
   const kv = memKV();
   await create(kv, { dir: "/y/", name: "Stale Survivor" });
   const { req, url } = get("/y/stale-survivor/");
-  assert.equal((await W.virtualCanvas(req, envWith(kv), url)).status, 200); // cache filled
+  assert.equal((await W.virtualCanvas(CTX, req, envWith(kv), url)).status, 200); // cache filled
   await create(kv, { dir: "/y/", name: "Buster" }); // bust so the next call must re-read...
-  const res = await W.virtualCanvas(req, envWith(throwingKV()), url); // ...and the re-read throws
+  const res = await W.virtualCanvas(CTX, req, envWith(throwingKV()), url); // ...and the re-read throws
   assert.ok(res, "stale registry still serves the board");
   assert.equal(res.status, 200);
 });

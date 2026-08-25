@@ -241,7 +241,7 @@ test("with adminOnly retired, every space contributes to the public canvas catal
   // was kept out of /__canvas/catalog.json (served before the gate) so its inventory did
   // not leak. Q1 retires adminOnly with the tier, so nothing is excluded now — exactly as
   // the DEFAULT space's catalog was always merged. This inverts the S1 baseline.
-  W.applyDerivedRouting({
+  const ctx = W.applyDerivedRouting({
     _engine: { routing: { canvasLoaderExtras: "" } },
     delta: space("delta", {
       publicPrefixes: [], versionMap: {},
@@ -254,15 +254,15 @@ test("with adminOnly retired, every space contributes to the public canvas catal
       canvasTracks: [{ path: "/sealed/tracks/b.mp3" }],
     }, { adminOnly: true }),
   });
-  const catalog = await W.canvasAggregate("catalog").text();
+  const catalog = await W.canvasAggregate(ctx, "catalog").text();
   assert.match(catalog, /Secret/, "the formerly-sealed space now contributes too");
   assert.match(catalog, /Open/, "the open space still does");
 
   // Music is unchanged: the track LIST answers admins only, and the audio itself is
   // admin-only (isTrackPath), so every space's tracks merge for an admin to see.
-  const tracksAdmin = await W.canvasAggregate("tracks", true).text();
+  const tracksAdmin = await W.canvasAggregate(ctx, "tracks", true).text();
   assert.match(tracksAdmin, /\/sealed\/tracks\/b\.mp3/, "an admin sees every space's music");
-  const tracksAnon = await W.canvasAggregate("tracks", false).text();
+  const tracksAnon = await W.canvasAggregate(ctx, "tracks", false).text();
   assert.equal(tracksAnon, "[]", "a non-admin is told the instance has no music at all");
 });
 

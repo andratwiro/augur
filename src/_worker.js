@@ -2355,16 +2355,16 @@ async function assetPathExists(env, url) {
 //
 // Shape is additive: `builtAt`, `engine.sha` and `spaces.<id>.sha`/`dirty` keep
 // their exact previous meaning, so existing checks keep working.
-function synthBuildStamp(manifests) {
+function synthBuildStamp(tctx, manifests) {
   const spaces = {}, engine = { sha: null };
-  if (INSTANCE_ENGINE_VERSION) engine.version = INSTANCE_ENGINE_VERSION;
+  if (tctx.INSTANCE_ENGINE_VERSION) engine.version = tctx.INSTANCE_ENGINE_VERSION;
   let builtAt = null;
   // /_build.json is served BEFORE the gate, so publishedBy must not leak the raw email
   // the publish token is labelled with. Map it to the roster display name when known,
   // else the local-part — enough to say who published, without publishing addresses.
   const byName = (label) => {
     if (!label) return "";
-    const u = userByEmail(label);
+    const u = userByEmail(label, tctx.USERS);
     return u ? u.name : String(label).split("@")[0];
   };
   const provenance = (m) => ({
@@ -3096,9 +3096,9 @@ function semverBehind(cur, latest) {
   for (let i = 0; i < 3; i++) { const x = a[i] || 0, y = b[i] || 0; if (x !== y) return x < y; }
   return false;
 }
-async function adminVersionApi(env, me) {
+async function adminVersionApi(tctx, env, me) {
   if (!me || me.role !== "admin") return jsonResponse({ error: "forbidden" }, 403);
-  const current = INSTANCE_ENGINE_VERSION || null;
+  const current = tctx.INSTANCE_ENGINE_VERSION || null;
   const kv = kvFor(env);
   let latest = null, url = "";
   try {
@@ -3106,7 +3106,7 @@ async function adminVersionApi(env, me) {
     if (cached && Date.now() - cached.at < 6 * 3600 * 1000) {
       latest = cached.latest; url = cached.url || "";
     } else {
-      const r = await fetch(UPDATE_FEED || DEFAULT_UPDATE_FEED, {
+      const r = await fetch(tctx.UPDATE_FEED || DEFAULT_UPDATE_FEED, {
         headers: { "user-agent": "augur-update-check", accept: "application/vnd.github+json" },
       });
       if (r.ok) {
@@ -3638,10 +3638,10 @@ const MCP_PROXY_PATHS = new Set([
 // knob rather than failing closed on traffic that works today.
 let mcpHostAllowlist = null;
 
-function mcpAllowlist() {
-  if (!MCP_HOST_ALLOWLIST_URL) return Promise.resolve(null);
+function mcpAllowlist(tctx) {
+  if (!tctx.MCP_HOST_ALLOWLIST_URL) return Promise.resolve(null);
   if (!mcpHostAllowlist) {
-    mcpHostAllowlist = fetch(MCP_HOST_ALLOWLIST_URL, { cf: { cacheTtl: 3600, cacheEverything: true } })
+    mcpHostAllowlist = fetch(tctx.MCP_HOST_ALLOWLIST_URL, { cf: { cacheTtl: 3600, cacheEverything: true } })
       .then((r) => { if (!r.ok) throw new Error("HTTP " + r.status); return r.json(); })
       .then((doc) => new Set(Array.isArray(doc && doc.hosts) ? doc.hosts : []))
       .catch(() => { mcpHostAllowlist = null; return null; }); // retry on the next request
@@ -3654,17 +3654,17 @@ function mcpAllowlist() {
 // ships the prototype using it. Rebuilt by loadConfig on every config refresh.
 let mcpStaticHosts = new Set();
 
-async function mcpHostAllowed(host) {
-  if (MCP_HOST_SUFFIXES.some((sfx) => host.endsWith("." + sfx))) return true;
+async function mcpHostAllowed(tctx, host) {
+  if (tctx.MCP_HOST_SUFFIXES.some((sfx) => host.endsWith("." + sfx))) return true;
   // Exact match only — endsWith on a bare host would let <allowed>.attacker.example
   // through. Both lists are stored without a leading "www.".
   const bare = host.replace(/^www\./, "");
-  if (mcpStaticHosts.has(host) || mcpStaticHosts.has(bare)) return true;
-  const allow = await mcpAllowlist();
+  if (tctx.mcpStaticHosts.has(host) || tctx.mcpStaticHosts.has(bare)) return true;
+  const allow = await mcpAllowlist(tctx);
   return !!allow && (allow.has(host) || allow.has(bare));
 }
 
-async function mcpProxy(request, url) {
+async function mcpProxy(tctx, request, url) {
   const rest = url.pathname.slice("/__mcp/".length); // "<host>/<path…>"
   const slash = rest.indexOf("/");
   const host = slash === -1 ? rest : rest.slice(0, slash);
@@ -3675,7 +3675,7 @@ async function mcpProxy(request, url) {
   // a private/loopback address (belt-and-suspenders with the suffix rule).
   if (!/^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$/.test(host)
       || /^\d+\.\d+\.\d+\.\d+$/.test(host) || !host.includes(".")
-      || !(await mcpHostAllowed(host)))
+      || !(await mcpHostAllowed(tctx, host)))
     return jsonResponse({ error: "host not allowed" }, 403);
   // Exact match, against the protocol floor and then the workspace's own declarations.
   // `path` is url.pathname: already normalised (no "..", no "." segments) and carrying
@@ -4171,17 +4171,17 @@ let CANVAS_TRACKS = [];
 // viewer needs the BOARD they were sent to render, not the catalogue of everything else
 // that exists, so they get an empty picker. Empty array rather than a 401 so the canvas
 // client's fetch still parses and the board renders normally.
-function canvasAggregate(which, authed = true) {
+function canvasAggregate(tctx, which, authed = true) {
   // tracks: `authed` means ADMIN here (the caller resolves it) — a non-admin is told the
   // instance has no music, so the canvas hides its music surface instead of offering a
   // picker whose every track answers 404.
-  if (which === "tracks") return jsonResponse(authed ? CANVAS_TRACKS : []);
-  return jsonResponse(authed ? CANVAS_CATALOG : []);
+  if (which === "tracks") return jsonResponse(authed ? tctx.CANVAS_TRACKS : []);
+  return jsonResponse(authed ? tctx.CANVAS_CATALOG : []);
 }
 
 // The same loader a repo canvas folder carries — the page just names the board and
 // mounts the shared /__canvas/ engine; contents persist to /__board keyed by URL.
-function canvasLoaderPage(name) {
+function canvasLoaderPage(tctx, name) {
   // Full escape — the value lands in a "-quoted attribute (content="…(${title})"), so a
   // bare " would break out and inject further meta attributes on this PUBLIC page.
   const title = escapeHtml(name);
@@ -4198,7 +4198,7 @@ function canvasLoaderPage(name) {
 <script>window.GV_CANVAS = ${boot};</script>
 </head>
 <body>
-<script src="/__canvas/canvas.js" defer></script>${CANVAS_LOADER_EXTRAS}
+<script src="/__canvas/canvas.js" defer></script>${tctx.CANVAS_LOADER_EXTRAS}
 </body>
 </html>`;
 }
@@ -4230,7 +4230,7 @@ const bustCanvasRegistry = () => { canvasRegAt = 0; };
 // on asset 404s, so the extra kv.get never taxes a real page load. Bare
 // "/dir/slug" redirects to the trailing-slash form — the board doc and the room are
 // keyed by the page's URL path, and two spellings must not split one board in two.
-async function virtualCanvas(request, env, url) {
+async function virtualCanvas(tctx, request, env, url) {
   if (request.method !== "GET" && request.method !== "HEAD") return null;
   const kv = kvFor(env);
   if (!kv) return null;
@@ -4246,7 +4246,7 @@ async function virtualCanvas(request, env, url) {
   if (url.pathname !== normalized && !url.pathname.endsWith("/index.html")) {
     return Response.redirect(new URL(normalized, url).toString(), 301);
   }
-  return new Response(canvasLoaderPage(entry.name), {
+  return new Response(canvasLoaderPage(tctx, entry.name), {
     headers: {
       "Content-Type": "text/html; charset=utf-8",
       "Cache-Control": "no-store",
@@ -4339,18 +4339,18 @@ async function assetApi(request, url, env) {
 // config's `realtimeOrigin`; without one, boards run solo (the client's socket-down
 // fallback: it persists via /__board to this instance's own KV).
 let RT_ORIGIN = "";
-function rtProxy(request, url, env) {
+function rtProxy(tctx, request, url, env) {
   // Sandbox seal (offline mode without deploy creds): local KV alone is not a sandbox
   // if the canvas still joins the shared rooms — board ops would half-escape while
   // solo saves diverge locally. The flag beats a configured origin on purpose.
   if (env && env.GV_RT_DISABLE) return jsonResponse({ error: "realtime-disabled" }, 501);
-  if (!RT_ORIGIN) return jsonResponse({ error: "realtime-not-configured" }, 501);
+  if (!tctx.RT_ORIGIN) return jsonResponse({ error: "realtime-not-configured" }, 501);
   if (request.headers.get("Upgrade") !== "websocket") return jsonResponse({ error: "expected-websocket" }, 426);
   // Re-wrap so a header can be added; the Upgrade header and the socket handling ride
   // along. The secret proves the request came through this worker, which is where the
   // admin-only-space seal is enforced (see the isRestrictedPath check on ?path= above).
   // Unset = send nothing, and a realtime worker without the secret accepts as before.
-  const req = new Request(RT_ORIGIN + "/room" + url.search, request);
+  const req = new Request(tctx.RT_ORIGIN + "/room" + url.search, request);
   const secret = env && env.RT_SHARED_SECRET;
   if (secret) req.headers.set("X-Augur-RT", secret);
   return fetch(req);
@@ -4370,7 +4370,10 @@ async function adminUsersApi(request, url, env, me, users = USERS, configUsers =
   // its own roster (tests) gets its list back untouched.
   const commitRoster = (roster) => {
     const next = mergeRoster(configUsers, roster);
-    if (users === USERS) USERS = next;
+    // ⚠️ The context moves with the binding — see applyInstance. The router serves from
+    // the context now, so a roster written here has to land in both or this isolate
+    // answers one way through the threaded read sites and another through the rest.
+    if (users === USERS) { USERS = next; TENANT_CTX = withTenantFields(TENANT_CTX, { USERS: next }); }
     cfgAt = 0;
   };
 
@@ -4845,7 +4848,7 @@ export default {
     // In bundle mode the public build stamp is synthesized from the live
     // manifests — same shape and contract as the static file Pages serves.
     if (url.pathname === "/_build.json" && bundleMode(env)) {
-      return jsonResponse(synthBuildStamp(await loadManifests(env)));
+      return jsonResponse(synthBuildStamp(tctx, await loadManifests(env)));
     }
 
     // Vanity domains (from the deploy config): a host CNAME'd to this
@@ -4886,7 +4889,7 @@ export default {
 
     // Platform MCP proxy — public prototypes call the platform through their own
     // origin (the platform's Bearer token is the real auth; see mcpProxy).
-    if (url.pathname.startsWith("/__mcp/")) return mcpProxy(request, url);
+    if (url.pathname.startsWith("/__mcp/")) return mcpProxy(tctx, request, url);
 
     const expected = env.SITE_PASSWORD;
     const usersActive = tctx.USERS.length > 0;
@@ -4918,8 +4921,8 @@ export default {
     // but the catalog is served EMPTY to one, because the full list is a directory of
     // every URL on the site. Dispatched here, just after `authed` resolves and before any
     // gate enforces anything, so it stays reachable to everyone either way.
-    if (url.pathname === "/__canvas/catalog.json") return canvasAggregate("catalog", authed);
-    if (url.pathname === "/__canvas/tracks.json") return canvasAggregate("tracks", !usersActive || !!(me && me.role === "admin"));
+    if (url.pathname === "/__canvas/catalog.json") return canvasAggregate(tctx, "catalog", authed);
+    if (url.pathname === "/__canvas/tracks.json") return canvasAggregate(tctx, "tracks", !usersActive || !!(me && me.role === "admin"));
 
     // Who am I — the sidebar profile chip and the comment overlay read this. Open
     // (returns {user:null} when signed out) so the chip can decide what to render.
@@ -5016,7 +5019,7 @@ export default {
     if (url.pathname === "/__admin/backup") return adminBackupApi(env, me);
 
     // Engine version + update-available nudge (the profile chip's fetch).
-    if (url.pathname === "/__admin/version") return adminVersionApi(env, me);
+    if (url.pathname === "/__admin/version") return adminVersionApi(tctx, env, me);
 
     // Invite redemption is reachable WITHOUT a session — that is the whole point.
     if (url.pathname === "/__invite") {
@@ -5171,7 +5174,7 @@ export default {
     // Canvas multiplayer: same-origin WebSocket proxied to the augur-realtime worker (one
     // BoardRoom Durable Object per board path — cursors/presence/live ops). Public like
     // /__board: the board is the credential. The engine degrades to solo if this fails.
-    if (url.pathname === "/__rt") return rtProxy(request, url, env);
+    if (url.pathname === "/__rt") return rtProxy(tctx, request, url, env);
 
     // Admin-only spaces: seal the whole base path BEFORE the public-prototype
     // door, so nothing under it — not even an og.jpg — leaks. Only an admin
@@ -5244,7 +5247,7 @@ export default {
     if (authed) {
       const asset = await assetFetch(env, request);
       if (asset.status === 404) {
-        const virt = await virtualCanvas(request, env, url);
+        const virt = await virtualCanvas(tctx, request, env, url);
         if (virt) return virt;
         return notFoundResponse();
       }
@@ -5256,7 +5259,7 @@ export default {
     // loader page was gated). Checked only after every other door failed, so the KV
     // read never taxes normal traffic. Boards under an admin-only space never reach
     // here — isRestrictedPath sealed them above.
-    const virt = await virtualCanvas(request, env, url);
+    const virt = await virtualCanvas(tctx, request, env, url);
     if (virt) return virt;
 
     // Otherwise show the login page, remembering where they were headed.

@@ -28,10 +28,12 @@ const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 
 const HOST = "platform.example.invalid";
 
-// Seed the routing globals the proxy reads, the way a live isolate does: from the
-// manifest fragments the workspaces published.
+// Seed the routing the proxy reads, the way a live isolate does: from the manifest
+// fragments the workspaces published. The seeded CONTEXT is kept in CTX because the
+// proxy takes the workspace it is proxying for as an argument now.
+let CTX = W.applyDerivedRouting({});
 function routeWith({ hosts = [HOST], paths = [] } = {}) {
-  W.applyDerivedRouting({
+  CTX = W.applyDerivedRouting({
     w1: { space: { id: "w1", default: true }, routing: { mcpAllowlist: hosts, mcpPaths: paths } },
   });
 }
@@ -40,7 +42,7 @@ function routeWith({ hosts = [HOST], paths = [] } = {}) {
 // hosts and no `mcpPaths` key whatsoever. Spelled with a deliberate absence rather than
 // `paths: undefined` so the shape is the one a vintage manifest actually has.
 function routeVintage(hosts = [HOST]) {
-  W.applyDerivedRouting({
+  CTX = W.applyDerivedRouting({
     w1: { space: { id: "w1", default: true }, routing: { mcpAllowlist: hosts } },
   });
 }
@@ -58,7 +60,7 @@ function withStubbedFetch(fn) {
 
 const proxy = (path, method = "GET") => {
   const url = new URL(`https://site.example.invalid/__mcp/${HOST}${path}`);
-  return W.mcpProxy(new Request(url, { method }), url);
+  return W.mcpProxy(CTX, new Request(url, { method }), url);
 };
 
 test("the engine's own path floor is the protocol, and nothing else", () => {
