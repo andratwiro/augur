@@ -1327,7 +1327,6 @@ const PAGE_CSS = `
     }
     .eyebrow::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 10px 1px var(--accent); }
     h1 { font-size: 40px; line-height: 1.05; font-weight: 600; margin: 0 0 10px; letter-spacing: -0.03em; }
-    .subtitle { color: var(--muted); margin: 0 0 30px; font-size: 16px; max-width: 56ch; }
     .section-eyebrow {
       font-size: 12px; font-weight: 560; letter-spacing: .05em; text-transform: uppercase;
       color: var(--faint); margin: 0 0 14px;
@@ -1849,7 +1848,6 @@ const PAGE_CSS = `
     @media (max-width: 600px) {
       .wrap { padding: 30px 16px 80px; }
       h1 { font-size: 30px; }
-      .subtitle { font-size: 15px; }
       .proto-meta { padding: 14px 16px; }
       .playground { gap: 14px; padding: 16px; }
       .playground__go { display: none; }
@@ -5654,7 +5652,6 @@ function renderRootIndex(opportunities) {
   if (!opportunities.length) {
     return shell({
       title: "Augur",
-      subtitle: "Private &mdash; do not share outside the team.",
       body: `<p class="empty">No prototypes yet. Add one under
        <code>&lt;folder&gt;/prototypes/&lt;name&gt;/</code> and rebuild.</p>`,
     });
@@ -5796,7 +5793,6 @@ function renderPagesIndex(pages) {
   if (!pages.length) {
     return shell({
       title: "Pages",
-      subtitle: `Composed ${SPACE_NAME} reference pages &mdash; copy one as a starting point.`,
       activeTab: "pages",
       wrapClass: "wrap--wide",
       body: `<p class="empty">No reference pages yet. Add one under
@@ -5871,12 +5867,9 @@ function metaBadges(meta) {
 }
 
 function renderComponentsIndex(components) {
-  const subtitle =
-    "Reusable building blocks &mdash; primitives composed into navbar, footer, cards, hero. They assemble into Pages.";
   if (!components.length) {
     return shell({
       title: "Components",
-      subtitle,
       activeTab: "components",
       wrapClass: "wrap--wide",
       body: `<p class="empty">No components yet. Add one under
