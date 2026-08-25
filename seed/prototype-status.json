@@ -1,0 +1,9 @@
+{
+  "_comment": "Dev-status baseline per prototype, keyed <project>/<prototype>. Values: in-progress | dev-ready | ignore. Live chips cycle on click (KV) over this baseline.",
+  "start-here/connect-your-terminal": "dev-ready",
+  "start-here/set-up-your-design-system": "dev-ready",
+  "start-here/sample-with-comments": "in-progress",
+  "worked-examples/specimen-viewer": "dev-ready",
+  "worked-examples/slide-deck": "dev-ready",
+  "worked-examples/field-readings": "in-progress"
+}
