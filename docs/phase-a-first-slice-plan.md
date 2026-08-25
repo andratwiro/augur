@@ -3,10 +3,13 @@
 **Status:** the first slice (`A-retire-space-tier`, S0–S7 below) is BUILT and landed, and
 the tenant-context sweep described in §2 is under way: the context's shape and its
 per-tenant cache exist (`src/tenant-context.mjs`), the lint that stops a new global is in
-`check`, the tenant resolver seam is in `fetch()`, and the config load now BUILDS AND
-RETURNS a context for that tenant instead of assigning module globals. The globals survive
-as a mirror of the returned value until the read sites take it as a parameter. This
-document is the map for the rest. Line-number citations below were accurate when written
+`check`, the tenant resolver seam is in `fetch()`, the config load BUILDS AND RETURNS a
+context for that tenant instead of assigning module globals, and **`fetch()` now binds
+that returned context as `tctx` and hands it down** — the ~700-line router body reads no
+module config binding at all, and the functions it calls take the workspace as an
+argument. The globals survive as a mirror of the context until the read sites deeper in
+take it too; the remaining `A-thread-*` items delete them. This document is the map for
+the rest. Line-number citations below were accurate when written
 (worker 4611 lines, build.js 7755 lines) and have since drifted; treat them as
 pointers to the right function, not as coordinates. `build.js` line numbers are given
 only for its role as the SOURCE that emits `routing.json` / `instance.json`; the
@@ -130,7 +133,11 @@ deferred risk being closed, not ignored).
 All are declared `let` at column 0. They are no longer *filled* by the load — the load
 builds a context and `applyTenantContext()` mirrors it onto them — so each one now has
 exactly one writer, and threading a cluster means deleting its line from that mirror and
-taking `ctx.<NAME>` at the read sites instead. "Reads" = occurrences minus the declaration
+taking `ctx.<NAME>` at the read sites instead. **Every seam that writes a binding writes
+the context in the same statement** (`applyInstance`, `applyDerivedRouting`,
+`__setChromeTestState`, and the two in-isolate roster writes in `adminUsersApi`), so a
+threaded read site and a not-yet-threaded one can never answer differently from the same
+fixture — which is the half-done-sweep failure no single-workspace test can observe. "Reads" = occurrences minus the declaration
 and assignment sites (measured by `grep -ow` count, then discounting decl + assigns).
 
 | Global | Decl | ~reads | Notes for threading |
