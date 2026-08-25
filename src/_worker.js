@@ -38,6 +38,13 @@ import {
   emptyTenantContext, instanceFields, routingFields, withTenantFields,
 } from "./tenant-context.mjs";
 
+// The mail transport. Same deal again: build.js copies it next to the worker
+// (dist/mail.mjs) so the relative import resolves at the edge. It reads its provider,
+// endpoint, key and sending address from the runtime env and holds no state, so a
+// deployment that configures none of that gets exactly the behaviour that predates it —
+// a link, and a verdict saying no mail was sent. See src/mail.mjs.
+import { sendMail, mailNotice } from "./mail.mjs";
+
 const COOKIE = "gv_auth";
 const MAX_AGE = 60 * 60 * 24 * 7; // 7 days
 
@@ -4308,6 +4315,25 @@ async function adminUsersApi(request, url, env, me, users = USERS, configUsers =
     const kind = op && op.op;
     if (!kv) return jsonResponse({ error: "no-kv-binding" }, 500);
     const link = (token) => `${url.origin}/__invite?t=${encodeURIComponent(token)}`;
+    // Email the link as well as returning it. NEVER instead of returning it: the panel
+    // shows the copy-pasteable link either way, and this verdict — sent, unconfigured,
+    // capped, or the provider's own refusal — is what it shows next to it. A deployment
+    // that has configured no provider gets reason "unconfigured" and a blank note, which
+    // is the behaviour that predates mail existing at all. Awaited on purpose: the admin
+    // is standing there deciding whether they still have to send it themselves.
+    const mailLink = async (to, template, token, extra = {}) => {
+      const result = await sendMail(env, {
+        to,
+        template,
+        vars: {
+          workspace: (spaces.find((s) => s.default) || {}).name || url.host,
+          link: link(token),
+          expiresHours: Math.round(INVITE_TTL_MS / 3600000),
+          ...extra,
+        },
+      }, { kv });
+      return { ...result, note: mailNotice(result, to) };
+    };
 
     if (kind === "reset") {
       const u = userByEmail(op.email, users);
@@ -4323,7 +4349,8 @@ async function adminUsersApi(request, url, env, me, users = USERS, configUsers =
       await revokeSecret(env, u.email);
       await revokePublishTokens(env, u.email); // a reset password must not leave a live publish token
       const token = await mintInvite(env, u.email);
-      return jsonResponse({ ok: true, email: u.email, url: link(token) });
+      const mail = await mailLink(u.email, "credential-reset", token);
+      return jsonResponse({ ok: true, email: u.email, url: link(token), mail });
     }
 
     // Invite = put the address on the roster overlay AND mint its link, in one action.
@@ -4362,7 +4389,8 @@ async function adminUsersApi(request, url, env, me, users = USERS, configUsers =
         user: { email, name, initials: roster.add[email].initials, color: roster.add[email].color, role },
         by: me.email,
       });
-      return jsonResponse({ ok: true, email, url: link(token), fileSync });
+      const mail = await mailLink(email, "roster-invite", token, { inviter: me.name || me.email });
+      return jsonResponse({ ok: true, email, url: link(token), fileSync, mail });
     }
 
     // Change someone's role. The thing an operator actually reaches for, and the thing
