@@ -6257,11 +6257,23 @@ function renderTokensIndex(graph) {
   // and never "you have none": for that third reader the closing clause is the whole fix.
   // `DS.prefix` is null with no skill, so the placeholders stay literal — interpolating it
   // would offer that reader "null-tokens.css".
+  //
+  // The sentence in <em> is styled to be lifted and pasted, so it has to survive being
+  // lifted: it names what a design system is made of rather than pointing back at a
+  // clause that does not travel with it.
+  //
+  // `agents/ui-skill.md` is a path in the ENGINE repo, which sits beside the workspace
+  // clone for the agent but may not be on the reader's disk at all — and it is the one
+  // instruction carrying the `registry.json` requirement, which is a HARD build failure
+  // (loadCatalog throws; there is no fallback). Making it a link would mean shipping the
+  // agents/ docs as chrome, which is a routing change, not an empty-state one. So the
+  // doc stays named for the agent and the consequence is stated here in words, which is
+  // what a reader who cannot open it actually needs.
   const hint = names.length
     ? `<p class="tier-hint">The design-system variables (${cssPrefixes.map((p) => `<code>--${p}-*</code>`).join(", ")}), parsed live from <code>${DS.prefix}-tokens.css</code> — each with its alias chain down to a raw value and how much of the system drinks from it. This is the bottom of every import chain Base · Components · Patterns · Pages resolve to. <strong>Click any token name or value to copy it</strong>; expand a consumer count to see exactly what uses it.</p>`
     : emptyState(
-        `Change one colour in one file and every screen changes with it. That is what a design system buys you, and this page is the list of what you can change: your workspace's colours, type, sizes and shadows, each traced down to its raw value and to everything that uses it — the styles panel from Figma, except read out of your own stylesheet on every build, so it cannot drift from what the screens are wearing.`,
-        `Nothing is reaching it yet, and there is no import button — the way in is your agent. Hand it what you already have (brand colours, an existing stylesheet), or ask it to propose a starting set, then ask: <em>&ldquo;Set this workspace up with a design system from these, following the engine's <code>agents/ui-skill.md</code>.&rdquo;</em> It lands in <code>skills/&lt;name&gt;-ui/</code>, with the variable prefixes you use named in that skill's <code>skill.json</code> (<code>"cssPrefixes"</code>) — the line that points this page at your CSS, and the one to check if a design system is already sitting there.`
+        `Change one colour in one file and every screen changes with it. That is what a design system buys you, and this page is the list of what you can change: your workspace's colours, type, sizes and shadows, each traced down to its raw value and to everything that uses it — the styles panel from Figma, except this one is generated from your own stylesheet on every build, so it is never a stale copy of it. A hex typed straight into a screen never appears here, which is the other thing this page is good for.`,
+        `Nothing is reaching it yet, and there is no import button — the way in is your agent. Hand it what you already have (brand colours, an existing stylesheet), or ask it to propose a starting set, then ask: <em>&ldquo;Set this workspace up with a design system — colours, type, sizes, shadows — following the engine's <code>agents/ui-skill.md</code>.&rdquo;</em> Naming that doc matters more than it looks. The system lands in <code>skills/&lt;name&gt;-ui/</code> and needs a <code>registry.json</code> at the top of the workspace — without one the next build fails outright — plus a <code>skill.json</code> naming the variable prefixes your stylesheets use (<code>"cssPrefixes"</code>), which is the line that points this page at your CSS, and the first thing to check if a design system is already sitting there.`
       );
 
   return shell({
