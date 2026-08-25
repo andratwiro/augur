@@ -87,6 +87,16 @@ rather than a change to everybody's. Paths are compared whole and exactly agains
 request's pathname — no prefixes, no query strings — and must be absolute, with no
 `..` and no `//`. A missing or malformed file fails the build rather than degrading.
 
+⏳ **One migration caveat, and it expires on its own.** The declaration is written into
+your manifest AT PUBLISH TIME, so a workspace whose LIVE manifest was published before
+path declarations existed carries no `mcpPaths` key at all — and the serving side hands
+that vintage the four-path floor the older engine had, so an instance does not lose an
+endpoint merely by moving its engine pin. It is dated on the manifest, not on who
+published it. Publishing once from a clone of the current engine writes the key (`[]` if
+you declare none) and ends it for your workspace: from then on the list is exactly what
+you declared, and an endpoint you have not declared is a 403. If your prototypes call a
+platform endpoint, put it in `paths` and publish — do not rely on the floor.
+
 **Retired: `methodPages`.** It named `pages/<name>` entries for one group of the
 Pages tab's front-office / method / back-office / upsell taxonomy. That taxonomy is
 gone — the Pages tab is one flat grid, because the engine's contract is the TIER

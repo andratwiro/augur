@@ -100,7 +100,12 @@ otherwise the id of the space mounted at the root) and
 `dist/__config/routing.json` (public prefixes,
 version map, restricted bases, space list, the mcp host + path allowlist union spaces
 declare via `space.json "mcpAllowlists"` — the engine's own path floor is the three
-paths the MCP/OAuth protocol speaks, and no platform's API endpoint is named in it).
+paths the MCP/OAuth protocol speaks, and no platform's API endpoint is named in it —
+except ⏳ `LEGACY_MCP_PATH_FLOOR`, the pre-declaration floor handed to a routing fragment
+that carries no `mcpPaths` KEY at all, since such a manifest was published before
+declarations existed and cannot grow one by taking a newer engine; `mcpPaths: []` is a
+real declaration meaning none and gets nothing, and one publish by a current clone
+retires the shim for that workspace).
 The worker fills these via `loadConfig()` (~1.5s
 per-isolate cache) and seals `/__config/*` from external requests. Build.js also
 emits `dist/__manifests/<id>.json` per space (+ pseudo-space `_engine` for shared

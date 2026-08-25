@@ -36,6 +36,7 @@ import { renderAppChrome, renderSpaceContextScript } from "./chrome/appchrome.mj
 // side-effect-free at import; it performs no I/O and owns no state.
 import {
   emptyTenantContext, instanceFields, routingFields, withTenantFields,
+  LEGACY_MCP_PATH_FLOOR,
 } from "./tenant-context.mjs";
 
 // The mail transport. Same deal again: build.js copies it next to the worker
@@ -2003,6 +2004,14 @@ function derivedRoutingFields(manifests, spaceIcons) {
     // admin-only too (isTrackPath), so the workspace's tracks merge for an admin to see.
     tracks.push(...(r.canvasTracks || []));
     for (const h of r.mcpAllowlist || []) mcp.add(h);
+    // ⏳ MIGRATION WINDOW — a fragment with NO `mcpPaths` key was published by a clone
+    // older than path declarations, so it gets the floor that engine had; a fragment
+    // carrying `[]` declared "no extra paths" and gets nothing. Absent and empty are
+    // different on purpose: a manifest cannot be re-published from here, and a vintage one
+    // would otherwise lose an endpoint it was serving the moment its pin moved. Keyed on
+    // the manifest, never on who published it. Delete both lines with
+    // LEGACY_MCP_PATH_FLOOR — see the constant for the condition that allows it.
+    if (!Array.isArray(r.mcpPaths)) for (const p of LEGACY_MCP_PATH_FLOOR) mcpPaths.add(p);
     for (const p of r.mcpPaths || []) mcpPaths.add(p);
     if (r.publicSkillPrefixes) skillPrefixes = r.publicSkillPrefixes;
     spacesList.push(sp);
@@ -3544,6 +3553,12 @@ function __setChromeTestState(pointer, spaces, on) {
 // space.json "mcpAllowlists" → {"paths":[…]} → routing → MCP_PATH_ALLOWLIST. A
 // workspace's endpoint has no business being spelled out in a shared engine, and an
 // engine pin bump has no business being what it takes to add one.
+//
+// ⏳ One exception, and it is about manifest vintage rather than about any platform: a
+// workspace whose live routing fragment predates path declarations (no `mcpPaths` key at
+// all) is still handed the floor that engine had, so moving its pin does not take an
+// endpoint away that it cannot re-declare from here. See LEGACY_MCP_PATH_FLOOR in
+// src/tenant-context.mjs for what ends that.
 const MCP_PROXY_PATHS = new Set([
   "/mcp",
   "/oauth/registrations",

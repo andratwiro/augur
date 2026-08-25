@@ -93,6 +93,38 @@ export const TENANT_FIELD_SOURCES = Object.freeze(
   Object.fromEntries(Object.entries(FIELDS).map(([k, v]) => [k, v.source])),
 );
 
+// ⏳ DEPRECATION WINDOW — the path floor an engine that predates path declarations had.
+//
+// Until the engine learned that a workspace declares its own proxy paths, the floor was
+// four fixed paths: the three the MCP/OAuth protocol speaks, plus one platform API
+// endpoint that sat in the shared engine because a single prototype called it. Removing
+// the fourth is right, and it is what `MCP_PROXY_PATHS` now says. But the declaration
+// that replaces it is written INTO A MANIFEST AT PUBLISH TIME, by the clone that
+// publishes — so an instance whose live manifests were published by an older clone
+// carries no declaration at all, and taking this engine would turn that endpoint's call
+// into a 403 with no action available on the serving side to put it back.
+//
+// So the floor is kept for a manifest of that VINTAGE, and vintage is all it is keyed on:
+// a routing fragment with NO `mcpPaths` key predates declarations and gets the old floor;
+// a fragment carrying an EMPTY ARRAY is a real declaration meaning "no extra paths" and
+// gets nothing. Absent and empty are different, and that difference is the whole shim.
+// Nothing here names a company or reads a hostname — a vintage manifest of ANY workspace
+// gets the same floor, which is exactly what those manifests were serving yesterday.
+//
+// This is the same shape as LEGACY_USER_COOKIE in src/_worker.js: read, never written.
+// Every current build emits the key unconditionally (build.js writes `mcpPaths` into
+// routing.json and into every per-space manifest fragment, `[]` when a workspace declares
+// none), so a single publish from a current clone retires the shim for that workspace on
+// its own, with nothing to migrate.
+//
+// TO DELETE IT: when every live instance's every space manifest carries an `mcpPaths` key
+// — check the served fragment, `routing.mcpPaths`, per space, not a local build — remove
+// this constant and the two ⏳ read sites that name it: `routingFields` below (assets
+// mode) and `derivedRoutingFields` in src/_worker.js (bundle mode), plus the ⏳ note
+// beside MCP_PROXY_PATHS that points here. The ⏳ cases in test/mcp-proxy-paths.test.mjs
+// go in the same change. Nothing else refers to it.
+export const LEGACY_MCP_PATH_FLOOR = Object.freeze(["/web_api/v1/app_configuration"]);
+
 // Fresh defaults. Called per context so no two tenants share a mutable value — see
 // property 2 at the top of this file.
 function defaults() {
@@ -150,6 +182,10 @@ export function instanceFields(inst) {
 // disagree about which hosts are allowed. `MCP_PATH_ALLOWLIST` needs no such twin: a
 // workspace declares a handful of paths, not hundreds of hosts, so the read site scans
 // the array itself and there is no second copy to fall out of step.
+//
+// ⏳ `mcpPaths` ABSENT is a routing.json older than path declarations, and keeps the old
+// floor (LEGACY_MCP_PATH_FLOOR). `mcpPaths: []` is a declaration meaning none, and keeps
+// nothing. Delete the conditional with the constant.
 export function routingFields(routing) {
   const doc = routing && typeof routing === "object" ? routing : {};
   const allowlist = doc.mcpAllowlist || [];
@@ -164,7 +200,7 @@ export function routingFields(routing) {
     CANVAS_TRACKS: doc.canvasTracks || [],
     MCP_HOST_ALLOWLIST: allowlist,
     mcpStaticHosts: new Set(allowlist),
-    MCP_PATH_ALLOWLIST: doc.mcpPaths || [],
+    MCP_PATH_ALLOWLIST: Array.isArray(doc.mcpPaths) ? doc.mcpPaths : [...LEGACY_MCP_PATH_FLOOR],
     SPACES: Array.isArray(doc.spaces) ? doc.spaces : [],
     CHROME_POINTER: doc.chrome || null,
     RUNTIME_CHROME: !!doc.runtimeChrome,
