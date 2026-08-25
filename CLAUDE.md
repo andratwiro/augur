@@ -264,6 +264,17 @@ comments bleed across screens.
   space values in `space.json`. Outside contributors go through PRs (CONTRIBUTING.md) —
   fork to PR, not to deploy; maintainer review holds PRs to the same bar: generic,
   config-driven, minimal-instance-safe.
+- **No workspace's private vocabulary in the engine.** `check` runs two guards, and they
+  work differently on purpose. The word scan is a denylist of instance/product/personal
+  words — it catches a name someone already wrote down. `scripts/no-foreign-vocabulary.mjs`
+  catches the one nobody has: it names nothing, and fails on SHAPES only a foreign
+  vocabulary has — a colour stored as a quoted value under a proper noun (a brand table),
+  a regex anchored on a literal `--<prefix>-` (the token vocabulary is the skill's
+  `cssPrefixes`, carried out on the graph — interpolate it), and a `<meta name>` the
+  engine reads that is neither standard web vocabulary nor `augur-*`. Its own header
+  states the two gaps it does NOT cover (a workspace's slug prefixes, and a private word
+  smuggled into a general-vocabulary list) — both are the same shape as the engine's own
+  names, so they are review questions, not lint ones. Read that before assuming cover.
 - The canvas layer is documented in `CANVAS.md`; the pet layer in `pitis/README.md`.
 
 ## Authentication

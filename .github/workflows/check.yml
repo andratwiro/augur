@@ -28,6 +28,17 @@ jobs:
         # same answer today and is invisible to every other check, so it is caught here —
         # in `check`, which gates the deploy, rather than only in the suite.
         run: node scripts/one-tenant-resolver.mjs
+      - name: No foreign vocabulary in the engine (no-foreign-vocabulary)
+        # The word scan below is a DENYLIST, so it only ever catches a name somebody
+        # already wrote down — which is why it passed green through an extraction that
+        # removed nine customer names, a customer's slug prefixes and a customer's
+        # CSS-variable namespace from this repo. Widening that list is not the fix: a
+        # list of client names in a public repo is the same problem with a canonical
+        # index attached. This guard checks SHAPES instead — a colour stored under a
+        # proper noun, a hardcoded custom-property prefix, a meta tag in a namespace
+        # the engine does not own — and names nobody. It runs BEFORE the word scan
+        # because it is the one that catches the client nobody has met yet.
+        run: node scripts/no-foreign-vocabulary.mjs
       - name: No instance, product, or personal words in the engine
         # The engine is generic — instance-specific values belong in deploy.config.json /
         # space.json, never in engine code, scripts, docs, or shipped chrome. Scan the
