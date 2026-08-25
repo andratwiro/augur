@@ -1,0 +1,349 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Set up your design system</title>
+<meta name="description" content="The workspace's design system, read live from its own token file: change the ink here and watch every component move, then copy the two lines that make it permanent.">
+<link rel="stylesheet" href="../../../skills/starter-ui/starter-tokens.css">
+<link rel="stylesheet" href="../../../skills/starter-ui/starter-ui.css">
+<style>
+  .swatches { display: grid; grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr)); gap: var(--starter-s4); }
+  .scale { display: grid; gap: var(--starter-s3); }
+  .scale__row { display: grid; grid-template-columns: 7rem minmax(0, 1fr); gap: var(--starter-s4); align-items: baseline; border-bottom: var(--starter-hair); padding-bottom: var(--starter-s3); }
+  .scale__row:last-child { border-bottom: 0; }
+  .scale__key { font: var(--starter-text-xs)/1.6 var(--starter-font-display); letter-spacing: .1em; text-transform: uppercase; color: var(--starter-ink-3); }
+  .scale__spec { display: block; font: var(--starter-text-xs)/1.6 var(--starter-font-display); color: var(--starter-ink-3); letter-spacing: 0; text-transform: none; }
+  .ramp { display: grid; gap: var(--starter-s2); }
+  .ramp__row { display: grid; grid-template-columns: 5rem minmax(0, 1fr) 4rem; gap: var(--starter-s3); align-items: center; font: var(--starter-text-xs)/1.6 var(--starter-font-display); color: var(--starter-ink-2); }
+  .ramp__bar { height: 10px; background: var(--starter-ink-2); border-radius: 2px; }
+
+  .inks { display: flex; flex-wrap: wrap; gap: var(--starter-s2); align-items: center; }
+  .ink {
+    width: 2.4rem; height: 2.4rem; padding: 0;
+    border: 2px solid transparent; border-radius: 50%;
+    box-shadow: inset 0 0 0 1px rgba(29, 27, 36, .18);
+    cursor: pointer;
+  }
+  .ink[aria-pressed="true"] { border-color: var(--starter-ink); }
+  .ink--custom { position: relative; overflow: hidden; }
+  .ink--custom input { position: absolute; inset: -25%; width: 150%; height: 150%; border: 0; padding: 0; cursor: pointer; }
+
+  .specimens { display: grid; gap: var(--starter-s5); }
+  .specimen { display: grid; grid-template-columns: 8rem minmax(0, 1fr); gap: var(--starter-s4); align-items: start; }
+  .specimen__label { font: var(--starter-text-xs)/1.9 var(--starter-font-display); letter-spacing: .12em; text-transform: uppercase; color: var(--starter-ink-3); }
+  @media (max-width: 700px) {
+    .specimen, .scale__row { grid-template-columns: minmax(0, 1fr); gap: var(--starter-s2); }
+  }
+</style>
+</head>
+<body class="s-page">
+
+<main class="s-sheet">
+
+  <header class="s-block">
+    <div class="s-block__rail">02 / 03</div>
+    <div>
+      <p class="s-eyebrow">Start here</p>
+      <h1 class="s-title s-title--hero">Your design system</h1>
+      <p class="s-lede">Every screen in this workspace is drawn from one small file of tokens. This
+        page reads that file live — the values below are not a picture of the system, they are the
+        system.</p>
+    </div>
+  </header>
+
+  <section class="s-block">
+    <div class="s-block__rail">Colour</div>
+    <div>
+      <h2 class="s-h2">Six colours, one of them hot</h2>
+      <p class="s-prose">Five quiet values carry the paper and the ink. The sixth marks the one thing
+        on a screen you are meant to act on — a primary button, a step you are on, a pin. If two
+        things on a screen wear it, neither one reads.</p>
+      <div class="swatches" id="swatches"></div>
+    </div>
+  </section>
+
+  <section class="s-block">
+    <div class="s-block__rail">Try it</div>
+    <div>
+      <h2 class="s-h2">Change the hot ink</h2>
+      <p class="s-prose">Pick one. Everything below — and the swatches above, and this page's own
+        buttons — moves at once, because they all read the same token.</p>
+      <div class="inks" role="group" aria-label="Hot ink">
+        <button type="button" class="ink" data-ink="#cf4224" style="background:#cf4224" aria-pressed="true" title="Vermilion"></button>
+        <button type="button" class="ink" data-ink="#2f4bd8" style="background:#2f4bd8" aria-pressed="false" title="Ultramarine"></button>
+        <button type="button" class="ink" data-ink="#3d7a4a" style="background:#3d7a4a" aria-pressed="false" title="Moss"></button>
+        <button type="button" class="ink" data-ink="#7b3fa0" style="background:#7b3fa0" aria-pressed="false" title="Plum"></button>
+        <button type="button" class="ink" data-ink="#c98a0e" style="background:#c98a0e" aria-pressed="false" title="Marigold"></button>
+        <span class="ink ink--custom" title="Any colour">
+          <input type="color" id="ink-custom" value="#cf4224" aria-label="Pick any hot ink">
+        </span>
+        <button type="button" class="s-btn s-btn--quiet" id="ink-reset">Reset</button>
+      </div>
+
+      <p class="s-prose" style="margin-top: var(--starter-s5)">To keep it, write these three lines into
+        <code>skills/starter-ui/starter-tokens.css</code>. The second is the same ink darkened until it
+        passes contrast as text; the third is its quietest wash.</p>
+      <div class="s-cmd s-cmd--paste">
+        <code class="s-cmd__text s-cmd__text--plain" id="token-code"></code>
+        <button type="button" class="s-cmd__btn" data-s-copy="#token-code">Copy</button>
+      </div>
+      <details class="s-prose s-disclosure" style="margin-top: var(--starter-s4)">
+        <summary>Or have your agent do it</summary>
+        <div class="s-cmd s-cmd--paste" style="margin-top: var(--starter-s3)">
+          <code class="s-cmd__text s-cmd__text--plain" id="token-ask"></code>
+          <button type="button" class="s-cmd__btn" data-s-copy="#token-ask">Copy</button>
+        </div>
+      </details>
+    </div>
+  </section>
+
+  <section class="s-block">
+    <div class="s-block__rail">Type</div>
+    <div>
+      <h2 class="s-h2">Two faces, seven sizes</h2>
+      <p class="s-prose">Display type is monospaced — this is a workspace made of plain files, and the
+        type says so. Body copy is the system sans, which every machine already has, so a screen looks
+        the same the moment it opens with nothing to download.</p>
+      <div class="scale" id="scale"></div>
+    </div>
+  </section>
+
+  <section class="s-block">
+    <div class="s-block__rail">Space</div>
+    <div>
+      <h2 class="s-h2">One rhythm, eight steps</h2>
+      <p class="s-prose">Every gap in this workspace is one of these. Reaching for a number that is not
+        on the ramp is the first sign a screen is drifting.</p>
+      <div class="ramp" id="ramp"></div>
+    </div>
+  </section>
+
+  <section class="s-block">
+    <div class="s-block__rail">Parts</div>
+    <div>
+      <h2 class="s-h2">What is already built</h2>
+      <p class="s-prose">Twelve parts, all classed <code>.s-*</code>, all drinking from the tokens.
+        Brief your agent to use these before it invents anything new — that is what keeps twenty
+        screens looking like one product.</p>
+
+      <div class="specimens">
+        <div class="specimen">
+          <div class="specimen__label">Buttons</div>
+          <div class="s-row">
+            <button type="button" class="s-btn s-btn--mark">Primary</button>
+            <button type="button" class="s-btn">Secondary</button>
+            <button type="button" class="s-btn s-btn--quiet">Quiet</button>
+            <button type="button" class="s-btn" disabled>Disabled</button>
+          </div>
+        </div>
+        <div class="specimen">
+          <div class="specimen__label">Chips</div>
+          <div class="s-row">
+            <span class="s-chip">Default</span>
+            <span class="s-chip s-chip--mark">Needs you</span>
+            <span class="s-chip s-chip--ok">Done</span>
+          </div>
+        </div>
+        <div class="specimen">
+          <div class="specimen__label">Card</div>
+          <div class="s-grid s-grid--2">
+            <div class="s-card">
+              <h3 class="s-h3">Plain card</h3>
+              <p class="s-caption">A panel on the sheet. Hairline, no shadow.</p>
+            </div>
+            <div class="s-card s-card--mark">
+              <h3 class="s-h3">Marked card</h3>
+              <p class="s-caption">The one panel that wants attention.</p>
+            </div>
+          </div>
+        </div>
+        <div class="specimen">
+          <div class="specimen__label">Command</div>
+          <div>
+            <div class="s-cmd">
+              <code class="s-cmd__text" id="demo-cmd">augur ship</code>
+              <button type="button" class="s-cmd__btn" data-s-copy="#demo-cmd">Copy</button>
+            </div>
+          </div>
+        </div>
+        <div class="specimen">
+          <div class="specimen__label">Field</div>
+          <div>
+            <label class="s-label" for="demo-field">Screen name</label>
+            <input class="s-field" id="demo-field" placeholder="watering log">
+          </div>
+        </div>
+        <div class="specimen">
+          <div class="specimen__label">Table</div>
+          <table class="s-table">
+            <thead><tr><th>Part</th><th>Class</th><th>Where it earns its place</th></tr></thead>
+            <tbody>
+              <tr><td>Sheet</td><td><code>.s-sheet</code></td><td>Every page in the workspace.</td></tr>
+              <tr><td>Steps</td><td><code>.s-step</code></td><td>Anything where the order is the instruction.</td></tr>
+              <tr><td>Stage</td><td><code>.s-stage</code></td><td>Media, 3D, a terminal.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <p class="s-note"><strong>The whole system is three files</strong>, at
+    <code>skills/starter-ui/</code>: the tokens, the components, and one line of behaviour. Nothing is
+    generated and nothing is compiled — open them and read them. Rename the parts, delete the ones you
+    never use, add your own. It is yours the moment you edit it.</p>
+
+</main>
+
+<script src="../../../skills/starter-ui/starter-ui.js" defer></script>
+<script>
+(function () {
+  "use strict";
+
+  var root = document.documentElement;
+  var css = function (name) { return getComputedStyle(root).getPropertyValue(name).trim(); };
+
+  /* ── Colour maths ────────────────────────────────────────────────────────
+     Two derived values per hot ink: a darker one that passes contrast as text
+     on the sheet, and a wash for quiet fills. Derived rather than picked, so
+     a colour anyone chooses still lands legibly. */
+  function hex2rgb(h) {
+    h = h.replace("#", "");
+    if (h.length === 3) h = h[0] + h[0] + h[1] + h[1] + h[2] + h[2];
+    return [parseInt(h.slice(0, 2), 16), parseInt(h.slice(2, 4), 16), parseInt(h.slice(4, 6), 16)];
+  }
+  function rgb2hex(c) {
+    return "#" + c.map(function (v) {
+      return Math.max(0, Math.min(255, Math.round(v))).toString(16).padStart(2, "0");
+    }).join("");
+  }
+  function mix(a, b, t) {
+    var x = hex2rgb(a), y = hex2rgb(b);
+    return rgb2hex([0, 1, 2].map(function (i) { return x[i] + (y[i] - x[i]) * t; }));
+  }
+  function luminance(hex) {
+    return hex2rgb(hex).map(function (v) {
+      v /= 255;
+      return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4);
+    }).reduce(function (l, v, i) { return l + v * [0.2126, 0.7152, 0.0722][i]; }, 0);
+  }
+  function contrast(a, b) {
+    var la = luminance(a), lb = luminance(b);
+    return (Math.max(la, lb) + 0.05) / (Math.min(la, lb) + 0.05);
+  }
+  function readableInk(hex, on) {
+    /* A fill and a text colour are not the same job: start one shade down, then
+       keep going until it clears 4.5:1 on the sheet. */
+    var out = mix(hex, "#000000", 0.18);
+    for (var t = 0.18; t <= 0.9 && contrast(out, on) < 4.5; t += 0.04) out = mix(hex, "#000000", t);
+    return out;
+  }
+
+  var DEFAULT_INK = "#cf4224";
+  var sheet = css("--starter-sheet") || "#fbfaf6";
+
+  function applyInk(hex) {
+    var ink = readableInk(hex, sheet);
+    var wash = mix(hex, sheet, 0.86);
+    root.style.setProperty("--starter-mark", hex);
+    root.style.setProperty("--starter-mark-ink", ink);
+    root.style.setProperty("--starter-wash", wash);
+    document.getElementById("ink-custom").value = hex;
+    Array.prototype.forEach.call(document.querySelectorAll("[data-ink]"), function (b) {
+      b.setAttribute("aria-pressed", String(b.getAttribute("data-ink").toLowerCase() === hex.toLowerCase()));
+    });
+    document.getElementById("token-code").textContent =
+      ":root {\n" +
+      "  --starter-mark:     " + hex + ";\n" +
+      "  --starter-mark-ink: " + ink + ";\n" +
+      "  --starter-wash:     " + wash + ";\n" +
+      "}";
+    document.getElementById("token-ask").textContent =
+      "In skills/starter-ui/starter-tokens.css, set --starter-mark to " + hex + ", " +
+      "--starter-mark-ink to " + ink + " and --starter-wash to " + wash + ". " +
+      "Change nothing else, then show me one of the prototypes so I can check it.";
+    paintSwatches();
+  }
+
+  /* ── The live token readouts ─────────────────────────────────────────── */
+  var COLOURS = [
+    ["--starter-paper", "the desk"],
+    ["--starter-sheet", "the sheet"],
+    ["--starter-ink", "every word that matters"],
+    ["--starter-ink-2", "captions, secondary"],
+    ["--starter-rule", "hairlines"],
+    ["--starter-mark", "the one hot ink"]
+  ];
+
+  function paintSwatches() {
+    var host = document.getElementById("swatches");
+    host.innerHTML = "";
+    COLOURS.forEach(function (row) {
+      var value = css(row[0]);
+      var el = document.createElement("div");
+      el.className = "s-swatch";
+      el.innerHTML =
+        '<div class="s-swatch__chip" style="background:' + value + '"></div>' +
+        '<div><div class="s-swatch__name">' + row[0] + "</div>" +
+        '<div class="s-swatch__val">' + value + " · " + row[1] + "</div></div>";
+      host.appendChild(el);
+    });
+  }
+
+  var SIZES = [
+    ["3xl", "--starter-text-3xl", "One big thing per page"],
+    ["2xl", "--starter-text-2xl", "Page title"],
+    ["xl", "--starter-text-xl", "Section title"],
+    ["lg", "--starter-text-lg", "Lede and step titles"],
+    ["md", "--starter-text-md", "Body copy — most of everything"],
+    ["sm", "--starter-text-sm", "Captions and chips"],
+    ["xs", "--starter-text-xs", "Plate numbers, labels"]
+  ];
+
+  (function paintScale() {
+    var host = document.getElementById("scale");
+    SIZES.forEach(function (row) {
+      var el = document.createElement("div");
+      el.className = "scale__row";
+      var face = row[0] === "md" || row[0] === "sm" ? "--starter-font-body" : "--starter-font-display";
+      el.innerHTML =
+        '<div class="scale__key">' + row[0] +
+        '<span class="scale__spec">' + css(row[1]) + "</span></div>" +
+        '<div style="font-family: var(' + face + '); font-size: var(' + row[1] + '); line-height:1.2; letter-spacing:-.02em">' +
+        row[2] + "</div>";
+      host.appendChild(el);
+    });
+  })();
+
+  (function paintRamp() {
+    var host = document.getElementById("ramp");
+    for (var i = 1; i <= 8; i++) {
+      var name = "--starter-s" + i;
+      var el = document.createElement("div");
+      el.className = "ramp__row";
+      el.innerHTML =
+        "<div>s" + i + "</div>" +
+        '<div><div class="ramp__bar" style="width: var(' + name + ')"></div></div>' +
+        "<div>" + css(name) + "</div>";
+      host.appendChild(el);
+    }
+  })();
+
+  /* ── Wiring ──────────────────────────────────────────────────────────── */
+  document.addEventListener("click", function (e) {
+    var b = e.target.closest("[data-ink]");
+    if (b) applyInk(b.getAttribute("data-ink"));
+  });
+  document.getElementById("ink-custom").addEventListener("input", function (e) {
+    applyInk(e.target.value);
+  });
+  document.getElementById("ink-reset").addEventListener("click", function () {
+    applyInk(DEFAULT_INK);
+  });
+
+  applyInk(DEFAULT_INK);
+})();
+</script>
+</body>
+</html>

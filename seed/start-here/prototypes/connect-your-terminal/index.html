@@ -1,0 +1,428 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Connect your terminal</title>
+<meta name="description" content="Two ways to point a coding agent at this workspace: one line if you already have an agent, or fifteen numbered minutes if you have never opened a terminal.">
+<link rel="stylesheet" href="../../../skills/starter-ui/starter-tokens.css">
+<link rel="stylesheet" href="../../../skills/starter-ui/starter-ui.css">
+<style>
+  /* Page-local layout. Everything with a colour in it comes from the tokens. */
+  .fork { display: grid; grid-template-columns: repeat(auto-fit, minmax(18rem, 1fr)); gap: var(--starter-s4); }
+  .fork__card {
+    display: flex; flex-direction: column; align-items: flex-start; gap: var(--starter-s3);
+    padding: var(--starter-s5); text-align: left;
+    background: var(--starter-sheet); border: var(--starter-hair); border-radius: var(--starter-radius-2);
+    cursor: pointer; font: inherit; color: inherit;
+    transition: border-color var(--starter-fast), transform var(--starter-fast), box-shadow var(--starter-fast);
+  }
+  .fork__card:hover { border-color: var(--starter-mark); transform: translateY(-2px); box-shadow: var(--starter-lift); }
+  .fork__card p { margin: 0; color: var(--starter-ink-2); font-size: var(--starter-text-sm); }
+  .fork__go { margin-top: auto; color: var(--starter-mark-ink); font: 600 var(--starter-text-sm)/1 var(--starter-font-display); }
+
+  .path { display: none; }
+  body[data-gv-screen="have-agent"] .path--have,
+  body[data-gv-screen="no-agent"] .path--none { display: block; }
+  body[data-gv-screen="have-agent"] .path--fork,
+  body[data-gv-screen="no-agent"] .path--fork { display: none; }
+
+  .osbar { display: flex; flex-wrap: wrap; gap: var(--starter-s2); align-items: center; }
+  .osbar__label { font: 600 var(--starter-text-xs)/1 var(--starter-font-display); letter-spacing: .12em; text-transform: uppercase; color: var(--starter-ink-2); margin-right: var(--starter-s2); }
+  .os { display: none; }
+  body[data-os="mac"] .os--mac, body[data-os="win"] .os--win, body[data-os="linux"] .os--linux { display: block; }
+
+  .check { display: flex; gap: var(--starter-s2); align-items: baseline; font-size: var(--starter-text-sm); color: var(--starter-ink-2); }
+  .check::before { content: "→"; color: var(--starter-mark-ink); font-family: var(--starter-font-display); }
+
+  details.ask { border-top: var(--starter-hair); padding-top: var(--starter-s3); }
+  details.ask > div { margin-top: var(--starter-s3); }
+  .ask__why { margin: 0 0 var(--starter-s2); font-size: var(--starter-text-sm); color: var(--starter-ink-2); }
+
+  .backlink { margin-bottom: var(--starter-s5); }
+  .timeline { display: flex; align-items: baseline; gap: var(--starter-s3); flex-wrap: wrap; }
+</style>
+</head>
+<body class="s-page" data-gv-screen="fork" data-os="mac">
+
+<main class="s-sheet">
+
+  <header class="s-block">
+    <div class="s-block__rail">01 / 03</div>
+    <div>
+      <p class="s-eyebrow">Start here</p>
+      <h1 class="s-title s-title--hero">Connect your terminal</h1>
+      <p class="s-lede">This workspace is built by briefing a coding agent on your own machine.
+        Nothing to install here, nothing to configure. One connection and everything the agent
+        writes shows up on this site.</p>
+    </div>
+  </header>
+
+  <!-- ─────────────────────────────────────────── the fork -->
+  <section class="s-block path--fork">
+    <div class="s-block__rail">Pick one</div>
+    <div>
+      <div class="fork">
+        <button type="button" class="fork__card" data-go="have-agent">
+          <span class="s-chip s-chip--mark">1 minute</span>
+          <h2 class="s-h3">I already have a coding agent</h2>
+          <p>An agent CLI runs in your terminal today — you have briefed it before.</p>
+          <span class="fork__go">Get the command →</span>
+        </button>
+        <button type="button" class="fork__card" data-go="no-agent">
+          <span class="s-chip">15 minutes</span>
+          <h2 class="s-h3">Not yet — set one up</h2>
+          <p>You have never opened a terminal, or you have and would rather not guess.
+            Five steps, each with a way out if it goes sideways.</p>
+          <span class="fork__go">Start the walkthrough →</span>
+        </button>
+      </div>
+      <p class="s-caption" style="margin-top: var(--starter-s4)">Unsure? Take the walkthrough. It skips
+        anything you already have.</p>
+    </div>
+  </section>
+
+  <!-- ─────────────────────────────────────────── path A: has an agent -->
+  <div class="path path--have">
+    <section class="s-block">
+      <div class="s-block__rail">Path A</div>
+      <div>
+        <p class="backlink"><button type="button" class="s-btn s-btn--quiet" data-go="fork">← Both paths</button></p>
+        <h2 class="s-h2">Run this where your agent runs</h2>
+        <p class="s-prose">In the folder you want this workspace to live in, run:</p>
+        <div class="s-cmd">
+          <code class="s-cmd__text" id="cmd-connect">npx augur connect your-workspace</code>
+          <button type="button" class="s-cmd__btn" data-s-copy="#cmd-connect">Copy</button>
+        </div>
+        <p class="s-prose" style="margin-top: var(--starter-s4)">A browser tab opens and asks you to
+          approve the connection. Approve it and the terminal has a key of its own — your password
+          never goes near the agent. The workspace lands in that folder, ready to edit.</p>
+        <div class="check">The terminal prints the workspace it is connected to, and the folder now
+          holds this site's screens as plain HTML files.</div>
+
+        <details class="ask s-disclosure" style="margin-top: var(--starter-s5)">
+          <summary>Rather have the agent do it?</summary>
+          <div>
+            <p class="ask__why">Paste this into your agent instead of running the command yourself.</p>
+            <div class="s-cmd s-cmd--paste">
+              <code class="s-cmd__text s-cmd__text--plain" id="ask-agent">Run `npx augur connect your-workspace` in this folder. It will open a browser tab for me to approve — tell me when it is waiting, and tell me exactly what it prints when it finishes.</code>
+              <button type="button" class="s-cmd__btn" data-s-copy="#ask-agent">Copy</button>
+            </div>
+          </div>
+        </details>
+      </div>
+    </section>
+
+    <section class="s-block">
+      <div class="s-block__rail">Then</div>
+      <div>
+        <h2 class="s-h2">Brief it like a designer</h2>
+        <p class="s-prose">There is no editor here. You describe a screen, the agent builds it as a
+          page in this workspace, and publishing puts it on this site. Your first brief can be this one:</p>
+        <div class="s-cmd s-cmd--paste">
+          <code class="s-cmd__text s-cmd__text--plain" id="first-brief">Read skills/starter-ui/SKILL.md and the prototypes under start-here/prototypes/, then build a new one at sketches/prototypes/first-screen/index.html. It is [one or two sentences describing the screen you want]. Use the starter design system rather than inventing new styles, give it a one-line meta description, and publish it when it works.</code>
+          <button type="button" class="s-cmd__btn" data-s-copy="#first-brief">Copy</button>
+        </div>
+        <p class="s-caption" style="margin-top: var(--starter-s3)">Fill in the bracket with a real
+          screen you need. Vague briefs make vague screens.</p>
+      </div>
+    </section>
+  </div>
+
+  <!-- ─────────────────────────────────────────── path B: no agent yet -->
+  <div class="path path--none">
+    <section class="s-block">
+      <div class="s-block__rail">Path B</div>
+      <div>
+        <p class="backlink"><button type="button" class="s-btn s-btn--quiet" data-go="fork">← Both paths</button></p>
+        <div class="timeline">
+          <h2 class="s-h2" style="margin-bottom:0">Fifteen minutes, five steps</h2>
+          <span class="s-chip">2 + 5 + 3 + 2 + 3 min</span>
+        </div>
+        <p class="s-prose" style="margin-top: var(--starter-s3)">Do them in order. Every step says what
+          you should see when it worked — if you see something else, open the way out underneath it and
+          paste the question to any assistant you can chat with. Each one is written to be answered cold,
+          with no other context.</p>
+        <div class="osbar" role="group" aria-label="Your computer">
+          <span class="osbar__label">Your computer</span>
+          <button type="button" class="s-btn" data-os-pick="mac" aria-pressed="true">macOS</button>
+          <button type="button" class="s-btn" data-os-pick="win" aria-pressed="false">Windows</button>
+          <button type="button" class="s-btn" data-os-pick="linux" aria-pressed="false">Linux</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="s-block">
+      <div class="s-block__rail">Steps</div>
+      <div>
+        <ol class="s-steps">
+
+          <!-- 1 -->
+          <li class="s-step">
+            <div class="s-step__no">1</div>
+            <div class="s-step__body">
+              <div class="s-step__head">
+                <h3 class="s-step__title">Open a terminal</h3>
+                <span class="s-chip">2 min</span>
+              </div>
+              <div class="os os--mac">
+                <p class="s-prose">Press <strong>⌘ + Space</strong>, type <strong>Terminal</strong>,
+                  press Enter. It ships with the Mac; nothing to install.</p>
+              </div>
+              <div class="os os--win">
+                <p class="s-prose">Press the <strong>Windows key</strong>, type
+                  <strong>PowerShell</strong>, press Enter. It ships with Windows; nothing to install.</p>
+              </div>
+              <div class="os os--linux">
+                <p class="s-prose">Press <strong>Ctrl + Alt + T</strong>, or find
+                  <strong>Terminal</strong> in your applications menu.</p>
+              </div>
+              <div class="check">A window with a blinking cursor, your username at the start of the
+                line. Text only — that is correct.</div>
+              <details class="ask s-disclosure">
+                <summary>Stuck on this step?</summary>
+                <div>
+                  <p class="ask__why">Paste this to any assistant you can chat with — a browser
+                    chatbot is fine.</p>
+                  <div class="s-cmd s-cmd--paste">
+                    <code class="s-cmd__text s-cmd__text--plain" id="ask-1">I'm on <span class="os-name">macOS</span> and I have never used a terminal. I need to open the built-in terminal app and I can't find it. Tell me exactly where to click, one step at a time, and what the window should look like when it's open.</code>
+                    <button type="button" class="s-cmd__btn" data-s-copy="#ask-1">Copy</button>
+                  </div>
+                </div>
+              </details>
+            </div>
+          </li>
+
+          <!-- 2 -->
+          <li class="s-step">
+            <div class="s-step__no">2</div>
+            <div class="s-step__body">
+              <div class="s-step__head">
+                <h3 class="s-step__title">Install Node.js</h3>
+                <span class="s-chip">5 min</span>
+              </div>
+              <p class="s-prose">Node is the runtime the agent's command line needs. Check whether you
+                already have it — type this and press Enter:</p>
+              <div class="s-cmd">
+                <code class="s-cmd__text" id="cmd-node">node -v</code>
+                <button type="button" class="s-cmd__btn" data-s-copy="#cmd-node">Copy</button>
+              </div>
+              <p class="s-prose">A version number of <strong>v20</strong> or higher means you are done
+                with this step. Anything else — <em>command not found</em>, or a lower number — install
+                the current LTS release.</p>
+              <div class="os os--mac">
+                <p class="s-prose">Download the macOS installer from <strong>nodejs.org</strong>, open
+                  it, click through. Then close the terminal window and open a new one.</p>
+              </div>
+              <div class="os os--win">
+                <p class="s-prose">Download the Windows installer (.msi) from <strong>nodejs.org</strong>,
+                  run it, keep the defaults. Then close PowerShell and open it again.</p>
+              </div>
+              <div class="os os--linux">
+                <p class="s-prose">Your package manager's version is often too old. Take the current LTS
+                  from <strong>nodejs.org</strong> or use nvm, then open a new terminal.</p>
+              </div>
+              <div class="check"><code>node -v</code> prints something like <strong>v22.11.0</strong>.</div>
+              <details class="ask s-disclosure">
+                <summary>Stuck on this step?</summary>
+                <div>
+                  <p class="ask__why">Paste this, and add whatever the terminal actually said.</p>
+                  <div class="s-cmd s-cmd--paste">
+                    <code class="s-cmd__text s-cmd__text--plain" id="ask-2">I'm on <span class="os-name">macOS</span>. I ran `node -v` in the terminal and it did not print a version number of v20 or higher. I need to install the current LTS release of Node.js and confirm it worked. Walk me through it one step at a time, assume I have never used a terminal, and tell me how to check it afterwards. Here is exactly what the terminal printed: </code>
+                    <button type="button" class="s-cmd__btn" data-s-copy="#ask-2">Copy</button>
+                  </div>
+                </div>
+              </details>
+            </div>
+          </li>
+
+          <!-- 3 -->
+          <li class="s-step">
+            <div class="s-step__no">3</div>
+            <div class="s-step__body">
+              <div class="s-step__head">
+                <h3 class="s-step__title">Install a coding agent</h3>
+                <span class="s-chip">3 min</span>
+              </div>
+              <p class="s-prose">Any agent that runs in a terminal and can read and write files works
+                here. If you have no preference, install this one:</p>
+              <div class="s-cmd">
+                <code class="s-cmd__text" id="cmd-agent">npm install -g @anthropic-ai/claude-code</code>
+                <button type="button" class="s-cmd__btn" data-s-copy="#cmd-agent">Copy</button>
+              </div>
+              <p class="s-caption">Others exist and are equally fine — pick whichever you already pay
+                for. The rest of this walkthrough assumes the one above; swap the command names if you
+                chose differently.</p>
+              <div class="check">The terminal ends with something like <strong>added 1 package</strong>
+                and gives you your prompt back.</div>
+              <details class="ask s-disclosure">
+                <summary>Stuck on this step?</summary>
+                <div>
+                  <p class="ask__why">Permission errors on this step are common and harmless to fix.</p>
+                  <div class="s-cmd s-cmd--paste">
+                    <code class="s-cmd__text s-cmd__text--plain" id="ask-3">I'm on <span class="os-name">macOS</span>. I ran `npm install -g @anthropic-ai/claude-code` and it failed instead of finishing. Explain what went wrong in plain language and give me the safest fix, one step at a time — I have never used a terminal, and I would rather not run anything with sudo unless you explain why it is needed. Here is exactly what it printed: </code>
+                    <button type="button" class="s-cmd__btn" data-s-copy="#ask-3">Copy</button>
+                  </div>
+                </div>
+              </details>
+            </div>
+          </li>
+
+          <!-- 4 -->
+          <li class="s-step">
+            <div class="s-step__no">4</div>
+            <div class="s-step__body">
+              <div class="s-step__head">
+                <h3 class="s-step__title">Sign in to the agent</h3>
+                <span class="s-chip">2 min</span>
+              </div>
+              <p class="s-prose">Start it. The first run walks you through signing in — a browser tab
+                opens, you approve, you come back to the terminal.</p>
+              <div class="s-cmd">
+                <code class="s-cmd__text" id="cmd-start">claude</code>
+                <button type="button" class="s-cmd__btn" data-s-copy="#cmd-start">Copy</button>
+              </div>
+              <p class="s-prose">Once it is running, type a sentence and press Enter. It answers in the
+                terminal. That is the whole interface — you are talking to it, not programming it.</p>
+              <div class="check">You type <em>hello</em>, it replies. Leave it running; the next step
+                happens right here.</div>
+              <details class="ask s-disclosure">
+                <summary>Stuck on this step?</summary>
+                <div>
+                  <p class="ask__why">Sign-in problems are the agent's, not this workspace's — ask about
+                    the agent.</p>
+                  <div class="s-cmd s-cmd--paste">
+                    <code class="s-cmd__text s-cmd__text--plain" id="ask-4">I'm on <span class="os-name">macOS</span>. I installed the Claude Code CLI and typed `claude` in the terminal, but I could not get signed in. Explain what the sign-in flow is supposed to do, what to check, and how to start it again from scratch. Assume I am not technical. Here is what the terminal shows: </code>
+                    <button type="button" class="s-cmd__btn" data-s-copy="#ask-4">Copy</button>
+                  </div>
+                </div>
+              </details>
+            </div>
+          </li>
+
+          <!-- 5 -->
+          <li class="s-step">
+            <div class="s-step__no">5</div>
+            <div class="s-step__body">
+              <div class="s-step__head">
+                <h3 class="s-step__title">Connect this workspace</h3>
+                <span class="s-chip">3 min</span>
+              </div>
+              <p class="s-prose">Last one. Ask the agent to connect, in plain language — it runs the
+                command for you:</p>
+              <div class="s-cmd s-cmd--paste">
+                <code class="s-cmd__text s-cmd__text--plain" id="ask-5-do">Run `npx augur connect your-workspace` in this folder. It will open a browser tab for me to approve — tell me when it is waiting, and tell me exactly what it prints when it finishes.</code>
+                <button type="button" class="s-cmd__btn" data-s-copy="#ask-5-do">Copy</button>
+              </div>
+              <p class="s-prose">Approve the tab that opens. The terminal now has a key of its own, so
+                your password never goes near the agent, and this workspace's screens are files in that
+                folder.</p>
+              <div class="check">The terminal prints the workspace it is connected to. You are done —
+                everything from here is briefing, not setup.</div>
+              <details class="ask s-disclosure">
+                <summary>Stuck on this step?</summary>
+                <div>
+                  <p class="ask__why">Paste this to the agent itself; it can read its own error.</p>
+                  <div class="s-cmd s-cmd--paste">
+                    <code class="s-cmd__text s-cmd__text--plain" id="ask-5">The connect command failed. Read the error carefully and tell me in plain language what it means, whether it is a problem on my machine or on the server, and what to try next. Do not run anything destructive. If it is a permissions or network problem, say so plainly.</code>
+                    <button type="button" class="s-cmd__btn" data-s-copy="#ask-5">Copy</button>
+                  </div>
+                </div>
+              </details>
+            </div>
+          </li>
+        </ol>
+
+        <div class="s-card s-card--mark" style="margin-top: var(--starter-s6)">
+          <h3 class="s-h3">Connected. Now brief it.</h3>
+          <p class="s-prose">There is no editor in this product. You describe a screen, the agent builds
+            it here, and publishing puts it on this site for everyone. Start with this:</p>
+          <div class="s-cmd s-cmd--paste">
+            <code class="s-cmd__text s-cmd__text--plain" id="first-brief-2">Read skills/starter-ui/SKILL.md and the prototypes under start-here/prototypes/, then build a new one at sketches/prototypes/first-screen/index.html. It is [one or two sentences describing the screen you want]. Use the starter design system rather than inventing new styles, give it a one-line meta description, and publish it when it works.</code>
+            <button type="button" class="s-cmd__btn" data-s-copy="#first-brief-2">Copy</button>
+          </div>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <p class="s-note"><strong>This page is a prototype.</strong> It is one HTML file in this workspace,
+    at <code>start-here/prototypes/connect-your-terminal/index.html</code>, wearing the same design
+    system as everything else. Once you are connected you can rewrite it — including this sentence.</p>
+
+</main>
+
+<script src="../../../skills/starter-ui/starter-ui.js" defer></script>
+<script>
+(function () {
+  "use strict";
+
+  /* ── The connect command ──────────────────────────────────────────────────
+     One string, used in three places on this page. Provisioning rewrites the
+     line below when it copies this workspace into a new account. Left empty,
+     the page reads the workspace name off the URL it is being served from, and
+     falls back to a placeholder when the file is opened straight from disk. */
+  var CONNECT_COMMAND = "";
+
+  function connectCommand() {
+    if (CONNECT_COMMAND) return CONNECT_COMMAND;
+    var host = location.hostname || "";
+    var label = host.split(".")[0];
+    var named = host.indexOf(".") > 0 && label && label !== "localhost" && !/^\d+$/.test(label);
+    return "npx augur connect " + (named ? label : "your-workspace");
+  }
+
+  var cmd = connectCommand();
+  var cmdEl = document.getElementById("cmd-connect");
+  if (cmdEl) cmdEl.textContent = cmd;
+  ["ask-agent", "ask-5-do"].forEach(function (id) {
+    var el = document.getElementById(id);
+    if (el) el.textContent = el.textContent.replace(/npx augur connect [\w-]+/, cmd);
+  });
+
+  /* ── Which path you are on ────────────────────────────────────────────────
+     The screen changes without the URL changing, so publish it on
+     <body data-gv-screen> — that is what scopes a pinned comment to the screen
+     it was left on. */
+  function go(screen) {
+    document.body.setAttribute("data-gv-screen", screen);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+  document.addEventListener("click", function (e) {
+    var el = e.target.closest("[data-go]");
+    if (el) go(el.getAttribute("data-go"));
+  });
+
+  /* ── Which computer you are on ────────────────────────────────────────── */
+  var OS_NAMES = { mac: "macOS", win: "Windows", linux: "Linux" };
+
+  function detectOs() {
+    var p = (navigator.userAgentData && navigator.userAgentData.platform) ||
+            navigator.platform || navigator.userAgent || "";
+    p = p.toLowerCase();
+    if (p.indexOf("win") === 0 || p.indexOf("windows") > -1) return "win";
+    if (p.indexOf("linux") > -1 || p.indexOf("x11") > -1) return "linux";
+    return "mac";
+  }
+
+  function setOs(os) {
+    document.body.setAttribute("data-os", os);
+    var name = OS_NAMES[os] || OS_NAMES.mac;
+    Array.prototype.forEach.call(document.querySelectorAll(".os-name"), function (el) {
+      el.textContent = name;
+    });
+    Array.prototype.forEach.call(document.querySelectorAll("[data-os-pick]"), function (b) {
+      b.setAttribute("aria-pressed", String(b.getAttribute("data-os-pick") === os));
+    });
+  }
+
+  document.addEventListener("click", function (e) {
+    var b = e.target.closest("[data-os-pick]");
+    if (b) setOs(b.getAttribute("data-os-pick"));
+  });
+
+  setOs(detectOs());
+})();
+</script>
+</body>
+</html>

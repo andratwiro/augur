@@ -1,0 +1,52 @@
+{
+  "_comment": "Seeded comment threads, keyed by the page path they belong to. Provisioning writes each value verbatim under the comment key for that path (`c:<path>`), in the same write as the first admin, so a new workspace opens with the review loop already running. The record shape is the overlay's own — id, sel (the CSS selector the pin sticks to), fx/fy (where inside that element), resolved, annotation, messages — and `at` should be stamped with the provisioning time so the threads do not read as months old on day one.",
+
+  "/start-here/sample-with-comments/": [
+    {
+      "id": "seed-pin-fee",
+      "sel": "#fee-note",
+      "fx": 0.88,
+      "fy": 0.5,
+      "px": 0,
+      "py": 0,
+      "cwx": null,
+      "cwy": null,
+      "view": null,
+      "screen": null,
+      "resolved": false,
+      "annotation": false,
+      "messages": [
+        {
+          "author": "Augur",
+          "verified": false,
+          "by": null,
+          "body": "A comment sticks to the element, not to a spot on the page — this one is stuck to the fee line, and it stays on it when the screen reflows or the copy changes. Reply here to try it, then press Shift+C and pin one of your own.",
+          "at": "2026-01-01T09:00:00.000Z"
+        }
+      ]
+    },
+    {
+      "id": "seed-pin-actions",
+      "sel": "#actions",
+      "fx": 0.74,
+      "fy": 0.5,
+      "px": 0,
+      "py": 0,
+      "cwx": null,
+      "cwy": null,
+      "view": null,
+      "screen": null,
+      "resolved": false,
+      "annotation": false,
+      "messages": [
+        {
+          "author": "Augur",
+          "verified": false,
+          "by": null,
+          "body": "And this is what a useful one looks like. Cancel appointment sits right beside Confirm, and only one of the two can be undone. Move it out of the row and make it a plain text link underneath — then send that sentence to your agent and watch the screen change.",
+          "at": "2026-01-01T09:01:00.000Z"
+        }
+      ]
+    }
+  ]
+}

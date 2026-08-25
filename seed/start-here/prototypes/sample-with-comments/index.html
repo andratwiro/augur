@@ -1,0 +1,172 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sample screen with comments</title>
+<meta name="description" content="A working booking screen with two comments already pinned to it, so the review loop is something you reply to on day one rather than read about.">
+<link rel="stylesheet" href="../../../skills/starter-ui/starter-tokens.css">
+<link rel="stylesheet" href="../../../skills/starter-ui/starter-ui.css">
+<style>
+  .stack { max-width: 34rem; margin: var(--starter-s7) auto var(--starter-s6); padding: 0 var(--starter-s4); }
+
+  /* The product screen. It wears the same tokens as everything else in the
+     workspace — that is the point — but it is a screen, not a sheet. */
+  .app {
+    background: var(--starter-sheet);
+    border: var(--starter-hair);
+    border-radius: 14px;
+    box-shadow: var(--starter-lift);
+    overflow: hidden;
+  }
+  .app__head { padding: var(--starter-s5) var(--starter-s5) var(--starter-s4); border-bottom: var(--starter-hair); }
+  .app__kicker { margin: 0 0 var(--starter-s1); font: 600 var(--starter-text-xs)/1.6 var(--starter-font-display); letter-spacing: .14em; text-transform: uppercase; color: var(--starter-ink-3); }
+  .app__title { margin: 0 0 var(--starter-s2); font: 600 var(--starter-text-xl)/1.2 var(--starter-font-display); letter-spacing: -.02em; }
+  .app__now { margin: 0; font-size: var(--starter-text-sm); color: var(--starter-ink-2); }
+  .app__body { padding: var(--starter-s5); display: grid; gap: var(--starter-s5); }
+
+  .pick__label { display: block; margin-bottom: var(--starter-s3); font: 600 var(--starter-text-xs)/1 var(--starter-font-display); letter-spacing: .12em; text-transform: uppercase; color: var(--starter-ink-2); }
+  .days { display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--starter-s2); }
+  .day {
+    display: grid; gap: 2px; padding: var(--starter-s3) var(--starter-s2);
+    background: var(--starter-sheet); border: 1px solid var(--starter-rule); border-radius: var(--starter-radius-2);
+    cursor: pointer; text-align: center; font: inherit; color: inherit;
+  }
+  .day__dow { font: var(--starter-text-xs)/1.4 var(--starter-font-display); letter-spacing: .1em; text-transform: uppercase; color: var(--starter-ink-2); }
+  .day__num { font: 600 var(--starter-text-lg)/1.1 var(--starter-font-display); }
+  .day[aria-pressed="true"] { background: var(--starter-ink); border-color: var(--starter-ink); color: var(--starter-sheet); }
+  .day[aria-pressed="true"] .day__dow { color: rgba(251, 250, 246, .7); }
+
+  .times { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--starter-s2); }
+  .time {
+    padding: var(--starter-s3) var(--starter-s2);
+    font: var(--starter-text-sm)/1 var(--starter-font-display);
+    background: var(--starter-sheet); border: 1px solid var(--starter-rule); border-radius: var(--starter-radius-2);
+    cursor: pointer; color: inherit;
+  }
+  .time:hover:not(:disabled) { border-color: var(--starter-ink-3); }
+  .time[aria-pressed="true"] { background: var(--starter-wash); border-color: var(--starter-mark); color: var(--starter-mark-ink); font-weight: 600; }
+  .time:disabled { color: var(--starter-ink-3); background: var(--starter-inset); cursor: not-allowed; text-decoration: line-through; }
+
+  .fee { margin: 0; padding: var(--starter-s3) var(--starter-s4); background: var(--starter-inset); border-radius: var(--starter-radius-2); font-size: var(--starter-text-sm); color: var(--starter-ink-2); }
+  .actions { display: flex; flex-wrap: wrap; gap: var(--starter-s3); align-items: center; }
+  .summary { margin: 0; font-size: var(--starter-text-sm); color: var(--starter-ink-2); min-height: 1.4em; }
+  .summary strong { color: var(--starter-ink); }
+</style>
+</head>
+<body class="s-page">
+
+<div class="stack">
+
+  <!-- ─────────────────────────────────────── the screen under review -->
+  <main class="app" id="reschedule">
+    <header class="app__head">
+      <p class="app__kicker">Booking 4471</p>
+      <h1 class="app__title">Reschedule your visit</h1>
+      <p class="app__now">Currently <strong>Tuesday 14 May, 09:30</strong> · Full service · 2 hours</p>
+    </header>
+
+    <div class="app__body">
+      <div>
+        <span class="pick__label" id="day-label">Pick a day</span>
+        <div class="days" role="group" aria-labelledby="day-label" id="days">
+          <button type="button" class="day" data-day="Mon 13 May" aria-pressed="false">
+            <span class="day__dow">Mon</span><span class="day__num">13</span>
+          </button>
+          <button type="button" class="day" data-day="Tue 14 May" aria-pressed="true">
+            <span class="day__dow">Tue</span><span class="day__num">14</span>
+          </button>
+          <button type="button" class="day" data-day="Wed 15 May" aria-pressed="false">
+            <span class="day__dow">Wed</span><span class="day__num">15</span>
+          </button>
+          <button type="button" class="day" data-day="Thu 16 May" aria-pressed="false">
+            <span class="day__dow">Thu</span><span class="day__num">16</span>
+          </button>
+        </div>
+      </div>
+
+      <div>
+        <span class="pick__label" id="time-label">Pick a time</span>
+        <div class="times" role="group" aria-labelledby="time-label" id="times">
+          <button type="button" class="time" data-time="08:00" aria-pressed="false">08:00</button>
+          <button type="button" class="time" data-time="09:30" aria-pressed="false" disabled>09:30</button>
+          <button type="button" class="time" data-time="11:15" aria-pressed="false">11:15</button>
+          <button type="button" class="time" data-time="13:00" aria-pressed="false">13:00</button>
+          <button type="button" class="time" data-time="15:30" aria-pressed="false" disabled>15:30</button>
+          <button type="button" class="time" data-time="16:45" aria-pressed="false">16:45</button>
+        </div>
+      </div>
+
+      <p class="fee" id="fee-note">Moving a booking less than 24 hours ahead adds a <strong>&euro;12</strong>
+        rebooking fee, charged when you arrive.</p>
+
+      <p class="summary" id="summary">Nothing changed yet — pick a day and a time.</p>
+
+      <div class="actions" id="actions">
+        <button type="button" class="s-btn s-btn--mark s-btn--lg" id="confirm" disabled>Confirm new time</button>
+        <button type="button" class="s-btn s-btn--quiet" id="cancel">Cancel appointment</button>
+      </div>
+    </div>
+  </main>
+
+  <p class="s-note"><strong>Two comments are already pinned on this screen.</strong> On the site, press
+    <strong>Shift + C</strong> to see them, click a pin to read the thread, and reply — that is the whole
+    review loop. Pins stick to the element they were dropped on, so they survive the screen changing
+    underneath them. This page is a prototype like any other, at
+    <code>start-here/prototypes/sample-with-comments/index.html</code>.</p>
+</div>
+
+<script src="../../../skills/starter-ui/starter-ui.js" defer></script>
+<script>
+(function () {
+  "use strict";
+
+  var chosen = { day: "Tue 14 May", time: null };
+  var summary = document.getElementById("summary");
+  var confirm = document.getElementById("confirm");
+
+  function press(group, el) {
+    Array.prototype.forEach.call(group.children, function (b) { b.setAttribute("aria-pressed", "false"); });
+    el.setAttribute("aria-pressed", "true");
+  }
+
+  function render() {
+    if (!chosen.time) {
+      summary.textContent = "Nothing changed yet — pick a day and a time.";
+      confirm.disabled = true;
+      return;
+    }
+    summary.innerHTML = "New time: <strong>" + chosen.day + ", " + chosen.time +
+      "</strong>. Your old slot is released as soon as you confirm.";
+    confirm.disabled = false;
+  }
+
+  document.getElementById("days").addEventListener("click", function (e) {
+    var b = e.target.closest(".day");
+    if (!b) return;
+    press(this, b);
+    chosen.day = b.getAttribute("data-day");
+    render();
+  });
+
+  document.getElementById("times").addEventListener("click", function (e) {
+    var b = e.target.closest(".time");
+    if (!b || b.disabled) return;
+    press(this, b);
+    chosen.time = b.getAttribute("data-time");
+    render();
+  });
+
+  confirm.addEventListener("click", function () {
+    summary.innerHTML = "Moved to <strong>" + chosen.day + ", " + chosen.time +
+      "</strong>. A confirmation is on its way to you.";
+    confirm.disabled = true;
+  });
+
+  document.getElementById("cancel").addEventListener("click", function () {
+    summary.textContent = "Nothing is cancelled — this is a prototype, and it has no server behind it.";
+  });
+})();
+</script>
+</body>
+</html>
