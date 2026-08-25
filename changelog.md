@@ -16,12 +16,50 @@ The date is the day the update went live. The page works out "Today / 3 days ago
 
 ---
 
+## 2026-08-25 — One Augur, one workspace
+An Augur site used to be able to hold several workspaces at once, each tucked
+under its own piece of the address. Nobody ran one that way, so it's gone and a
+lot of code went with it. Running your own copy with more than one workspace in
+it? Run them as separate copies. One setting disappears with it: `adminOnly` no
+longer does anything. Who can see a workspace is decided by who you invite to
+it, which is the honest answer anyway.
+
+## 2026-08-24 — Publishing can't quietly undo someone else's work
+Publishing used to send your whole folder, so an out-of-date copy could roll
+back things other people had changed while you weren't looking. Now a publish
+only claims the pieces you actually edited and leaves everything else exactly as
+it is. If two people really did change the same thing, yours gets published
+next to theirs instead of on top of it.
+
 ## 2026-08-20 — Cards stop crediting the wrong person after a publish rescue
 When a publish has to rescue someone else's live work into your folder, that
 rescue is now filed away on its own, clearly labeled as machine housekeeping.
 Before, it could end up inside your next normal save — and then every card it
 touched showed your face and "edited just now", even though you never worked
 there.
+
+## 2026-08-19 — Cards show everyone who worked on something
+A card used to show one face, whoever touched it last. Now it shows all of them.
+
+## 2026-08-19 — Links to your site look like your site
+Paste an Augur link into Slack, Notion or a message and the preview now carries
+your own name, description and picture — including the sign-in page, which used
+to unfurl as nothing at all. A link to a canvas shows a picture of the board.
+
+## 2026-08-18 — Pages open instantly
+The furniture every page shares — the sidebar, the header — is now fetched once
+and reused, and your browser keeps a copy of it. Moving around is close to
+instant, and a page weighs a small fraction of what it used to.
+
+## 2026-08-17 — Augur on your phone
+Augur has a real mobile layout now: a bottom tab bar you can reach with your
+thumb, a header that says where you are and how to get back, and Pinned and
+Profile as sheets that slide up from the bottom. Search moved into the tab bar.
+
+## 2026-08-16 — Augur has no AI inside it
+The one place Augur could call an AI model — a document summarizer — is gone.
+Augur now ships with no model, no key, and no way to spend your money on one.
+Your agent, your machine, your key.
 
 ## 2026-08-16 — Workspace settings, and a sidebar that says what it is
 The gear that used to sit under your own face is gone. Admin is now its own place
