@@ -3003,7 +3003,12 @@ function chromeScript() {
           }
         }
       });
-      if(emptyMsg) emptyMsg.hidden = shown !== 0;
+      // "No matches." is a FILTER result, so it needs a filter to be one. Without the
+      // \`!raw\` it also fired on the load-time apply() of any page with no cards at all
+      // (shown === 0 because there is nothing to show), printing a failure under every
+      // empty state — the Tokens page of a workspace with no design system read as
+      // though the search had gone wrong.
+      if(emptyMsg) emptyMsg.hidden = !raw || shown !== 0;
       if(clear) clear.hidden = !raw;
       if(kbd) kbd.hidden = !!raw;
     }
