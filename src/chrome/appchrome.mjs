@@ -278,18 +278,8 @@ function mobileProfileSheet(state) {
   </div>`;
 }
 
-// City themes for the Help drawer's ?theme= reference. A static copy for the shell.
-const HELP_THEMES = [
-  [0, "Linz", "#604596"], [1, "Dublin City", "#0077A3"], [2, "Stadt Wien", "#FF5A64"],
-  [3, "Københavns Kommune", "#000C2E"], [4, "City of St. Louis", "#033D8B"], [5, "Oslo kommune", "#034B45"],
-  [6, "Lambeth", "#246797"], [7, "Stad Lokeren", "#025157"], [8, "Engaged California", "#1C2745"],
-];
-
 // The Help drawer — a right-side slide-in panel opened from the rail footer.
 function helpDrawer() {
-  const themeRows = HELP_THEMES.map(
-    ([id, name, c]) => `<tr><td><code>?theme=${id}</code></td><td><span class="gvhelp__sw" style="background:${c}"></span>${name}</td></tr>`
-  ).join("");
   return `<div class="gvhelp" data-help hidden>
     <div class="gvhelp__scrim" data-help-scrim></div>
     <div class="gvhelp__panel" role="dialog" aria-modal="true" aria-label="Help">
@@ -376,14 +366,6 @@ function helpDrawer() {
             <li>The agent fixes, replies, resolves in-thread. Put it on <code>/loop</code> to keep watching.</li>
             <li>Not automated. You steer it.</li>
           </ul>
-
-          <h4>Themes</h4>
-          <ul>
-            <li><code>?theme=&lt;id&gt;</code> on any prototype URL. Numeric id only (<code>?theme=2</code>, not a name).</li>
-            <li>Picker sits bottom-right. Hide with <code>&lt;body data-gv-theme-picker="off"&gt;</code>.</li>
-            <li><code>?cookies=reset</code> re-shows the cookie banner.</li>
-          </ul>
-          <table class="gvhelp__themes"><tbody>${themeRows}</tbody></table>
         </section>
       </div>
     </div>

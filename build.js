@@ -2361,10 +2361,6 @@ const NAV_CSS = `
     .gvhelp kbd { display: inline-block; min-width: 16px; padding: 1px 5px; border: 1px solid rgba(16,17,26,0.16); border-bottom-width: 2px; border-radius: 5px; background: #fff; font: 600 11px/1.4 "Inter", "Inter Variable", sans-serif; color: #3a3f48; }
     .gvhelp code { padding: 1px 5px; border-radius: 5px; background: #f1f2f5; font: 500 12px/1.4 ui-monospace, "SF Mono", Menlo, monospace; color: #39414e; }
     .gvhelp__tag { font: 600 10px/1 "Inter", "Inter Variable", sans-serif; letter-spacing: 0; text-transform: none; color: #8a6d3b; background: #fbf1d9; border-radius: 999px; padding: 3px 7px; }
-    .gvhelp__themes { width: 100%; border-collapse: collapse; margin-top: 6px; }
-    .gvhelp__themes td { padding: 5px 6px; border-bottom: 1px solid rgba(16,17,26,0.06); font-size: 12.5px; vertical-align: middle; }
-    .gvhelp__themes td:first-child { width: 104px; }
-    .gvhelp__sw { display: inline-block; width: 12px; height: 12px; border-radius: 3px; margin-right: 7px; vertical-align: -1px; box-shadow: inset 0 0 0 1px rgba(0,0,0,0.12); }
 
     /* ── Account settings modal ────────────────────────────────────────────────
        Same skeleton as the help drawer (fixed inset / scrim / [hidden] + .is-open),
