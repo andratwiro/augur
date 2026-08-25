@@ -6010,7 +6010,7 @@ const renderBaseIndex = (items) =>
 const renderPatternsIndex = (items) =>
   renderTierGrid(items, {
     title: "Patterns", activeTab: "patterns", subtitle: "Composition patterns.",
-    addHint: "Curated recurring compositions — several Components arranged the way real screens repeatedly arrange them (participation flow, idea feed, events section, phase nav…).",
+    addHint: "Curated recurring compositions — several Components arranged the way real screens repeatedly arrange them.",
   });
 
 // ── Tokens tab — GENERATED from the canonical tokens stylesheet via the graph ─

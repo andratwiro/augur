@@ -331,33 +331,10 @@ function helpDrawer() {
         </section>
 
         <section class="gvhelp__track" data-help-track="build" role="tabpanel" hidden>
-          <h4>Skills</h4>
+          <h4>Prototypes</h4>
           <ul>
-            <li><code>frontend-design</code>: generic design craft. Default (Free mode).</li>
-            <li>The space's UI skill (<code>*-ui</code>): real product tokens + <code>.gv-*</code> components.</li>
-            <li>The a11y skill: accessibility audit (contrast, zoom, target size).</li>
-            <li>Persona critique + <code>webapp-testing</code>: critique in character, run personas + a11y.</li>
-          </ul>
-
-          <h4>Modes</h4>
-          <ul>
-            <li><b>Free</b>: default, light, generic craft.</li>
-            <li><b>System-building</b>: faithful library work (design-system repo).</li>
-            <li>Everything else is opt-in. Name it to load it.</li>
-          </ul>
-
-          <h4>Avoid</h4>
-          <ul>
-            <li>No hardcoded brand colours. Use <code>var(--gv-tenant-primary | secondary | text)</code>.</li>
-            <li>Design system is read-only from a prototype. Edit the source, don't copy <code>.gv-*</code> out.</li>
-            <li>Prototypes stay self-contained static HTML, no build step.</li>
-            <li>A11y: no colour-only state, low contrast, disabled zoom, tiny targets.</li>
-          </ul>
-
-          <h4>Context</h4>
-          <ul>
-            <li>Standing rules: <code>CLAUDE.md</code>. Product depth: the space's product doc (re-read on a real doubt, not auto-loaded).</li>
-            <li>Name a mode to pull capability.</li>
+            <li>Self-contained static HTML, no build step — a prototype has to work opened straight from disk.</li>
+            <li>The design system is read-only from a prototype. Edit the skill's own source rather than copying its classes out.</li>
           </ul>
 
           <h4>Comment loop <span class="gvhelp__tag">maintainer</span></h4>
