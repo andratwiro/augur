@@ -552,7 +552,11 @@ const readCanon = (f) => fs.readFile(path.join(UI_SKILL, f), "utf8").catch(() =>
 
 /**
  * Parse the canonical CSS into the composition graph. Async (reads the files).
- * Returns { tokens, classes, generatedFrom } — see the block comment above.
+ * Returns { tokens, classes, generatedFrom, cssPrefixes } — see the block comment
+ * above. `cssPrefixes` rides out on the graph because it is the ONE place the token
+ * vocabulary is derived: anything downstream that needs to know what a token of this
+ * design system looks like (the Tokens gallery) reads it from here rather than
+ * re-deriving — or, as it did, hardcoding — a prefix of its own.
  */
 async function buildGraph() {
   // The CSS vocabulary is the SKILL's: skill.json {"cssPrefixes": ["acme"]} names
@@ -652,7 +656,7 @@ async function buildGraph() {
     tokens[name].consumedBy.tokens = [...new Set(tokens[name].consumedBy.tokens)];
     tokens[name].consumedBy.classes = [...new Set(tokens[name].consumedBy.classes)];
   }
-  return { tokens, classes, generatedFrom: CANON_CSS_LAYERS.map((x) => x[0]) };
+  return { tokens, classes, generatedFrom: CANON_CSS_LAYERS.map((x) => x[0]), cssPrefixes };
 }
 
 async function exists(p) {
@@ -1605,7 +1609,6 @@ const PAGE_CSS = `
                  overflow: hidden; white-space: nowrap; }
     .sp-track { flex: 0 0 248px; width: 248px; display: flex; align-items: center; }
     .sp-bar { height: 14px; border-radius: 3px; background: rgba(94,106,210,0.85); box-shadow: inset 0 0 0 1px rgba(16,17,26,0.10); }
-    .tok-sw--radius { background: rgba(94,106,210,0.15); box-shadow: inset 0 0 0 1.5px rgba(94,106,210,0.55); }
     /* Elevation: a white card floating on a neutral wash so the shadow actually reads */
     .tok-sw--shadow { background: #eef0f4; display: grid; place-items: center; box-shadow: inset 0 0 0 1px rgba(16,17,26,0.05); }
     .tok-sw__card { width: 24px; height: 24px; border-radius: 6px; background: #fff; }
@@ -5967,31 +5970,69 @@ const renderPatternsIndex = (items) =>
   });
 
 // ── Tokens tab — GENERATED from the canonical tokens stylesheet via the graph ─
-// Every --gv-* token: a swatch (when its resolved raw value is a colour), the
+// Every token the graph found: a swatch (when its resolved raw value is a colour), the
 // declared value, the alias chain down to the raw value, and how many tokens/
 // classes drink from it. Proves the bottom of the import chain is real, not asserted.
+//
+// GROUPING IS BY SHAPE, NOT BY NAME. A token's value is a fact the graph already
+// resolved; its name is one team's private vocabulary, and reading groups out of names
+// meant every design system that did not happen to use the reference one's words got a
+// single undifferentiated list. So: a colour value is a colour, a length is a length, a
+// font stack is a font stack — in any workspace, on the first build, with no manifest to
+// write. The one name-shaped rule left reads the prefix the SKILL declares (see
+// buildGraph's cssPrefixes), never a literal.
 function isColorVal(v) {
-  return !!v && /^(#|rgb|hsl|color-mix)/i.test(v.trim());
+  return !!v && /^(#|rgb|hsl|color-mix|contrast-color)/i.test(v.trim());
 }
-// A palette primitive = a raw colour on a named scale step (grey-800, blue-500…),
-// plus the standalone base hues. Everything else colour-typed is a semantic role
-// (text-*, primary, error, tenant-*, bo-*, chart-*…) — usually an alias.
-function isPrimitiveColor(name) {
-  return /^--gv-(black|white|brown|green-mint)$/.test(name)
-    || /^--gv-(grey|cool-grey|blue|teal|red|green|orange|amber)-\d/.test(name);
+// A single length — the shape of a spacing step, a font size, a radius, a page width.
+// The engine cannot tell those apart from the value alone and does not pretend to.
+// Bare `0` counts: it is the zero step of whatever ramp it belongs to.
+function isLenVal(v) {
+  return !!v && /^(?:0|-?(?:\d+\.?\d*|\.\d+)(?:px|rem|em|ch|ex|vw|vh|vmin|vmax|%))$/i.test(v.trim());
 }
-function tokenGroup(name) {
-  if (/^--gv-type-/.test(name)) return "Type scale";       // semantic size/lh/weight triplets
-  if (/^--gv-fs-/.test(name)) return "Font size";          // the raw size ramp
-  if (/^--gv-font|^--gv-bo-font/.test(name)) return "Font family";
-  if (/^--gv-space-/.test(name)) return "Spacing";
-  if (/^--gv-radius/.test(name)) return "Radius";
-  if (/^--gv-shadow/.test(name)) return "Elevation";
-  if (/^--gv-focus/.test(name)) return "Focus";
-  if (/width|height|padding|^--gv-menu-|frame-w|target-min/.test(name)) return "Layout";
-  return isPrimitiveColor(name) ? "Palette" : "Semantic colour"; // the colour bulk, split
+// A font stack: a comma list ending in one of CSS's generic families. Every real
+// font-family token ends in one, because a stack without a fallback is a bug.
+function isFontStackVal(v) {
+  return !!v && /(?:^|,)\s*(?:ui-)?(?:serif|sans-serif|monospace|rounded|system-ui|cursive|fantasy|math|emoji)\s*$/i.test(v.trim());
+}
+// A shadow: a colour plus three or more offset/blur/spread lengths, which is
+// box-shadow's shape and nothing else's. Function calls collapse to one symbol first so
+// the numbers inside rgba()/var() are not mistaken for offsets — that miscount is what
+// makes a border shorthand look like a shadow.
+function isShadowVal(v) {
+  if (!v || !/(?:rgba?\(|hsla?\(|#[0-9a-f]{3,8}\b)/i.test(v)) return false;
+  const bare = v.replace(/[a-z-]*\([^()]*\)/gi, "C");
+  return (bare.match(/(?:^|\s)(?:-?[\d.]+(?:px|rem|em)|0)(?=\s|,|$)/g) || []).length >= 3;
+}
+/**
+ * Which section of the Tokens page a token belongs in. `t` is its graph entry (so the
+ * RESOLVED value decides, not the declared one) and `typeRe` matches this design
+ * system's type-scale triplets — built from the skill's own prefixes by the caller.
+ */
+function tokenGroup(name, t, typeRe) {
+  if (typeRe && typeRe.test(name)) return "Type scale";
+  const raw = ((t && (t.raw || t.value)) || "").trim();
+  // Palette vs Semantic is the reference edge, which the graph already proves (`refs`):
+  // a token that DECLARES a colour is the ink itself; a token that reaches one through
+  // another token — an alias, a color-mix, a contrast-color — is a role pointing at ink.
+  if (isColorVal(raw)) return t && t.refs && t.refs.length ? "Semantic colour" : "Palette";
+  if (isFontStackVal(raw)) return "Font family";
+  if (isLenVal(raw)) return "Size";
+  if (isShadowVal(raw)) return "Elevation";
+  return "Other"; // durations, easings, border shorthands, anything composite
 }
 function tokPx(v) { const m = (v || "").match(/-?[\d.]+/); return m ? parseFloat(m[0]) : null; }
+// A length's magnitude in px, so one ramp can sort and draw tokens written in different
+// units — a rem-based system and a px-based one both order correctly. Relative units use
+// the CSS initial font size (16px) and the conventional 0.5em for ch/ex; %/vw/vh have no
+// absolute magnitude and answer null (they sort first and draw at the minimum).
+const TOK_UNIT_PX = { px: 1, rem: 16, em: 16, ch: 8, ex: 8 };
+function tokLenPx(v) {
+  const s = (v || "").trim();
+  if (s === "0") return 0;
+  const m = s.match(/^-?(?:\d+\.?\d*|\.\d+)(px|rem|em|ch|ex)$/i);
+  return m ? parseFloat(s) * TOK_UNIT_PX[m[1].toLowerCase()] : null;
+}
 // WCAG contrast: returns the most-legible text colour on a swatch + its ratio/grade.
 // Only for resolvable hex; aliased/rgba/color-mix values get no badge.
 function hexToRgb(h) {
@@ -6038,9 +6079,15 @@ const TOKENS_JS = `
 function renderTokensIndex(graph) {
   const tokens = graph.tokens || {};
   const names = Object.keys(tokens);
+  // The design system's own token vocabulary, derived once in buildGraph from the
+  // skill's skill.json. `--<prefix>-type-<role>-(size|lh|weight)` is the only naming
+  // convention the page still recognises, and it is spelled in the skill's prefixes.
+  const cssPrefixes = (graph.cssPrefixes && graph.cssPrefixes.length) ? graph.cssPrefixes : ["gv"];
+  const PFX = cssPrefixes.map((p) => p.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("|");
+  const typeRe = new RegExp(String.raw`^--(?:${PFX})-type-(.+)-(size|lh|weight)$`);
   const groups = {};
-  for (const name of names) (groups[tokenGroup(name)] ||= []).push(name);
-  const ORDER = ["Palette", "Semantic colour", "Type scale", "Font size", "Font family", "Spacing", "Radius", "Elevation", "Layout", "Focus"];
+  for (const name of names) (groups[tokenGroup(name, tokens[name], typeRe)] ||= []).push(name);
+  const ORDER = ["Palette", "Semantic colour", "Type scale", "Font family", "Size", "Elevation", "Other"];
   const ordered = [...ORDER.filter((g) => groups[g]), ...Object.keys(groups).filter((g) => !ORDER.includes(g))];
 
   // ── shared row pieces ──
@@ -6063,13 +6110,12 @@ function renderTokensIndex(graph) {
   const usedOf = (t) => usedRender(t.consumedBy.tokens, t.consumedBy.classes);
   const bodyOf = (name, t, extra = "") => `<div class="tok-body"><code class="tok-name" ${copyName(name)}>${name}</code>${chainOf(t)}${extra}${usedOf(t)}</div>`;
 
-  // ── preview swatch for chip-grid groups (Palette / Semantic / Radius / Elevation / Layout / Focus) ──
+  // ── preview swatch for chip-grid groups (Palette / Semantic colour / Elevation / Other) ──
   const swatchOf = (name, t, group) => {
     const raw = t.raw || t.value || "";
     if (isColorVal(raw)) return `<span class="tok-sw" style="background:${raw}" ${copyName(name)}></span>`;
-    if (group === "Radius") return `<span class="tok-sw tok-sw--radius" style="border-radius:${raw}"></span>`;
     if (group === "Elevation") return `<span class="tok-sw tok-sw--shadow"><span class="tok-sw__card" style="box-shadow:${raw}"></span></span>`;
-    const px = tokPx(raw); // Layout / Focus dims → show the number
+    const px = tokPx(raw); // composite values → show the leading number, or nothing
     return `<span class="tok-sw tok-sw--mono" style="font-size:11px">${px != null ? px : "·"}</span>`;
   };
   const chipItem = (name, group) => {
@@ -6088,36 +6134,38 @@ function renderTokensIndex(graph) {
       </div>`;
   }).join("")}</div>`;
 
-  // ── Spacing → bars at the real width (clamped past 240px, true value labelled) ──
-  const spacingSection = (g) => {
-    const order = groups[g].slice().sort((a, b) => (tokPx(tokens[a].raw) || 0) - (tokPx(tokens[b].raw) || 0));
+  // ── Size → bars at the real width, smallest first (clamped past 240px, true value
+  // labelled). One ramp: a spacing step, a font size, a radius and a page width are the
+  // same shape, and the engine has no way to tell them apart that isn't a guess at a name.
+  const sizeSection = (g) => {
+    const order = groups[g].slice().sort((a, b) => (tokLenPx(tokens[a].raw) || 0) - (tokLenPx(tokens[b].raw) || 0));
     return `<div class="tok-list">${order.map((n) => {
-      const t = tokens[n]; const w = Math.max(2, Math.min(tokPx(t.raw) || 0, 240));
+      const t = tokens[n]; const w = Math.max(2, Math.min(tokLenPx(t.raw) || 0, 240));
       return `<div class="tok-row" data-fitem data-fkey="${fkey(n, t)}"><span class="sp-track"><span class="sp-bar" style="width:${w}px"></span></span>${bodyOf(n, t)}</div>`;
     }).join("")}</div>`;
   };
 
-  // ── Font size → glyph rendered at the real size (visual capped at 64px, true px labelled) ──
-  const fontSizeSection = (g) => {
-    const order = groups[g].slice().sort((a, b) => (tokPx(tokens[a].raw) || 0) - (tokPx(tokens[b].raw) || 0));
-    return `<div class="tok-list">${order.map((n) => {
-      const t = tokens[n]; const vis = Math.min(tokPx(t.raw) || 16, 64);
-      return `<div class="tok-row" data-fitem data-fkey="${fkey(n, t)}"><span class="ts-sample" style="font-size:${vis}px">Ag</span>${bodyOf(n, t)}</div>`;
-    }).join("")}</div>`;
-  };
-
   // ── Type scale → pair the size/lh/weight triplet per role into one live sample ──
-  const ROLE_ORDER = ["display", "h1", "h2", "h3", "title", "body", "bodys", "label", "caption"];
+  // Roles are whatever the stylesheet named them, ordered by the SIZE they resolve to
+  // (biggest first) — a fact, where a list of expected role names was one team's.
   const typeRoles = (g) => {
-    const roles = [...new Set(groups[g].map((n) => (n.match(/^--gv-type-(.+)-(size|lh|weight)$/) || [])[1]).filter(Boolean))];
-    return roles.sort((a, b) => { const i = ROLE_ORDER.indexOf(a), j = ROLE_ORDER.indexOf(b); return (i < 0 ? 99 : i) - (j < 0 ? 99 : j); });
+    const map = new Map();
+    for (const n of groups[g]) {
+      const m = n.match(typeRe);
+      if (!m) continue;
+      if (!map.has(m[1])) map.set(m[1], {});
+      map.get(m[1])[m[2]] = n;
+    }
+    return [...map.entries()].sort((a, b) =>
+      ((tokLenPx(tokens[b[1].size] && tokens[b[1].size].raw) || 0) - (tokLenPx(tokens[a[1].size] && tokens[a[1].size].raw) || 0))
+      || a[0].localeCompare(b[0]));
   };
-  const typeScaleSection = (g) => `<div class="tok-list">${typeRoles(g).map((role) => {
-    const kSz = `--gv-type-${role}-size`, kLh = `--gv-type-${role}-lh`, kWt = `--gv-type-${role}-weight`;
+  const typeScaleSection = (g) => `<div class="tok-list">${typeRoles(g).map(([role, keys]) => {
+    const kSz = keys.size, kLh = keys.lh, kWt = keys.weight;
     const sz = tokens[kSz], lh = tokens[kLh], wt = tokens[kWt];
     const szRaw = (sz && sz.raw) || "16px", lhRaw = (lh && lh.raw) || "", wtRaw = (wt && wt.raw) || "400";
-    const vis = Math.min(tokPx(szRaw) || 16, 52);
-    const present = [kSz, kLh, kWt].filter((k) => tokens[k]);
+    const vis = Math.min(tokLenPx(szRaw) || 16, 52);
+    const present = [kSz, kLh, kWt].filter((k) => k && tokens[k]);
     const usedToks = [...new Set(present.flatMap((k) => tokens[k].consumedBy.tokens))];
     const usedCls = [...new Set(present.flatMap((k) => tokens[k].consumedBy.classes))];
     const ann = `${szRaw}${wtRaw ? ` · ${wtRaw}` : ""}${lhRaw ? ` · ${lhRaw} line-height` : ""}`;
@@ -6133,9 +6181,8 @@ function renderTokensIndex(graph) {
   }).join("")}</div>`;
 
   const sectionBody = (g) => g === "Type scale" ? typeScaleSection(g)
-    : g === "Font size" ? fontSizeSection(g)
     : g === "Font family" ? fontFamilySection(g)
-    : g === "Spacing" ? spacingSection(g)
+    : g === "Size" ? sizeSection(g)
     : gridSection(g);
   const sectionCount = (g) => g === "Type scale" ? typeRoles(g).length : groups[g].length;
   const sections = ordered.map((g) => `
@@ -6144,10 +6191,17 @@ function renderTokensIndex(graph) {
         ${sectionBody(g)}
       </details>`).join("");
 
+  // The hint names the vocabulary this workspace's own skill declares. With nothing
+  // parsed there is nothing to name — a workspace that has not built a design system yet
+  // gets the sentence that tells it where one goes, not a description of an empty page.
+  const hint = names.length
+    ? `The design-system variables (${cssPrefixes.map((p) => `<code>--${p}-*</code>`).join(", ")}), parsed live from <code>${DS.prefix}-tokens.css</code> — each with its alias chain down to a raw value and how much of the system drinks from it. This is the bottom of every import chain Base · Components · Patterns · Pages resolve to. <strong>Click any token name or value to copy it</strong>; expand a consumer count to see exactly what uses it.`
+    : `No tokens yet. A design system lives at <code>skills/&lt;name&gt;-ui/</code>; every custom property its <code>&lt;name&gt;-tokens.css</code> declares is parsed live and listed here, grouped by what the value is. Name the prefixes your stylesheets use in that skill's <code>skill.json</code> (<code>"cssPrefixes"</code>).`;
+
   return shell({
     title: "Tokens", activeTab: "tokens", wrapClass: "wrap--wide",
     body: `<header class="folderbar"><h1 class="folderbar__title">Tokens</h1><span class="folderbar__count">${names.length}</span><span class="folderbar__rule"></span></header>` +
-      `<p class="tier-hint">The design-system variables (<code>--gv-*</code>), parsed live from <code>${DS.prefix}-tokens.css</code> — each with its alias chain down to a raw value and how much of the system drinks from it. This is the bottom of every import chain Base · Components · Patterns · Pages resolve to. <strong>Click any token name or value to copy it</strong>; expand a consumer count to see exactly what uses it.</p>` +
+      `<p class="tier-hint">${hint}</p>` +
       `${sections}${filterEmpty()}` +
       `<script>${TOKENS_JS}</script>`,
   });
