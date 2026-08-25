@@ -70,7 +70,7 @@ Each tick:
    - Only `/…/prototypes/…` and `/playground/…` paths ever appear (the cat only talks there).
 3. **See the screen, two ways:**
    - **Source (always):** map `path` → the working-tree folder and read it. Examples:
-     `/parallel-participation/prototypes/foo/` → `parallel-participation/prototypes/foo/index.html`;
+     `/<opportunity>/prototypes/foo/` → `<opportunity>/prototypes/foo/index.html`;
      `/playground/bar/` → `playground/bar/index.html`. Read its HTML/JS/CSS to understand the
      UI and to find a **stable CSS selector** for whatever you critique. Skim the
      opportunity's `research.md` / `context.md` for who this is really for.
@@ -148,8 +148,9 @@ them; they're the durable trail. Delete one by hand in the overlay if it's wrong
 
 - **"Is this even a button?"** Links/controls that don't look tappable; ghost buttons; icon-only
   actions with no label.
-- **Reading level & jargon.** Civic/bureaucratic wording, acronyms, "ideation/phase/input" —
-  would a stranger know what it means? what happens if they click?
+- **Reading level & jargon.** In-house or institutional wording — the nouns this team says
+  every day and nobody else does, and acronyms nobody expands. Would a stranger know what
+  it means? what happens if they click?
 - **Contrast & size in the real world.** Grey-on-grey, thin light text, tiny tap targets, text
   that dies in sunlight or at 200% zoom.
 - **"Where am I / what do I do?"** No obvious primary action; unclear what's required vs

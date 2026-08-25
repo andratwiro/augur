@@ -496,7 +496,8 @@ function loadCatalog(dsRoot) {
 
 // Display name + key classes + one-line "what is it" per component, shown on the
 // Components page. Keyed by folder name; `name` is the SHARED, functional display name
-// (never a city — folders may be city-grounded, the name describes what it IS). This is
+// (never the case a folder happens to be grounded in — the name describes what it IS,
+// so the same component is called the same thing wherever it turns up). This is
 // the CANONICAL source of truth: the live right-click Rename / Edit-description writes a
 // KV override (/__name), which is folded back here so code and live stay in one language.
 
