@@ -379,6 +379,11 @@ test("an invite is expired exactly at its boundary (nowMs === expires)", async (
 
 const ROSTER = [{ email: "a@example.test", name: "A" }];
 
+// An empty workspace context — no config, no workspaces mounted. The pages these tests
+// render are the SIGNED-OUT ones, and they have to render on a deployment that has
+// published nothing at all, so the fixture is deliberately bare.
+const BARE = W.applyDerivedRouting({});
+
 function invitePostRequest(token, password) {
   const body = new URLSearchParams({ token, password });
   return new Request("https://example.test/__invite", {
@@ -391,7 +396,7 @@ function invitePostRequest(token, password) {
 test("redeeming an invite stores a hash and signs the user in", async () => {
   const kv = memKV(); const env = envWith(kv, { SESSION_SECRET: "s3cret" });
   const t = await W.mintInvite(env, "a@example.test");
-  const res = await W.invitePost(invitePostRequest(t, "a good long password"), new URL("https://example.test/__invite"), env, ROSTER);
+  const res = await W.invitePost(BARE, invitePostRequest(t, "a good long password"), new URL("https://example.test/__invite"), env, ROSTER);
   assert.equal(res.status, 303);
   const cookie = res.headers.get("Set-Cookie") || "";
   assert.match(cookie, /^__Host-augur_user=a%40example\.test\.|^__Host-augur_user=a@example\.test\./, "session cookie issued");
@@ -403,8 +408,8 @@ test("redeeming an invite stores a hash and signs the user in", async () => {
 test("an invite cannot be redeemed twice", async () => {
   const kv = memKV(); const env = envWith(kv, { SESSION_SECRET: "s3cret" });
   const t = await W.mintInvite(env, "a@example.test");
-  await W.invitePost(invitePostRequest(t, "a good long password"), new URL("https://example.test/__invite"), env, ROSTER);
-  const again = await W.invitePost(invitePostRequest(t, "another long password"), new URL("https://example.test/__invite"), env, ROSTER);
+  await W.invitePost(BARE, invitePostRequest(t, "a good long password"), new URL("https://example.test/__invite"), env, ROSTER);
+  const again = await W.invitePost(BARE, invitePostRequest(t, "another long password"), new URL("https://example.test/__invite"), env, ROSTER);
   assert.equal(again.status, 400);
   assert.equal(await W.verifyPassword("a good long password", JSON.parse(await kv.get("users:secrets"))["a@example.test"]), true, "first password still stands");
 });
@@ -412,7 +417,7 @@ test("an invite cannot be redeemed twice", async () => {
 test("a short password is rejected and nothing is stored", async () => {
   const kv = memKV(); const env = envWith(kv, { SESSION_SECRET: "s3cret" });
   const t = await W.mintInvite(env, "a@example.test");
-  const res = await W.invitePost(invitePostRequest(t, "short"), new URL("https://example.test/__invite"), env, ROSTER);
+  const res = await W.invitePost(BARE, invitePostRequest(t, "short"), new URL("https://example.test/__invite"), env, ROSTER);
   assert.equal(res.status, 400);
   assert.equal(await kv.get("users:secrets"), null, "no secret written");
   assert.equal(await W.readInvite(env, t), "a@example.test", "token survives a failed attempt");
@@ -421,7 +426,7 @@ test("a short password is rejected and nothing is stored", async () => {
 test("a token for an unknown roster entry is refused", async () => {
   const kv = memKV(); const env = envWith(kv, { SESSION_SECRET: "s3cret" });
   const t = await W.mintInvite(env, "ghost@example.test");
-  const res = await W.invitePost(invitePostRequest(t, "a good long password"), new URL("https://example.test/__invite"), env, ROSTER);
+  const res = await W.invitePost(BARE, invitePostRequest(t, "a good long password"), new URL("https://example.test/__invite"), env, ROSTER);
   assert.equal(res.status, 400);
 });
 
@@ -446,7 +451,7 @@ test("a hashing failure leaves the invite redeemable (hash before consume)", asy
   crypto.subtle.deriveBits = () => { throw new Error("Not implemented: iterations too large"); };
   let res;
   try {
-    res = await W.invitePost(invitePostRequest(t, "a good long password"), new URL("https://example.test/__invite"), env, ROSTER);
+    res = await W.invitePost(BARE, invitePostRequest(t, "a good long password"), new URL("https://example.test/__invite"), env, ROSTER);
   } finally {
     crypto.subtle.deriveBits = realDeriveBits;
   }
@@ -454,7 +459,7 @@ test("a hashing failure leaves the invite redeemable (hash before consume)", asy
   assert.equal(await kv.get("users:secrets"), null, "no secret written");
   assert.equal(await W.readInvite(env, t), "a@example.test", "the link SURVIVES — retrying once the cause is fixed works");
   // And it really is still redeemable, not merely present.
-  const ok = await W.invitePost(invitePostRequest(t, "a good long password"), new URL("https://example.test/__invite"), env, ROSTER);
+  const ok = await W.invitePost(BARE, invitePostRequest(t, "a good long password"), new URL("https://example.test/__invite"), env, ROSTER);
   assert.equal(ok.status, 303, "same link redeems normally afterwards");
 });
 
@@ -470,6 +475,7 @@ test("invitePost stores the secret under the roster's canonical email, not the i
   const roster = [rosterUser];
   const t = await W.mintInvite(env, "Mixed@Example.test"); // invite minted with different case
   const res = await W.invitePost(
+    BARE,
     invitePostRequest(t, "a good long password"),
     new URL("https://example.test/__invite"),
     env,
@@ -495,7 +501,7 @@ test("a KV failure after the token is consumed fails cleanly instead of throwing
     if (k === "users:secrets") throw new Error("simulated KV outage");
     return realPut(k, v);
   };
-  const res = await W.invitePost(invitePostRequest(t, "a good long password"), new URL("https://example.test/__invite"), env, ROSTER);
+  const res = await W.invitePost(BARE, invitePostRequest(t, "a good long password"), new URL("https://example.test/__invite"), env, ROSTER);
   assert.equal(res.status, 500);
   assert.equal(await W.readInvite(env, t), null, "the token was already consumed and is not restored");
 });
@@ -506,7 +512,7 @@ test("a KV failure after the token is consumed fails cleanly instead of throwing
 test("invitePost success sets a hardened cookie: Path=/, HttpOnly, Secure, SameSite=Lax, <email>.<token> shape", async () => {
   const kv = memKV(); const env = envWith(kv, { SESSION_SECRET: "s3cret" });
   const t = await W.mintInvite(env, "a@example.test");
-  const res = await W.invitePost(invitePostRequest(t, "a good long password"), new URL("https://example.test/__invite"), env, ROSTER);
+  const res = await W.invitePost(BARE, invitePostRequest(t, "a good long password"), new URL("https://example.test/__invite"), env, ROSTER);
   const cookie = res.headers.get("Set-Cookie") || "";
   assert.match(cookie, /Path=\//, "Path=/ present");
   assert.match(cookie, /HttpOnly/, "HttpOnly present");
@@ -527,7 +533,7 @@ test("invitePost success sets a hardened cookie: Path=/, HttpOnly, Secure, SameS
 
 test("invitePage escapes a hostile token so it cannot break out of value=\"...\"", () => {
   const hostile = `"><script>alert(1)</script>&`;
-  const html = W.invitePage(hostile, null);
+  const html = W.invitePage(BARE, hostile, null);
   const attrMatch = html.match(/name="token" value="([^"]*)"\s*\/>/);
   assert.ok(attrMatch, "the hidden input still parses as a single well-formed attribute");
   assert.equal(attrMatch[1].includes('"'), false, "no raw quote breaks out of the value attribute");
@@ -641,15 +647,15 @@ test("the gate distinguishes a reset account from a wrong password", async () =>
   const env = envWith(kv);
   // Tombstoned => no effective secret => the page must say so, not "incorrect password".
   assert.equal(await W.effectiveSecret(env, RESET), "");
-  const page = W.loginPage("/", W.RESET_NOTICE);
+  const page = W.loginPage(BARE, "/", W.RESET_NOTICE);
   assert.match(page, /This account was reset/);
   assert.ok(!/Incorrect email or password/.test(page), "the generic message is replaced, not appended");
   // An unknown email must still get the generic message — no enumeration of non-users.
-  assert.match(W.loginPage("/", true), /Incorrect email or password/);
+  assert.match(W.loginPage(BARE, "/", true), /Incorrect email or password/);
 });
 
 test("the reset notice is html-escaped into the page", () => {
-  const page = W.loginPage("/", '<script>alert(1)</script>');
+  const page = W.loginPage(BARE, "/", '<script>alert(1)</script>');
   assert.ok(!page.includes("<script>alert(1)</script>"), "escaped, not injected");
   assert.match(page, /&lt;script&gt;/);
 });
@@ -1089,15 +1095,15 @@ test("pathOwnedBySpace: the workspace owns root EXCEPT engine chrome (tier retir
 });
 
 test("the redeem page shows the target email read-only, and hides it when unknown", () => {
-  const withEmail = W.invitePage("tok", "", "mia@example.test");
+  const withEmail = W.invitePage(BARE, "tok", "", "mia@example.test");
   assert.match(withEmail, /mia@example\.test/);
   assert.match(withEmail, /readonly/);
-  const without = W.invitePage("tok", "");
+  const without = W.invitePage(BARE, "tok", "");
   assert.ok(!/readonly/.test(without), "no email field when none is passed");
 });
 
 test("the redeem page html-escapes the target email (no attribute breakout)", () => {
-  const page = W.invitePage("tok", "", '"><script>alert(1)</script>@x');
+  const page = W.invitePage(BARE, "tok", "", '"><script>alert(1)</script>@x');
   assert.ok(!page.includes('"><script>'), "escaped, not injected");
   assert.match(page, /&quot;&gt;/);
 });
@@ -1208,7 +1214,7 @@ test("the gate and the invite form show the default space's icon, not the engine
     alpha: { id: "alpha", format: 1, files: {}, space: { id: "alpha", default: true } },
     beta: { id: "beta", format: 1, files: {}, space: { id: "beta" } },
   });
-  for (const [what, html] of [["gate", W.loginPage("/", false)], ["invite", W.invitePage("t", "", "")]]) {
+  for (const [what, html] of [["gate", W.loginPage(ctx, "/", false)], ["invite", W.invitePage(ctx, "t", "", "")]]) {
     assert.match(html, /<img src="\/space-icon\.png"/, `${what} wears the space icon`);
     assert.doesNotMatch(html, /aria-label="Augur"/, `${what} drops the engine mark`);
   }
@@ -1221,10 +1227,10 @@ test("the gate and the invite form show the default space's icon, not the engine
 });
 
 test("with no space mounted the front door falls back to the engine mark", () => {
-  W.applyDerivedRouting({}); // engine-only site: no space branding to wear
-  assert.match(W.brandMark(), /aria-label="Augur"/);
-  assert.match(W.loginPage("/", false), /aria-label="Augur"/);
-  assert.doesNotMatch(W.loginPage("/", false), /space-icon\.png/);
+  const ctx = W.applyDerivedRouting({}); // engine-only site: no space branding to wear
+  assert.match(W.brandMark(ctx), /aria-label="Augur"/);
+  assert.match(W.loginPage(ctx, "/", false), /aria-label="Augur"/);
+  assert.doesNotMatch(W.loginPage(ctx, "/", false), /space-icon\.png/);
 });
 
 test("session music is admin-only — never public, whatever the space is called", async () => {
@@ -1521,20 +1527,20 @@ test("avatarUrl passes a self-set URL through untouched (only data URIs get hash
 // entirely when unset. Runs LAST in this file: applyInstance rewrites module state.
 
 test("the instance loginHint renders under the login form, escaped, only when set", () => {
-  W.applyInstance({ users: [], loginHint: "Demo login: visita@example.test / secret" });
-  assert.match(W.loginPage("/", false), /Demo login: visita@example\.test \/ secret/);
+  const hinted = W.applyInstance({ users: [], loginHint: "Demo login: visita@example.test / secret" });
+  assert.match(W.loginPage(hinted, "/", false), /Demo login: visita@example\.test \/ secret/);
 
-  W.applyInstance({ users: [], loginHint: "<script>alert(1)</script>" });
-  const page = W.loginPage("/", false);
+  const hostile = W.applyInstance({ users: [], loginHint: "<script>alert(1)</script>" });
+  const page = W.loginPage(hostile, "/", false);
   assert.doesNotMatch(page, /<script>alert\(1\)/);
   assert.match(page, /&lt;script&gt;/);
 
-  W.applyInstance({ users: [] });
-  assert.doesNotMatch(W.loginPage("/", false), /class="hint"/);
+  const unset = W.applyInstance({ users: [] });
+  assert.doesNotMatch(W.loginPage(unset, "/", false), /class="hint"/);
 
   // A non-string hint (config typo) is ignored, not stringified into the page.
-  W.applyInstance({ users: [], loginHint: { text: "nope" } });
-  assert.doesNotMatch(W.loginPage("/", false), /class="hint"/);
+  const typo = W.applyInstance({ users: [], loginHint: { text: "nope" } });
+  assert.doesNotMatch(W.loginPage(typo, "/", false), /class="hint"/);
 });
 
 test("a viewer can never trade its public credentials for a publish token", async () => {

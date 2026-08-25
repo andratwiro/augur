@@ -7,16 +7,17 @@ import { test, afterEach } from "node:test";
 import assert from "node:assert/strict";
 import { __testables as W } from "../src/_worker.js";
 
-// previewHead reads the same SPACES global loadConfig fills; the chrome test seam
-// is the sanctioned way to set it in a unit test.
+// previewHead reads the workspace list off the tenant context loadConfig builds; the
+// chrome test seam is the sanctioned way to seed one in a unit test, and it hands the
+// seeded context back so the page render can be given the workspace it is describing.
 const setSpaces = (spaces) => W.__setChromeTestState(null, spaces, false);
 afterEach(() => setSpaces([]));
 
 const BOREALIS = { id: "borealis", name: "Borealis Studio", default: true, description: "" };
 
 test("engine-only gate falls back to Augur + the engine tagline, no icon or image", () => {
-  setSpaces([]);
-  const html = W.loginPage("/", false);
+  const ctx = setSpaces([]);
+  const html = W.loginPage(ctx, "/", false);
   assert.match(html, /<title>Augur<\/title>/);
   assert.ok(html.includes(`<meta name="description" content="${W.ENGINE_TAGLINE}" />`));
   assert.ok(html.includes(`<meta property="og:site_name" content="Augur" />`));
@@ -26,8 +27,8 @@ test("engine-only gate falls back to Augur + the engine tagline, no icon or imag
 });
 
 test("a mounted default space brands the whole preview", () => {
-  setSpaces([{ ...BOREALIS, description: "Prototypes for the Borealis team." }]);
-  const html = W.loginPage("/", false, "https://borealis.example.com/pages/x/?q=1");
+  const ctx = setSpaces([{ ...BOREALIS, description: "Prototypes for the Borealis team." }]);
+  const html = W.loginPage(ctx, "/", false, "https://borealis.example.com/pages/x/?q=1");
   assert.match(html, /<title>Borealis Studio · Augur<\/title>/);
   assert.ok(html.includes(`<meta property="og:title" content="Borealis Studio" />`));
   assert.ok(html.includes(`<meta property="og:description" content="Prototypes for the Borealis team." />`));
@@ -39,21 +40,21 @@ test("a mounted default space brands the whole preview", () => {
 });
 
 test("a default space without a description gets the engine tagline", () => {
-  setSpaces([BOREALIS]);
-  const html = W.loginPage("/", false, "https://borealis.example.com/");
+  const ctx = setSpaces([BOREALIS]);
+  const html = W.loginPage(ctx, "/", false, "https://borealis.example.com/");
   assert.ok(html.includes(`<meta property="og:description" content="${W.ENGINE_TAGLINE}" />`));
 });
 
 test("no request URL ⇒ no absolute tags, everything else intact", () => {
-  setSpaces([BOREALIS]);
-  const html = W.loginPage("/", false);
+  const ctx = setSpaces([BOREALIS]);
+  const html = W.loginPage(ctx, "/", false);
   assert.ok(!html.includes("og:image") && !html.includes("og:url"));
   assert.ok(html.includes(`<link rel="icon" href="/space-icon.png" />`), "favicon may stay relative");
 });
 
 test("space-authored name and description are attribute-safe", () => {
-  setSpaces([{ id: "x", name: `A"B <c>`, default: true, description: `say "hi" & <run>` }]);
-  const html = W.previewHead("https://x.example/");
+  const ctx = setSpaces([{ id: "x", name: `A"B <c>`, default: true, description: `say "hi" & <run>` }]);
+  const html = W.previewHead(ctx, "https://x.example/");
   assert.ok(html.includes(`content="A&quot;B &lt;c&gt;"`), "name is escaped");
   assert.ok(html.includes(`content="say &quot;hi&quot; &amp; &lt;run&gt;"`), "description is escaped");
   assert.ok(!/content="[^"]*"[^ />]/.test(html), "no attribute breaks out of its quotes");

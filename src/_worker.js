@@ -469,6 +469,10 @@ function applyInstance(inst) {
   LOGIN_PREFILL_EMAIL = typeof prefill.email === "string" ? prefill.email : "";
   LOGIN_PREFILL_PASSWORD = typeof prefill.password === "string" ? prefill.password : "";
   CONFIG_LOADED = true; // an instance document was actually applied this isolate
+  // The seeded CONTEXT, for the same reason applyDerivedRouting hands one back: a caller
+  // that has to give a threaded function a workspace gets one from the seed it already
+  // wrote, instead of reaching into module scope for it.
+  return TENANT_CTX;
 }
 // Has a real instance config ever loaded in THIS isolate? A cold isolate whose first
 // config read fails would otherwise leave USERS empty and default the gate to "open"
@@ -1556,8 +1560,8 @@ const AUGUR_MARK_SVG = `<svg viewBox="0 0 1024 1024" xmlns="http://www.w3.org/20
 // square space icon still reads as a front-door avatar.
 // ⚠️ /space-icon.png must stay listed in isPublicPath(): these two pages are for
 // signed-out visitors, so a gated icon would fetch the login HTML into the <img>.
-function brandMark() {
-  return SPACES.some((s) => s.default)
+function brandMark(tctx) {
+  return tctx.SPACES.some((s) => s.default)
     ? `<img src="/space-icon.png" alt="" width="40" height="40" />`
     : AUGUR_MARK_SVG;
 }
@@ -1575,8 +1579,8 @@ const ENGINE_TAGLINE = "Real, clickable prototypes and the design system they ar
 // makes og:url/og:image absolute (unfurl bots require absolute image URLs); callers
 // without one simply get no og:url/og:image. robots stays noindex in the pages that
 // carry this: unfurlers read the meta regardless, search engines stay out.
-function previewHead(requestUrl) {
-  const def = SPACES.find((s) => s.default);
+function previewHead(tctx, requestUrl) {
+  const def = tctx.SPACES.find((s) => s.default);
   const name = (def && typeof def.name === "string" ? def.name : "").trim();
   const desc = (def && typeof def.description === "string" ? def.description : "").trim() || ENGINE_TAGLINE;
   let page = null;
@@ -1606,7 +1610,7 @@ function previewHead(requestUrl) {
 
 // GET /__invite?t=… — the set-password form. Deliberately says nothing about whether
 // the token is valid beyond "this link is no longer valid": no user enumeration.
-function invitePage(token, error, email) {
+function invitePage(tctx, token, error, email) {
   const t = escapeHtml(token || "");
   const em = escapeHtml(email || "");
   // Text only — the .error block below supplies the icon and wrapper, matching loginPage.
@@ -1683,7 +1687,7 @@ function invitePage(token, error, email) {
 <body>
   <main class="card">
     <div class="logo">
-      ${brandMark()}
+      ${brandMark(tctx)}
     </div>
     <h1>Set your password</h1>
     <p class="error" role="alert">
@@ -1733,28 +1737,28 @@ function invitePage(token, error, email) {
 </body></html>`;
 }
 
-async function inviteGet(url, env) {
+async function inviteGet(tctx, url, env) {
   const token = url.searchParams.get("t") || "";
   const email = await readInvite(env, token);
-  if (!email) return htmlResponse(invitePage("", "This link is no longer valid. Ask for a new one."), 400);
+  if (!email) return htmlResponse(invitePage(tctx, "", "This link is no longer valid. Ask for a new one."), 400);
   // Show WHOSE account this link sets — a wrong recipient sees an address that isn't
   // theirs and stops, and no one can quietly claim a different identity (it's read-only).
-  return htmlResponse(invitePage(token, "", email), 200);
+  return htmlResponse(invitePage(tctx, token, "", email), 200);
 }
 
-async function invitePost(request, url, env, users = USERS) {
+async function invitePost(tctx, request, url, env, users = tctx.USERS) {
   const form = await request.formData();
   const token = (form.get("token") || "").toString();
   const password = (form.get("password") || "").toString();
 
   // Validate the password BEFORE consuming the token, so a typo doesn't burn the link.
   const email = await readInvite(env, token);
-  if (!email) return htmlResponse(invitePage("", "This link is no longer valid. Ask for a new one."), 400);
+  if (!email) return htmlResponse(invitePage(tctx, "", "This link is no longer valid. Ask for a new one."), 400);
   if (password.length < MIN_PASSWORD_LENGTH) {
-    return htmlResponse(invitePage(token, `Use at least ${MIN_PASSWORD_LENGTH} characters.`, email), 400);
+    return htmlResponse(invitePage(tctx, token, `Use at least ${MIN_PASSWORD_LENGTH} characters.`, email), 400);
   }
   const u = userByEmail(email, users);
-  if (!u) return htmlResponse(invitePage("", "This link is no longer valid. Ask for a new one."), 400);
+  if (!u) return htmlResponse(invitePage(tctx, "", "This link is no longer valid. Ask for a new one."), 400);
 
   // Hash BEFORE consuming, for the same reason the length check comes first: the token is
   // the only way back in, so nothing that can fail may run after it is burned. Hashing is
@@ -1767,11 +1771,11 @@ async function invitePost(request, url, env, users = USERS) {
     hash = await hashPassword(password);
   } catch (e) {
     console.error("invite: hashPassword failed", e && e.stack || e);
-    return htmlResponse(invitePage(token, "Something went wrong setting your password. Try again.", email), 500);
+    return htmlResponse(invitePage(tctx, token, "Something went wrong setting your password. Try again.", email), 500);
   }
 
   const consumed = await consumeInvite(env, token);
-  if (!consumed) return htmlResponse(invitePage("", "This link is no longer valid. Ask for a new one."), 400);
+  if (!consumed) return htmlResponse(invitePage(tctx, "", "This link is no longer valid. Ask for a new one."), 400);
 
   // From here on the token is already burned — a thrown error must not escape as
   // an unhandled exception (dead link, no explanation) but fail cleanly instead.
@@ -1788,7 +1792,7 @@ async function invitePost(request, url, env, users = USERS) {
     });
   } catch (e) {
     console.error("invite: setUserSecret failed", e && e.stack || e);
-    return htmlResponse(invitePage("", "Something went wrong setting your password. Ask for a new link."), 500);
+    return htmlResponse(invitePage(tctx, "", "Something went wrong setting your password. Ask for a new link."), 500);
   }
 }
 
@@ -3268,7 +3272,7 @@ async function adminBackupApi(env, me) {
   });
 }
 
-function loginPage(redirect, error, requestUrl) {
+function loginPage(tctx, redirect, error, requestUrl) {
   const safeRedirect = String(redirect).replace(/"/g, "&quot;");
   return `<!doctype html>
 <html lang="en">
@@ -3276,7 +3280,7 @@ function loginPage(redirect, error, requestUrl) {
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="robots" content="noindex, nofollow" />
-  ${previewHead(requestUrl)}
+  ${previewHead(tctx, requestUrl)}
   <link rel="preload" href="/fonts/inter-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin />
   <style>
     /* Self-hosted Inter (same woff2 the app ships) — no external font request, so the
@@ -3348,21 +3352,21 @@ function loginPage(redirect, error, requestUrl) {
 <body>
   <main class="card">
     <div class="logo">
-      ${brandMark()}
+      ${brandMark(tctx)}
     </div>
     <form method="POST" action="/__auth">
       <input type="hidden" name="redirect" value="${safeRedirect}" />
       <label for="email">Email</label>
-      <input id="email" name="email" type="email" autocomplete="username" autocapitalize="off" autocorrect="off" spellcheck="false" autofocus required value="${escapeHtml(LOGIN_PREFILL_EMAIL)}" ${error ? 'aria-invalid="true" aria-describedby="pw-err"' : ""} />
+      <input id="email" name="email" type="email" autocomplete="username" autocapitalize="off" autocorrect="off" spellcheck="false" autofocus required value="${escapeHtml(tctx.LOGIN_PREFILL_EMAIL)}" ${error ? 'aria-invalid="true" aria-describedby="pw-err"' : ""} />
       <label for="password">Password</label>
-      <input id="password" name="password" type="password" autocomplete="current-password" required value="${escapeHtml(LOGIN_PREFILL_PASSWORD)}" ${error ? 'aria-invalid="true" aria-describedby="pw-err"' : ""} />
+      <input id="password" name="password" type="password" autocomplete="current-password" required value="${escapeHtml(tctx.LOGIN_PREFILL_PASSWORD)}" ${error ? 'aria-invalid="true" aria-describedby="pw-err"' : ""} />
       <button type="submit">Enter</button>
       <p class="error" id="pw-err" role="alert">
         <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 8v5M12 16.5v.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M10.3 3.9 2.5 18a2 2 0 0 0 1.7 3h15.6a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>
         <span>${typeof error === "string" ? escapeHtml(error) : "Incorrect email or password. Try again."}</span>
       </p>
     </form>
-    ${LOGIN_HINT ? `<p class="hint">${escapeHtml(LOGIN_HINT)}</p>` : ""}
+    ${tctx.LOGIN_HINT ? `<p class="hint">${escapeHtml(tctx.LOGIN_HINT)}</p>` : ""}
   </main>
 </body>
 </html>`;
@@ -3550,8 +3554,8 @@ function markerAttr(attrs, name) {
   return m ? m[1] : "";
 }
 
-async function composeChrome(res, url) {
-  if (!RUNTIME_CHROME || !CHROME_POINTER) return res;
+async function composeChrome(tctx, res, url) {
+  if (!tctx.RUNTIME_CHROME || !tctx.CHROME_POINTER) return res;
   const ct = res.headers.get("Content-Type") || "";
   if (!ct.includes("text/html") || url.searchParams.has("raw")) return res;
   let html = await res.text();
@@ -3564,12 +3568,12 @@ async function composeChrome(res, url) {
     // page ⇒ default true, the common case). Without it a no-playground space would get
     // a stray Playground rail item at serve time.
     const hasPlayground = markerAttr(attrs, "data-playground") !== "0";
-    const state = { spaces: SPACES, activeSpace: spaceId, opportunities: [], hasPlayground };
+    const state = { spaces: tctx.SPACES, activeSpace: spaceId, opportunities: [], hasPlayground };
     return `<!--gv-chrome-start ${attrs}-->` + renderAppChrome(active, state, {}) + `<!--gv-chrome-end-->`;
   });
   // (b) point stale bundle refs at the current bundle.
-  html = html.replace(/\/_chrome\.[\d.]+\.[0-9a-f]{8}\.css/g, "/" + CHROME_POINTER.css)
-             .replace(/\/_chrome\.[\d.]+\.[0-9a-f]{8}\.js/g, "/" + CHROME_POINTER.js);
+  html = html.replace(/\/_chrome\.[\d.]+\.[0-9a-f]{8}\.css/g, "/" + tctx.CHROME_POINTER.css)
+             .replace(/\/_chrome\.[\d.]+\.[0-9a-f]{8}\.js/g, "/" + tctx.CHROME_POINTER.js);
   // The recomposed body is no longer the stored blob, so its ETag/Content-Length must not
   // ride along. Served HTML stays no-cache (withAssetCache never marks it immutable), so
   // the change is visible on the next request.
@@ -3591,6 +3595,7 @@ function __setChromeTestState(pointer, spaces, on) {
   CHROME_POINTER = pointer;
   SPACES = spaces;
   RUNTIME_CHROME = on;
+  return TENANT_CTX; // the seeded context, for a caller that has to hand one down
 }
 
 // ---- Platform MCP proxy (same-origin bridge) ---------------------------------
@@ -5015,8 +5020,8 @@ export default {
 
     // Invite redemption is reachable WITHOUT a session — that is the whole point.
     if (url.pathname === "/__invite") {
-      if (request.method === "GET") return inviteGet(url, env);
-      if (request.method === "POST") return invitePost(request, url, env, tctx.USERS);
+      if (request.method === "GET") return inviteGet(tctx, url, env);
+      if (request.method === "POST") return invitePost(tctx, request, url, env);
       return new Response("Method Not Allowed", { status: 405 });
     }
 
@@ -5032,7 +5037,7 @@ export default {
         const email = form.get("email");
         const rlIds = loginRlIds(request, email);
         if (await loginThrottled(env, rlIds)) {
-          return htmlResponse(loginPage(redirect, "Too many attempts. Wait a few minutes and try again.", url.href), 429);
+          return htmlResponse(loginPage(tctx, redirect, "Too many attempts. Wait a few minutes and try again.", url.href), 429);
         }
         if (await loginSlowed(env, rlIds)) await new Promise((r) => setTimeout(r, LOGIN_SLOW_MS));
         const u = userByEmail(email, tctx.USERS);
@@ -5064,7 +5069,7 @@ export default {
         // reveal that a given address is on the roster and currently has no password;
         // for a team this size that is a worthwhile trade against nine people
         // re-checking a password manager for a credential we deleted.
-        return htmlResponse(loginPage(redirect, u && !real ? RESET_NOTICE : true, url.href), 401);
+        return htmlResponse(loginPage(tctx, redirect, u && !real ? RESET_NOTICE : true, url.href), 401);
       }
       // Legacy shared-password mode (no identity injected).
       const pass = (form.get("password") || "").toString();
@@ -5079,7 +5084,7 @@ export default {
           },
         });
       }
-      return htmlResponse(loginPage(redirect, true, url.href), 401);
+      return htmlResponse(loginPage(tctx, redirect, true, url.href), 401);
     }
 
     // These three data APIs key off a caller-supplied ?path=, and they are dispatched
@@ -5174,7 +5179,7 @@ export default {
     // visitor gets the login page. Skipped in legacy/open mode
     // (no users injected), same as the /admin gate.
     if (usersActive && isRestrictedPath(tctx, url.pathname)) {
-      if (!authed) return htmlResponse(loginPage(url.pathname + url.search, false, url.href), 200);
+      if (!authed) return htmlResponse(loginPage(tctx, url.pathname + url.search, false, url.href), 200);
       if (!me || me.role !== "admin") return Response.redirect(new URL("/", url).toString(), 303);
     }
 
@@ -5193,7 +5198,7 @@ export default {
     // validated at commit, but ordering makes that a second line of defence rather than
     // the only one.
     if (url.pathname === "/admin" || url.pathname.startsWith("/admin/")) {
-      if (!authed) return htmlResponse(loginPage(url.pathname + url.search, false, url.href), 200);
+      if (!authed) return htmlResponse(loginPage(tctx, url.pathname + url.search, false, url.href), 200);
       // Admin of ANY space is enough to reach the page — it scopes itself to a space
       // the caller actually administers, and the /__admin APIs re-check per space. A
       // global admin with no membership recorded administers everything, so this is
@@ -5203,7 +5208,7 @@ export default {
       }
       const asset = await assetFetch(env, request);
       if (asset.status === 404) return notFoundResponse();
-      return withAssetCache(await composeChrome(withLiveReload(tctx, asset, url), url), url);
+      return withAssetCache(await composeChrome(tctx, withLiveReload(tctx, asset, url), url), url);
     }
 
     // Published prototypes are public — never gated, regardless of the cookie.
@@ -5212,7 +5217,7 @@ export default {
     if (isPublicPath(tctx, url.pathname)) {
       const asset = await assetFetch(env, request);
       if (asset.status === 404) return notFoundResponse();
-      const res = withAssetCache(await composeChrome(withLiveReload(tctx, asset, url), url), url);
+      const res = withAssetCache(await composeChrome(tctx, withLiveReload(tctx, asset, url), url), url);
       const out = new Response(res.body, res);
       out.headers.set("X-Robots-Tag", "noindex, nofollow, noarchive");
       return out;
@@ -5243,7 +5248,7 @@ export default {
         if (virt) return virt;
         return notFoundResponse();
       }
-      return withAssetCache(await composeChrome(withLiveReload(tctx, asset, url), url), url);
+      return withAssetCache(await composeChrome(tctx, withLiveReload(tctx, asset, url), url), url);
     }
 
     // Created canvas boards are public like published prototypes — same obscure
@@ -5256,7 +5261,7 @@ export default {
 
     // Otherwise show the login page, remembering where they were headed.
     // 200 (not 401) so password managers treat it as a normal login page.
-    return htmlResponse(loginPage(url.pathname + url.search, false, url.href), 200);
+    return htmlResponse(loginPage(tctx, url.pathname + url.search, false, url.href), 200);
   },
 };
 

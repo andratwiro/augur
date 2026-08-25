@@ -70,9 +70,9 @@ test("stale page → current: composeChrome restores the current rail + bundle r
     assert.match(stale, /1\.09\.00000000/);
 
     // Serve it through composeChrome with the CURRENT engine's pointer + spaces (flag on).
-    W.__setChromeTestState(fx.routing.chrome, fx.routing.spaces, true);
+    const ctx = W.__setChromeTestState(fx.routing.chrome, fx.routing.spaces, true);
     const res = new Response(stale, { headers: { "Content-Type": "text/html", "ETag": '"old"' } });
-    const outHtml = await (await W.composeChrome(res, new URL("https://x/"))).text();
+    const outHtml = await (await W.composeChrome(ctx, res, new URL("https://x/"))).text();
 
     // The stale rail is gone, replaced by exactly the current baked rail.
     const om = outHtml.match(MARK);

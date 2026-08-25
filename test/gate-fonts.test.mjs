@@ -8,9 +8,13 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { __testables as W } from "../src/_worker.js";
 
+// An empty workspace context: these pages must self-host their font whatever a
+// deployment publishes, so the fixture deliberately carries no config at all.
+const CTX = W.__setChromeTestState(null, [], false);
+
 const pages = {
-  loginPage: W.loginPage("/", false),
-  invitePage: typeof W.invitePage === "function" ? W.invitePage({ email: "a@b.co", token: "t" }) : null,
+  loginPage: W.loginPage(CTX, "/", false),
+  invitePage: typeof W.invitePage === "function" ? W.invitePage(CTX, { email: "a@b.co", token: "t" }) : null,
 };
 
 for (const [name, html] of Object.entries(pages)) {
