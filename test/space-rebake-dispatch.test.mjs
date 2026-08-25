@@ -8,6 +8,11 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { __testables as W } from "../src/_worker.js";
 
+// The workspace this publish is for. publishApi reads its protocol floor, sentinels and
+// workspace list off the context now, so the fixture names one rather than leaving the
+// answer to whatever module scope was last written.
+const CTX = W.applyInstance({ users: [] });
+
 function memR2(initial = {}) {
   const store = new Map(Object.entries(initial));
   return {
@@ -67,6 +72,7 @@ const baseEnv = (extra = {}) => ({
 });
 
 const commit = (env, manifest, space = "alpha") => W.publishApi(
+  CTX,
   new Request(`https://x.test/__publish/${space}/commit`, {
     method: "POST",
     headers: { Authorization: "Bearer tok", "content-type": "application/json" },
@@ -168,6 +174,7 @@ test("check reports liveBuiltWith, so a re-bake with identical output can restam
   // the live bake came from a DIFFERENT engine that happens to produce identical
   // bytes — leaving builtWithEngine stale forever and the drift alarm crying wolf.
   const res = await W.publishApi(
+    CTX,
     new Request("https://x.test/__publish/alpha/check", {
       method: "POST",
       headers: { Authorization: "Bearer tok", "content-type": "application/json" },

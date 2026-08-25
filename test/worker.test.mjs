@@ -851,15 +851,15 @@ test("a clean publish carries no dirty flag at all (absent, not false)", () => {
 // ---- Delete forever actually deletes ----------------------------------------
 
 test("repo path → live URL prefix, per space base", () => {
-  W.applyDerivedRouting({
+  const ctx = W.applyDerivedRouting({
     alpha: manifestOf("alpha", { def: true }),
     beta: manifestOf("beta"),
   });
-  assert.equal(W.deleteUrlPrefix("alpha", "onboarding/prototypes/signup"), "/onboarding/signup/",
+  assert.equal(W.deleteUrlPrefix(ctx, "alpha", "onboarding/prototypes/signup"), "/onboarding/signup/",
     "the default space serves at the root and drops the prototypes/ segment");
-  assert.equal(W.deleteUrlPrefix("beta", "onboarding/prototypes/signup"), "/beta/onboarding/signup/");
-  assert.equal(W.deleteUrlPrefix("alpha", "playground/sketch"), "/playground/sketch/");
-  assert.equal(W.deleteUrlPrefix("nope", "playground/sketch"), null,
+  assert.equal(W.deleteUrlPrefix(ctx, "beta", "onboarding/prototypes/signup"), "/beta/onboarding/signup/");
+  assert.equal(W.deleteUrlPrefix(ctx, "alpha", "playground/sketch"), "/playground/sketch/");
+  assert.equal(W.deleteUrlPrefix(ctx, "nope", "playground/sketch"), null,
     "an unknown space must not fall back to the root form and aim at the default space");
 });
 
@@ -888,7 +888,7 @@ test("deleting a prototype removes its files and its routing entries, as a new v
     },
   };
   const env = { BUNDLES: memR2({ "spaces/alpha/manifest.json": JSON.stringify(live) }) };
-  const res = await W.removeFromStore(env, "alpha", "/onboarding/signup/", "admin@example.test");
+  const res = await W.removeFromStore(BARE, env, "alpha", "/onboarding/signup/", "admin@example.test");
   assert.equal(res.removed, 2);
   assert.equal(res.version, 5);
 
@@ -904,7 +904,7 @@ test("deleting a prototype removes its files and its routing entries, as a new v
 test("deleting something that isn't there changes nothing (no empty version bump)", async () => {
   const live = { id: "alpha", version: 4, files: { "/index.html": { h: "1" } } };
   const env = { BUNDLES: memR2({ "spaces/alpha/manifest.json": JSON.stringify(live) }) };
-  const res = await W.removeFromStore(env, "alpha", "/gone/", "admin@example.test");
+  const res = await W.removeFromStore(BARE, env, "alpha", "/gone/", "admin@example.test");
   assert.equal(res.removed, 0);
   assert.equal(JSON.parse(env.BUNDLES.store.get("spaces/alpha/manifest.json")).version, 4);
 });
@@ -1545,12 +1545,12 @@ test("the instance loginHint renders under the login form, escaped, only when se
 
 test("a viewer can never trade its public credentials for a publish token", async () => {
   const hash = await W.hashPassword("public-demo-pass");
-  W.applyInstance({ users: [
+  const ctx = W.applyInstance({ users: [
     { email: "visita@example.test", name: "Visita", role: "viewer", passHash: hash },
     { email: "member@example.test", name: "Member", passHash: hash },
   ] });
   const env = envWith(memKV(), { BUNDLES: {} , SESSION_SECRET: "s3cret" });
-  const mint = (email) => W.publishApi(
+  const mint = (email) => W.publishApi(ctx,
     new Request("https://example.test/__publish/_login/token", {
       method: "POST",
       body: JSON.stringify({ email, password: "public-demo-pass" }),

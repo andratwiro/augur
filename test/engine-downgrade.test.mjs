@@ -10,6 +10,11 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { __testables as W } from "../src/_worker.js";
 
+// The workspace this publish is for. publishApi reads its protocol floor, sentinels and
+// workspace list off the context now, so the fixture names one rather than leaving the
+// answer to whatever module scope was last written.
+const CTX = W.applyInstance({ users: [] });
+
 function memR2(initial = {}) {
   const store = new Map(Object.entries(initial));
   return {
@@ -43,6 +48,7 @@ const envWith = (extra = {}) => ({
 });
 
 const commitEngine = (env, manifest) => W.publishApi(
+  CTX,
   new Request("https://x.test/__publish/_engine/commit", {
     method: "POST",
     headers: { Authorization: "Bearer tok", "content-type": "application/json" },
@@ -103,6 +109,7 @@ test("a semver-older engine is refused even when its files look complete", async
 test("rollback on _engine still works — the audited escape hatch", async () => {
   const env = envWith({ "spaces/_engine/versions/8.json": JSON.stringify({ ...LIVE_ENGINE, version: 8 }) });
   const res = await W.publishApi(
+    CTX,
     new Request("https://x.test/__publish/_engine/rollback", {
       method: "POST",
       headers: { Authorization: "Bearer tok", "content-type": "application/json" },
@@ -114,6 +121,7 @@ test("rollback on _engine still works — the audited escape hatch", async () =>
 });
 
 const postConfig = (env, cfg) => W.publishApi(
+  CTX,
   new Request("https://x.test/__publish/_instance/config", {
     method: "POST",
     headers: { Authorization: "Bearer tok", "content-type": "application/json" },

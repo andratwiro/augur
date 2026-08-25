@@ -2436,7 +2436,7 @@ async function publishAuth(request, env, spaceId, anySpace) {
   } catch (err) { return null; }
 }
 
-async function publishApi(request, url, env) {
+async function publishApi(tctx, request, url, env) {
   if (!env.BUNDLES) return jsonResponse({ error: "bundle-store-not-configured" }, 501);
   const [spaceId, op, arg] = url.pathname.slice("/__publish/".length).split("/");
   if (!spaceId || !op || !/^[a-z0-9_][a-z0-9-]*$/.test(spaceId)) return jsonResponse({ error: "bad-path" }, 400);
@@ -2454,7 +2454,7 @@ async function publishApi(request, url, env) {
       return jsonResponse({ error: "rate-limited", message: "Too many attempts. Wait a few minutes." }, 429);
     }
     if (await loginSlowed(env, rlIds)) await new Promise((r) => setTimeout(r, LOGIN_SLOW_MS));
-    const u = userByEmail(email);
+    const u = userByEmail(email, tctx.USERS);
     const pass = String((body && body.password) || "");
     // Resolve through effectiveSecret even when no user matched (a throwaway address),
     // so an unknown email pays the SAME users:secrets KV read as a known one — without
@@ -2482,7 +2482,7 @@ async function publishApi(request, url, env) {
     if (roleOf(u) === "viewer") {
       return jsonResponse({ error: "viewer-role", message: "This account can look around but not publish." }, 403);
     }
-    const space = roleOf(u) === "admin" ? "*" : (SPACES.find((s) => s.default) || { id: null }).id;
+    const space = roleOf(u) === "admin" ? "*" : (tctx.SPACES.find((s) => s.default) || { id: null }).id;
     if (!space) return jsonResponse({ error: "no-default-space" }, 500);
     const bytes = new Uint8Array(32);
     crypto.getRandomValues(bytes);
@@ -2504,7 +2504,7 @@ async function publishApi(request, url, env) {
     // No `role` here: any valid publish token (including a non-admin default-space one)
     // can read this, and it only needs the fields that render editor faces — leaking
     // who the admins are is gratuitous.
-    const profiles = USERS.map((u) => ({
+    const profiles = tctx.USERS.map((u) => ({
       id: personId(u.email),
       email: u.email, emails: u.emails || [],
       name: u.name, initials: u.initials || "", color: u.color || "#4f46e5",
@@ -2602,8 +2602,8 @@ async function publishApi(request, url, env) {
       // upload finding out at commit. Advisory here, enforced there — same split as
       // livePrefixes above, and for the same reason: commit is the only chokepoint the
       // one-round-trip fast path also goes through.
-      minProtocol: MIN_CLIENT_PROTOCOL || undefined,
-      engine: INSTANCE_ENGINE_VERSION || null,
+      minProtocol: tctx.MIN_CLIENT_PROTOCOL || undefined,
+      engine: tctx.INSTANCE_ENGINE_VERSION || null,
     });
   }
 
@@ -2718,11 +2718,11 @@ async function publishApi(request, url, env) {
     // definition below any floor above zero.
     const clientProtocol = Number.isInteger(m.clientProtocol) ? m.clientProtocol : 0;
     delete m.clientProtocol; // transport-only, like allowUnpublish — never persisted
-    if (MIN_CLIENT_PROTOCOL && clientProtocol < MIN_CLIENT_PROTOCOL) {
+    if (tctx.MIN_CLIENT_PROTOCOL && clientProtocol < tctx.MIN_CLIENT_PROTOCOL) {
       return jsonResponse({
         error: "cli-outdated",
         clientProtocol,
-        minProtocol: MIN_CLIENT_PROTOCOL,
+        minProtocol: tctx.MIN_CLIENT_PROTOCOL,
         protocol: PUBLISH_PROTOCOL,
         upgrade: "npx augur@latest",
       }, 426);
@@ -2752,8 +2752,8 @@ async function publishApi(request, url, env) {
     // all-powerful (they push instance config, i.e. the user list), so they are exempt —
     // that is also how the trusted `_engine` chrome publish writes /admin, /404.html, etc.
     if (who.space !== "*") {
-      const commitIsDefault = spaceId === ((SPACES.find((s) => s.default) || {}).id || null);
-      const ownsPath = (k) => pathOwnedBySpace(k, spaceId, SPACES);
+      const commitIsDefault = spaceId === ((tctx.SPACES.find((s) => s.default) || {}).id || null);
+      const ownsPath = (k) => pathOwnedBySpace(k, spaceId, tctx.SPACES);
       for (const k in m.files) {
         if (!ownsPath(k)) return jsonResponse({ error: "path-not-owned", path: k }, 403);
         // Belt-and-suspenders: never overwrite a path another LIVE space (incl _engine)
@@ -2775,7 +2775,7 @@ async function publishApi(request, url, env) {
           // the ownership rule was the hole — the default space really does own the root,
           // and a root prefix opens every gated path on the site to anonymous visitors,
           // from the token any signed-in user mints with `augur login`.
-          if (!isPublishablePublicPrefix(p, spaceId, SPACES)) {
+          if (!isPublishablePublicPrefix(p, spaceId, tctx.SPACES)) {
             return jsonResponse({ error: "bad-routing-prefix", path: p }, 400);
           }
         }
@@ -2923,7 +2923,7 @@ async function publishApi(request, url, env) {
     // Sentinels (instance-configured paths, e.g. the DS core stylesheet): once
     // live in a space, a publish may not silently drop them — that's a broken
     // checkout, not an intent.
-    for (const s of INSTANCE_SENTINELS) {
+    for (const s of tctx.INSTANCE_SENTINELS) {
       if (cur && cur.files && cur.files[s] && !m.files[s]) {
         return jsonResponse({ error: "sentinel-missing", path: s }, 422);
       }
@@ -3026,7 +3026,7 @@ async function publishApi(request, url, env) {
 // the deploy canary already watches for — it will ask for a republish, and the
 // republish reconciles the two. Inventing a second flag for it would just be
 // another number to reconcile.
-async function removeFromStore(env, spaceId, urlPrefix, by) {
+async function removeFromStore(tctx, env, spaceId, urlPrefix, by) {
   if (!env.BUNDLES) return { skipped: "no-store" };
   const obj = await env.BUNDLES.get(`spaces/${spaceId}/manifest.json`);
   if (!obj) return { skipped: "unknown-space" };
@@ -3039,7 +3039,7 @@ async function removeFromStore(env, spaceId, urlPrefix, by) {
   }
   if (!removed) return { removed: 0 };
   // Same guard a publish gets: a delete may never take out an instance sentinel.
-  for (const s of INSTANCE_SENTINELS) {
+  for (const s of tctx.INSTANCE_SENTINELS) {
     if (cur.files[s] && !files[s]) return { error: "sentinel-missing", path: s };
   }
   // Drop the dead path from the routing fragment too, or the gate keeps advertising
@@ -3072,14 +3072,14 @@ async function removeFromStore(env, spaceId, urlPrefix, by) {
 // "<folder>/prototypes/<name>" and "playground/<name>"; the served URLs drop the
 // "prototypes/" segment ("/<folder>/<name>/") and carry the space's base for every
 // space but the default.
-function deleteUrlPrefix(space, repoPath) {
+function deleteUrlPrefix(tctx, space, repoPath) {
   const parts = repoPath.split("/");
   const tail = parts[0] === "playground"
     ? `/playground/${encodeURIComponent(parts[1])}/`
     : `/${encodeURIComponent(parts[0])}/${encodeURIComponent(parts[2])}/`;
   // An unknown space must NOT fall back to the root form: that would aim the
   // deletion at the default space's URLs instead. No space, no prefix.
-  const meta = SPACES.find((s) => s.id === space);
+  const meta = tctx.SPACES.find((s) => s.id === space);
   if (!meta) return null;
   return meta.default ? tail : `/${space}${tail}`;
 }
@@ -3377,14 +3377,14 @@ function loginPage(tctx, redirect, error, requestUrl) {
 // that is PAST the gate (authed user, admin page, or a public-prototype path). The
 // signed-out fallthrough keeps returning the login page instead, so an unknown URL
 // never reveals whether it exists to someone who hasn't logged in.
-function notFoundPage() {
+function notFoundPage(tctx) {
   return `<!doctype html>
 <html lang="en">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="robots" content="noindex, nofollow" />
-  <title>Not found · Augur</title>${SPACES.some((s) => s.default) ? `\n  <link rel="icon" href="/space-icon.png" />` : ""}
+  <title>Not found · Augur</title>${tctx.SPACES.some((s) => s.default) ? `\n  <link rel="icon" href="/space-icon.png" />` : ""}
   <link rel="preload" href="/fonts/inter-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin />
   <style>
     :root {
@@ -3444,8 +3444,8 @@ function htmlResponse(body, status) {
 
 // Branded 404 for requests that are past the gate. no-store + noindex so it's never
 // cached or crawled. Used wherever env.ASSETS.fetch returns a 404 for an authed/public path.
-function notFoundResponse() {
-  return new Response(notFoundPage(), {
+function notFoundResponse(tctx) {
+  return new Response(notFoundPage(tctx), {
     status: 404,
     headers: {
       "Content-Type": "text/html; charset=utf-8",
@@ -3680,7 +3680,7 @@ async function mcpProxy(tctx, request, url) {
   // Exact match, against the protocol floor and then the workspace's own declarations.
   // `path` is url.pathname: already normalised (no "..", no "." segments) and carrying
   // no query string, so this compares a whole endpoint, never a prefix.
-  if (!MCP_PROXY_PATHS.has(path) && !MCP_PATH_ALLOWLIST.includes(path))
+  if (!MCP_PROXY_PATHS.has(path) && !tctx.MCP_PATH_ALLOWLIST.includes(path))
     return jsonResponse({ error: "path not allowed" }, 403);
   if (request.method !== "POST" && request.method !== "GET")
     return jsonResponse({ error: "method not allowed" }, 405);
@@ -4039,7 +4039,7 @@ async function shellDispatch(env, eventType, payload) {
   } catch (e) { return "failed"; }
 }
 
-async function deleteApi(request, env, me) {
+async function deleteApi(tctx, request, env, me) {
   if (request.method !== "POST") return jsonResponse({ error: "method-not-allowed" }, 405);
   if (!env.DELETE_DISPATCH_URL || !env.DELETE_DISPATCH_TOKEN) {
     return jsonResponse({ error: "not-configured" }, 501);
@@ -4059,10 +4059,10 @@ async function deleteApi(request, env, me) {
   // half fails we say so rather than reporting a clean success.
   let store = null;
   if (bundleMode(env)) {
-    const prefix = deleteUrlPrefix(space, path);
+    const prefix = deleteUrlPrefix(tctx, space, path);
     if (!prefix) return jsonResponse({ error: "unknown-space", space }, 400);
     try {
-      store = await removeFromStore(env, space, prefix, me ? me.email : "");
+      store = await removeFromStore(tctx, env, space, prefix, me ? me.email : "");
     } catch (e) {
       store = { error: "store-write-failed" };
     }
@@ -4820,7 +4820,11 @@ export default {
     // reads only — instance.json carries the user list. Reject external requests
     // BEFORE any asset serving, unconditionally (even in open/legacy mode).
     if (url.pathname === "/__config" || url.pathname.startsWith("/__config/")) {
-      return notFoundResponse();
+      // This refusal deliberately predates the resolve — it is the same answer for
+      // every workspace and costs no read — so there is no per-request context to hand
+      // the branded 404 yet. TENANT_CTX, the last good one this isolate loaded, is what
+      // the module bindings mirror, so the page renders exactly the bytes it always has.
+      return notFoundResponse(TENANT_CTX);
     }
 
     // Which workspace this request belongs to — resolved ONCE, here, before anything
@@ -4843,7 +4847,7 @@ export default {
 
     // Direct-publish API — self-authed (bearer tokens), before the gate like
     // the other tooling routes.
-    if (url.pathname.startsWith("/__publish/")) return publishApi(request, url, env);
+    if (url.pathname.startsWith("/__publish/")) return publishApi(tctx, request, url, env);
 
     // In bundle mode the public build stamp is synthesized from the live
     // manifests — same shape and contract as the static file Pages serves.
@@ -5153,7 +5157,7 @@ export default {
     if (url.pathname === "/__delete") {
       if (!authed) return jsonResponse({ error: "unauthorized" }, 401);
       if (usersActive && (!me || me.role !== "admin")) return jsonResponse({ error: "forbidden" }, 403);
-      return deleteApi(request, env, me);
+      return deleteApi(tctx, request, env, me);
     }
     // Canvas board docs follow the COMMENTS model, not the status/pins model: a canvas is a
     // PUBLISHED prototype (public, obscure share link), so its board must load & save without a
@@ -5190,7 +5194,7 @@ export default {
     // this is an <audio> src, and the honest answer to "may I have this file" from anyone
     // else is that it isn't there. An instance with no user list at all has no admins to
     // distinguish, and every visitor there is the operator, so it stays open.
-    if (usersActive && isTrackPath(url.pathname) && (!me || me.role !== "admin")) return notFoundResponse();
+    if (usersActive && isTrackPath(url.pathname) && (!me || me.role !== "admin")) return notFoundResponse(tctx);
 
     // Admin pages (/admin/…): require an admin user. A signed-out visitor gets the
     // login page; a signed-in non-admin is bounced home.
@@ -5210,7 +5214,7 @@ export default {
         return Response.redirect(new URL("/", url).toString(), 303);
       }
       const asset = await assetFetch(env, request);
-      if (asset.status === 404) return notFoundResponse();
+      if (asset.status === 404) return notFoundResponse(tctx);
       return withAssetCache(await composeChrome(tctx, withLiveReload(tctx, asset, url), url), url);
     }
 
@@ -5219,7 +5223,7 @@ export default {
     // public response as non-indexable (covers HTML and assets alike).
     if (isPublicPath(tctx, url.pathname)) {
       const asset = await assetFetch(env, request);
-      if (asset.status === 404) return notFoundResponse();
+      if (asset.status === 404) return notFoundResponse(tctx);
       const res = withAssetCache(await composeChrome(tctx, withLiveReload(tctx, asset, url), url), url);
       const out = new Response(res.body, res);
       out.headers.set("X-Robots-Tag", "noindex, nofollow, noarchive");
@@ -5239,7 +5243,7 @@ export default {
     // non-member never fares worse than a signed-out stranger looking at the same URL.
     if (usersActive && me) {
       const sid = (tctx.SPACES.find((s) => s.default) || {}).id || null;
-      if (sid && !isMemberOf(me, sid)) return notFoundResponse();
+      if (sid && !isMemberOf(me, sid)) return notFoundResponse(tctx);
     }
 
     // Past the gate (or nothing gates the site) → serve. A 404 gets one more chance
@@ -5249,7 +5253,7 @@ export default {
       if (asset.status === 404) {
         const virt = await virtualCanvas(tctx, request, env, url);
         if (virt) return virt;
-        return notFoundResponse();
+        return notFoundResponse(tctx);
       }
       return withAssetCache(await composeChrome(tctx, withLiveReload(tctx, asset, url), url), url);
     }

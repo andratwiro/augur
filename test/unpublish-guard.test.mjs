@@ -14,6 +14,11 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { __testables as W } from "../src/_worker.js";
 
+// The workspace this publish is for. publishApi reads its protocol floor, sentinels and
+// workspace list off the context now, so the fixture names one rather than leaving the
+// answer to whatever module scope was last written.
+const CTX = W.applyInstance({ users: [] });
+
 const removed = W.removedPublicPrefixes;
 // Every prefix passed here is genuinely LIVE — backed by a synthetic file — so
 // these fixtures represent real pages, exactly as they did before the guard
@@ -157,6 +162,7 @@ const envWithLive = () => ({
 });
 
 const commit = (env, manifest) => W.publishApi(
+  CTX,
   new Request("https://x.test/__publish/alpha/commit", {
     method: "POST",
     headers: { Authorization: "Bearer tok", "content-type": "application/json" },
@@ -287,6 +293,7 @@ test("a manifest that DECLARES a live prefix without shipping its files has it p
 test("/check's advisory livePrefixes excludes dead/orphaned entries too, matching what commit enforces", async () => {
   const env = envWithOrphan();
   const res = await W.publishApi(
+    CTX,
     new Request("https://x.test/__publish/alpha/check", {
       method: "POST",
       headers: { Authorization: "Bearer tok", "content-type": "application/json" },

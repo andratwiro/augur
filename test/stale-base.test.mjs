@@ -11,6 +11,11 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { __testables as W } from "../src/_worker.js";
 
+// The workspace this publish is for. publishApi reads its protocol floor, sentinels and
+// workspace list off the context now, so the fixture names one rather than leaving the
+// answer to whatever module scope was last written.
+const CTX = W.applyInstance({ users: [] });
+
 function memR2(initial = {}) {
   const store = new Map(Object.entries(initial));
   return {
@@ -38,6 +43,7 @@ const envWithLive = () => ({
 });
 
 const commit = (env, manifest) => W.publishApi(
+  CTX,
   new Request("https://x.test/__publish/alpha/commit", {
     method: "POST",
     headers: { Authorization: "Bearer tok", "content-type": "application/json" },
@@ -108,6 +114,7 @@ test("the check response speaks at least protocol 4 — the self-update nudge ri
   // self-updates, so the echoed protocol going BACKWARDS would silence that nudge.
   const env = envWithLive();
   const res = await W.publishApi(
+    CTX,
     new Request("https://x.test/__publish/alpha/check", {
       method: "POST",
       headers: { Authorization: "Bearer tok", "content-type": "application/json" },

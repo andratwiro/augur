@@ -9,8 +9,11 @@ import { __testables as W } from "../src/_worker.js";
 import { CLIENT_PROTOCOL } from "../scripts/lib/store.mjs";
 import { readFileSync } from "node:fs";
 
-// applyInstance is how a deploy.config.json value reaches the worker's module scope.
-const withFloor = (n) => W.applyInstance({ users: [], minClientProtocol: n });
+// applyInstance is how a deploy.config.json value reaches this deployment's config, and
+// it hands back the CONTEXT that carries it — which is what publishApi reads the floor
+// off now. CTX is therefore reassigned by every seed below, never captured once.
+let CTX = W.applyInstance({ users: [] });
+const withFloor = (n) => (CTX = W.applyInstance({ users: [], minClientProtocol: n }));
 
 function memR2(initial = {}) {
   const store = new Map(Object.entries(initial));
@@ -42,6 +45,7 @@ const envWithLive = () => ({
   PUBLISH_BOOTSTRAP_TOKEN: "tok",
 });
 const commit = (env, manifest) => W.publishApi(
+  CTX,
   new Request("https://x.test/__publish/alpha/commit", {
     method: "POST",
     headers: { Authorization: "Bearer tok", "content-type": "application/json" },
@@ -51,7 +55,7 @@ const commit = (env, manifest) => W.publishApi(
   env);
 
 test("with no floor set, a client that declares nothing still publishes", async () => {
-  W.applyInstance({ users: [] });
+  CTX = W.applyInstance({ users: [] });
   const env = envWithLive();
   const res = await commit(env, { ...NEXT, baseVersion: 4 });
   assert.equal(res.status, 200, "a knob nobody set must never be why a publish fails");
@@ -70,7 +74,7 @@ test("with a floor set, a client below it is refused 426 and NOTHING is written"
   assert.match(body.upgrade, /augur@latest/);
   assert.equal(JSON.parse(env.BUNDLES.store.get("spaces/alpha/manifest.json")).version, 4,
     "live must be untouched — the refusal happens before any write");
-  W.applyInstance({ users: [] });
+  CTX = W.applyInstance({ users: [] });
 });
 
 test("a client that omits clientProtocol predates the field, so it is below any floor", async () => {
@@ -79,7 +83,7 @@ test("a client that omits clientProtocol predates the field, so it is below any 
   const res = await commit(env, { ...NEXT, baseVersion: 4 });
   assert.equal(res.status, 426);
   assert.equal((await res.json()).clientProtocol, 0);
-  W.applyInstance({ users: [] });
+  CTX = W.applyInstance({ users: [] });
 });
 
 test("a client at or above the floor publishes, and clientProtocol is never persisted", async () => {
@@ -90,7 +94,7 @@ test("a client at or above the floor publishes, and clientProtocol is never pers
   const after = JSON.parse(env.BUNDLES.store.get("spaces/alpha/manifest.json"));
   assert.equal(after.version, 5);
   assert.equal(after.clientProtocol, undefined, "transport-only, like allowUnpublish and baseVersion");
-  W.applyInstance({ users: [] });
+  CTX = W.applyInstance({ users: [] });
 });
 
 test("a non-integer or non-positive floor is ignored rather than half-applied", () => {

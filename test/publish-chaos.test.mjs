@@ -68,7 +68,12 @@ const mani = (units, extra = {}) => {
   };
 };
 
+// The deployment's config, as a context: publishApi reads its protocol floor and
+// sentinels off the workspace it is publishing for. Reassigned by every seed below.
+let CTX = W.applyInstance({ users: [] });
+
 const call = (env, op, body) => W.publishApi(
+  CTX,
   new Request(`https://x.test/__publish/alpha/${op}`, {
     method: "POST",
     headers: { Authorization: "Bearer tok", "content-type": "application/json" },
@@ -146,7 +151,7 @@ async function runChaos(seed) {
     PUBLISH_BOOTSTRAP_TOKEN: "tok",
   };
   await seedBlobs(env, "a", "b", "c");
-  W.applyInstance({ users: [], minClientProtocol: 5 });
+  CTX = W.applyInstance({ users: [], minClientProtocol: 5 });
   try {
     const thunks = [];
     const editors = ["/toolkit/a/", "/toolkit/b/", "/toolkit/c/"];
@@ -198,7 +203,7 @@ async function runChaos(seed) {
     }
     return { accepted, total: results.length };
   } finally {
-    W.applyInstance({ users: [] });
+    CTX = W.applyInstance({ users: [] });
   }
 }
 

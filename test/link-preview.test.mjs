@@ -61,8 +61,8 @@ test("space-authored name and description are attribute-safe", () => {
 });
 
 test("the 404 wears the space favicon exactly when a default space is mounted", () => {
-  setSpaces([BOREALIS]);
-  assert.ok(W.notFoundPage().includes(`<link rel="icon" href="/space-icon.png" />`));
-  setSpaces([]);
-  assert.ok(!W.notFoundPage().includes('rel="icon"'));
+  const mounted = setSpaces([BOREALIS]);
+  assert.ok(W.notFoundPage(mounted).includes(`<link rel="icon" href="/space-icon.png" />`));
+  const bare = setSpaces([]);
+  assert.ok(!W.notFoundPage(bare).includes('rel="icon"'));
 });

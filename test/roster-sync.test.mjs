@@ -11,6 +11,11 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { __testables as W } from "../src/_worker.js";
 
+// The workspace this publish is for. publishApi reads its protocol floor, sentinels and
+// workspace list off the context now, so the fixture names one rather than leaving the
+// answer to whatever module scope was last written.
+const CTX = W.applyInstance({ users: [] });
+
 function memKV() {
   const store = new Map();
   return {
@@ -141,6 +146,7 @@ test("a config push drains overlay entries the new config supersedes", async () 
     { email: "hidden@x.test", name: "Hidden" },
   ] });
   const res = await W.publishApi(
+    CTX,
     new Request("https://x.test/__publish/_instance/config", {
       method: "POST",
       headers: { Authorization: "Bearer tok", "content-type": "application/json" },
