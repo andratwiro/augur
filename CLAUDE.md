@@ -33,6 +33,14 @@ can preview any of them, but nothing routes to a non-default space: name the one
 mean with `GV_SPACES_ROOT` or `GV_ONLY_SPACE`. Serving several workspaces from one
 deploy is Phase B's job, resolved by Host, not by path.
 
+**Which workspace a request is for is decided in exactly one place**:
+`resolveTenant(request, env)` in `src/_worker.js`, called once at the top of `fetch()`
+before any config is read. Today it answers the `tenantId` the build stamped into
+`instance.json`; Host-based resolution replaces that body and nothing else.
+`scripts/one-tenant-resolver.mjs` runs in `check` and fails the deploy if a second call
+site appears or the one call drifts below the config load — a second caller returns the
+same answer while there is one workspace, so nothing else would notice.
+
 `space.json` contract: **single source = [agents/space-json.md](agents/space-json.md)**
 (all fields incl. `siteOrigin` + `mcpAllowlists`, with semantics). Load-bearing
 highlights: `id` is the only required field (mount name + URL prefix; repo name is a
@@ -87,7 +95,9 @@ never a file.
 **Runtime config (no build-time worker stamping).** `src/_worker.js` ships VERBATIM;
 build.js emits `dist/__config/instance.json` (users from `GV_IDENTITY_PATH`; from
 `GV_DEPLOY_CONFIG_PATH`: `mcpHostSuffixes`, `mcpHostAllowlistUrl`, `vanityRedirects`,
-`rtOrigin`, `sentinels`) and `dist/__config/routing.json` (public prefixes,
+`rtOrigin`, `sentinels`, plus a `tenantId` — the deploy config's if it sets one,
+otherwise the id of the space mounted at the root) and
+`dist/__config/routing.json` (public prefixes,
 version map, restricted bases, space list, the mcp allowlist union spaces declare via
 `space.json "mcpAllowlists"`). The worker fills these via `loadConfig()` (~1.5s
 per-isolate cache) and seals `/__config/*` from external requests. Build.js also

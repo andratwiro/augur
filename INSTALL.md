@@ -249,8 +249,10 @@ instance turns its throwaway account into a one-click login instead of a
 copy-paste; leave unset and the form renders empty, as before), `runtimeChrome`
 (boolean — compose current page chrome at serve time instead of trusting what
 publishes baked in, so an engine deploy updates every page instantly; pages baked
-by pre-marker engines still converge via the shell's space-rebake), and
-`minClientProtocol`.
+by pre-marker engines still converge via the shell's space-rebake),
+`tenantId` (the name this deployment answers to internally — leave it unset and
+the build uses the id of the space it serves, which is what you want unless you
+plan to rename that space and keep the identity), and `minClientProtocol`.
 
 `minClientProtocol` is the oldest publish protocol this instance accepts a commit
 from; a client below it is refused `426 cli-outdated` before anything is written.

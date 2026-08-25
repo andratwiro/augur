@@ -445,6 +445,69 @@ async function loadConfig(env) {
   await applyRoster(env, forced);
 }
 
+// ---- The tenant resolver seam -----------------------------------------------
+// ONE function answers "which workspace is this request for", and fetch() calls it
+// ONCE, before any config is read. Everything downstream takes the answer as a
+// parameter, so the day the answer stops being static there is a single line to
+// change instead of a hunt through the read sites.
+//
+// TODAY the body is static: a deployment serves exactly one workspace, so the answer
+// is the identity the build stamped into instance.json (`tenantId`), read once per
+// isolate. NEXT, serving several workspaces from one deployment replaces this body
+// with a Host lookup — `request.headers.get("Host")` → the workspace that claims that
+// hostname → its id. Same signature, same single call site, same `{tenantId}` answer;
+// `request` is a parameter today for exactly that reason and is deliberately unused.
+//
+// The fallback carries more weight than the happy path. Every instance built before
+// the field existed carries no `tenantId`, and a raw or offline build has no config
+// document at all — all of them answer DEFAULT_TENANT_ID, which is precisely what the
+// single-workspace world has been doing all along under another name: one identity,
+// one config cache, one gate. Nothing about a live deployment changes when it takes
+// this engine; it starts naming out loud the tenant it already was.
+const DEFAULT_TENANT_ID = "default";
+const TENANT_MEMO_TTL_MS = 1500;
+// This isolate's static answer: `{at, tenantId}`, or null before the first attempt. A
+// RESOLVED id is kept for the life of the isolate — a deployment's identity does not
+// change without a new deploy, and re-reading it would put a second config read on
+// every request. A FAILED attempt is stamped rather than pinned, so it retries on the
+// next tick instead of every concurrent request queueing behind a broken read: the
+// same stamp-first shape loadConfig uses, for the same reason.
+let tenantMemo = null;
+
+// instance.json's `tenantId`, or null if the document is absent, unreadable, or was
+// written by a build that did not emit the field. Reads the same document loadConfig
+// does, in both serving modes; the duplicate read is once per isolate and disappears
+// when the config load itself becomes tenant-scoped.
+async function readInstanceTenantId(env) {
+  try {
+    let doc = null;
+    if (bundleMode(env)) {
+      const obj = await env.BUNDLES.get("config/instance.json");
+      if (obj) doc = JSON.parse(await obj.text());
+    } else if (env && env.ASSETS) {
+      const r = await env.ASSETS.fetch("https://config/__config/instance.json");
+      if (r.ok) doc = await r.json();
+    }
+    const id = doc && typeof doc.tenantId === "string" ? doc.tenantId.trim() : "";
+    return id || null;
+  } catch (e) { return null; }
+}
+
+async function resolveTenant(request, env) {
+  if (tenantMemo) {
+    if (tenantMemo.tenantId) return { tenantId: tenantMemo.tenantId };
+    if (Date.now() - tenantMemo.at < TENANT_MEMO_TTL_MS) return { tenantId: DEFAULT_TENANT_ID };
+  }
+  tenantMemo = { at: Date.now(), tenantId: null }; // stamp first, then read
+  const tenantId = await readInstanceTenantId(env);
+  if (tenantId) tenantMemo = { at: Date.now(), tenantId };
+  return { tenantId: tenantId || DEFAULT_TENANT_ID };
+}
+
+// Test hook: the memo is per-isolate, so a suite driving two deployments through one
+// module has to clear it between them. Nothing in the request path calls this.
+function __setTenantTestState({ memo = null } = {}) { tenantMemo = memo; }
+
 // Legacy token derivation — SHA-256("gv:" + secret). Still ACCEPTED during migration
 // (see identify) and used as the fallback when SESSION_SECRET is unset, but new
 // tokens are always issued by hmacToken().
@@ -4515,6 +4578,17 @@ export default {
     if (url.pathname === "/__config" || url.pathname.startsWith("/__config/")) {
       return notFoundResponse();
     }
+
+    // Which workspace this request belongs to — resolved ONCE, here, before anything
+    // reads config, and passed down from this point on. The only call site: see
+    // scripts/one-tenant-resolver.mjs, which fails the build if a second one appears.
+    // (The /__config refusal above comes first because it is the same answer for every
+    // workspace and costs no read.)
+    const { tenantId } = await resolveTenant(request, env);
+    // Nothing reads it yet: the seam lands on its own so the commits that thread it
+    // into loadConfig and the read sites are pure moves against a resolver that is
+    // already here and already tested. `void` says "not forgotten", not "unused".
+    void tenantId;
     await loadConfig(env);
 
     // Direct-publish API — self-authed (bearer tokens), before the gate like
@@ -4976,4 +5050,5 @@ export const __testables = {
   boardApi, canvasesApi, virtualCanvas, rtProxy, CANVASES_KEY, BOARD_PREFIX, BOARD_MAX_BYTES,
   composeChrome, renderAppChrome, renderSpaceContextScript, __setChromeTestState,
   loadConfig, __setConfigTestState, __usersNow, pitiApi,
+  resolveTenant, DEFAULT_TENANT_ID, TENANT_MEMO_TTL_MS, __setTenantTestState,
 };

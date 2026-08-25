@@ -6922,6 +6922,16 @@ async function main() {
   await fs.mkdir(path.join(DIST, "__config"), { recursive: true });
   await fs.writeFile(path.join(DIST, "__config", "instance.json"), JSON.stringify({
     users: IDENTITY,
+    // Which workspace this deployment serves, named out loud — the worker's
+    // resolveTenant() reads it and every config read is scoped to the answer. An
+    // explicit "tenantId" in the deploy config wins (a deployment may want an identity
+    // that outlives a rename of the workspace it serves); otherwise it is the id of the
+    // workspace mounted at the root, which is what a one-workspace deployment has always
+    // been. An engine-only build mounts no workspace and emits "", and the worker then
+    // falls back to its own default — which is also what every instance built before
+    // this field existed gets, so nothing has to be rebuilt for the worker to keep
+    // working.
+    tenantId: DEPLOY.tenantId || (NAV_STATE.spaces.find((s) => s.default) || {}).id || "",
     engineVersion: ENGINE_VERSION,
     updateFeed: DEPLOY.updateFeed || "",
     mcpHostSuffixes: DEPLOY.mcpHostSuffixes || [],

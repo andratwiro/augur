@@ -167,8 +167,8 @@ read sites once decls/assigns are removed — matching the plan's "~110".
 
 **The enumeration of record is `scripts/no-tenant-globals.mjs`, not this table.** Line
 numbers here drift; the lint reads the worker and counts what is actually declared —
-today 46 module-scope bindings: 29 config globals still in flight (the 28 above plus
-`CONFIG_LOADED`), 11 per-isolate caches, and 6 mutable-container constants that never
+today 47 module-scope bindings: 29 config globals still in flight (the 28 above plus
+`CONFIG_LOADED`), 12 per-isolate caches, and 6 mutable-container constants that never
 vary by workspace. It fails CI, and therefore the deploy, on a binding it has never been
 told about, and equally on an allowlist entry whose binding is gone — so the list shrinks
 as the threading lands rather than turning into standing permission. Each thread-\* commit
@@ -204,6 +204,35 @@ fail-closed semantics is the single most dangerous thing to regress** — a cont
 defaults to "loaded/empty" instead of "not yet loaded" reopens the gate on a cold
 isolate whose first config read failed. The baseline snapshot MUST include a cold-isolate
 request.
+
+### 2b. The tenant resolver seam — `resolveTenant(request, env)`
+
+Everything in §2 is "config for WHICH workspace". One function answers that, and
+`fetch()` calls it once, at the top, before any config is read — the call site is the
+first thing after the unconditional `/__config/*` refusal, and `scripts/one-tenant-resolver.mjs`
+fails the deploy if a second one appears or if one drifts below the config load.
+
+The body is static today: a deployment serves one workspace, so the answer is the
+`tenantId` its build stamped into `instance.json` (`build.js`, next to `users` — an
+explicit `tenantId` in the deploy config, else the id of the workspace mounted at the
+root). Serving several workspaces from one deployment replaces that body with a Host
+lookup and touches nothing else, which is the entire reason the seam exists as its own
+commit rather than arriving with the first threading change.
+
+Two properties are load-bearing, and both mirror §2a rather than inventing anything:
+
+- **A missing `tenantId` is not an error.** Every instance built before the field existed
+  carries none, and those instances take this engine by pin bump before any rebuild — so
+  an absent, blank or non-string value answers `DEFAULT_TENANT_ID` (`"default"`), which is
+  exactly what the one-workspace world has been doing all along under another name. A raw
+  or offline build with no config document at all lands in the same place, without a read.
+- **The static answer is memoised per isolate, and only when it is real.** A resolved id
+  is kept — a deployment's identity does not change without a redeploy, and re-reading it
+  would put a second config read on every request. A FAILED read is stamped instead
+  (`tenantMemo = {at, tenantId: null}`, TTL 1.5s), so a broken config document costs one
+  retry per tick rather than one per request. `tenantMemo` is the one entry in the lint's
+  cache allowlist that would be a *wrong* answer if an isolate served two workspaces, and
+  the Host resolver that makes that possible is what deletes it.
 
 ---
 

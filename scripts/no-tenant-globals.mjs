@@ -90,6 +90,7 @@ const CACHES = {
   canvasRegRaw:     "the last canvas registry document read from KV",
   pitiRemarksAt:    "remark poll clock; a stale stamp costs a re-read",
   pitiRemarksRaw:   "the last remark document read from KV",
+  tenantMemo:       "the static tenant id resolveTenant() read from instance.json; the ONE entry here that would be a wrong answer if an isolate served two workspaces, and the Host resolver that makes that possible replaces the body it belongs to",
 };
 
 // CONSTANTS — mutable containers written once at module load and never derived from any
