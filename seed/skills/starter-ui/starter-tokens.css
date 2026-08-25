@@ -21,8 +21,8 @@
 
   /* ── The one hot ink ───────────────────────────────────────────────── */
   --starter-mark:     #cf4224;   /* fills: primary buttons, step markers, pins */
-  --starter-mark-ink: #a8331a;   /* the same ink as text on paper (AA at 13px) */
-  --starter-wash:     #f7e4de;   /* its quietest form: highlights, chips */
+  --starter-mark-ink: #aa361e;   /* the same ink, darkened until it passes as text */
+  --starter-wash:     #f5e0d9;   /* its quietest form: highlights, chips */
 
   /* ── States ────────────────────────────────────────────────────────── */
   --starter-ok:       #2c7a51;
