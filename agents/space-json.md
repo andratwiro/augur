@@ -34,7 +34,6 @@ not restate it.
                              // (a config file is not a place to author markup); a
                              // section needs both a title and at least one item or
                              // it is dropped. Absent ⇒ nothing renders.
-  "methodPages": ["…"],      // pages/<name> entries surfaced as method exemplars
   "pendingPages": ["…"],     // pages badged "pending" in the gallery — a roadmap
                              // badge, NOT absence; the pages may exist
   "designSystem": { "skill": "<dir>" },  // override the auto-detected UI skill
@@ -61,3 +60,11 @@ not restate it.
 Only `id` is required. A design system is optional — plain self-contained HTML
 builds fine. The parse lives in `build.js` (`discoverSpaces()`); if you add a
 field there, document it here in the same commit.
+
+**Retired: `methodPages`.** It named `pages/<name>` entries for one group of the
+Pages tab's front-office / method / back-office / upsell taxonomy. That taxonomy is
+gone — the Pages tab is one flat grid, because the engine's contract is the TIER
+(`base/ components/ patterns/ pages/`) and how a workspace subdivides a tier is the
+workspace's own vocabulary. A `space.json` that still carries the key parses fine and
+the key is simply not read; the same goes for `<meta name="gv-surface">` tags left in
+page HTML. Nothing to migrate, nothing to remove.

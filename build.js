@@ -434,14 +434,6 @@ const IGNORED_TOPLEVEL = new Set([
 // knowledge). Set per space by setSpaceContext(); a slug drops off once pages/<slug>/ lands.
 let PENDING_PAGES = [];
 
-// Pages index has three top-level groups: Front office, Methods, Back office.
-// "Methods" are the front-office screens where a resident actually runs a
-// participation method (survey, proposals, …). Any page whose slug starts with
-// fo-method- or bo-method- is auto-classified "method"; a page can also opt in/out via
-// <meta name="gv-surface" content="method">. Non-prefix exceptions are authored PER SPACE
-// in the space repo as space.json `methodPages` (space content). Set by setSpaceContext().
-let METHOD_PAGES = new Set();
-
 // Source for the reference tabs (Primitives · Components · Pages) — assigned per space
 // by setSpaceContext() from the active space root.
 let UI_SKILL, PAGES_SRC, COMPONENTS_SRC, BASE_SRC, PATTERNS_SRC;
@@ -513,7 +505,9 @@ function loadCatalog(dsRoot) {
 // the space repo at the UI skill's component-meta.json and emitted onto each registry item's
 // `meta`, so the platform carries no product-specific component knowledge. loadCatalog() reads
 // it.meta into COMPONENT_META (per space); see the ambient `let COMPONENT_META` above.
-//   surface : "fo" | "bo" | "cross"   · category: navigation|cards|banners|… · tags: source tenant + keywords
+// Every value is free text the workspace chooses and the badges print verbatim — the
+// engine keeps no label map, so no workspace's vocabulary is spelled out here.
+//   surface · category · tags (all optional, all the workspace's own words)
 //   status  : canonical | variant | page-demo | review   · layer: "pattern" | (absent → component)
 
 // ════════════════════════════════════════════════════════════════════════════
@@ -1143,25 +1137,9 @@ async function scanPages() {
     const latest = await copyDir(dir, destDir, isInternalOnly);
     await stampLinkedInto(dir, destDir); // overlay badges on Pages (live-linked → full set)
     const { href, file } = await entryPoint(e.name, dir);
-    // Surface = back-office (the product's own theme), front-office (city-themed),
-    // method (a front-office participation-method runner — its own Pages group), or
-    // upsell (a locked-feature promo screen — its own Pages group).
-    // fo-method-* and bo-method-* slugs are auto-classified as "method". Add
-    // exceptions to METHOD_PAGES. Let <meta name="gv-surface"> override any of these.
-    let surface = /^bo-/.test(e.name) ? "back-office" : "front-office";
-    if (METHOD_PAGES.has(e.name) || /^(?:fo|bo)-method-/.test(e.name)) surface = "method";
-    try {
-      // entryPoint's `file` is URL-relative ("<name>/<entry>") — resolve it against
-      // the pages source dir (reading it bare silently threw and disabled the
-      // gv-surface override for every page).
-      const html = await fs.readFile(path.join(PAGES_SRC, decodeURIComponent(file)), "utf8");
-      const m = html.match(/<meta\s+name=["']gv-surface["']\s+content=["']([^"']+)["']/i);
-      if (m) {
-        const v = m[1].toLowerCase();
-        surface = /upsell/.test(v) ? "upsell" : /back/.test(v) ? "back-office" : /method/.test(v) ? "method" : "front-office";
-      }
-    } catch {}
-    pages.push({ name: e.name, href, file, surface, poster: await exists(path.join(dir, "preview.webp")), mtimeMs: modifiedTime(dir, latest) });
+    // A page is a page. How a workspace subdivides its own pages/ folder is the
+    // workspace's business, not the engine's — the gallery renders one flat grid.
+    pages.push({ name: e.name, href, file, poster: await exists(path.join(dir, "preview.webp")), mtimeMs: modifiedTime(dir, latest) });
   }
   pages.sort(byRecency);
   return pages;
@@ -1815,14 +1793,12 @@ const PAGE_CSS = `
        cleanup signal; "review" is styled loud amber). */
     .comp-badges { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 8px; }
     .cbadge { font-size: 11px; font-weight: 600; line-height: 1; padding: 3px 7px; border-radius: 5px; letter-spacing: -0.004em; border: 1px solid transparent; }
-    .cbadge--cat, [class*="cbadge--st-"], [class*="cbadge--layer-"] { text-transform: capitalize; }
+    .cbadge--cat, .cbadge--surf, [class*="cbadge--st-"], [class*="cbadge--layer-"] { text-transform: capitalize; }
     /* Layer cue: text label always present (WCAG 1.4.1 — colour is never the sole cue). */
     .cbadge--layer-base { background: rgba(20,121,133,0.13); color: #0f6470; }
     .cbadge--layer-component { background: rgba(94,106,210,0.13); color: #4650b8; }
     .cbadge--layer-pattern { background: rgba(140,99,210,0.14); color: #6b46c1; }
-    .cbadge--surf-fo { background: rgba(94,106,210,0.12); color: #4650b8; }
-    .cbadge--surf-bo { background: rgba(20,121,133,0.13); color: #0f6470; }
-    .cbadge--surf-cross { background: rgba(16,17,26,0.07); color: #5b626e; }
+    .cbadge--surf { background: rgba(94,106,210,0.12); color: #4650b8; }
     .cbadge--cat { background: rgba(16,17,26,0.05); color: #5b626e; }
     .cbadge--st-canonical { background: rgba(34,139,84,0.12); color: #1f7a48; }
     .cbadge--st-variant { background: rgba(16,17,26,0.06); color: #6b7280; }
@@ -5837,41 +5813,17 @@ function renderPagesIndex(pages) {
           </div>
         </div>`;
 
-  // Split by surface into collapsible groups: Front office (city-themed
-  // shells), Methods (participation-method runners), Back office (product-themed),
-  // Upsells (locked-feature promo screens, tagged gv-surface="upsell" — grouped
-  // separately to track how upsells are done across the product).
-  // Superseded reference pages — kept available but grouped under a collapsed
-  // "Legacy" section at the bottom. bo-project-phase is the old Project Editor,
-  // superseded by the new editor (parallel-editor-builder-v3, being progressed to
-  // canonical). Add a slug here to retire a page from the main groups.
-  const LEGACY_PAGES = new Set(["bo-project-phase"]);
-  const isLegacy = (p) => LEGACY_PAGES.has(p.name);
-  const front = pages.filter((p) => p.surface === "front-office" && !isLegacy(p));
-  const methods = pages.filter((p) => p.surface === "method" && !isLegacy(p));
-  const back = pages.filter((p) => p.surface === "back-office" && !isLegacy(p));
-  const upsells = pages.filter((p) => p.surface === "upsell" && !isLegacy(p));
-  const legacy = pages.filter(isLegacy);
   // A collapsible section: <details> with the eyebrow as its <summary>. Filtering
   // (chromeScript) force-opens sections with matches, so search still reaches
-  // collapsed cards. Legacy starts collapsed.
+  // collapsed cards. Only the Pending roadmap uses it now.
   const group = (label, inner, count, open = true) => `
         <details class="fsection" data-fgroup${open ? " open" : ""}>
           <summary class="section-eyebrow"><span class="fsection__caret" aria-hidden="true"></span>${label}${count == null ? "" : ` &middot; ${count}`}</summary>
           <div class="page-grid">${inner}</div>
         </details>`;
-  const built = [
-    ["Front office", front],
-    ["Methods", methods],
-    ["Back office", back],
-    ["Upsells", upsells],
-    ["Legacy", legacy],
-  ].filter(([, list]) => list.length);
-  // Two or more surfaces present → grouped; otherwise a single ungrouped list.
-  const cards =
-    built.length > 1
-      ? built.map(([label, list]) => group(label, list.map(pageCard).join(""), list.length, label !== "Legacy")).join("")
-      : `<section data-fgroup><p class="section-eyebrow">Composed reference screens</p><div class="page-grid">${pages.map(pageCard).join("")}</div></section>`;
+  // One flat grid. The engine's contract is the TIER (base · components · patterns ·
+  // pages); dividing a tier further is a workspace's own vocabulary, so it isn't here.
+  const cards = `<section data-fgroup><p class="section-eyebrow">Composed reference screens</p><div class="page-grid">${pages.map(pageCard).join("")}</div></section>`;
 
   // Planned reference pages not built yet — shown as a roadmap of pending work.
   const builtSlugs = new Set(pages.map((p) => p.name));
@@ -5901,14 +5853,15 @@ function renderPagesIndex(pages) {
   });
 }
 
-const SURFACE_LABEL = { fo: "Front office", bo: "Back office", cross: "Cross-surface" };
 // Render the surface / category / status pills shown under a component's name on the
 // Components page. `status` carries the cleanup signal — "review" is styled loud.
+// Every word here is the WORKSPACE's: component-meta.json supplies the values and the
+// engine holds no label map for them, so a workspace's own vocabulary shows verbatim.
 function metaBadges(meta) {
   const layer = meta.layer
     ? `<span class="cbadge cbadge--layer-${meta.layer}">${meta.layer}</span>`
     : "";
-  const surf = `<span class="cbadge cbadge--surf-${meta.surface}">${SURFACE_LABEL[meta.surface] || meta.surface}</span>`;
+  const surf = meta.surface ? `<span class="cbadge cbadge--surf">${meta.surface}</span>` : "";
   const cat = `<span class="cbadge cbadge--cat">${meta.category}</span>`;
   const stat = `<span class="cbadge cbadge--st-${meta.status}">${meta.status}</span>`;
   return `<div class="comp-badges">${layer}${surf}${cat}${stat}</div>`;
@@ -5944,8 +5897,8 @@ function renderComponentsIndex(components) {
         : "";
       // Components are a designer reference — Open only, no HTML download.
       // Filter key spans name + classes + description + every metadata axis, so a
-      // search like "bo", "review", or "wien" narrows the table.
-      const metaKey = meta ? `${meta.surface} ${meta.category} ${meta.status} ${(meta.tags || []).join(" ")}` : "";
+      // search for a category, a status or a tag narrows the table.
+      const metaKey = meta ? [meta.surface, meta.category, meta.status, ...(meta.tags || [])].filter(Boolean).join(" ") : "";
       const fkey = `${dname} ${blurb.classes} ${blurb.desc} ${metaKey}`.replace(/<[^>]+>/g, " ").replace(/"/g, "");
       // data-rename-key / data-desc-key feed CARD_MENU_JS (right-click → Rename / Edit
       // description), persisting a KV override under those keys. Both default back to
@@ -6362,7 +6315,6 @@ async function discoverSpaces() {
       badge: meta.badge || "",
       adminOnly: false,
       pendingPages: Array.isArray(meta.pendingPages) ? meta.pendingPages : [],
-      methodPages: Array.isArray(meta.methodPages) ? meta.methodPages : [],
       designSystem: meta.designSystem || null,
       projectsLabel: typeof meta.projectsLabel === "string" ? meta.projectsLabel : "",
       help: parseSpaceHelp(meta.help),
@@ -6400,9 +6352,10 @@ async function discoverSpaces() {
       // space's base path (RESTRICTED_BASES) so a non-admin who clicks through is
       // bounced to the admin login. Default space is never gated.
       adminOnly: !!meta.adminOnly,
-      // Space-authored content/config — the platform stays space-agnostic.
+      // Space-authored content/config — the platform stays space-agnostic. An older
+      // space.json may still carry keys the build no longer reads (`methodPages`);
+      // unknown keys are ignored, never an error.
       pendingPages: Array.isArray(meta.pendingPages) ? meta.pendingPages : [],
-      methodPages: Array.isArray(meta.methodPages) ? meta.methodPages : [],
       designSystem: meta.designSystem || null,
       projectsLabel: typeof meta.projectsLabel === "string" ? meta.projectsLabel : "",
       // The workspace's own Help-drawer sections — see parseSpaceHelp above.
@@ -6465,7 +6418,6 @@ function setSpaceContext(space) {
   ({ COMPONENT_INDEX, BASE_INDEX, PATTERN_INDEX, COMPONENT_BLURBS, COMPONENT_META } = loadCatalog(space.root));
   STATUS_FILE = path.join(space.root, "prototype-status.json");
   PENDING_PAGES = space.pendingPages || [];
-  METHOD_PAGES = new Set(space.methodPages || []);
   BASE = space.default ? "" : `/${space.id}`;
   SPACE_KEY = space.default ? "" : `${space.id}/`;
   DIST_SPACE = space.default ? DIST : path.join(DIST, space.id);
@@ -6506,7 +6458,10 @@ async function buildSpace(space) {
   for (const opp of opportunities) for (const p of opp.prototypes) {
     CANVAS_CATALOG.push({ type: "prototype", title: p.name, group: opp.name, url: `${BASE}/${opp.name}/${p.href}`, thumb: p.poster ? `${BASE}/${opp.name}/${p.href}preview.webp` : null, ...(p.desc ? { desc: p.desc } : {}) });
   }
-  for (const p of pages) CANVAS_CATALOG.push({ type: "page", title: p.name, group: p.surface || "", url: `${BASE}/pages/${p.href}`, thumb: p.poster ? `${BASE}/pages/${p.href}preview.webp` : null });
+  // Pages and components carry no `group`: it is the folder a thing lives in, and both
+  // tiers are flat. The picker already reads it as optional (`it.group || ""`), so an
+  // entry without one searches on its title and URL exactly as a component always has.
+  for (const p of pages) CANVAS_CATALOG.push({ type: "page", title: p.name, url: `${BASE}/pages/${p.href}`, thumb: p.poster ? `${BASE}/pages/${p.href}preview.webp` : null });
   for (const c of components) CANVAS_CATALOG.push({ type: "component", title: c.name, url: `${BASE}/components/${c.href}`, thumb: c.poster ? `${BASE}/components/${c.href}preview.webp` : null });
 
   // Publish the nav context BEFORE any render so the left rail (space switcher +
@@ -6741,8 +6696,11 @@ async function buildSpace(space) {
     }
     for (const p of playground)
       idx.push({ t: titleCase(p.name), y: "Playground", u: S(`/playground/${p.href}`), k: `${SPACE_KEY}playground/${p.name}`, ...(p.poster ? { th: S(`/playground/${p.href}preview.webp`) } : {}) });
+    // No `g` for a page: `g` is the containing folder, and pages/ is flat. The finder
+    // already treats it as optional — components and playground entries never had one —
+    // so an entry without it simply shows no sub-line and matches on its title.
     for (const p of pages)
-      idx.push({ t: titleCase(p.name), y: "Page", ...(p.surface ? { g: p.surface } : {}), u: S(`/pages/${p.href}`), k: `${SPACE_KEY}pages/${p.name}`, ...(p.poster ? { th: S(`/pages/${p.href}preview.webp`) } : {}) });
+      idx.push({ t: titleCase(p.name), y: "Page", u: S(`/pages/${p.href}`), k: `${SPACE_KEY}pages/${p.name}`, ...(p.poster ? { th: S(`/pages/${p.href}preview.webp`) } : {}) });
     for (const c of components)
       idx.push({ t: titleCase(c.name), y: "Component", u: S(`/components/${c.href}`), k: `${SPACE_KEY}components/${c.name}`, ...(c.poster ? { th: S(`/components/${c.href}preview.webp`) } : {}) });
     await fs.writeFile(path.join(DIST_SPACE, "__search.json"), JSON.stringify(idx), "utf8");
