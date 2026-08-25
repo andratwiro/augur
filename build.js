@@ -6969,14 +6969,16 @@ async function main() {
     runtimeChrome: process.env.GV_RUNTIME_CHROME === "1" || DEPLOY.runtimeChrome === true,
   }), "utf8");
   await fs.writeFile(path.join(DIST, "_worker.js"), workerSrc, "utf8");
-  // The worker imports two modules by relative path — the shared chrome renderer
-  // ("./chrome/appchrome.mjs") and the tenant context ("./tenant-context.mjs").
-  // _worker.js ships verbatim, so each must sit next to it in the deploy dir for the
-  // import to resolve at the edge (and under `wrangler pages dev` offline). Copied
-  // verbatim; both are listed in ENGINE_CHROME below, so they belong to the engine.
+  // The worker imports three modules by relative path — the shared chrome renderer
+  // ("./chrome/appchrome.mjs"), the tenant context ("./tenant-context.mjs") and the mail
+  // transport ("./mail.mjs"). _worker.js ships verbatim, so each must sit next to it in
+  // the deploy dir for the import to resolve at the edge (and under `wrangler pages dev`
+  // offline). Copied verbatim; all three are listed in ENGINE_CHROME below, so they
+  // belong to the engine.
   await fs.mkdir(path.join(DIST, "chrome"), { recursive: true });
   await fs.copyFile(path.join(ROOT, "src", "chrome", "appchrome.mjs"), path.join(DIST, "chrome", "appchrome.mjs"));
   await fs.copyFile(path.join(ROOT, "src", "tenant-context.mjs"), path.join(DIST, "tenant-context.mjs"));
+  await fs.copyFile(path.join(ROOT, "src", "mail.mjs"), path.join(DIST, "mail.mjs"));
 
   // Public build stamp: /_build.json — {builtAt, engine:{sha}, spaces:{<id>:{sha}}}.
   // A space-repo collaborator cannot see this repo's CI, so this is their deploy
@@ -7183,6 +7185,7 @@ async function main() {
     "augur-eye.svg", "augur-icon-192.png", "augur-icon-512.png", "augur-mark.png",
     "chrome/", // the shared chrome renderer module the worker imports (runtime-chrome)
     "tenant-context.mjs", // the per-request config value the worker imports
+    "mail.mjs",           // the mail transport the worker imports
   ];
   const MANIFEST_MIME = {
     html: "text/html; charset=utf-8", css: "text/css; charset=utf-8",
