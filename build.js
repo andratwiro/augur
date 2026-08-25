@@ -5988,11 +5988,14 @@ function renderComponentsIndex(components) {
 // ── Base / Patterns tabs (flat demo grids, like Pages) ───────────────────────
 // Generic card-grid renderer for a library tier whose demos are self-contained
 // folders (base/<name>/, patterns/<name>/). Same card contract as Pages.
-function renderTierGrid(items, { title, activeTab, subtitle, addHint }) {
+// `empty` is per-tier, not derived from `activeTab`: a base atom and a composition
+// pattern are different things, and one sentence with the noun swapped is exactly the
+// bare-path empty state this replaced.
+function renderTierGrid(items, { title, activeTab, empty, addHint }) {
   if (!items.length) {
     return shell({
       title, activeTab, wrapClass: "wrap--wide",
-      body: `<p class="empty">${subtitle} None yet — add one under <code>${activeTab}/&lt;name&gt;/</code> and rebuild.</p>`,
+      body: emptyHead(title) + empty,
     });
   }
   const card = (p) => `
@@ -6014,13 +6017,27 @@ function renderTierGrid(items, { title, activeTab, subtitle, addHint }) {
 }
 const renderBaseIndex = (items) =>
   renderTierGrid(items, {
-    title: "Base", activeTab: "base", subtitle: "Base atoms.",
+    title: "Base", activeTab: "base",
     addHint: "The source-grounded atoms — buttons, inputs, cards, badges, modal, icons. Components and Patterns are built from these; everything below drinks from <a href=\"/tokens/\">Tokens</a>.",
+    // What a base atom is FOR is the thing nobody says out loud: it is the one button,
+    // so there is never a sixth one. Live HTML you can click is the difference from the
+    // library the reader already knows, so that is where the analogy lands.
+    empty: emptyState(
+      `One button, styled once, that every screen in here borrows. Base is that set — buttons, inputs, cards, badges, icons — each on its own page showing every state it can be in: the main components of a Figma library, except these are live HTML, so you click them instead of squinting at them.`,
+      `Nothing here yet. Each atom is a small self-contained page in its own folder, so ask your agent: <em>&ldquo;Build a Base demo page for each atom in this workspace's design system — one folder per atom, every state on the page — following the engine's <code>agents/ui-skill.md</code>.&rdquo;</em> They land under <code>base/&lt;name&gt;/</code>, and everything they wear comes from <a href="/tokens/">Tokens</a>.`
+    ),
   });
 const renderPatternsIndex = (items) =>
   renderTierGrid(items, {
-    title: "Patterns", activeTab: "patterns", subtitle: "Composition patterns.",
+    title: "Patterns", activeTab: "patterns",
     addHint: "Curated recurring compositions — several Components arranged the way real screens repeatedly arrange them.",
+    // A pattern is the one tier you cannot honestly ask for up front — it is a repetition
+    // you notice, not a thing you plan — so the next step here is "build pages first",
+    // and saying so is worth more than a folder path.
+    empty: emptyState(
+      `Real screens repeat themselves: a list with its filters down one side, a detail view with a sticky action bar, a table that turns into cards on a phone. A pattern is one of those arrangements captured once — bigger than a component, smaller than a screen — so the fifth list gets built the way the first four were instead of being re-decided.`,
+      `Nothing here yet, and the honest way to fill this tab is backwards: build a few <a href="/pages/">Pages</a> first, notice what you laid out the same way twice, then pull it out. When you spot one, ask your agent: <em>&ldquo;Pull &lt;the layout I keep repeating&gt; out into a Patterns demo, following the engine's <code>agents/ui-skill.md</code>.&rdquo;</em> It lands under <code>patterns/&lt;name&gt;/</code>.`
+    ),
   });
 
 // ── Tokens tab — GENERATED from the canonical tokens stylesheet via the graph ─
