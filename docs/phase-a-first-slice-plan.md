@@ -1,8 +1,12 @@
 # Phase A, first slice — implementation plan
 
-**Status:** the first slice (`A-retire-space-tier`, S0–S7 below) is BUILT and landed.
-The rest of Phase A — the tenant-context sweep described in §2 — is not started, and
-this document is its map. Line-number citations below were accurate when written
+**Status:** the first slice (`A-retire-space-tier`, S0–S7 below) is BUILT and landed, and
+the tenant-context sweep described in §2 is under way: the context's shape and its
+per-tenant cache exist (`src/tenant-context.mjs`), the lint that stops a new global is in
+`check`, the tenant resolver seam is in `fetch()`, and the config load now BUILDS AND
+RETURNS a context for that tenant instead of assigning module globals. The globals survive
+as a mirror of the returned value until the read sites take it as a parameter. This
+document is the map for the rest. Line-number citations below were accurate when written
 (worker 4611 lines, build.js 7755 lines) and have since drifted; treat them as
 pointers to the right function, not as coordinates. `build.js` line numbers are given
 only for its role as the SOURCE that emits `routing.json` / `instance.json`; the
@@ -123,16 +127,16 @@ deferred risk being closed, not ignored).
 
 ## 2. The ~25 module-scope config globals
 
-All are declared `let` at column 0 and filled by `applyInstance()` (`_worker.js:359`) or
-the `routing.json`/`applyDerivedRouting` paths. "Reads" = occurrences minus the
-declaration and assignment sites (measured by `grep -ow` count, then discounting decl +
-assigns). This scopes the later threading sweep; it is NOT this slice's work, but the
-tier retirement should leave these *ready* to thread.
+All are declared `let` at column 0. They are no longer *filled* by the load — the load
+builds a context and `applyTenantContext()` mirrors it onto them — so each one now has
+exactly one writer, and threading a cluster means deleting its line from that mirror and
+taking `ctx.<NAME>` at the read sites instead. "Reads" = occurrences minus the declaration
+and assignment sites (measured by `grep -ow` count, then discounting decl + assigns).
 
 | Global | Decl | ~reads | Notes for threading |
 |--------|------|-------:|---------------------|
 | `CONFIG_USERS` | `42` | ~5 | roster base; paired with `USERS` |
-| `USERS` | `43` | ~22 | the hottest identity global; `applyRoster` overlay target (`490`) |
+| `USERS` | `43` | ~22 | the hottest identity global; the `rosterFields` overlay target |
 | `PUBLIC_SKILL_PREFIXES` | `50` | ~2 | gate exemption; assets from `routing.json` (`409`) |
 | `MCP_HOST_SUFFIXES` | `51` | ~3 | MCP proxy |
 | `MCP_HOST_ALLOWLIST` | `52` | ~4 | union; also feeds `mcpStaticHosts` |
@@ -174,36 +178,50 @@ told about, and equally on an allowlist entry whose binding is gone — so the l
 as the threading lands rather than turning into standing permission. Each thread-\* commit
 deletes a `let` from the worker and its line from the allowlist in the same change.
 
-### 2a. The fail-open-stale config cache — `loadConfig()` `_worker.js:384–424`
+### 2a. The fail-open-stale config cache — `loadTenantContext()` / `loadConfig()`
 
 ```
-async function loadConfig(env) {
-  if (!env || Date.now() - cfgAt < 1500) return;   // 385 — per-isolate 1.5s TTL
-  cfgAt = Date.now();                              // 386 — stamp FIRST (no stampede)
-  ... bundle: try { applyInstance / applyDerivedRouting } catch (e) {}   // 391–398
-  ... assets: grab() returns null on !ok/throw; only applies when truthy // 405–423
+async function loadTenantContext(tenantId, env, { prev, forced }) {
+  let next = prev;                                  // start from the last good context
+  ... bundle: try { instanceFields / derivedRoutingFields } catch (e) {}
+  ... assets: grab() returns null on !ok/throw; only folds in when truthy
+  return withTenantFields(next, await rosterFields(next, env, forced));
+}
+async function loadConfig(tenantId, env) {          // the transitional caller
+  if (!env || Date.now() - cfgAt < 1500) return;    // per-isolate 1.5s TTL
+  cfgAt = Date.now();                               // stamp FIRST (no stampede)
+  const next = await loadTenantContext(...);
+  if (next === TENANT_CTX) return;                  // nothing parsed — keep last good
+  TENANT_CTX = next; applyTenantContext(next);      // mirror onto the globals, for now
 }
 ```
 
-Two properties make it **fail-open-stale**, and both must be preserved when the sweep
-replaces globals with a threaded context:
+Two properties make it **fail-open-stale**, and both must be preserved as the sweep
+replaces the mirror with a threaded context:
 
-1. **Stamp-first** (`386`): a failed load does not retry until the next tick, so a broken
-   config read cannot stampede KV/ASSETS on the hot path.
-2. **Keep-last-good**: on any failure the previous global values stay in place — the
-   `catch (e) {}` at `398`, and `if (inst) …`/`if (routing) …` guards at `409–422` only
-   *overwrite* when a document actually parsed. A transient read failure never wipes a
-   working gate (the design note at `329–336`).
+1. **Stamp-first**: a failed load does not retry until the next tick, so a broken config
+   read cannot stampede KV/ASSETS on the hot path.
+2. **Keep-last-good**: on any failure the previous values stay in service. Every field
+   starts at the previous context's and is replaced only by a document that actually
+   parsed, so a read that fails contributes nothing; when nothing came back the load hands
+   back the very object it was given and the mirror does not run. A transient read failure
+   never wipes a working gate.
 
-The one **fail-CLOSED** counterweight lives beside it: `CONFIG_LOADED` (`381`, set true
-only inside `applyInstance` at `375`) lets the gate distinguish "genuinely no identity"
-(raw build → open) from "config not loaded yet in this cold isolate" (deployment → must
-fail closed), consumed at `_worker.js:4228` (`authed = expectsConfig ? CONFIG_LOADED : true`).
-**When threading replaces globals with a per-request context, this cold-isolate
-fail-closed semantics is the single most dangerous thing to regress** — a context that
-defaults to "loaded/empty" instead of "not yet loaded" reopens the gate on a cold
-isolate whose first config read failed. The baseline snapshot MUST include a cold-isolate
-request.
+Both are pinned in `test/config-keep-last-good.test.mjs`, in **both serving modes** — the
+response snapshot corpus runs in assets mode, so the bundle branch every deployed instance
+actually runs has no byte-level baseline watching it.
+
+The one **fail-CLOSED** counterweight lives beside it: `CONFIG_LOADED` lets the gate
+distinguish "genuinely no identity" (raw build → open) from "config not loaded yet in this
+cold isolate" (deployment → must fail closed), consumed in `fetch()` as
+`authed = expectsConfig ? CONFIG_LOADED : true`. It starts FALSE and only an instance
+document that actually parsed sets it true — that default now comes from the context
+factory (`emptyTenantContext`), and `instanceFields` is the only thing that flips it.
+**This cold-isolate fail-closed semantics is the single most dangerous thing in the sweep
+to regress** — a context that defaults to "loaded/empty" instead of "not yet loaded"
+reopens the gate on a cold isolate whose first config read failed. The baseline snapshot
+includes a cold-isolate request for exactly this, and the guard is checked by flipping the
+factory's default to `true` and watching that test go red — never by trusting the pass.
 
 ### 2b. The tenant resolver seam — `resolveTenant(request, env)`
 
@@ -429,7 +447,9 @@ harder than the deletion did:
 - **It runs in ASSETS mode; live instances serve in BUNDLE mode.** The derivation the
   harness never exercises is precisely where D4 changed behaviour, which is why the first
   slice needed the separate live probe recorded under Q1. A bundle-mode corpus would make
-  that probe unnecessary.
+  that probe unnecessary. Partly covered since: `test/config-keep-last-good.test.mjs`
+  drives the bundle branch at the value level, which catches a load that reloads from
+  empty — but not the bytes of a bundle-mode response.
 - **No canvas board and no OG card** are in the corpus, so nothing pins them.
 
 **Q5 — KV key tenant-scoping was explicitly NOT this slice, and is not. CONFIRMED.**
