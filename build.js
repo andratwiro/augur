@@ -759,6 +759,28 @@ function spaceDates(repoRoot) {
       const abs = path.isAbsolute(sp) ? sp : path.join(repoRoot, sp);
       grafts = new Set(readFileSync(abs, "utf8").split("\n").map((s) => s.trim()).filter(Boolean));
     } catch { /* no shallow file — a full clone */ }
+    // A path that is GONE is not work in this folder. The credit pass walks each touched
+    // path up through every ancestor dir, so a file that existed for one afternoon and
+    // has been deleted for months went on crediting its author — permanently — on the
+    // parent that survived it. That is how publish forks (`<name>-conflict-<who>/`,
+    // written by the conflict machinery and later swept out) put a person's face on
+    // project cards they never worked in: one sweep of 412 fork files spanning 10 project
+    // folders, all deleted, all still counted (measured 2026-08-25 on the reference
+    // instance — one person on 9 of 14 project cards, every one of them litter).
+    // So a commit only counts for paths still in the tree. Renames are unaffected: `cur`
+    // maps a historical name to today's, which is present. Unavailable (no HEAD yet) →
+    // no filtering, exactly as before.
+    // `--full-tree` is load-bearing: `git log --name-status` always reports paths from the
+    // REPO root, while ls-tree defaults to the working directory — run against a space
+    // that sits in a subdirectory of its repo, a plain listing is prefix-relative, matches
+    // nothing, and silently blanks every date and face on the site.
+    let live = null;
+    try {
+      live = new Set(execFileSync("git", ["-C", repoRoot, "ls-tree", "-r", "--name-only", "--full-tree", "-z", "HEAD"], {
+        encoding: "utf8", stdio: ["ignore", "pipe", "ignore"], maxBuffer: 64 * 1024 * 1024,
+      }).split("\0").filter(Boolean));
+    } catch { live = null; /* no committed tree to compare against — count everything */ }
+    const present = (p) => !live || live.has(p);
     const alias = new Map();   // historical path → today's path
     const file = new Map();    // today's path → {t, email} of last real change
     const by = new Map();      // today's path (file OR dir) → Map<email, {n, t}> commit tally
@@ -806,7 +828,7 @@ function spaceDates(repoRoot) {
           if (st === "R") alias.set(from, today);
           // A pure rename (R100) isn't an edit; a rename-with-change (R0xx) and any
           // copy are. Stamp only the newest occurrence (we walk newest→oldest).
-          if (tok !== "R100" && !isGeneratedAsset(today)) {
+          if (tok !== "R100" && !isGeneratedAsset(today) && present(today)) {
             if (!file.has(today)) file.set(today, { t, email });
             touched.push(today);
           }
@@ -815,7 +837,7 @@ function spaceDates(repoRoot) {
           if (p === undefined) break;
           if (st === "D") continue; // deleted names don't exist today
           const today = cur(p);
-          if (isGeneratedAsset(today)) continue;
+          if (isGeneratedAsset(today) || !present(today)) continue;
           if (!file.has(today)) file.set(today, { t, email });
           touched.push(today);
         }
