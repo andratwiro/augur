@@ -143,17 +143,11 @@ and assignment sites (measured by `grep -ow` count, then discounting decl + assi
 
 | Global | Decl | ~reads | Notes for threading |
 |--------|------|-------:|---------------------|
-| `PUBLIC_SKILL_PREFIXES` | `50` | ~2 | gate exemption; assets from `routing.json` (`409`) |
 | `MCP_HOST_SUFFIXES` | `51` | ~3 | MCP proxy |
 | `MCP_HOST_ALLOWLIST` | `52` | ~4 | union; also feeds `mcpStaticHosts` |
 | `MCP_HOST_ALLOWLIST_URL` | `53` | ~4 | MCP proxy |
-| `VANITY_REDIRECTS` | `54` | ~2 | read in `fetch()` `4172` |
 | `SPACE_ICON_KEYS` | `124` | ~2 | icon serve allowlist (KEEP, per-workspace) |
 | `SPACE_ICONS` | `125` | ~2 | re-applied on `SPACES` rebuild (`490`,`1719`) |
-| `BUILD_ID` | `153` | ~6 | live-reload fallback version; hashed in `applyDerivedRouting` (`1707`) |
-| `VERSION_MAP` | `159` | ~5 | `versionFor()` (`164`) |
-| `PUBLIC_PREFIXES` | `177` | ~5 | `isPublicPath()` core (`242`) |
-| `RESTRICTED_BASES` | `249` | ~5 | **shrinks to empty with the tier (D4)** |
 | `SPACES` | `337` | ~21 | **the tier axis; D1–D9 shrink its read sites first** |
 | `INSTANCE_SENTINELS` | `338` | ~3 | publish unpublish guard |
 | `MIN_CLIENT_PROTOCOL` | `343` | ~5 | publish protocol floor |
@@ -169,16 +163,24 @@ and assignment sites (measured by `grep -ow` count, then discounting decl + assi
 | `mcpStaticHosts` | `3067` | ~4 | derived Set from `MCP_HOST_ALLOWLIST` |
 | `mcpHostAllowlist` | `3051` | ~4 | fetched remote allowlist cache |
 
-The sweep opened on **28 config-shaped globals** (the plan's "~25"). The identity cluster
-— `CONFIG_USERS`, `USERS` and the `CONFIG_LOADED` flag that rides with them — has since
-been threaded and its three `let`s deleted, so the rows above are what is left. Excluded
-as pure per-isolate runtime caches, not config: `cfgAt` (`358`), `MANIFESTS` (`1654`),
+The sweep opened on **28 config-shaped globals** (the plan's "~25"). Two clusters have
+since been threaded and their `let`s deleted, so the rows above are what is left. The
+identity cluster — `CONFIG_USERS`, `USERS` and the `CONFIG_LOADED` flag that rides with
+them. And the gate cluster — `PUBLIC_PREFIXES`, `PUBLIC_SKILL_PREFIXES`, `VERSION_MAP`,
+`BUILD_ID` and `VANITY_REDIRECTS`, whose read sites are `isPublicPath`, `versionFor` and
+the vanity lookup in `fetch()`, each taking the context as a required first argument.
+`RESTRICTED_BASES` went with them as a DELETION rather than a threading: the path-mount
+tier left it permanently empty, so its global was a write-only copy of an empty list.
+`isRestrictedPath` and the context field stay — an empty seal is still a seal, and assets
+mode still reads a `routing.restrictedBases` the build no longer emits.
+
+Excluded as pure per-isolate runtime caches, not config: `cfgAt` (`358`), `MANIFESTS` (`1654`),
 `STORAGE_CACHE` (`2654`), `AVATAR_KEYS` (`837`). Total config-global occurrences ≈ 200,
 i.e. ~110–120 read sites once decls/assigns are removed — matching the plan's "~110".
 
 **The enumeration of record is `scripts/no-tenant-globals.mjs`, not this table.** Line
 numbers here drift; the lint reads the worker and counts what is actually declared —
-today 46 module-scope bindings: 27 config globals still in flight, 13 per-isolate caches,
+today 40 module-scope bindings: 21 config globals still in flight, 13 per-isolate caches,
 and 6 mutable-container constants that never
 vary by workspace. It fails CI, and therefore the deploy, on a binding it has never been
 told about, and equally on an allowlist entry whose binding is gone — so the list shrinks
