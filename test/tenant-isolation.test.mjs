@@ -135,7 +135,7 @@ const envFor = (n) => fixture(n);
 // of every case: these caches are module scope, so without it a case inherits whatever
 // the previous one left behind and the file's results depend on their order.
 function resetSharedCaches() {
-  __setConfigTestState({ cfgAt: 0, rosterReadAt: 0 });
+  __setConfigTestState({ cfgAt: 0, rosterReadAt: 0, mcpHostAllowlist: null });
 }
 
 // One cold load. `prev: null` on purpose — keep-last-good is tested elsewhere; here every
@@ -320,6 +320,164 @@ test("a loaded context shares no mutable value with another workspace's", async 
   assert.equal(b.mcpStaticHosts.has("mcp.smuggled.invalid"), false);
   assert.deepStrictEqual(b.VERSION_MAP, { "/prototypes/beta-one/": "v-beta" });
   assert.deepStrictEqual(b.SPACES.map((s) => s.id), ["beta"]);
+});
+
+// ---- the DERIVED proxy allowlist, which is not a config field at all -----------------
+//
+// Everything above compares CONFIG. This section is about the one value the /__mcp/ proxy
+// works out for itself: the exact-host list a workspace publishes at its own
+// MCP_HOST_ALLOWLIST_URL, fetched at runtime and memoised so the proxy is not one HTTP
+// round trip slower on every call.
+//
+// That memo is the sharpest shape of this phase's failure, and it is a different shape
+// from a shared config field. It caches a value DERIVED from one workspace's config, so a
+// promise cache keyed on nothing hands the first workspace to warm it a proxy allowlist
+// that every workspace behind it then answers from — and what that widens is a security
+// control (which third-party hosts this origin will forward a browser's Authorization
+// header to), not a rendering. With one workspace the resolved list is simply correct, so
+// no amount of single-tenant testing can see it; threading the config fields and leaving
+// the memo alone would look, from every other test in the repo, exactly like done.
+
+const REMOTE = (n) => `remote.${n}.invalid`;
+
+// The network, stubbed: a workspace's published host document answers from its own URL,
+// and any other call is the proxy forwarding upstream. Every URL is recorded, because
+// WHICH document was fetched is half of what these cases assert.
+function withAllowlistFetch(fn, { fail = () => false } = {}) {
+  const real = globalThis.fetch;
+  const calls = [];
+  globalThis.fetch = async (url) => {
+    const u = String(url);
+    calls.push(u);
+    const doc = /^https:\/\/([a-z]+)\.invalid\/hosts\.json$/.exec(u);
+    if (doc) {
+      if (fail(u, calls)) return new Response("nope", { status: 500 });
+      return new Response(JSON.stringify({ hosts: [REMOTE(doc[1])] }), {
+        status: 200, headers: { "Content-Type": "application/json" },
+      });
+    }
+    return new Response('{"ok":true}', { status: 200, headers: { "Content-Type": "application/json" } });
+  };
+  return Promise.resolve(fn(calls)).finally(() => { globalThis.fetch = real; });
+}
+
+// One proxied call, for a named workspace. `/mcp` is the protocol floor, so the PATH
+// allowlist never decides these cases — the host allowlist does.
+const mcp = (ctx, host) => {
+  const url = new URL(`https://site.example.invalid/__mcp/${host}/mcp`);
+  return W.mcpProxy(ctx, new Request(url, { method: "POST" }), url);
+};
+
+// Both workspaces' contexts, loaded cold and alone.
+async function proxyContexts() {
+  const out = {};
+  for (const n of NAMES) {
+    resetSharedCaches();
+    out[n] = await load(n, envFor(n));
+  }
+  // Premises. Each of these, if it were false, would make a 200 or a 403 below mean
+  // something other than "the fetched list decided it".
+  assert.notEqual(
+    out.alpha.MCP_HOST_ALLOWLIST_URL, out.beta.MCP_HOST_ALLOWLIST_URL,
+    "both workspaces publish their host list at the same URL — nothing below distinguishes them",
+  );
+  for (const n of NAMES) {
+    assert.ok(out[n].MCP_HOST_ALLOWLIST_URL, `${n} publishes no host list, so nothing here is memoised`);
+    assert.equal(
+      out[n].mcpStaticHosts.has(REMOTE(n)), false,
+      `${n} already allows ${REMOTE(n)} from its build-time list — the fetched list is not what would be allowing it`,
+    );
+    assert.equal(
+      out[n].MCP_HOST_SUFFIXES.some((sfx) => REMOTE(n).endsWith("." + sfx)), false,
+      `${n}'s suffix rule already allows ${REMOTE(n)} — same tautology, other half of the allowlist`,
+    );
+  }
+  return out;
+}
+
+test("a workspace's FETCHED proxy allowlist is never answered to another workspace", async () => {
+  const ctx = await proxyContexts();
+
+  await withAllowlistFetch(async (calls) => {
+    // Warm alpha's: it reaches the host its own document publishes, and reaching it took
+    // exactly one fetch of alpha's own URL plus the forward.
+    assert.equal(
+      (await mcp(ctx.alpha, REMOTE("alpha"))).status, 200,
+      "alpha cannot reach the host its own allowlist publishes",
+    );
+    assert.deepStrictEqual(
+      calls, [ctx.alpha.MCP_HOST_ALLOWLIST_URL, `https://${REMOTE("alpha")}/mcp`],
+      "alpha's call did not resolve alpha's own document",
+    );
+
+    // …then beta asks for the same host. Beta's document never named it, so this must be
+    // a refusal — not a hit on the list alpha warmed.
+    const res = await mcp(ctx.beta, REMOTE("alpha"));
+    assert.equal(
+      res.status, 403,
+      "beta reached a host only ALPHA's published allowlist names: the derived-allowlist cache is shared",
+    );
+    assert.equal((await res.json()).error, "host not allowed");
+    assert.equal(
+      calls.includes(`https://${REMOTE("alpha")}/mcp`) && calls.filter((u) => u === `https://${REMOTE("alpha")}/mcp`).length, 1,
+      "beta's refused call still forwarded upstream",
+    );
+
+    // And beta resolves its OWN document rather than being answered from alpha's.
+    assert.ok(
+      calls.includes(ctx.beta.MCP_HOST_ALLOWLIST_URL),
+      "beta never fetched its own allowlist — it was answered out of a neighbour's memo",
+    );
+    assert.equal(
+      (await mcp(ctx.beta, REMOTE("beta"))).status, 200,
+      "beta cannot reach the host its own allowlist publishes",
+    );
+  });
+});
+
+test("the fetched allowlist is still a CACHE — one fetch per workspace, not one per request", async () => {
+  // The isolation above would also be satisfied by never caching at all, which would put
+  // an HTTP round trip in front of every proxied call. Both properties, or neither is
+  // pinned.
+  const ctx = await proxyContexts();
+
+  await withAllowlistFetch(async (calls) => {
+    for (let i = 0; i < 3; i++) {
+      assert.equal((await mcp(ctx.alpha, REMOTE("alpha"))).status, 200);
+      assert.equal((await mcp(ctx.beta, REMOTE("beta"))).status, 200);
+    }
+    const docs = calls.filter((u) => u.endsWith("/hosts.json"));
+    assert.deepStrictEqual(
+      docs.sort(), [ctx.alpha.MCP_HOST_ALLOWLIST_URL, ctx.beta.MCP_HOST_ALLOWLIST_URL].sort(),
+      "the published host documents were re-fetched per request, or one workspace's was never fetched",
+    );
+  });
+});
+
+test("a workspace whose allowlist document fails retries, and takes no neighbour down with it", async () => {
+  // Unreachable means "no host beyond the build-time list", never "fail closed" and never
+  // "borrow whatever resolved". And the failure is not sticky: the next request tries
+  // again, which is only true if the rejected attempt was dropped from the cache.
+  const ctx = await proxyContexts();
+
+  let broken = true;
+  await withAllowlistFetch(async (calls) => {
+    const refused = await mcp(ctx.alpha, REMOTE("alpha"));
+    assert.equal(refused.status, 403, "a failed allowlist read still allowed a host it never named");
+
+    // beta is unaffected by alpha's broken document.
+    assert.equal((await mcp(ctx.beta, REMOTE("beta"))).status, 200, "alpha's failure reached beta");
+
+    broken = false;
+    assert.equal(
+      (await mcp(ctx.alpha, REMOTE("alpha"))).status, 200,
+      "alpha never retried its allowlist — one failed read poisoned the workspace for the isolate's life",
+    );
+    assert.equal(
+      calls.filter((u) => u === ctx.alpha.MCP_HOST_ALLOWLIST_URL).length, 2,
+      "the retry did not re-fetch alpha's document",
+    );
+  }, { fail: (u) => broken && u.includes("alpha") });
 });
 
 // ---- bundle mode ---------------------------------------------------------------------

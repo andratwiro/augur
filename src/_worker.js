@@ -72,22 +72,21 @@ const MAX_AGE = 60 * 60 * 24 * 7; // 7 days
 // workspace's admins. Every function that resolves a person therefore takes the list as
 // a REQUIRED parameter — no default — so a call site that forgot which workspace it is
 // answering for is a crash here, not a cross-tenant answer in production.
-// Deploy-specific knobs, filled at runtime from instance.json (all empty in a raw
-// engine build): the MCP-proxy host allowlist (suffix rule + space-declared exact hosts
-// + the URL of an exact-host list).
-// MCP_HOST_ALLOWLIST and MCP_PATH_ALLOWLIST alone come from routing.json: the union of
-// the {"hosts":[…], "paths":[…]} files the spaces declare via space.json "mcpAllowlists"
-// (see build.js).
-//
 // ⚠️ The gate's own knobs used to sit here — PUBLIC_SKILL_PREFIXES and VANITY_REDIRECTS,
 // alongside BUILD_ID, VERSION_MAP, PUBLIC_PREFIXES and RESTRICTED_BASES further down.
 // They are fields of the tenant context now and must not come back: which paths skip the
 // password is the single most workspace-specific answer the worker gives, and a module
 // binding hands the isolate's last-loaded workspace's exemptions to the next request.
-let MCP_HOST_SUFFIXES = [];
-let MCP_HOST_ALLOWLIST = [];
-let MCP_HOST_ALLOWLIST_URL = "";
-let MCP_PATH_ALLOWLIST = [];
+//
+// ⚠️ So does the /__mcp/ proxy's allowlist — MCP_HOST_SUFFIXES and MCP_HOST_ALLOWLIST_URL
+// from instance.json, MCP_HOST_ALLOWLIST and MCP_PATH_ALLOWLIST from the union of the
+// {"hosts":[…], "paths":[…]} documents the spaces declare via space.json "mcpAllowlists"
+// (see build.js), plus the mcpStaticHosts Set derived from the host union. All five are
+// context fields, and the reason is the same one with sharper teeth: that allowlist
+// decides which third-party hosts this origin will forward a browser's Authorization
+// header to, so a module binding lets whichever workspace loaded last widen the proxy for
+// the next request, whoever it belongs to.
+
 // The session cookie: value "<email>.<token>". `__Host-` is a name PREFIX the browser
 // enforces — it stores a cookie under such a name only when it is Secure, has Path=/,
 // and carries NO Domain attribute. That last rule is the point: several workspaces share
@@ -456,8 +455,6 @@ let TENANT_CTX = emptyTenantContext(null);
 // disagreeing, which is the one failure a green test suite could not show.
 function applyInstance(inst) {
   TENANT_CTX = withTenantFields(TENANT_CTX, instanceFields(inst));
-  MCP_HOST_SUFFIXES = inst.mcpHostSuffixes || [];
-  MCP_HOST_ALLOWLIST_URL = inst.mcpHostAllowlistUrl || "";
   RT_ORIGIN = inst.rtOrigin || "";
   MIN_CLIENT_PROTOCOL = Number.isInteger(inst.minClientProtocol) && inst.minClientProtocol > 0
     ? inst.minClientProtocol : 0;
@@ -529,13 +526,9 @@ async function loadTenantContext(tenantId, env, { prev = null, forced = false } 
 //
 // The workspace cluster is gone from here: SPACES, the icon index and the hashes it
 // vouches for, the sentinels and the engine-version/update-feed pair are read off the
-// context at every site that wants them, so there is nothing left to mirror.
+// context at every site that wants them, so there is nothing left to mirror. So is the
+// whole MCP-proxy allowlist, hosts and paths alike.
 function applyTenantContext(ctx) {
-  MCP_HOST_SUFFIXES = ctx.MCP_HOST_SUFFIXES;
-  MCP_HOST_ALLOWLIST = ctx.MCP_HOST_ALLOWLIST;
-  MCP_HOST_ALLOWLIST_URL = ctx.MCP_HOST_ALLOWLIST_URL;
-  mcpStaticHosts = ctx.mcpStaticHosts;
-  MCP_PATH_ALLOWLIST = ctx.MCP_PATH_ALLOWLIST;
   RT_ORIGIN = ctx.RT_ORIGIN;
   MIN_CLIENT_PROTOCOL = ctx.MIN_CLIENT_PROTOCOL;
   LOGIN_HINT = ctx.LOGIN_HINT;
@@ -708,9 +701,13 @@ const ROSTER_TTL_MS = 60_000;
 let rosterReadAt = 0;
 let rosterCache = null;
 // Test hooks: the cadence above is timing state a test can't reach otherwise.
-function __setConfigTestState({ cfgAt: c, rosterReadAt: r } = {}) {
+function __setConfigTestState({ cfgAt: c, rosterReadAt: r, mcpHostAllowlist: m } = {}) {
   if (c !== undefined) cfgAt = c;
   if (r !== undefined) { rosterReadAt = r; if (!r) rosterCache = null; }
+  // The proxy's derived host lists, back to cold. Falsy clears; the Map is keyed by
+  // workspace, so a case that does not clear it is asserting about whatever the previous
+  // case resolved.
+  if (m !== undefined && !m) mcpHostAllowlist.clear();
 }
 // The roster this isolate last loaded, out of the context rather than out of a module
 // binding — the cadence tests need to see what the config tick settled on, and there is
@@ -2112,9 +2109,6 @@ function applyDerivedRouting(manifests) {
   CANVAS_LOADER_EXTRAS = f.CANVAS_LOADER_EXTRAS;
   CANVAS_CATALOG = f.CANVAS_CATALOG;
   CANVAS_TRACKS = f.CANVAS_TRACKS;
-  MCP_HOST_ALLOWLIST = f.MCP_HOST_ALLOWLIST;
-  mcpStaticHosts = f.mcpStaticHosts;
-  MCP_PATH_ALLOWLIST = f.MCP_PATH_ALLOWLIST;
   CHROME_POINTER = f.CHROME_POINTER;
   RUNTIME_CHROME = f.RUNTIME_CHROME;
   // Returns the CONTEXT, not the bare field patch. It is a superset — every field of the
@@ -3637,7 +3631,7 @@ const MCP_PROXY_PATHS = new Set([
   "/oauth/token",
 ]);
 
-// Exact-host allowlist, fetched once per isolate from MCP_HOST_ALLOWLIST_URL — a
+// Exact-host allowlist, fetched from the calling workspace's MCP_HOST_ALLOWLIST_URL — a
 // JSON document shaped {"hosts": ["…"]}. A suffix rule cannot express a platform
 // living on its own vanity domain without opening that domain's whole public
 // suffix, and an "answers like a platform?" probe would turn this route into an
@@ -3645,24 +3639,53 @@ const MCP_PROXY_PATHS = new Set([
 // publishes an explicit list instead. Unset, or unreachable, means no host beyond
 // MCP_HOST_SUFFIXES is allowed: the route behaves exactly as it does without the
 // knob rather than failing closed on traffic that works today.
-let mcpHostAllowlist = null;
+//
+// ⚠️ KEYED BY WORKSPACE, and that is why this is a Map rather than the one promise it
+// used to be. Unlike the config fields around it, what is cached here is DERIVED from a
+// workspace's config — a resolved list of hosts that ONE workspace's instance document
+// vouches for. A single promise slot therefore hands the first workspace to warm it a
+// proxy allowlist that every workspace behind it answers from, silently widening which
+// third parties this origin will forward a browser's Authorization header to. Nothing in
+// an era with one workspace can observe that: the resolved list is simply correct.
+//
+// The entry remembers the URL it was fetched from, so a workspace that changes where it
+// publishes its list is not answered out of the old one. And the Map is BOUNDED for the
+// same reason the tenant context cache is — an isolate serving many workspaces would
+// otherwise hold every list it ever resolved. Eviction costs one re-fetch and can only
+// narrow what is allowed in the meantime, never widen it.
+const MCP_ALLOWLIST_CACHE_MAX = 256;
+const mcpHostAllowlist = new Map(); // tenantId -> { url, hosts: Promise<Set|null> }
 
 function mcpAllowlist(tctx) {
-  if (!tctx.MCP_HOST_ALLOWLIST_URL) return Promise.resolve(null);
-  if (!mcpHostAllowlist) {
-    mcpHostAllowlist = fetch(tctx.MCP_HOST_ALLOWLIST_URL, { cf: { cacheTtl: 3600, cacheEverything: true } })
-      .then((r) => { if (!r.ok) throw new Error("HTTP " + r.status); return r.json(); })
-      .then((doc) => new Set(Array.isArray(doc && doc.hosts) ? doc.hosts : []))
-      .catch(() => { mcpHostAllowlist = null; return null; }); // retry on the next request
+  const url = tctx.MCP_HOST_ALLOWLIST_URL;
+  if (!url) return Promise.resolve(null);
+  const key = tctx.tenantId;
+  const hit = mcpHostAllowlist.get(key);
+  if (hit && hit.url === url) return hit.hosts;
+  const entry = { url, hosts: null };
+  entry.hosts = fetch(url, { cf: { cacheTtl: 3600, cacheEverything: true } })
+    .then((r) => { if (!r.ok) throw new Error("HTTP " + r.status); return r.json(); })
+    .then((doc) => new Set(Array.isArray(doc && doc.hosts) ? doc.hosts : []))
+    .catch(() => {
+      // Retry on the next request — but drop only THIS attempt, never whatever a later
+      // config load or another workspace has already put in its place.
+      if (mcpHostAllowlist.get(key) === entry) mcpHostAllowlist.delete(key);
+      return null;
+    });
+  // Delete-then-set so the insertion order is a recency order, and the first key is the
+  // least recently resolved — the one eviction takes.
+  mcpHostAllowlist.delete(key);
+  mcpHostAllowlist.set(key, entry);
+  while (mcpHostAllowlist.size > MCP_ALLOWLIST_CACHE_MAX) {
+    mcpHostAllowlist.delete(mcpHostAllowlist.keys().next().value);
   }
-  return mcpHostAllowlist;
+  return entry.hosts;
 }
 
-// Space-declared exact hosts, from routing.json (see build.js): no extra fetch, no
-// failure mode, and a space publish refreshes the list with the same deploy that
-// ships the prototype using it. Rebuilt by loadConfig on every config refresh.
-let mcpStaticHosts = new Set();
-
+// The other half is the space-declared exact hosts, from routing.json (see build.js):
+// no extra fetch, no failure mode, and a space publish refreshes the list with the same
+// deploy that ships the prototype using it. It is `tctx.mcpStaticHosts`, a Set derived
+// once at config load so the list and the set can never disagree about what is allowed.
 async function mcpHostAllowed(tctx, host) {
   if (tctx.MCP_HOST_SUFFIXES.some((sfx) => host.endsWith("." + sfx))) return true;
   // Exact match only — endsWith on a bare host would let <allowed>.attacker.example

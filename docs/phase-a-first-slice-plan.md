@@ -144,9 +144,6 @@ and assignment sites (measured by `grep -ow` count, then discounting decl + assi
 
 | Global | Decl | ~reads | Notes for threading |
 |--------|------|-------:|---------------------|
-| `MCP_HOST_SUFFIXES` | `51` | ~3 | MCP proxy |
-| `MCP_HOST_ALLOWLIST` | `52` | ~4 | union; also feeds `mcpStaticHosts` |
-| `MCP_HOST_ALLOWLIST_URL` | `53` | ~4 | MCP proxy |
 | `MIN_CLIENT_PROTOCOL` | `343` | ~5 | publish protocol floor |
 | `LOGIN_HINT` | `346` | ~2 | login page |
 | `LOGIN_PREFILL_EMAIL` | `351` | ~2 | login page |
@@ -155,10 +152,8 @@ and assignment sites (measured by `grep -ow` count, then discounting decl + assi
 | `CANVAS_CATALOG` | `3564` | ~3 | insert picker aggregate |
 | `CANVAS_TRACKS` | `3565` | ~3 | music aggregate |
 | `RT_ORIGIN` | `3722` | ~3 | realtime proxy target |
-| `mcpStaticHosts` | `3067` | ~4 | derived Set from `MCP_HOST_ALLOWLIST` |
-| `mcpHostAllowlist` | `3051` | ~4 | fetched remote allowlist cache |
 
-The sweep opened on **28 config-shaped globals** (the plan's "~25"). Three clusters have
+The sweep opened on **28 config-shaped globals** (the plan's "~25"). Four clusters have
 since been threaded and their `let`s deleted, so the rows above are what is left.
 
 The identity cluster — `CONFIG_USERS`, `USERS` and the `CONFIG_LOADED` flag that rides
@@ -182,13 +177,31 @@ route. And `viewerWriteRefusal`, `spaceIconApi` and `mayResetPassword` lost thei
 `spaces = SPACES` default: every caller already passed the list, and the default was the
 only thing keeping the global alive.
 
+And the MCP-proxy allowlist cluster — `MCP_HOST_SUFFIXES`, `MCP_HOST_ALLOWLIST`,
+`MCP_HOST_ALLOWLIST_URL`, `MCP_PATH_ALLOWLIST` and the `mcpStaticHosts` Set derived from
+the host union. The config fields were the easy half: `mcpProxy` already took the
+workspace it is proxying for, so deleting the `let`s deleted five write-only mirrors. The
+POINT of the cluster is the sixth binding, which is not a config field at all.
+`mcpHostAllowlist` memoises the exact-host list a workspace publishes at its own
+`MCP_HOST_ALLOWLIST_URL` — a value DERIVED from one workspace's config — and it was a
+single promise keyed on nothing, so the first workspace to warm it handed its resolved
+list to every workspace behind it. That widens which third-party hosts this origin will
+forward a browser's `Authorization` header to, and an era with one workspace cannot
+observe it, because the resolved list is simply correct. It is now a `Map` keyed by
+tenant, each entry carrying the URL it was fetched from (so a workspace that moves its
+document is not answered out of the old one) and bounded like the context cache (eviction
+costs a re-fetch and can only narrow what is allowed). The evidence is three cases in
+`test/tenant-isolation.test.mjs`: a host only one workspace's document names is refused to
+the other, the memo is still one fetch per workspace rather than one per request, and a
+failed read retries instead of poisoning that workspace — or reaching its neighbour.
+
 Excluded as pure per-isolate runtime caches, not config: `cfgAt` (`358`), `MANIFESTS` (`1654`),
 `STORAGE_CACHE` (`2654`), `AVATAR_KEYS` (`837`). Total config-global occurrences ≈ 200,
 i.e. ~110–120 read sites once decls/assigns are removed — matching the plan's "~110".
 
 **The enumeration of record is `scripts/no-tenant-globals.mjs`, not this table.** Line
 numbers here drift; the lint reads the worker and counts what is actually declared —
-today 34 module-scope bindings: 15 config globals still in flight, 13 per-isolate caches,
+today 29 module-scope bindings: 10 config globals still in flight, 13 per-isolate caches,
 and 6 mutable-container constants that never
 vary by workspace. It fails CI, and therefore the deploy, on a binding it has never been
 told about, and equally on an allowlist entry whose binding is gone — so the list shrinks
