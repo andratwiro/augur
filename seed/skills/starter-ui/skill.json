@@ -1,0 +1,11 @@
+{
+  "assets": [
+    "starter-tokens.css",
+    "starter-ui.css",
+    "starter-ui.js"
+  ],
+  "cssPrefixes": [
+    "s",
+    "starter"
+  ]
+}

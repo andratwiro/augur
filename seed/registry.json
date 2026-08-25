@@ -1,0 +1,88 @@
+{
+  "items": [
+    {
+      "name": "sheet",
+      "type": "pattern",
+      "classes": ["s-sheet"],
+      "label": "Sheet",
+      "description": "The page itself: one specimen sheet on a ruled desk, hairline edged, with room in the margin."
+    },
+    {
+      "name": "block",
+      "type": "pattern",
+      "classes": ["s-block"],
+      "label": "Numbered block",
+      "description": "A section with its plate number out in the margin and a dotted leader running down beside it."
+    },
+    {
+      "name": "card",
+      "type": "component",
+      "classes": ["s-card"],
+      "label": "Card",
+      "description": "A panel on the sheet. Inset for something quieter, mark for the one that matters."
+    },
+    {
+      "name": "cmd",
+      "type": "component",
+      "classes": ["s-cmd"],
+      "label": "Command row",
+      "description": "A line meant to be copied, with the button that copies it. Dark for a terminal, pale for a sentence you paste to an assistant."
+    },
+    {
+      "name": "steps",
+      "type": "component",
+      "classes": ["s-steps", "s-step"],
+      "label": "Steps",
+      "description": "A numbered sequence where the order is the instruction."
+    },
+    {
+      "name": "table",
+      "type": "component",
+      "classes": ["s-table"],
+      "label": "Table",
+      "description": "Ruled rows, mono headers, no fills."
+    },
+    {
+      "name": "stage",
+      "type": "component",
+      "classes": ["s-stage"],
+      "label": "Stage",
+      "description": "The dark inset media sits in: 3D, a terminal, a chart on ink."
+    },
+    {
+      "name": "button",
+      "type": "primitive",
+      "classes": ["s-btn"],
+      "label": "Button",
+      "description": "One hot-ink button per screen; everything else is quiet."
+    },
+    {
+      "name": "chip",
+      "type": "primitive",
+      "classes": ["s-chip"],
+      "label": "Chip",
+      "description": "A small tag for state, time or category."
+    },
+    {
+      "name": "field",
+      "type": "primitive",
+      "classes": ["s-field", "s-label"],
+      "label": "Field",
+      "description": "Text input with a mono label above it."
+    },
+    {
+      "name": "swatch",
+      "type": "primitive",
+      "classes": ["s-swatch"],
+      "label": "Swatch",
+      "description": "A colour specimen: the chip, the token name, the live value."
+    },
+    {
+      "name": "type",
+      "type": "primitive",
+      "classes": ["s-title", "s-h2", "s-eyebrow", "s-lede"],
+      "label": "Type",
+      "description": "Monospaced display, system sans body. The scale is seven sizes and no more."
+    }
+  ]
+}
