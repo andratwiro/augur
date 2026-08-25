@@ -44,12 +44,7 @@ import { TENANT_FIELD_NAMES } from "../src/tenant-context.mjs";
 // eventually leave: a thread-* commit deletes the `let` in the worker and the line here
 // in the same change.
 const IN_FLIGHT = {
-  PUBLIC_PREFIXES:         "gate exemptions from routing.json — A-thread-gate",
-  PUBLIC_SKILL_PREFIXES:   "gate exemptions for skill assets — A-thread-gate",
-  RESTRICTED_BASES:        "permanently empty since the path-mount tier retired; deleted outright, not threaded",
   SPACES:                  "the workspaces this deployment serves — A-thread-spaces-admin",
-  VERSION_MAP:             "per-asset version stamps behind versionFor() — A-thread-gate",
-  BUILD_ID:                "live-reload version fallback — A-thread-gate",
   CHROME_POINTER:          "which shared chrome bundle this deployment serves",
   RUNTIME_CHROME:          "whether chrome is composed at serve time for this deployment",
   SPACE_ICON_KEYS:         "the icon hashes the index vouches for — A-thread-spaces-admin",
@@ -62,7 +57,6 @@ const IN_FLIGHT = {
   CANVAS_LOADER_EXTRAS:    "extra scripts the virtual canvas loader injects — A-thread-canvas",
   CANVAS_CATALOG:          "the insert picker's aggregate — A-thread-canvas",
   CANVAS_TRACKS:           "the music aggregate — A-thread-canvas",
-  VANITY_REDIRECTS:        "instance.json redirect table — A-thread-gate",
   RT_ORIGIN:               "the realtime worker this deployment proxies to — A-thread-canvas",
   INSTANCE_SENTINELS:      "publish unpublish-guard paths — A-thread-spaces-admin",
   MIN_CLIENT_PROTOCOL:     "the publish protocol floor this deployment demands",

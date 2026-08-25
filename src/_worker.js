@@ -73,18 +73,21 @@ const MAX_AGE = 60 * 60 * 24 * 7; // 7 days
 // a REQUIRED parameter — no default — so a call site that forgot which workspace it is
 // answering for is a crash here, not a cross-tenant answer in production.
 // Deploy-specific knobs, filled at runtime from instance.json (all empty in a raw
-// engine build): gate-exempt skill-asset path prefixes, MCP-proxy host allowlist
-// (suffix rule + space-declared exact hosts + the URL of an exact-host list), and
-// vanity-host redirects.
+// engine build): the MCP-proxy host allowlist (suffix rule + space-declared exact hosts
+// + the URL of an exact-host list).
 // MCP_HOST_ALLOWLIST and MCP_PATH_ALLOWLIST alone come from routing.json: the union of
 // the {"hosts":[…], "paths":[…]} files the spaces declare via space.json "mcpAllowlists"
 // (see build.js).
-let PUBLIC_SKILL_PREFIXES = [];
+//
+// ⚠️ The gate's own knobs used to sit here — PUBLIC_SKILL_PREFIXES and VANITY_REDIRECTS,
+// alongside BUILD_ID, VERSION_MAP, PUBLIC_PREFIXES and RESTRICTED_BASES further down.
+// They are fields of the tenant context now and must not come back: which paths skip the
+// password is the single most workspace-specific answer the worker gives, and a module
+// binding hands the isolate's last-loaded workspace's exemptions to the next request.
 let MCP_HOST_SUFFIXES = [];
 let MCP_HOST_ALLOWLIST = [];
 let MCP_HOST_ALLOWLIST_URL = "";
 let MCP_PATH_ALLOWLIST = [];
-let VANITY_REDIRECTS = {};
 // The session cookie: value "<email>.<token>". `__Host-` is a name PREFIX the browser
 // enforces — it stores a cookie under such a name only when it is Secure, has Path=/,
 // and carries NO Domain attribute. That last rule is the point: several workspaces share
@@ -214,11 +217,6 @@ const AVATAR_MIMES = {
 };
 const INVITE_TTL_MS = 7 * 24 * 60 * 60 * 1000; // links get pasted into chat — expire them
 
-// Build id for the live-reload poller — routing.json carries this build's id; it's
-// the FALLBACK version for any path not in VERSION_MAP (index/shell pages, assets).
-// "dev" in a raw/local copy just means a stable id.
-let BUILD_ID = "dev";
-
 // Serve-time chrome composition (runtime-chrome). CHROME_POINTER is the CURRENT engine's
 // chrome bundle names + UI version (routing.chrome); RUNTIME_CHROME gates composeChrome.
 // Inert defaults so a raw/local copy (and every test import) stays side-effect-free — the
@@ -227,12 +225,13 @@ let BUILD_ID = "dev";
 let CHROME_POINTER = null;
 let RUNTIME_CHROME = false;
 
-// Per-page live-reload versions: URL-prefix → token that changes only when that
-// folder's content changes (routing.json). Lets a tab reload only when ITS
-// own prototype changed, so unrelated deploys (e.g. another agent's prototype) don't
-// reload it. versionFor() returns the longest-prefix match, else BUILD_ID.
-let VERSION_MAP = {};
-
+// Per-page live-reload versions: `tctx.VERSION_MAP` is a URL-prefix → token map that
+// changes only when that folder's content changes (routing.json). Lets a tab reload only
+// when ITS own prototype changed, so unrelated deploys (e.g. another agent's prototype)
+// don't reload it. versionFor() returns the longest-prefix match, else `tctx.BUILD_ID` —
+// the workspace's whole-build id, the FALLBACK version for any path the map does not
+// name (index/shell pages, assets). "dev" in a raw/local copy just means a stable id.
+//
 // The context comes FIRST and is not optional. These three predicates decide who gets
 // past the gate, so a default would let a call site that forgot to pass a workspace's
 // config keep working — answering from whichever workspace the isolate looked at last,
@@ -248,13 +247,12 @@ function versionFor(tctx, pathname) {
   return best == null ? tctx.BUILD_ID : best;
 }
 
-// PUBLIC prototype path-prefixes — served WITHOUT the password. routing.json carries
-// the real list of `/<opportunity>/<prototype>/` prefixes, derived from the same
-// build that shipped them, so it can never drift from what actually ships. Empty
-// default so a raw/local copy of this file gates nothing differently (local builds
-// have no password anyway).
-let PUBLIC_PREFIXES = [];
-
+// PUBLIC prototype path-prefixes — served WITHOUT the password. `tctx.PUBLIC_PREFIXES`
+// is the workspace's real list of `/<opportunity>/<prototype>/` prefixes, derived from
+// the same build that shipped them, so it can never drift from what actually ships. The
+// context's empty default is what makes a raw/local copy gate nothing differently (local
+// builds have no password anyway).
+//
 // A request is public if it lands inside a published prototype folder (the index
 // page or any asset it loads), or is the dormant review-overlay script that every
 // prototype embeds. Everything else falls through to the password gate.
@@ -320,14 +318,6 @@ function isPublicPath(tctx, pathname) {
   );
 }
 
-// ADMIN-ONLY space base paths. RETIRED with the path-mount tier: an adminOnly space only
-// ever sealed a NON-DEFAULT "/<id>/" mount, and no such mount exists any more, so nothing
-// is derived into this list — it is permanently empty and everything below reads it as
-// "no path is restricted." The declaration and its consumer (isRestrictedPath) are kept
-// as a harmless always-false read rather than ripped out; assets mode still assigns from
-// a routing.restrictedBases field defensively, but the build no longer emits one.
-let RESTRICTED_BASES = [];
-
 // Canvas session music: the one workspace's tracks/ folder, at the root. AUDIO
 // EXTENSIONS ONLY — a README or a stray export that lands in the same folder is gated by
 // the ordinary rules, not by this one. Only an instance ADMIN may fetch these: the build
@@ -339,8 +329,16 @@ let RESTRICTED_BASES = [];
 const TRACK_PATH = /^\/tracks\/[^?]+\.(mp3|m4a|aac|ogg|opus|wav|flac|webm)$/i;
 function isTrackPath(pathname) { return TRACK_PATH.test(pathname); }
 
-// Does this path live inside an admin-only space? Matches the base ("/space-2"),
-// its root ("/space-2/") and everything beneath it.
+// Does this path live inside an admin-only space? Matches the base ("/space-2"), its
+// root ("/space-2/") and everything beneath it.
+//
+// RETIRED WITH THE PATH-MOUNT TIER, and kept as an always-false read rather than ripped
+// out. An adminOnly space only ever sealed a NON-DEFAULT "/<id>/" mount, and no such
+// mount exists any more, so neither derivation puts anything in the list: bundle mode
+// hands back an empty one, and assets mode still reads a routing.restrictedBases field
+// defensively although the build no longer emits one. It is a FIELD OF THE CONTEXT, not
+// a module binding — an empty seal is still a seal, and one workspace must never be able
+// to answer for another's even while the answer is "nothing".
 function isRestrictedPath(tctx, pathname) {
   return tctx.RESTRICTED_BASES.some(
     (b) => pathname === b || pathname.startsWith(b + "/")
@@ -463,7 +461,6 @@ function applyInstance(inst) {
   UPDATE_FEED = inst.updateFeed || "";
   MCP_HOST_SUFFIXES = inst.mcpHostSuffixes || [];
   MCP_HOST_ALLOWLIST_URL = inst.mcpHostAllowlistUrl || "";
-  VANITY_REDIRECTS = inst.vanityRedirects || {};
   RT_ORIGIN = inst.rtOrigin || "";
   INSTANCE_SENTINELS = Array.isArray(inst.sentinels) ? inst.sentinels : [];
   MIN_CLIENT_PROTOCOL = Number.isInteger(inst.minClientProtocol) && inst.minClientProtocol > 0
@@ -545,18 +542,12 @@ function applyTenantContext(ctx) {
   MCP_HOST_ALLOWLIST_URL = ctx.MCP_HOST_ALLOWLIST_URL;
   mcpStaticHosts = ctx.mcpStaticHosts;
   MCP_PATH_ALLOWLIST = ctx.MCP_PATH_ALLOWLIST;
-  VANITY_REDIRECTS = ctx.VANITY_REDIRECTS;
   RT_ORIGIN = ctx.RT_ORIGIN;
   INSTANCE_SENTINELS = ctx.INSTANCE_SENTINELS;
   MIN_CLIENT_PROTOCOL = ctx.MIN_CLIENT_PROTOCOL;
   LOGIN_HINT = ctx.LOGIN_HINT;
   LOGIN_PREFILL_EMAIL = ctx.LOGIN_PREFILL_EMAIL;
   LOGIN_PREFILL_PASSWORD = ctx.LOGIN_PREFILL_PASSWORD;
-  BUILD_ID = ctx.BUILD_ID;
-  VERSION_MAP = ctx.VERSION_MAP;
-  PUBLIC_PREFIXES = ctx.PUBLIC_PREFIXES;
-  PUBLIC_SKILL_PREFIXES = ctx.PUBLIC_SKILL_PREFIXES;
-  RESTRICTED_BASES = ctx.RESTRICTED_BASES;
   CANVAS_LOADER_EXTRAS = ctx.CANVAS_LOADER_EXTRAS;
   CANVAS_CATALOG = ctx.CANVAS_CATALOG;
   CANVAS_TRACKS = ctx.CANVAS_TRACKS;
@@ -2117,11 +2108,6 @@ function derivedRoutingFields(manifests, spaceIcons) {
 function applyDerivedRouting(manifests) {
   const f = derivedRoutingFields(manifests, SPACE_ICONS);
   TENANT_CTX = withTenantFields(TENANT_CTX, f);
-  BUILD_ID = f.BUILD_ID;
-  VERSION_MAP = f.VERSION_MAP;
-  PUBLIC_PREFIXES = f.PUBLIC_PREFIXES;
-  PUBLIC_SKILL_PREFIXES = f.PUBLIC_SKILL_PREFIXES;
-  RESTRICTED_BASES = f.RESTRICTED_BASES;
   CANVAS_LOADER_EXTRAS = f.CANVAS_LOADER_EXTRAS;
   CANVAS_CATALOG = f.CANVAS_CATALOG;
   CANVAS_TRACKS = f.CANVAS_TRACKS;
