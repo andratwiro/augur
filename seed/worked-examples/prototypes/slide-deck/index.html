@@ -1,0 +1,214 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Slide deck</title>
+<meta name="description" content="A six-slide deck you drive with the arrow keys — every slide is a linkable URL, so a comment lands on the slide it was left on.">
+<link rel="stylesheet" href="../../../skills/starter-ui/starter-tokens.css">
+<link rel="stylesheet" href="../../../skills/starter-ui/starter-ui.css">
+<style>
+  html, body { height: 100%; }
+  body.s-page { display: flex; flex-direction: column; overflow: hidden; }
+
+  .deck { flex: 1; display: grid; grid-template-rows: auto minmax(0, 1fr) auto; gap: var(--starter-s3);
+          padding: var(--starter-s4); max-width: 76rem; width: 100%; margin: 0 auto; }
+
+  .deck__bar { display: flex; align-items: baseline; gap: var(--starter-s3);
+               font: var(--starter-text-xs)/1.6 var(--starter-font-display);
+               letter-spacing: .14em; text-transform: uppercase; color: var(--starter-ink-3); }
+  .deck__bar b { color: var(--starter-mark-ink); font-weight: 600; }
+  .deck__count { margin-left: auto; font-variant-numeric: tabular-nums; }
+
+  .stage { position: relative; background: var(--starter-sheet); border: var(--starter-hair);
+           border-radius: var(--starter-radius-1); box-shadow: var(--starter-lift); overflow: hidden; }
+
+  .slide { position: absolute; inset: 0; display: grid; align-content: center; gap: var(--starter-s4);
+           padding: clamp(var(--starter-s5), 5vw, var(--starter-s8));
+           opacity: 0; transform: translateY(10px); pointer-events: none;
+           transition: opacity var(--starter-slow), transform var(--starter-slow); }
+  .slide[data-active] { opacity: 1; transform: none; pointer-events: auto; }
+  .slide__no { position: absolute; top: var(--starter-s5); right: var(--starter-s5);
+               font: var(--starter-text-xs)/1 var(--starter-font-display); letter-spacing: .14em;
+               color: var(--starter-ink-3); }
+  .slide h2 { margin: 0; font: 600 clamp(1.8rem, 4.4vw, 3.2rem)/1.05 var(--starter-font-display);
+              letter-spacing: -.035em; max-width: 22ch; }
+  .slide p { margin: 0; max-width: 46ch; font-size: clamp(var(--starter-text-md), 1.7vw, var(--starter-text-lg));
+             color: var(--starter-ink-2); }
+  .slide--title h2 { font-size: clamp(2.4rem, 7vw, 4.6rem); }
+  .slide--title .rule { width: 4rem; border-top: 3px solid var(--starter-mark); }
+
+  .beat { display: flex; flex-wrap: wrap; gap: var(--starter-s3); align-items: center;
+          font: var(--starter-text-sm)/1 var(--starter-font-display); color: var(--starter-ink-3); }
+  .beat span[data-on] { color: var(--starter-mark-ink); }
+
+  .deck__foot { display: flex; align-items: center; gap: var(--starter-s3); }
+  .dots { display: flex; gap: 6px; margin-right: auto; }
+  .dot { width: 26px; height: 6px; padding: 0; border: 0; border-radius: 3px;
+         background: var(--starter-rule); cursor: pointer; }
+  .dot[aria-current="true"] { background: var(--starter-mark); }
+  .hint { font: var(--starter-text-xs)/1.6 var(--starter-font-display); color: var(--starter-ink-3);
+          letter-spacing: .1em; text-transform: uppercase; }
+  kbd { font: inherit; border: var(--starter-hair); border-bottom-width: 2px; border-radius: 4px;
+        padding: 1px 5px; background: var(--starter-sheet); }
+  @media (max-width: 700px) { .hint { display: none; } }
+</style>
+</head>
+<body class="s-page">
+
+<div class="deck">
+  <div class="deck__bar">
+    <span><b>The loop</b> · workspace deck</span>
+    <span class="deck__count"><span id="now">1</span> / 6</span>
+  </div>
+
+  <div class="stage" id="stage">
+
+    <section class="slide slide--title" data-active>
+      <div class="slide__no">01</div>
+      <div class="rule"></div>
+      <h2>Brief. Build. Review. Ship.</h2>
+      <p>Four moves. Everything else in this workspace is detail hanging off them.
+        Arrow keys to walk through it.</p>
+    </section>
+
+    <section class="slide">
+      <div class="slide__no">02</div>
+      <div class="beat"><span data-on>Brief</span><span>Build</span><span>Review</span><span>Ship</span></div>
+      <h2>You describe the screen</h2>
+      <p>Not the markup — the screen. Who it is for, what is on it, what happens when it is
+        used, and what it should feel like. A designer's brief, typed to an agent.</p>
+      <div class="s-cmd s-cmd--paste" style="max-width: 46rem">
+        <code class="s-cmd__text s-cmd__text--plain" id="brief">Returns desk. One screen the counter staff use with a customer standing there: type an order number, see what is in the box, pick a reason, print the label. Four reasons, not twelve. Nothing else on the screen.</code>
+        <button type="button" class="s-cmd__btn" data-s-copy="#brief">Copy</button>
+      </div>
+    </section>
+
+    <section class="slide">
+      <div class="slide__no">03</div>
+      <div class="beat"><span>Brief</span><span data-on>Build</span><span>Review</span><span>Ship</span></div>
+      <h2>It comes back as a real page</h2>
+      <p>One folder, one <code>index.html</code>, no build step and no framework. It runs the moment
+        it exists — in the browser, on the board, and straight off the disk.</p>
+      <table class="s-table" style="max-width: 40rem">
+        <tbody>
+          <tr><td>What you get</td><td><code>returns-desk/index.html</code></td></tr>
+          <tr><td>What it needs</td><td>Nothing. It is HTML.</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section class="slide">
+      <div class="slide__no">04</div>
+      <div class="beat"><span>Brief</span><span>Build</span><span data-on>Review</span><span>Ship</span></div>
+      <h2>Comments land on the pixels</h2>
+      <p>Shift + C, then click the thing you mean. The pin sticks to that element, the thread
+        keeps the conversation, and the next brief is usually a sentence someone already wrote
+        in one.</p>
+    </section>
+
+    <section class="slide">
+      <div class="slide__no">05</div>
+      <div class="beat"><span>Brief</span><span>Build</span><span>Review</span><span data-on>Ship</span></div>
+      <h2>Shipping is one word</h2>
+      <p>It commits, publishes and pushes, in that order, so the work is safe before the network
+        is involved. Seconds, not a deploy.</p>
+      <div class="s-cmd" style="max-width: 26rem">
+        <code class="s-cmd__text" id="ship">augur ship</code>
+        <button type="button" class="s-cmd__btn" data-s-copy="#ship">Copy</button>
+      </div>
+    </section>
+
+    <section class="slide slide--title">
+      <div class="slide__no">06</div>
+      <div class="rule"></div>
+      <h2>Now do it once</h2>
+      <p>The loop only teaches by being run. Brief the smallest real screen you actually need —
+        not a demo of one — and put it in front of somebody today.</p>
+    </section>
+
+  </div>
+
+  <div class="deck__foot">
+    <div class="dots" id="dots" role="tablist" aria-label="Slides"></div>
+    <span class="hint"><kbd>←</kbd> <kbd>→</kbd> to move</span>
+    <button type="button" class="s-btn" id="prev" aria-label="Previous slide">←</button>
+    <button type="button" class="s-btn" id="next" aria-label="Next slide">→</button>
+  </div>
+</div>
+
+<script src="../../../skills/starter-ui/starter-ui.js" defer></script>
+<script>
+(function () {
+  "use strict";
+
+  var slides = Array.prototype.slice.call(document.querySelectorAll(".slide"));
+  var dots = document.getElementById("dots");
+  var now = document.getElementById("now");
+  var i = 0;
+
+  slides.forEach(function (s, n) {
+    s.setAttribute("aria-hidden", String(n !== 0));
+    var d = document.createElement("button");
+    d.type = "button";
+    d.className = "dot";
+    d.setAttribute("role", "tab");
+    d.setAttribute("aria-label", "Slide " + (n + 1));
+    d.setAttribute("aria-current", String(n === 0));
+    d.addEventListener("click", function () { go(n); });
+    dots.appendChild(d);
+  });
+
+  /* Each slide is its own URL. That is what lets a pinned comment belong to the
+     slide it was left on rather than to the deck as a whole. */
+  function go(n, quiet) {
+    i = Math.max(0, Math.min(slides.length - 1, n));
+    slides.forEach(function (s, k) {
+      if (k === i) s.setAttribute("data-active", ""); else s.removeAttribute("data-active");
+      s.setAttribute("aria-hidden", String(k !== i));
+    });
+    Array.prototype.forEach.call(dots.children, function (d, k) {
+      d.setAttribute("aria-current", String(k === i));
+    });
+    now.textContent = String(i + 1);
+    if (!quiet) {
+      var h = "#" + (i + 1);
+      if (location.hash !== h) history.replaceState(null, "", h);
+    }
+  }
+
+  function fromHash() {
+    var n = parseInt((location.hash || "").replace("#", ""), 10);
+    go(isNaN(n) ? 0 : n - 1, true);
+  }
+
+  document.addEventListener("keydown", function (e) {
+    if (e.metaKey || e.ctrlKey || e.altKey) return;
+    var k = e.key;
+    if (k === "ArrowRight" || k === "PageDown" || k === " " || k === "Enter") { go(i + 1); e.preventDefault(); }
+    else if (k === "ArrowLeft" || k === "PageUp" || k === "Backspace") { go(i - 1); e.preventDefault(); }
+    else if (k === "Home") { go(0); e.preventDefault(); }
+    else if (k === "End") { go(slides.length - 1); e.preventDefault(); }
+    else if (/^[1-9]$/.test(k)) { go(parseInt(k, 10) - 1); e.preventDefault(); }
+  });
+
+  document.getElementById("next").addEventListener("click", function () { go(i + 1); });
+  document.getElementById("prev").addEventListener("click", function () { go(i - 1); });
+  window.addEventListener("hashchange", fromHash);
+
+  /* Touch: a flick either way. */
+  var x0 = null;
+  var stage = document.getElementById("stage");
+  stage.addEventListener("touchstart", function (e) { x0 = e.touches[0].clientX; }, { passive: true });
+  stage.addEventListener("touchend", function (e) {
+    if (x0 === null) return;
+    var dx = e.changedTouches[0].clientX - x0;
+    if (Math.abs(dx) > 45) go(i + (dx < 0 ? 1 : -1));
+    x0 = null;
+  });
+
+  fromHash();
+})();
+</script>
+</body>
+</html>

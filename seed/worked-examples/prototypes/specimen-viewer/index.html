@@ -1,0 +1,203 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Specimen viewer</title>
+<meta name="description" content="A real-time 3D instrument you can spin with the mouse, drawn with a 3D library loaded from a pinned CDN URL — proof that a prototype can be more than flat screens.">
+<link rel="stylesheet" href="../../../skills/starter-ui/starter-tokens.css">
+<link rel="stylesheet" href="../../../skills/starter-ui/starter-ui.css">
+<style>
+  .viewer { position: relative; aspect-ratio: 16 / 9; min-height: 18rem; cursor: grab; touch-action: none; }
+  .viewer[data-dragging] { cursor: grabbing; }
+  .viewer canvas { display: block; width: 100%; height: 100%; }
+  .viewer::after {
+    content: ""; position: absolute; inset: 0; pointer-events: none;
+    background: radial-gradient(60% 60% at 50% 40%, rgba(255, 255, 255, .06), transparent 70%);
+  }
+  .viewer__fallback {
+    position: absolute; inset: 0; display: none; place-items: center; padding: var(--starter-s5);
+    text-align: center; font: var(--starter-text-sm)/1.6 var(--starter-font-display); color: rgba(244, 241, 234, .75);
+  }
+  .viewer[data-failed] .viewer__fallback { display: grid; }
+  .toolbar { display: flex; flex-wrap: wrap; gap: var(--starter-s2); margin-top: var(--starter-s4); }
+  .plate { margin-top: var(--starter-s5); }
+</style>
+</head>
+<body class="s-page">
+
+<main class="s-sheet">
+
+  <header class="s-block">
+    <div class="s-block__rail">01 / 03</div>
+    <div>
+      <p class="s-eyebrow">Examples</p>
+      <h1 class="s-title s-title--hero">Specimen viewer</h1>
+      <p class="s-lede">An armillary instrument, rendered live. Drag it. Prototypes here are not limited
+        to flat screens — anything a browser can draw, you can brief.</p>
+    </div>
+  </header>
+
+  <section class="s-block">
+    <div class="s-block__rail">Stage</div>
+    <div>
+      <div class="s-stage viewer" id="viewer">
+        <div class="viewer__fallback">The 3D library could not load.<br>It comes from a CDN, so this
+          page needs a network the first time — everything else here works offline.</div>
+        <span class="s-stage__caption">Drag to rotate</span>
+      </div>
+      <div class="toolbar">
+        <button type="button" class="s-btn" id="wire" aria-pressed="false">Wireframe</button>
+        <button type="button" class="s-btn" id="spin" aria-pressed="true">Auto-rotate</button>
+        <button type="button" class="s-btn s-btn--quiet" id="reset">Reset view</button>
+      </div>
+
+      <table class="s-table plate">
+        <thead><tr><th>Specimen</th><th>Reading</th></tr></thead>
+        <tbody>
+          <tr><td>Form</td><td>Three orthogonal rings, one core, one marker bead</td></tr>
+          <tr><td>Surfaces</td><td>Physically shaded, one key light, one fill</td></tr>
+          <tr><td>Drawn by</td><td><code>three.js r160</code>, one pinned script tag</td></tr>
+          <tr><td>Build step</td><td>None. This is one HTML file.</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <p class="s-note"><strong>A prototype may load a library from a CDN.</strong> One rule: pin the exact
+    version in the URL, never a moving tag — a prototype that quietly re-renders differently six months
+    from now is worse than one that never ran. Everything else stays true: no build step, no install,
+    one file that opens from disk.</p>
+
+</main>
+
+<!-- Pinned to an exact version, on purpose. r160 is the last release that ships a
+     plain script build, which is what keeps this page openable straight from disk. -->
+<script src="https://unpkg.com/three@0.160.1/build/three.min.js"
+        onerror="document.getElementById('viewer').setAttribute('data-failed','')"></script>
+<script>
+(function () {
+  "use strict";
+
+  var host = document.getElementById("viewer");
+  if (!window.THREE) { host.setAttribute("data-failed", ""); return; }
+
+  var css = function (n) { return getComputedStyle(document.documentElement).getPropertyValue(n).trim(); };
+  var reduced = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  var scene = new THREE.Scene();
+  var camera = new THREE.PerspectiveCamera(38, 16 / 9, 0.1, 100);
+  camera.position.set(0, 0.9, 4.2);
+  camera.lookAt(0, 0, 0);
+
+  var renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+  host.appendChild(renderer.domElement);
+
+  /* ── The instrument ─────────────────────────────────────────────────────── */
+  var group = new THREE.Group();
+  scene.add(group);
+
+  var brass = new THREE.MeshStandardMaterial({ color: 0xd8d2c4, metalness: 0.55, roughness: 0.38 });
+  var core = new THREE.MeshStandardMaterial({ color: css("--starter-mark") || "#cf4224", metalness: 0.1, roughness: 0.45 });
+  var bead = new THREE.MeshStandardMaterial({ color: 0xfbfaf6, metalness: 0.2, roughness: 0.6 });
+  var materials = [brass, core, bead];
+
+  var ringGeo = new THREE.TorusGeometry(1.25, 0.018, 16, 220);
+  var tilts = [
+    [0, 0, 0],
+    [Math.PI / 2, 0, 0],
+    [Math.PI / 2, 0, Math.PI / 2]
+  ];
+  tilts.forEach(function (r) {
+    var m = new THREE.Mesh(ringGeo, brass);
+    m.rotation.set(r[0], r[1], r[2]);
+    group.add(m);
+  });
+
+  var tilted = new THREE.Mesh(new THREE.TorusGeometry(1.05, 0.012, 12, 200), brass);
+  tilted.rotation.set(Math.PI / 2 - 0.41, 0, 0.2);
+  group.add(tilted);
+
+  group.add(new THREE.Mesh(new THREE.IcosahedronGeometry(0.42, 0), core));
+
+  var marker = new THREE.Mesh(new THREE.SphereGeometry(0.06, 24, 16), bead);
+  marker.position.set(1.05 * Math.cos(0.6), 0, 1.05 * Math.sin(0.6));
+  marker.position.applyAxisAngle(new THREE.Vector3(1, 0, 0), 0.41);
+  group.add(marker);
+
+  scene.add(new THREE.HemisphereLight(0xfbfaf6, 0x201e28, 0.85));
+  var key = new THREE.DirectionalLight(0xffffff, 1.45);
+  key.position.set(2.6, 3.2, 2.4);
+  scene.add(key);
+  var rim = new THREE.DirectionalLight(0xff9a7a, 0.5);
+  rim.position.set(-3, -1, -2);
+  scene.add(rim);
+
+  /* ── Interaction ────────────────────────────────────────────────────────── */
+  var spin = !reduced;
+  var drag = null;
+  var vel = { x: 0, y: 0 };
+  var rot = { x: -0.22, y: 0.5 };
+
+  host.addEventListener("pointerdown", function (e) {
+    drag = { x: e.clientX, y: e.clientY };
+    host.setAttribute("data-dragging", "");
+    host.setPointerCapture(e.pointerId);
+  });
+  host.addEventListener("pointermove", function (e) {
+    if (!drag) return;
+    var dx = (e.clientX - drag.x) / 180, dy = (e.clientY - drag.y) / 180;
+    rot.y += dx; rot.x += dy;
+    vel.y = dx; vel.x = dy;
+    drag = { x: e.clientX, y: e.clientY };
+  });
+  ["pointerup", "pointercancel", "pointerleave"].forEach(function (ev) {
+    host.addEventListener(ev, function () { drag = null; host.removeAttribute("data-dragging"); });
+  });
+
+  function toggle(btn, on) { btn.setAttribute("aria-pressed", String(on)); }
+
+  document.getElementById("wire").addEventListener("click", function () {
+    var on = this.getAttribute("aria-pressed") !== "true";
+    materials.forEach(function (m) { m.wireframe = on; });
+    toggle(this, on);
+  });
+  document.getElementById("spin").addEventListener("click", function () {
+    spin = this.getAttribute("aria-pressed") !== "true";
+    toggle(this, spin);
+  });
+  document.getElementById("reset").addEventListener("click", function () {
+    rot = { x: -0.22, y: 0.5 };
+    vel = { x: 0, y: 0 };
+  });
+  toggle(document.getElementById("spin"), spin);
+
+  /* ── Size and draw ──────────────────────────────────────────────────────── */
+  function resize() {
+    var w = host.clientWidth, h = host.clientHeight;
+    if (!w || !h) return;
+    renderer.setSize(w, h, false);
+    camera.aspect = w / h;
+    camera.updateProjectionMatrix();
+  }
+  if (window.ResizeObserver) new ResizeObserver(resize).observe(host);
+  else window.addEventListener("resize", resize);
+  resize();
+
+  (function frame() {
+    requestAnimationFrame(frame);
+    if (!drag) {
+      rot.y += vel.y; rot.x += vel.x;
+      vel.y *= 0.94; vel.x *= 0.94;
+      if (spin) rot.y += 0.0035;
+    }
+    rot.x = Math.max(-1.2, Math.min(1.2, rot.x));
+    group.rotation.x = rot.x;
+    group.rotation.y = rot.y;
+    renderer.render(scene, camera);
+  })();
+})();
+</script>
+</body>
+</html>
