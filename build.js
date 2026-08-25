@@ -5711,10 +5711,18 @@ const emptyHead = (title) =>
 
 function renderRootIndex(opportunities) {
   if (!opportunities.length) {
+    // The one page a stranger lands on first, so it is the only one that says what the
+    // whole site is FOR: the tabs are the parts, this is the work. "Real pages, not
+    // pictures of pages" is the difference from every design tool the reader has used,
+    // and dropping a comment onto the running thing is the reason to send the link.
+    // wrap--wide + the title bar match this page's own populated branch.
     return shell({
       title: "Augur",
-      body: `<p class="empty">No prototypes yet. Add one under
-       <code>&lt;folder&gt;/prototypes/&lt;name&gt;/</code> and rebuild.</p>`,
+      wrapClass: "wrap--wide",
+      body: emptyHead(PROJECTS_LABEL) + emptyState(
+        `The design-system tabs are the parts; this page is the work. Every clickable prototype in the workspace lands here, grouped by the project it belongs to and newest first — real pages, not pictures of pages, so anyone you send the link to can click through it and drop a comment straight onto the thing they are commenting on.`,
+        `Nothing published yet. A prototype is plain self-contained HTML with no build step, which is why the way in is your agent: <em>&ldquo;Build me a clickable prototype of &lt;the screen you have in mind&gt; in this workspace, following the engine's <code>agents/prototype-contract.md</code>, and publish it.&rdquo;</em> It lands under <code>&lt;project&gt;/prototypes/&lt;name&gt;/</code> and shows up here as a card seconds later.`
+      ),
     });
   }
 
