@@ -5247,6 +5247,6 @@ export const __testables = {
   isPublicPath, isTrackPath, isRestrictedPath, versionFor, brandMark,
   boardApi, canvasesApi, virtualCanvas, rtProxy, CANVASES_KEY, BOARD_PREFIX, BOARD_MAX_BYTES,
   composeChrome, renderAppChrome, renderSpaceContextScript, __setChromeTestState,
-  loadConfig, __setConfigTestState, __usersNow, pitiApi,
+  loadConfig, loadTenantContext, __setConfigTestState, __usersNow, pitiApi,
   resolveTenant, DEFAULT_TENANT_ID, TENANT_MEMO_TTL_MS, __setTenantTestState,
 };
