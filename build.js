@@ -5851,13 +5851,24 @@ function renderPlaygroundIndex(projects) {
 }
 
 function renderPagesIndex(pages) {
-  if (!pages.length) {
+  // Pages is the tier where a design system stops being a list and starts being a
+  // judgement, so that is the sentence. The pendingPages clause earns its place because
+  // this is the one tab that can honestly be non-empty before anything is built, and
+  // nobody discovers that from a folder path.
+  const emptyCopy = emptyState(
+    `A whole screen, built from everything below it — where a design system stops being a list of parts and becomes something you can look at and judge. A token that reads fine on its own and a component that reads fine on its own can still make an ugly screen together, and this is the tab where you find that out. Nobody is testing a flow here: these are reference screens, not prototypes.`,
+    `Nothing here yet. Each page is a self-contained folder under <code>pages/&lt;name&gt;/</code>, so ask your agent: <em>&ldquo;Compose a reference page for &lt;the screen&gt; out of this workspace's design system, following the engine's <code>agents/prototype-contract.md</code>.&rdquo;</em> Screens you have not built yet can still show up: list them under <code>"pendingPages"</code> in <code>space.json</code> (<code>agents/space-json.md</code>) and each gets a Pending card, so this tab reads as a roadmap instead of a gap.`
+  );
+  // The bare return is for a tab with NOTHING on it. A workspace that has declared a
+  // roadmap and built none of it yet has something to show, and the old early return
+  // swallowed it — the copy above promises those cards, so it has to be the branch that
+  // does not eat them.
+  if (!pages.length && !PENDING_PAGES.length) {
     return shell({
       title: "Pages",
       activeTab: "pages",
       wrapClass: "wrap--wide",
-      body: `<p class="empty">No reference pages yet. Add one under
-        <code>pages/&lt;name&gt;/</code> and rebuild.</p>`,
+      body: emptyHead("Pages") + emptyCopy,
     });
   }
 
@@ -5883,7 +5894,11 @@ function renderPagesIndex(pages) {
         </details>`;
   // One flat grid. The engine's contract is the TIER (base · components · patterns ·
   // pages); dividing a tier further is a workspace's own vocabulary, so it isn't here.
-  const cards = `<section data-fgroup><p class="section-eyebrow">Composed reference screens</p><div class="page-grid">${pages.map(pageCard).join("")}</div></section>`;
+  // With nothing built, the empty-state copy stands where the grid would — an eyebrow
+  // over no cards is worse than the sentence explaining why there are none.
+  const cards = pages.length
+    ? `<section data-fgroup><p class="section-eyebrow">Composed reference screens</p><div class="page-grid">${pages.map(pageCard).join("")}</div></section>`
+    : emptyCopy;
 
   // Planned reference pages not built yet — shown as a roadmap of pending work.
   const builtSlugs = new Set(pages.map((p) => p.name));
