@@ -5933,8 +5933,15 @@ function renderComponentsIndex(components) {
       title: "Components",
       activeTab: "components",
       wrapClass: "wrap--wide",
-      body: `<p class="empty">No components yet. Add one under
-        <code>components/&lt;name&gt;/</code> and rebuild.</p>`,
+      // The populated view is a TABLE — name, one line on what it is, a status chip —
+      // so what this tab is worth having is a place to LOOK SOMETHING UP before you
+      // build a second one of it. It is also the tab whose contents are not read out of
+      // the folder: every word in that table comes from registry.json, which is worth a
+      // clause here because an agent that skips it produces a tab of nameless rows.
+      body: emptyHead("Components") + emptyState(
+        `A button is an atom; a search field with its filter chips, its clear button and its no-results line is a component — several atoms assembled into something with a job. This is the table of those: what each one is in one line, and whether it is settled or still wants a look, so whoever builds tomorrow's screen finds the piece that already exists instead of quietly building a second one.`,
+        `Nothing here yet. Each component is a demo folder under <code>components/&lt;name&gt;/</code>, but the names, descriptions and badges in this table are not read out of the folder — they come from <code>registry.json</code> at the top of the workspace, which is also what lets the comment overlay name what you are pointing at. Ask your agent: <em>&ldquo;Add a Components demo for &lt;the component&gt; and register it in <code>registry.json</code>, following the engine's <code>agents/ui-skill.md</code>.&rdquo;</em>`
+      ),
     });
   }
 
