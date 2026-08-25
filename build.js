@@ -1396,6 +1396,21 @@ const PAGE_CSS = `
     }
     .preview--canvas .canvas-map svg { display: block; width: 100%; height: 100%; }
     .empty { color: var(--muted); }
+    /* Empty states are ONE treatment across every surface that has one (the landing page,
+       Base, Components, Patterns, Pages, Tokens) — same element, same measure, same
+       rhythm — because a reader meets several of them on the same blank workspace and any
+       difference between them reads as a difference in kind. They run to two paragraphs:
+       what the surface is worth having, then the sentence you say to an agent to get it.
+       Scoped to the paragraph so table cells that also use .empty keep their own sizing. */
+    p.empty { margin: -2px 0 18px; max-width: 70ch; font-size: 13.5px; line-height: 1.5; }
+    /* Two paragraphs are one block, not two captions — tighten the seam so the break
+       reads as a break rather than a gap. */
+    p.empty + p.empty { margin-top: -10px; }
+    /* The one <em> an empty state uses is a sentence to SAY, not a word to stress — lift
+       it out of muted so it reads as the quotable line; italic here only costs legibility. */
+    p.empty em { font-style: normal; color: var(--fg); }
+    p.empty a { color: var(--accent); text-decoration: none; }
+    p.empty a:hover { text-decoration: underline; }
 
     /* Research/context surface — quiet gated metadata (count + filenames). Colour stays
        on the cover + status; this reads as metadata, not a CTA. */
@@ -1602,12 +1617,6 @@ const PAGE_CSS = `
     .page-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 22px 20px; }
     /* Tier intro line (Base / Patterns / Tokens) */
     .tier-hint { margin: -2px 0 18px; max-width: 70ch; color: var(--muted); font-size: 13.5px; line-height: 1.5; }
-    /* A hint that runs to two paragraphs (the Tokens empty state) is one block, not two
-       captions — tighten the seam so it reads as a break, not a gap. */
-    .tier-hint + .tier-hint { margin-top: -10px; }
-    /* The one <em> a hint uses is a sentence to SAY, not a word to stress — lift it out
-       of muted so it reads as the quotable line; italic at 13.5px only costs legibility. */
-    .tier-hint em { font-style: normal; color: var(--fg); }
     .tier-hint a { color: var(--accent); text-decoration: none; }
     .tier-hint a:hover { text-decoration: underline; }
     /* ── Tokens tab grid ── */
@@ -5682,6 +5691,24 @@ function preview(href, hasPoster) {
   return `<div class="preview${hasPoster ? "" : " preview--ph"}">${media(href, hasPoster)}</div>`;
 }
 
+// ── Empty states ─────────────────────────────────────────────────────────────
+// Six surfaces have one (the landing page, Base, Components, Patterns, Pages, Tokens)
+// and a blank workspace shows all six, so they are one thing rendered six times rather
+// than six renderers each inventing a treatment. The shape, everywhere: first what this
+// surface is worth having, in behaviour someone can picture; then the one sentence to
+// say to an agent to get it, styled to be lifted and pasted; then the folder path and
+// the contract doc last — reachable, because somebody has to type them eventually, but
+// nobody has to understand them to take the first step. Asking an agent IS the way in:
+// there is no import button on any of these pages, and pretending otherwise by leading
+// with a file path is what the old one-liners did.
+const emptyState = (...paras) => paras.map((p) => `<p class="empty">${p}</p>`).join("");
+
+// An empty surface still gets its title bar. Without one the page is a floating
+// sentence with no indication of which tab you are looking at, and the populated
+// branch of every one of these renderers opens with exactly this header.
+const emptyHead = (title) =>
+  `<header class="folderbar"><h1 class="folderbar__title">${title}</h1><span class="folderbar__count">0</span><span class="folderbar__rule"></span></header>`;
+
 function renderRootIndex(opportunities) {
   if (!opportunities.length) {
     return shell({
@@ -6220,9 +6247,7 @@ function renderTokensIndex(graph) {
 
   // The hint names the vocabulary this workspace's own skill declares. With nothing
   // parsed there is nothing to name, so the empty branch is an empty STATE rather than a
-  // caption: what the page is worth having, then the one sentence you say to an agent to
-  // get one. The file path and the config key close it — reachable, because somebody has
-  // to type them eventually, but nobody has to understand them to take the first step.
+  // caption — emptyState(), the same element and rhythm the other five surfaces use.
   //
   // Three workspaces land on that branch and it has to read true for all three: one with
   // no skill at all; one whose skill declares `cssPrefixes` but whose tokens file is still
@@ -6234,8 +6259,10 @@ function renderTokensIndex(graph) {
   // would offer that reader "null-tokens.css".
   const hint = names.length
     ? `<p class="tier-hint">The design-system variables (${cssPrefixes.map((p) => `<code>--${p}-*</code>`).join(", ")}), parsed live from <code>${DS.prefix}-tokens.css</code> — each with its alias chain down to a raw value and how much of the system drinks from it. This is the bottom of every import chain Base · Components · Patterns · Pages resolve to. <strong>Click any token name or value to copy it</strong>; expand a consumer count to see exactly what uses it.</p>`
-    : `<p class="tier-hint">Change one colour in one file and every screen changes with it. That is what a design system buys you, and this page is the list of what you can change: your workspace's colours, type, sizes and shadows, each traced down to its raw value and to everything that uses it — the styles panel from Figma, except read out of your own stylesheet on every build, so it cannot drift from what the screens are wearing.</p>`
-      + `<p class="tier-hint">Nothing is reaching it yet, and there is no import button — the way in is your agent. Hand it what you already have (brand colours, an existing stylesheet), or ask it to propose a starting set, then ask: <em>&ldquo;Set this workspace up with a design system from these, following the engine's <code>agents/ui-skill.md</code>.&rdquo;</em> It lands in <code>skills/&lt;name&gt;-ui/</code>, with the variable prefixes you use named in that skill's <code>skill.json</code> (<code>"cssPrefixes"</code>) — the line that points this page at your CSS, and the one to check if a design system is already sitting there.</p>`;
+    : emptyState(
+        `Change one colour in one file and every screen changes with it. That is what a design system buys you, and this page is the list of what you can change: your workspace's colours, type, sizes and shadows, each traced down to its raw value and to everything that uses it — the styles panel from Figma, except read out of your own stylesheet on every build, so it cannot drift from what the screens are wearing.`,
+        `Nothing is reaching it yet, and there is no import button — the way in is your agent. Hand it what you already have (brand colours, an existing stylesheet), or ask it to propose a starting set, then ask: <em>&ldquo;Set this workspace up with a design system from these, following the engine's <code>agents/ui-skill.md</code>.&rdquo;</em> It lands in <code>skills/&lt;name&gt;-ui/</code>, with the variable prefixes you use named in that skill's <code>skill.json</code> (<code>"cssPrefixes"</code>) — the line that points this page at your CSS, and the one to check if a design system is already sitting there.`
+      );
 
   return shell({
     title: "Tokens", activeTab: "tokens", wrapClass: "wrap--wide",
