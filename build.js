@@ -1602,6 +1602,12 @@ const PAGE_CSS = `
     .page-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 22px 20px; }
     /* Tier intro line (Base / Patterns / Tokens) */
     .tier-hint { margin: -2px 0 18px; max-width: 70ch; color: var(--muted); font-size: 13.5px; line-height: 1.5; }
+    /* A hint that runs to two paragraphs (the Tokens empty state) is one block, not two
+       captions — tighten the seam so it reads as a break, not a gap. */
+    .tier-hint + .tier-hint { margin-top: -10px; }
+    /* The one <em> a hint uses is a sentence to SAY, not a word to stress — lift it out
+       of muted so it reads as the quotable line; italic at 13.5px only costs legibility. */
+    .tier-hint em { font-style: normal; color: var(--fg); }
     .tier-hint a { color: var(--accent); text-decoration: none; }
     .tier-hint a:hover { text-decoration: underline; }
     /* ── Tokens tab grid ── */
@@ -6208,16 +6214,28 @@ function renderTokensIndex(graph) {
       </details>`).join("");
 
   // The hint names the vocabulary this workspace's own skill declares. With nothing
-  // parsed there is nothing to name — a workspace that has not built a design system yet
-  // gets the sentence that tells it where one goes, not a description of an empty page.
+  // parsed there is nothing to name, so the empty branch is an empty STATE rather than a
+  // caption: what the page is worth having, then the one sentence you say to an agent to
+  // get one. The file path and the config key close it — reachable, because somebody has
+  // to type them eventually, but nobody has to understand them to take the first step.
+  //
+  // Three workspaces land on that branch and it has to read true for all three: one with
+  // no skill at all; one whose skill declares `cssPrefixes` but whose tokens file is still
+  // empty; and — the case that costs the most — one with a FULL tokens file and no
+  // `skill.json`, where the graph looks for the default prefixes, matches none of it, and
+  // the page is empty although the design system is not. Hence "nothing is reaching it"
+  // and never "you have none": for that third reader the closing clause is the whole fix.
+  // `DS.prefix` is null with no skill, so the placeholders stay literal — interpolating it
+  // would offer that reader "null-tokens.css".
   const hint = names.length
-    ? `The design-system variables (${cssPrefixes.map((p) => `<code>--${p}-*</code>`).join(", ")}), parsed live from <code>${DS.prefix}-tokens.css</code> — each with its alias chain down to a raw value and how much of the system drinks from it. This is the bottom of every import chain Base · Components · Patterns · Pages resolve to. <strong>Click any token name or value to copy it</strong>; expand a consumer count to see exactly what uses it.`
-    : `No tokens yet. A design system lives at <code>skills/&lt;name&gt;-ui/</code>; every custom property its <code>&lt;name&gt;-tokens.css</code> declares is parsed live and listed here, grouped by what the value is. Name the prefixes your stylesheets use in that skill's <code>skill.json</code> (<code>"cssPrefixes"</code>).`;
+    ? `<p class="tier-hint">The design-system variables (${cssPrefixes.map((p) => `<code>--${p}-*</code>`).join(", ")}), parsed live from <code>${DS.prefix}-tokens.css</code> — each with its alias chain down to a raw value and how much of the system drinks from it. This is the bottom of every import chain Base · Components · Patterns · Pages resolve to. <strong>Click any token name or value to copy it</strong>; expand a consumer count to see exactly what uses it.</p>`
+    : `<p class="tier-hint">Change one colour in one file and every screen changes with it. That is what a design system buys you, and this page is the list of what you can change: your workspace's colours, type, sizes and shadows, each traced down to its raw value and to everything that uses it — the styles panel from Figma, except read out of your own stylesheet on every build, so it cannot drift from what the screens are wearing.</p>`
+      + `<p class="tier-hint">Nothing is reaching it yet, and there is no import button — the way in is your agent. Hand it what you already have (brand colours, an existing stylesheet), or ask it to propose a starting set, then ask: <em>&ldquo;Set this workspace up with a design system from these, following the engine's <code>agents/ui-skill.md</code>.&rdquo;</em> It lands in <code>skills/&lt;name&gt;-ui/</code>, with the variable prefixes you use named in that skill's <code>skill.json</code> (<code>"cssPrefixes"</code>) — the line that points this page at your CSS, and the one to check if a design system is already sitting there.</p>`;
 
   return shell({
     title: "Tokens", activeTab: "tokens", wrapClass: "wrap--wide",
     body: `<header class="folderbar"><h1 class="folderbar__title">Tokens</h1><span class="folderbar__count">${names.length}</span><span class="folderbar__rule"></span></header>` +
-      `<p class="tier-hint">${hint}</p>` +
+      hint +
       `${sections}${filterEmpty()}` +
       `<script>${TOKENS_JS}</script>`,
   });
