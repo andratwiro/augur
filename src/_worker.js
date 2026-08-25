@@ -1774,19 +1774,32 @@ async function loadManifests(env, force) {
 // Site routing from the live manifests (the bundle-mode replacement for
 // routing.json): merge every space's fragment, fold per-space shell signatures
 // into one buildId, and read the chrome pieces off the _engine manifest.
-function applyDerivedRouting(manifests) {
+// Derive routing from the live manifests, as a VALUE. Pure: it reads the manifests and
+// the icon index and returns the fields it derived, touching no module state — which is
+// what lets the same derivation fill a per-tenant context instead of one isolate's
+// globals. `applyDerivedRouting` below is the transitional caller that still writes the
+// globals; the threading sweep retires it cluster by cluster.
+//
+// One deliberate difference from the version that assigned inline: derivation is now
+// ALL-OR-NOTHING. The old code set the chrome pointer during the loop and the rest after
+// it, so a manifest that threw midway left the pointer moved and everything else stale —
+// a half-applied routing table nothing could detect. Returning a value means a throw
+// reaches loadConfig's catch with nothing written, which is the keep-last-good behaviour
+// the cache was always trying to have.
+function derivedRoutingFields(manifests, spaceIcons) {
   const vmap = {}, prefixes = [], mcp = new Set(), spacesList = [];
   const sigs = [];
   const catalog = [], tracks = [];
   let skillPrefixes = [], loaderExtras = "";
+  let chromePointer = null, runtimeChrome = false;
   for (const id of Object.keys(manifests).sort()) {
     const m = manifests[id];
     if (id === "_engine") {
       loaderExtras = (m.routing && m.routing.canvasLoaderExtras) || "";
       // Serve-time chrome composition (runtime-chrome): the pointer + switch ride the
       // _engine fragment in bundle mode, mirroring routing.json in assets mode.
-      CHROME_POINTER = (m.routing && m.routing.chrome) || null;
-      RUNTIME_CHROME = !!(m.routing && m.routing.runtimeChrome);
+      chromePointer = (m.routing && m.routing.chrome) || null;
+      runtimeChrome = !!(m.routing && m.routing.runtimeChrome);
       continue;
     }
     const r = m.routing || {};
@@ -1812,22 +1825,47 @@ function applyDerivedRouting(manifests) {
   let h = 5381;
   const s = sigs.sort().join("\n");
   for (let i = 0; i < s.length; i++) h = ((h << 5) + h + s.charCodeAt(i)) >>> 0;
-  BUILD_ID = h.toString(36);
-  VERSION_MAP = vmap;
-  PUBLIC_PREFIXES = prefixes;
-  PUBLIC_SKILL_PREFIXES = skillPrefixes;
-  // The path-mount tier is retired: an adminOnly space only ever sealed a NON-DEFAULT
-  // "/<id>/" mount, and no such mount exists any more, so the bundle derivation never
-  // seals anything. RESTRICTED_BASES is permanently empty here. (Assets mode still reads
-  // a routing.restrictedBases field defensively, but the build no longer emits one.)
-  RESTRICTED_BASES = [];
-  CANVAS_LOADER_EXTRAS = loaderExtras;
-  CANVAS_CATALOG = catalog;
-  CANVAS_TRACKS = tracks;
-  MCP_HOST_ALLOWLIST = [...mcp].sort();
-  mcpStaticHosts = new Set(MCP_HOST_ALLOWLIST);
-  SPACES = spacesList.sort((a, b) => (b.default === true) - (a.default === true) || String(a.id).localeCompare(String(b.id)));
-  SPACES = applySpaceIcons(SPACES, SPACE_ICONS);
+  const allowlist = [...mcp].sort();
+  const spaces = spacesList.sort((a, b) => (b.default === true) - (a.default === true) || String(a.id).localeCompare(String(b.id)));
+  return {
+    BUILD_ID: h.toString(36),
+    VERSION_MAP: vmap,
+    PUBLIC_PREFIXES: prefixes,
+    PUBLIC_SKILL_PREFIXES: skillPrefixes,
+    // The path-mount tier is retired: an adminOnly space only ever sealed a NON-DEFAULT
+    // "/<id>/" mount, and no such mount exists any more, so the bundle derivation never
+    // seals anything. RESTRICTED_BASES is permanently empty here. (Assets mode still reads
+    // a routing.restrictedBases field defensively, but the build no longer emits one.)
+    RESTRICTED_BASES: [],
+    CANVAS_LOADER_EXTRAS: loaderExtras,
+    CANVAS_CATALOG: catalog,
+    CANVAS_TRACKS: tracks,
+    MCP_HOST_ALLOWLIST: allowlist,
+    mcpStaticHosts: new Set(allowlist),
+    SPACES: applySpaceIcons(spaces, spaceIcons),
+    CHROME_POINTER: chromePointer,
+    RUNTIME_CHROME: runtimeChrome,
+  };
+}
+
+// Transitional: write the derived fields into the module globals the ~110 read sites
+// still use. Every threading commit shrinks this function; the last one deletes it.
+function applyDerivedRouting(manifests) {
+  const f = derivedRoutingFields(manifests, SPACE_ICONS);
+  BUILD_ID = f.BUILD_ID;
+  VERSION_MAP = f.VERSION_MAP;
+  PUBLIC_PREFIXES = f.PUBLIC_PREFIXES;
+  PUBLIC_SKILL_PREFIXES = f.PUBLIC_SKILL_PREFIXES;
+  RESTRICTED_BASES = f.RESTRICTED_BASES;
+  CANVAS_LOADER_EXTRAS = f.CANVAS_LOADER_EXTRAS;
+  CANVAS_CATALOG = f.CANVAS_CATALOG;
+  CANVAS_TRACKS = f.CANVAS_TRACKS;
+  MCP_HOST_ALLOWLIST = f.MCP_HOST_ALLOWLIST;
+  mcpStaticHosts = f.mcpStaticHosts;
+  SPACES = f.SPACES;
+  CHROME_POINTER = f.CHROME_POINTER;
+  RUNTIME_CHROME = f.RUNTIME_CHROME;
+  return f;
 }
 
 // Does a path (or routing prefix) belong to a publishable workspace? This keeps a publish
