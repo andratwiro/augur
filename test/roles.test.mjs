@@ -11,6 +11,11 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { __testables as W } from "../src/_worker.js";
 
+// The workspace whose admin panel this is. adminUsersApi defaults its roster, config
+// list and workspace list off the context now; every case here passes its own lists
+// explicitly, so this only has to be a real context, not a populated one.
+const CTX = W.applyDerivedRouting({});
+
 function memKV(initial = {}) {
   const store = new Map(Object.entries(initial));
   return {
@@ -32,7 +37,7 @@ const URL_ = new URL("https://example.test/__admin/users");
 const post = (body) => new Request("https://example.test/__admin/users", {
   method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body),
 });
-const call = (body, env, users, config = []) => W.adminUsersApi(post(body), URL_, env, ADMIN, users, config);
+const call = (body, env, users, config = []) => W.adminUsersApi(CTX, post(body), URL_, env, ADMIN, users, config);
 
 // ---- the vocabulary ---------------------------------------------------------
 
@@ -143,7 +148,7 @@ test("a no-op role change is reported as such, without touching anything", async
 test("only an admin may change a role at all", async () => {
   const env = envWith(memKV());
   for (const who of [null, EDITOR, VIEWER, LEGACY]) {
-    const res = await W.adminUsersApi(post({ op: "role", email: "ed@example.test", role: "admin" }), URL_, env, who, [ADMIN, EDITOR]);
+    const res = await W.adminUsersApi(CTX, post({ op: "role", email: "ed@example.test", role: "admin" }), URL_, env, who, [ADMIN, EDITOR]);
     assert.equal(res.status, 403, `${who ? who.email : "anonymous"} must not change roles`);
   }
 });

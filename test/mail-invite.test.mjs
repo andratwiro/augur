@@ -12,6 +12,11 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { __testables as W } from "../src/_worker.js";
 
+// The workspace whose admin panel this is. adminUsersApi defaults its roster, config
+// list and workspace list off the context now; every case here passes its own lists
+// explicitly, so this only has to be a real context, not a populated one.
+const CTX = W.applyDerivedRouting({});
+
 function memKV() {
   const store = new Map();
   return {
@@ -53,9 +58,9 @@ const adminReq = (body) => new Request("https://x.test/__admin/users", {
 });
 
 const invite = (env, roster = [ME]) =>
-  W.adminUsersApi(adminReq({ op: "invite", email: "new@x.test", name: "New Person" }), usersUrl, env, ME, roster, roster);
+  W.adminUsersApi(CTX, adminReq({ op: "invite", email: "new@x.test", name: "New Person" }), usersUrl, env, ME, roster, roster);
 const reset = (env) =>
-  W.adminUsersApi(adminReq({ op: "reset", email: THEM.email }), usersUrl, env, ME, [ME, THEM], [ME, THEM]);
+  W.adminUsersApi(CTX, adminReq({ op: "reset", email: THEM.email }), usersUrl, env, ME, [ME, THEM], [ME, THEM]);
 
 // ---- no provider: exactly what happened before mail existed ---------------------------
 
@@ -122,13 +127,13 @@ test("the message names the workspace when the deployment has one, the host when
   const env = { COMMENTS: memKV(), ...MAIL_ENV };
   const named = withStubbedFetch();
   try {
-    await W.adminUsersApi(adminReq({ op: "invite", email: "a@x.test" }), usersUrl, env, ME, [ME], [ME],
+    await W.adminUsersApi(CTX, adminReq({ op: "invite", email: "a@x.test" }), usersUrl, env, ME, [ME], [ME],
       [{ id: "ds", name: "Design System", default: true }]);
     assert.match(named.calls[0].body.subject, /Design System/);
   } finally { named.restore(); }
   const bare = withStubbedFetch();
   try {
-    await W.adminUsersApi(adminReq({ op: "invite", email: "b@x.test" }), usersUrl, env, ME, [ME], [ME], []);
+    await W.adminUsersApi(CTX, adminReq({ op: "invite", email: "b@x.test" }), usersUrl, env, ME, [ME], [ME], []);
     assert.match(bare.calls[0].body.subject, /x\.test/);
   } finally { bare.restore(); }
 });

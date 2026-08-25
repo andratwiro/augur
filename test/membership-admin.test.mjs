@@ -10,6 +10,11 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { __testables as W } from "../src/_worker.js";
 
+// The workspace whose admin panel this is. adminUsersApi defaults its roster, config
+// list and workspace list off the context now; every case here passes its own lists
+// explicitly, so this only has to be a real context, not a populated one.
+const CTX = W.applyDerivedRouting({});
+
 function memKV(initial = {}) {
   const store = new Map(Object.entries(initial));
   return {
@@ -126,7 +131,7 @@ test("administering SOME space is not authority to read ANOTHER space's roster",
   assert.equal(W.roleIn(boss, "beta"), "editor", "but has no authority in beta");
 
   const req = new Request("https://example.test/__admin/users?space=beta");
-  const res = await W.adminUsersApi(req, new URL(req.url), envWith(memKV()), boss, users, [], SPACES);
+  const res = await W.adminUsersApi(CTX, req, new URL(req.url), envWith(memKV()), boss, users, [], SPACES);
   assert.equal(res.status, 403);
 });
 
@@ -136,7 +141,7 @@ test("an admin reading their own space's roster is answered", async () => {
     "ed@example.test": { alpha: "editor" },
   });
   const req = new Request("https://example.test/__admin/users?space=alpha");
-  const res = await W.adminUsersApi(req, new URL(req.url), envWith(memKV()), users[0], users, [], SPACES);
+  const res = await W.adminUsersApi(CTX, req, new URL(req.url), envWith(memKV()), users[0], users, [], SPACES);
   assert.equal(res.status, 200);
   const body = await res.json();
   assert.equal(body.space, "alpha");

@@ -49,6 +49,10 @@ function seed(threads) {
   return { kv, env: { COMMENTS: kv, SESSION_SECRET: "s3cret" } };
 }
 
+// The workspace these comments belong to. reviewApi resolves author names against that
+// workspace's roster now, so the fixture names one instead of leaving it to module scope.
+const CTX = W.applyDerivedRouting({});
+
 async function post(env, user, op) {
   const headers = { "Content-Type": "application/json" };
   if (user) {
@@ -58,7 +62,7 @@ async function post(env, user, op) {
   const url = new URL(`https://example.test/__review/api?path=${encodeURIComponent(PATH)}`);
   const request = new Request(url, { method: "POST", headers, body: JSON.stringify(op) });
   // `authed` mirrors what the router passes: true once an instance has a roster.
-  return W.reviewApi(request, url, env, true);
+  return W.reviewApi(CTX, request, url, env, true);
 }
 
 const idsIn = (kv) => JSON.parse(kv.store.get(KEY)).map((t) => t.id);
@@ -145,7 +149,7 @@ test("a signed-out caller is still refused outright", async () => {
     method: "POST", headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ op: "delete", id: "t1" }),
   });
-  const res = await W.reviewApi(request, url, env, false);
+  const res = await W.reviewApi(CTX, request, url, env, false);
   assert.equal(res.status, 401, "the pre-existing signed-out gate is unchanged");
   assert.deepEqual(idsIn(kv), ["t1"]);
 });
@@ -172,7 +176,7 @@ test("an open build with no roster stays open", async () => {
     method: "POST", headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ op: "delete", id: "t1" }),
   });
-  const res = await W.reviewApi(request, url, env, undefined);
+  const res = await W.reviewApi(CTX, request, url, env, undefined);
   assert.equal(res.status, 200);
   assert.deepEqual(idsIn(kv), []);
 });
@@ -181,6 +185,6 @@ test("an open build with no roster stays open", async () => {
 // secret and calling applyOp with no `me`. The ownership check must not reach it.
 test("applyOp itself is unchanged — the check lives in the API, not the reducer", () => {
   const threads = [threadBy("t1", A)];
-  assert.deepEqual(W.applyOp(threads, { op: "delete", id: "t1" }).map((t) => t.id), [],
+  assert.deepEqual(W.applyOp(CTX.USERS, threads, { op: "delete", id: "t1" }).map((t) => t.id), [],
     "the moderation path (reviewExport) still deletes with no session at all");
 });

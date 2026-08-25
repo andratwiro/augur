@@ -3745,15 +3745,18 @@ const escapeHtml = (s) => String(s == null ? "" : s)
 // An anonymous caller keeps their pseudonym but verified=false, and may NOT wear a
 // registered user's name (blocks impersonating a teammate — or a named agent identity).
 // So a forged `author:"<trusted name>"` from an un-authed POST can never look verified.
-function stampAuthor(rawAuthor, me) {
+// `users` is the roster to check the pseudonym against, and it comes FIRST because it is
+// the thing that varies by workspace: the names that may not be worn are one workspace's
+// people, not the isolate's last-loaded ones.
+function stampAuthor(users, rawAuthor, me) {
   if (me) return { author: me.name, verified: true };
   const a = clamp(rawAuthor, 80) || "Anonymous";
-  const collides = USERS.some((u) => u.name && u.name === a);
+  const collides = users.some((u) => u.name && u.name === a);
   return { author: collides ? "Anonymous" : a, verified: false };
 }
 
-function sanitizeMsg(m, me) {
-  const { author, verified } = stampAuthor(m && m.author, me);
+function sanitizeMsg(users, m, me) {
+  const { author, verified } = stampAuthor(users, m && m.author, me);
   return {
     author,
     verified,
@@ -3768,7 +3771,7 @@ function sanitizeMsg(m, me) {
 // Apply a single review op to a thread array; returns the new array. `me` is the
 // server-resolved signed-in user (or null) — passed to sanitizeMsg so authorship of
 // every added/replied message is stamped from the session, not the request body.
-function applyOp(threads, op, me) {
+function applyOp(users, threads, op, me) {
   if (!op || typeof op !== "object") return threads;
   if (op.op === "add" && op.thread) {
     const t = op.thread;
@@ -3788,7 +3791,7 @@ function applyOp(threads, op, me) {
         screen: clamp(t.screen, 200) || null,
         resolved: false,
         annotation: !!t.annotation,
-        messages: (Array.isArray(t.messages) ? t.messages : []).slice(0, 1).map((m) => sanitizeMsg(m, me)),
+        messages: (Array.isArray(t.messages) ? t.messages : []).slice(0, 1).map((m) => sanitizeMsg(users, m, me)),
       });
       if (threads.length > 500) threads = threads.slice(-500);
     }
@@ -3802,7 +3805,7 @@ function applyOp(threads, op, me) {
     }
   } else if (op.op === "reply" && op.message) {
     const t = threads.find((x) => x.id === op.id);
-    if (t) t.messages = (t.messages || []).concat([sanitizeMsg(op.message, me)]).slice(0, 200);
+    if (t) t.messages = (t.messages || []).concat([sanitizeMsg(users, op.message, me)]).slice(0, 200);
   } else if (op.op === "resolve") {
     const t = threads.find((x) => x.id === op.id);
     if (t) t.resolved = !!op.resolved;
@@ -3846,7 +3849,7 @@ function mayRemoveThread(thread, me) {
 // GET/POST /__review/api?path=<page> — read or mutate one page's threads.
 // Fully OPEN, reads AND writes (see router): reviewers with only a public
 // prototype link must be able to comment. applyOp clamps/caps every field.
-async function reviewApi(request, url, env, authed) {
+async function reviewApi(tctx, request, url, env, authed) {
   const kv = kvFor(env);
   const path = clamp(url.searchParams.get("path") || "/", 600);
   if (!kv) return jsonResponse({ threads: [], warning: "no-kv-binding" });
@@ -3884,7 +3887,7 @@ async function reviewApi(request, url, env, authed) {
       const t = threads.find((x) => x.id === op.id);
       if (t && !mayRemoveThread(t, me)) return jsonResponse({ error: "forbidden" }, 403);
     }
-    threads = applyOp(threads, op, me);
+    threads = applyOp(tctx.USERS, threads, op, me);
     await kv.put(key, JSON.stringify(threads));
     return jsonResponse({ threads });
   }
@@ -4358,7 +4361,7 @@ function rtProxy(tctx, request, url, env) {
 
 // Admin surface: manage PEOPLE, not credentials. There is deliberately no path here
 // that sets, reads or recovers a password — reset re-issues an invite instead.
-async function adminUsersApi(request, url, env, me, users = USERS, configUsers = CONFIG_USERS, spaces = SPACES) {
+async function adminUsersApi(tctx, request, url, env, me, users = tctx.USERS, configUsers = tctx.CONFIG_USERS, spaces = tctx.SPACES) {
   // Admin of ANY space gets in; every mutation below re-checks the SPECIFIC space it
   // touches. On an instance that never set memberships this is the old global check,
   // because a global admin administers everything by default.
@@ -4661,7 +4664,7 @@ async function adminUsersApi(request, url, env, me, users = USERS, configUsers =
 //   POST → apply a moderation op ({ path, op:"resolve"|"delete", id, resolved })
 //          to one page's threads and return that page's updated threads. This lets
 //          CLI tooling resolve/close threads without the site password.
-async function reviewExport(request, url, env) {
+async function reviewExport(tctx, request, url, env) {
   const secret = env.REVIEW_EXPORT_KEY;
   if (!secret) return jsonResponse({ error: "export-disabled" }, 404);
   const given = url.searchParams.get("key") || request.headers.get("X-Review-Key") || "";
@@ -4679,7 +4682,7 @@ async function reviewExport(request, url, env) {
     const key = "c:" + path;
     const raw = await kv.get(key);
     let threads = raw ? JSON.parse(raw) : [];
-    threads = applyOp(threads, op);
+    threads = applyOp(tctx.USERS, threads, op);
     await kv.put(key, JSON.stringify(threads));
     return jsonResponse({ path, threads });
   }
@@ -4884,7 +4887,7 @@ export default {
     }
 
     // Review export bypasses the password gate (its own secret guards it).
-    if (url.pathname === "/__review/api/export") return reviewExport(request, url, env);
+    if (url.pathname === "/__review/api/export") return reviewExport(tctx, request, url, env);
 
     // Piti live channel bypasses the gate too: the cat lives on PUBLIC prototypes
     // (no cookie), so browser reads/view-writes are open; agent ops self-guard with
@@ -5009,9 +5012,7 @@ export default {
     }
 
     // Admin users/passwords API — admin-only (adminUsersApi re-checks me.role).
-    if (url.pathname === "/__admin/users") {
-      return adminUsersApi(request, url, env, me, tctx.USERS, tctx.CONFIG_USERS, tctx.SPACES);
-    }
+    if (url.pathname === "/__admin/users") return adminUsersApi(tctx, request, url, env, me);
 
     // Admin publish-token API — mint/list/revoke per-space publish tokens.
     if (url.pathname === "/__admin/tokens") return adminTokensApi(request, env, me);
@@ -5109,7 +5110,7 @@ export default {
     // prototype link — no login — can leave feedback that syncs to KV. Obscure
     // share links, not public discovery; applyOp already clamps/caps every field.
     // Destructive ops (delete a thread/message) require a signed-in user (see reviewApi).
-    if (url.pathname === "/__review/api") return reviewApi(request, url, env, authed);
+    if (url.pathname === "/__review/api") return reviewApi(tctx, request, url, env, authed);
 
     // Overlay APIs — gated by the same rule as the site (open in legacy no-gate mode
     // so raw/local builds keep working). Pins are scoped to the signed-in user.

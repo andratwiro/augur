@@ -11,9 +11,10 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { __testables as W } from "../src/_worker.js";
 
-// The workspace this publish is for. publishApi reads its protocol floor, sentinels and
-// workspace list off the context now, so the fixture names one rather than leaving the
-// answer to whatever module scope was last written.
+// The workspace this file drives — the publish API reads its protocol floor, sentinels
+// and workspace list off the context, and adminUsersApi defaults its roster and config
+// list off it. Every case here passes its own lists explicitly, so this only has to be a
+// real context, not a populated one.
 const CTX = W.applyInstance({ users: [] });
 
 function memKV() {
@@ -68,7 +69,7 @@ test("an invite fires a roster-update dispatch carrying the durable record", asy
   const env = { COMMENTS: memKV(), ...DISPATCH_ENV };
   const { calls, restore } = withStubbedFetch();
   try {
-    const res = await W.adminUsersApi(adminReq({ op: "invite", email: "new@x.test", name: "New Person" }),
+    const res = await W.adminUsersApi(CTX, adminReq({ op: "invite", email: "new@x.test", name: "New Person" }),
       usersUrl, env, ME, [ME], [ME]);
     assert.equal(res.status, 200);
     const body = await res.json();
@@ -91,7 +92,7 @@ test("no dispatch config → invite still works, marked unconfigured, nothing fe
   const env = { COMMENTS: memKV() };
   const { calls, restore } = withStubbedFetch();
   try {
-    const res = await W.adminUsersApi(adminReq({ op: "invite", email: "new@x.test" }),
+    const res = await W.adminUsersApi(CTX, adminReq({ op: "invite", email: "new@x.test" }),
       usersUrl, env, ME, [ME], [ME]);
     const body = await res.json();
     assert.equal(body.ok, true);
@@ -104,7 +105,7 @@ test("a failing dispatch never blocks the invite — the overlay half already wo
   const env = { COMMENTS: memKV(), ...DISPATCH_ENV };
   const { restore } = withStubbedFetch(() => new Response("boom", { status: 500 }));
   try {
-    const res = await W.adminUsersApi(adminReq({ op: "invite", email: "new@x.test" }),
+    const res = await W.adminUsersApi(CTX, adminReq({ op: "invite", email: "new@x.test" }),
       usersUrl, env, ME, [ME], [ME]);
     const body = await res.json();
     assert.equal(body.ok, true);
@@ -117,7 +118,7 @@ test("a removal fires the symmetric dispatch", async () => {
   const env = { COMMENTS: memKV(), ...DISPATCH_ENV };
   const { calls, restore } = withStubbedFetch();
   try {
-    const res = await W.adminUsersApi(adminReq({ op: "remove", email: "old@x.test" }),
+    const res = await W.adminUsersApi(CTX, adminReq({ op: "remove", email: "old@x.test" }),
       usersUrl, env, ME, [ME, gone], [ME, gone]);
     const body = await res.json();
     assert.equal(body.ok, true);

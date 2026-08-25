@@ -556,7 +556,7 @@ test("admin GET never returns a password or hash", async () => {
   const h = await W.hashPassword("a good long password");
   const kv = memKV({ "users:secrets": JSON.stringify({ "u@example.test": h }) });
   const env = envWith(kv);
-  const res = await W.adminUsersApi(adminGet(), new URL("https://example.test/__admin/users"), env, ADMIN, [ADMIN, PLAIN]);
+  const res = await W.adminUsersApi(BARE, adminGet(), new URL("https://example.test/__admin/users"), env, ADMIN, [ADMIN, PLAIN]);
   const body = await res.json();
   const serialized = JSON.stringify(body);
   assert.ok(!serialized.includes("pbkdf2$"), "no hash in the response");
@@ -568,7 +568,7 @@ test("admin GET never returns a password or hash", async () => {
 
 test("admin GET is forbidden to non-admins", async () => {
   const env = envWith(memKV());
-  const res = await W.adminUsersApi(adminGet(), new URL("https://example.test/__admin/users"), env, PLAIN, [ADMIN, PLAIN]);
+  const res = await W.adminUsersApi(BARE, adminGet(), new URL("https://example.test/__admin/users"), env, PLAIN, [ADMIN, PLAIN]);
   assert.equal(res.status, 403);
 });
 
@@ -576,7 +576,7 @@ test("reset clears the secret and returns a fresh invite link", async () => {
   const h = await W.hashPassword("a good long password");
   const kv = memKV({ "users:secrets": JSON.stringify({ "u@example.test": h }) });
   const env = envWith(kv);
-  const res = await W.adminUsersApi(adminPost({ op: "reset", email: "u@example.test" }),
+  const res = await W.adminUsersApi(BARE, adminPost({ op: "reset", email: "u@example.test" }),
     new URL("https://example.test/__admin/users"), env, ADMIN, [ADMIN, PLAIN]);
   const body = await res.json();
   assert.equal(body.ok, true);
@@ -589,7 +589,7 @@ test("reset clears the secret and returns a fresh invite link", async () => {
 
 test("the password-setting endpoint is gone", async () => {
   const env = envWith(memKV());
-  const res = await W.adminUsersApi(adminPost({ email: "u@example.test", pass: "hunter2hunter2" }),
+  const res = await W.adminUsersApi(BARE, adminPost({ email: "u@example.test", pass: "hunter2hunter2" }),
     new URL("https://example.test/__admin/users"), env, ADMIN, [ADMIN, PLAIN]);
   assert.equal(res.status, 400, "no op:reset → rejected; admins cannot set passwords");
   assert.equal(await env.COMMENTS.get("users:secrets"), null);
@@ -612,7 +612,7 @@ test("reset writes a tombstone, not a deletion, so the password cannot leak via 
   assert.equal(await W.verifyPassword("leaked-seed-2026", beforeSecret), true);
 
   // Call reset.
-  const res = await W.adminUsersApi(adminPost({ op: "reset", email: "leaky@example.test" }),
+  const res = await W.adminUsersApi(BARE, adminPost({ op: "reset", email: "leaky@example.test" }),
     new URL("https://example.test/__admin/users"), env, ADMIN, rosterWithLeaky);
   assert.equal(res.status, 200);
   const body = await res.json();
@@ -632,7 +632,7 @@ test("reset writes a tombstone, not a deletion, so the password cannot leak via 
   assert.equal(secrets["leaky@example.test"], null, "the value at that key must be null");
 
   // ---- Regression assertion 3: follow-up GET reports state as "pending" ----
-  const getRes = await W.adminUsersApi(adminGet(),
+  const getRes = await W.adminUsersApi(BARE, adminGet(),
     new URL("https://example.test/__admin/users"), env, ADMIN, rosterWithLeaky);
   const getBody = await getRes.json();
   const leakyUser = getBody.users.find((u) => u.email === "leaky@example.test");
@@ -666,7 +666,7 @@ test("the reset notice is html-escaped into the page", () => {
 
 const ADMIN_URL = new URL("https://example.test/__admin/users");
 const callAdmin = (req, env, users, config = []) =>
-  W.adminUsersApi(req, ADMIN_URL, env, ADMIN, users, config);
+  W.adminUsersApi(BARE, req, ADMIN_URL, env, ADMIN, users, config);
 
 test("mergeRoster: config wins over an add of the same address", () => {
   const config = [{ email: "a@example.test", name: "Config A", role: "admin" }];
@@ -922,14 +922,35 @@ test("personId is stable per address and independent of the photo", () => {
   assert.equal(W.personId(u1.email), W.personId(u2.email), "personId does not");
 });
 
+// An anonymous comment may not WEAR a roster name — that is how a stranger would sign a
+// review as a teammate. The roster it is checked against is the one passed in, and that
+// is the point of passing it: the same pseudonym is blocked in the workspace whose person
+// it names and free in a workspace where nobody is called that. Nothing pinned this rule
+// before, so it could have been threaded to the wrong roster with every test still green.
+test("an anonymous author may not wear a name from THAT workspace's roster", () => {
+  const roster = [{ email: "marta@example.test", name: "Marta" }];
+  const worn = W.sanitizeMsg(roster, { author: "Marta", body: "hi" }, null);
+  assert.equal(worn.author, "Anonymous", "a roster name is taken away from an anonymous writer");
+  assert.equal(worn.verified, false);
+
+  // Same pseudonym, a workspace where no such person exists: nothing to impersonate.
+  const elsewhere = W.sanitizeMsg([{ email: "ana@example.test", name: "Ana" }], { author: "Marta", body: "hi" }, null);
+  assert.equal(elsewhere.author, "Marta", "the rule follows the roster it was given");
+
+  // A signed-in person always wears their own name, roster collision or not.
+  const signed = W.sanitizeMsg(roster, { author: "Marta", body: "hi" }, { email: "marta@example.test", name: "Marta" });
+  assert.equal(signed.author, "Marta");
+  assert.equal(signed.verified, true);
+});
+
 test("sanitizeMsg stamps `by` from the session, never from the request body", () => {
   const me = { email: "ben@example.test", name: "Ben" };
-  const signed = W.sanitizeMsg({ author: "Someone Else", body: "hi", by: "forged" }, me);
+  const signed = W.sanitizeMsg(BARE.USERS, { author: "Someone Else", body: "hi", by: "forged" }, me);
   assert.equal(signed.author, "Ben");
   assert.equal(signed.verified, true);
   assert.equal(signed.by, W.personId("ben@example.test"));
 
-  const anon = W.sanitizeMsg({ author: "Marta", body: "hi", by: "forged", verified: true }, null);
+  const anon = W.sanitizeMsg(BARE.USERS, { author: "Marta", body: "hi", by: "forged", verified: true }, null);
   assert.equal(anon.author, "Marta");
   assert.equal(anon.verified, false);
   assert.equal(anon.by, null, "an unauthenticated write can never carry an identity");
@@ -944,17 +965,17 @@ test("sanitizeMsg stamps `by` from the session, never from the request body", ()
 // safely ungated on public prototypes.
 test("`by` survives a rename, so an erasure sweep keyed on the address still finds the message", () => {
   const before = { email: "ben@example.test", name: "Ben" };
-  const stored = W.sanitizeMsg({ body: "my comment" }, before);
+  const stored = W.sanitizeMsg(BARE.USERS, { body: "my comment" }, before);
 
   const after = { email: "ben@example.test", name: "Benedetta Ruiz" };
-  const later = W.sanitizeMsg({ body: "and another" }, after);
+  const later = W.sanitizeMsg(BARE.USERS, { body: "and another" }, after);
 
   assert.notEqual(stored.author, later.author, "the display name did change");
   assert.equal(stored.by, later.by, "the durable id did not");
 
   // What purgeUser(email) would do: derive the key, match the stored messages.
   const key = W.personId("  BEN@Example.Test  ");
-  const mine = [stored, later, W.sanitizeMsg({ body: "hers" }, { email: "ana@example.test", name: "Ana" })]
+  const mine = [stored, later, W.sanitizeMsg(BARE.USERS, { body: "hers" }, { email: "ana@example.test", name: "Ana" })]
     .filter((m) => m.by === key);
   assert.equal(mine.length, 2, "both of Ben's messages, none of Ana's");
 
