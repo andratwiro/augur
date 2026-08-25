@@ -16,6 +16,12 @@ The date is the day the update went live. The page works out "Today / 3 days ago
 
 ---
 
+## 2026-08-25 — Invites can arrive by email
+Inviting someone used to mean copying a link out of the Admin panel and sending it
+yourself. Now the site can email it for you, if whoever runs it has set that up.
+The link is still right there either way — and if the email doesn't go out, the
+panel says so instead of leaving you guessing.
+
 ## 2026-08-25 — One Augur, one workspace
 An Augur site used to be able to hold several workspaces at once, each tucked
 under its own piece of the address. Nobody ran one that way, so it's gone and a

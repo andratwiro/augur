@@ -4735,9 +4735,20 @@ const ADMIN_JS = `(function(){
   }
 
   // The invite/reset link is the whole point of both flows, so it gets its own strip
-  // above the table rather than a cell that scrolls out of view.
-  function showLink(who, url){
+  // above the table rather than a cell that scrolls out of view. The link is shown
+  // whatever happened to the email — the note underneath is what changes.
+  //
+  // The mail argument is the verdict the API returns (see src/mail.mjs). Three shapes:
+  // an empty note means no provider is configured, and the strip reads exactly as it
+  // did before mail existed; a successful send says who it went to; anything else says
+  // what went wrong AND that the link in front of them still works. There is no state
+  // in which the admin is left without a way to get this person in.
+  function showLink(who, url, mail){
     linkbox.querySelector('[data-link-who]').textContent = who;
+    var m = mail || {};
+    var note = linkbox.querySelector('[data-link-note]');
+    note.textContent = m.note || 'Send it to them yourself.';
+    note.className = 'aulink__note' + (m.note && !m.ok ? ' is-warn' : '');
     var input = linkbox.querySelector('[data-link-url]');
     input.value = url; linkbox.hidden = false;
     linkbox.querySelector('[data-link-msg]').textContent = '';
@@ -4943,7 +4954,7 @@ const ADMIN_JS = `(function(){
       closeMenu();
       if(!window.confirm('Reset ' + who + '?\\n\\nTheir password stops working immediately. Send them the link that appears.')) return;
       post({ op:'reset', email: who }).then(function(d){
-        if(d && d.ok && d.url){ showLink(who, d.url); load(); }
+        if(d && d.ok && d.url){ showLink(who, d.url, d.mail); load(); }
         else window.alert('Could not reset: ' + ((d && d.error) || 'error'));
       }).catch(function(){ window.alert('Could not reset.'); });
     });
@@ -4979,7 +4990,7 @@ const ADMIN_JS = `(function(){
         if(d && d.ok && d.url){
           msg.textContent = '';
           invite.reset(); invite.hidden = true;
-          showLink(d.email, d.url);
+          showLink(d.email, d.url, d.mail);
           load();
         } else {
           msg.textContent = d && d.error === 'already-a-user' ? 'already on the list'
@@ -5334,6 +5345,9 @@ function renderAdminPage() {
     .aulink[hidden]{ display:none; }
     .aulink__hd{ flex:1 1 100%; margin:0; font-size:13px; color:#2c2f36; }
     .aulink__hd b{ font-weight:600; }
+    /* What happened to the email, if anything. Amber when the admin has to act. */
+    .aulink__note{ flex:1 1 100%; margin:-3px 0 0; font-size:12.5px; color:#5b626e; }
+    .aulink__note.is-warn{ color:#b45309; }
     .aulink input{ flex:1 1 320px; font:12px/1.4 ui-monospace, SFMono-Regular, Menlo, monospace;
                    padding:7px 9px; border-radius:8px; border:1px solid rgba(16,17,26,0.16); background:#fff; }
     .aulink__msg{ font-size:12px; color:#5b626e; min-width:44px; }
@@ -5404,7 +5418,8 @@ function adminSections() {
   </form>
 
   <div class="aulink" data-link hidden>
-    <p class="aulink__hd">Single-use link for <b data-link-who></b> — send it to them yourself.</p>
+    <p class="aulink__hd">Single-use link for <b data-link-who></b></p>
+    <p class="aulink__note" data-link-note aria-live="polite">Send it to them yourself.</p>
     <input type="text" data-link-url readonly aria-label="Invite link" />
     <button type="button" class="aubtn" data-link-copy>Copy</button>
     <button type="button" class="aubtn" data-link-close>Done</button>

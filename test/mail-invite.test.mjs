@@ -9,6 +9,7 @@
 // swallowed.
 import { test } from "node:test";
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { __testables as W } from "../src/_worker.js";
 
 function memKV() {
@@ -191,4 +192,67 @@ test("resetting the same person repeatedly caps the MAIL, never the reset", asyn
     const token = new URL(last.url).searchParams.get("t");
     assert.equal(await W.readInvite(env, token), THEM.email, "and the link it hands back is live");
   } finally { restore(); }
+});
+
+// ---- what the admin actually sees ---------------------------------------------------------
+// The API's verdict is only useful if the panel shows it. build.js exports nothing, so
+// showLink is lifted out of the admin page's inline script and run for real against a
+// stub of the strip it writes into (same technique as membership-ui.test.mjs).
+
+const BUILD_SRC = readFileSync(new URL("../build.js", import.meta.url), "utf8");
+
+function liftBalanced(src, decl) {
+  const start = src.indexOf(decl);
+  assert.notEqual(start, -1, `${decl} was found in build.js`);
+  let depth = 0;
+  for (let i = src.indexOf("{", start); i < src.length; i++) {
+    if (src[i] === "{") depth++;
+    else if (src[i] === "}" && --depth === 0) return src.slice(start, i + 1);
+  }
+  throw new Error(`unbalanced braces after ${decl}`);
+}
+
+function runShowLink(mail) {
+  const el = () => ({ textContent: "", className: "", value: "", focus() {}, select() {} });
+  const nodes = {
+    "[data-link-who]": el(), "[data-link-note]": el(),
+    "[data-link-url]": el(), "[data-link-msg]": el(),
+  };
+  const linkbox = { hidden: true, querySelector: (s) => nodes[s] };
+  const fn = new Function("linkbox", `${liftBalanced(BUILD_SRC, "function showLink(")}\nreturn showLink;`)(linkbox);
+  fn("new@x.test", "https://x.test/__invite?t=abc", mail);
+  return { strip: linkbox, ...nodes };
+}
+
+test("no provider: the strip reads exactly as it did before mail existed", () => {
+  const seen = runShowLink({ ok: false, reason: "unconfigured", note: "" });
+  assert.equal(seen["[data-link-note]"].textContent, "Send it to them yourself.");
+  assert.equal(seen["[data-link-note]"].className, "aulink__note", "nothing is flagged");
+  assert.equal(seen["[data-link-url]"].value, "https://x.test/__invite?t=abc");
+  assert.equal(seen.strip.hidden, false);
+});
+
+test("a send that worked says so, and still shows the link", () => {
+  const seen = runShowLink({ ok: true, reason: "sent", note: "Emailed to new@x.test." });
+  assert.equal(seen["[data-link-note]"].textContent, "Emailed to new@x.test.");
+  assert.equal(seen["[data-link-note]"].className, "aulink__note");
+  assert.equal(seen["[data-link-url]"].value, "https://x.test/__invite?t=abc");
+});
+
+test("a send that failed is flagged in the panel, with the link still in front of them", () => {
+  const seen = runShowLink({ ok: false, reason: "failed", note: "Couldn't email them (503). Send the link yourself." });
+  assert.match(seen["[data-link-note]"].textContent, /Couldn't email them/);
+  assert.match(seen["[data-link-note]"].className, /is-warn/, "the admin has something to do");
+  assert.equal(seen["[data-link-url]"].value, "https://x.test/__invite?t=abc");
+});
+
+test("a caller that passes no verdict at all still gets a usable strip", () => {
+  const seen = runShowLink(undefined);
+  assert.equal(seen["[data-link-note]"].textContent, "Send it to them yourself.");
+  assert.equal(seen["[data-link-url]"].value, "https://x.test/__invite?t=abc");
+});
+
+test("the panel hands the API's verdict to the strip rather than dropping it", () => {
+  assert.match(BUILD_SRC, /showLink\(who, d\.url, d\.mail\)/, "reset passes the verdict");
+  assert.match(BUILD_SRC, /showLink\(d\.email, d\.url, d\.mail\)/, "invite passes the verdict");
 });

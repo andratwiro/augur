@@ -201,7 +201,9 @@ the shell workflow `git rm`s the folder in the space repo) and `roster-update` (
 invite/remove; the shell's `roster-update.yml` — see `templates/shell/` — commits the
 person to `identity.json`, so the file stays the one durable roster record). Unset →
 `/__delete` answers 501 and reports deletion unconfigured; invites still work but
-answer `fileSync: "unconfigured"` and the person lives in the KV overlay only. The local
+answer `fileSync: "unconfigured"` and the person lives in the KV overlay only.
+`MAIL_PROVIDER` + `MAIL_FROM` + `MAIL_API_KEY` (+ `MAIL_REGION`/`MAIL_PROJECT_ID`, or
+`MAIL_API_URL`) — the mail transport (`src/mail.mjs`, see Email below). The local
 deploy scripts read `.env.deploy` for the rest (`PAGES_PROJECT`, `REALTIME_CONFIG`, the
 Cloudflare creds) — see `.env.deploy.example`. **No account id, project, worker name or
 shell repo name is hardcoded in this repo's code or scripts — they resolve the instance
@@ -356,3 +358,37 @@ name, initials, colour and role. Passwords live in KV as PBKDF2 hashes under
   KV read leaves the roster as the config list, which would put a removed CONFIG user
   back in it — so removal ALSO writes the `users:secrets` tombstone, and that read fails
   closed. Never reduce removal to the list alone.
+
+## Email
+
+`src/mail.mjs` — `sendMail(env, {to, template, vars})` over a provider's **HTTP API**
+(a Worker has no outbound sockets, so SMTP is not an option). Three templates:
+`signup-verify`, `roster-invite`, `credential-reset`, each rendering text and HTML.
+
+**Mail is an addition to the link, never a replacement for it, and that is the whole
+design.** An invite has always been a single-use link the Admin panel hands back for a
+human to send. It still is: `sendMail` returns a VERDICT and never throws, the admin API
+returns `url` in every case and puts the verdict beside it as `mail`, and the panel shows
+the link whatever happened. The four ways it does not send are all reported, never
+swallowed — `unconfigured` (no provider; the panel reads exactly as it did before mail
+existed), `misconfigured` (names the env var that is missing), `rate-limited`, `failed`
+(the provider's own words). A provider outage costs the convenience of the send and
+nothing else.
+
+- **A driver is a shape of HTTP request, selected by `MAIL_PROVIDER`.** Endpoint, key,
+  sending address and region are runtime env, so no deployment's domain, account or key
+  is in the engine. `http` — a bearer-authenticated JSON POST to a URL you name — is the
+  escape hatch, so an unsupported provider is a small relay rather than a fork.
+- **The two templates a stranger can trigger are capped per recipient address**
+  (`MAIL_RATE`), because a reset or signup form otherwise aims a mail cannon at whoever
+  the caller types. The cap is on the MAIL, not on the action: a capped call still
+  returns a live link, so nothing an admin was doing is refused. `roster-invite` is
+  uncapped on purpose — only an authenticated admin reaches it, and a cap there blocks
+  re-sending a lost invite while protecting nobody.
+- Send from a domain the operator controls the DNS for, and **not** the domain
+  prototypes are published on: published content is arbitrary user JavaScript, and the
+  first phishing page harms that domain's sending reputation. SPF, DKIM and DMARC have
+  to pass or the mail is spam, which is indistinguishable from an invite that never came.
+- The provider call goes through an injectable `fetch`, so the suite drives every verdict
+  — including a dead provider — with no network and no account. **Never send live mail
+  from the test suite.**

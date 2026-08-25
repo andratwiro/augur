@@ -436,7 +436,42 @@ single-user, persisting to KV through the Pages worker. A 501 from the realtime 
 after wiring `realtimeOrigin` means step 4 is missing or the two values disagree. A brand-new workers.dev worker
 can 500 (`error code: 1104`) for its first minute — retry before debugging.
 
-## Step 11 — optional: the platform MCP proxy
+## Step 11 — optional: email
+
+Without this, an invite is a single-use link the admin copies out of the Admin panel and
+sends however they like. That never stops working. Configuring a provider only means the
+same link is *also* emailed to the person, and the panel tells you whether that worked.
+
+Five runtime environment variables on the Pages project — `MAIL_API_KEY` as a secret, the
+rest as plain values:
+
+| variable | what it is |
+| --- | --- |
+| `MAIL_PROVIDER` | which driver: `scaleway` or `http`. Unset ⇒ email is off. |
+| `MAIL_FROM` | the sending identity — `Name <noreply@example.org>`, or a bare address. |
+| `MAIL_API_KEY` | the provider credential. **Secret**, never a plain value. |
+| `MAIL_REGION` | `scaleway`: which region's endpoint to call. |
+| `MAIL_PROJECT_ID` | `scaleway`: the project the sends are billed to. |
+| `MAIL_API_URL` | `http`: where to POST. On any driver, overrides the derived endpoint. |
+
+`http` is the escape hatch: a bearer-authenticated JSON POST of
+`{from, fromName, to, subject, text, html, template}` to a URL you name. Put a dozen-line
+relay in front of your own provider rather than forking the engine to add a driver.
+
+**Send from a domain you control the DNS for, and not the one your prototypes are
+published on.** Published content is arbitrary HTML and JavaScript, and the first
+phishing page somebody publishes damages the reputation of the domain it was served
+from — which must not be the reputation your invite mail depends on. Set SPF, DKIM and
+DMARC on the sending domain, and check them with an external verifier before you trust
+them: mail from an unauthenticated domain lands in spam, which looks exactly like an
+invite that never arrived.
+
+Verify by inviting yourself at a real address. Whatever happens, the panel shows the
+link; underneath it says `Emailed to …`, or nothing at all if no provider is configured,
+or what went wrong and that you should send the link yourself. A provider outage
+degrades — it never blocks an invite.
+
+## Step 12 — optional: the platform MCP proxy
 
 A prototype talking to an upstream API usually cannot call it from the browser, so
 `/__mcp/<host>/<path>` forwards from the site's own origin. Which hosts it forwards comes
