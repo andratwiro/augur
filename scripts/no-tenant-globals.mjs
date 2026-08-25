@@ -80,6 +80,7 @@ const IN_FLIGHT = {
 // those two are named as the work that fixes them.
 const CACHES = {
   cfgAt:            "config TTL stamp; superseded per tenant by createTenantContextCache",
+  TENANT_CTX:       "the last good context this isolate loaded, in ONE slot; like the globals it mirrors it would answer a second workspace with the first one's config, and the per-tenant createTenantContextCache is what replaces it when fetch() threads the context down",
   rosterReadAt:     "roster read clock; a stale stamp costs a re-read, and identify() still resolves per request",
   rosterCache:      "the last roster document read from KV; overlay only, never the auth boundary",
   MANIFESTS:        "content manifests keyed by space id INSIDE the value — A-thread-bundle-cache keys it by tenant",

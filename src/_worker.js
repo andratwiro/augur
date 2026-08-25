@@ -4,7 +4,9 @@
 // RUNTIME CONFIG: everything deployment- or build-specific (USERS, PUBLIC_PREFIXES,
 // RESTRICTED_BASES, VERSION_MAP, BUILD_ID, deploy knobs) is DATA, not code. It loads
 // from /__config/{instance,routing}.json — emitted by build.js next to the assets —
-// at request time via loadConfig(), cached per isolate for ~1.5s. The bindings below
+// at request time via loadTenantContext(), cached per isolate for ~1.5s. It loads config
+// FOR the workspace resolveTenant() named and hands it back as one value; the bindings
+// below are a mirror of that value until the read sites take it as a parameter. They
 // start at their empty defaults, which is exactly the raw-copy behavior: no config
 // emitted → no users → open gate, nothing public, nothing restricted.
 // /__config/* is rejected for external requests in fetch() before any asset serving.
@@ -27,6 +29,14 @@
 // worker (dist/chrome/appchrome.mjs) so the relative import resolves at the edge. Pure,
 // side-effect-free at import — keeps this file importable by test/worker.test.mjs.
 import { renderAppChrome, renderSpaceContextScript } from "./chrome/appchrome.mjs";
+
+// The per-request config VALUE that is replacing the module-scope globals below. Same
+// deal as the chrome renderer: build.js copies this module next to the worker
+// (dist/tenant-context.mjs) so the relative import resolves at the edge. Pure and
+// side-effect-free at import; it performs no I/O and owns no state.
+import {
+  emptyTenantContext, instanceFields, routingFields, withTenantFields,
+} from "./tenant-context.mjs";
 
 const COOKIE = "gv_auth";
 const MAX_AGE = 60 * 60 * 24 * 7; // 7 days
@@ -345,13 +355,14 @@ async function verifyPassword(password, stored) {
 }
 
 // ---- Runtime config loader --------------------------------------------------
-// Fills every binding above from /__config/{instance,routing}.json — the two
-// documents build.js emits next to the assets. Cached per isolate for ~1.5s: fast
-// enough that a fresh deploy (or an offline rebuild) flips the gate's view of the
-// world almost immediately, cheap enough to run on the hot path (between refreshes
-// the call is a sync timestamp check). A missing or unreadable document leaves the
-// current values in place — so a raw copy (no config emitted) keeps its empty
-// defaults, and a transient read failure never wipes a working gate.
+// Builds a workspace's config from /__config/{instance,routing}.json — the two documents
+// build.js emits next to the assets — as ONE value (loadTenantContext), then mirrors it
+// onto the bindings above until the read sites take it as a parameter. Cached per isolate
+// for ~1.5s: fast enough that a fresh deploy (or an offline rebuild) flips the gate's view
+// of the world almost immediately, cheap enough to run on the hot path (between refreshes
+// the call is a sync timestamp check). A missing or unreadable document leaves the current
+// values in place — so a raw copy (no config emitted) keeps its empty defaults, and a
+// transient read failure never wipes a working gate.
 let SPACES = [];
 let INSTANCE_SENTINELS = [];
 // The oldest publish protocol this instance will accept a commit from
@@ -374,9 +385,21 @@ let INSTANCE_ENGINE_VERSION = "";
 let UPDATE_FEED = "";
 const DEFAULT_UPDATE_FEED = "https://api.github.com/repos/andratwiro/augur/releases/latest";
 let cfgAt = 0;
+// The context this isolate is currently serving from — config as ONE value instead of
+// twenty-nine bindings. It is the keep-last-good half of the cache above, expressed as a
+// reference: a tick that reads nothing usable returns this same object, so "keep the last
+// good config" is "do not swap the reference" rather than "do not overwrite twenty-nine
+// variables one at a time". Single-slot, so like the globals it mirrors it would answer a
+// second workspace with the first one's config; the per-tenant cache in
+// src/tenant-context.mjs is what replaces it when fetch() threads the context down.
+let TENANT_CTX = emptyTenantContext(null);
+// Transitional test seam: the request path builds the identity fields as a value now
+// (instanceFields), but the gate, publish and admin baselines drive this to seed the
+// module globals directly. test/tenant-context.test.mjs pins the two to the same
+// coercions, so a change to either without the other is a red test.
 function applyInstance(inst) {
   CONFIG_USERS = Array.isArray(inst.users) ? inst.users : [];
-  USERS = CONFIG_USERS; // applyRoster() overlays the KV additions/removals next
+  USERS = CONFIG_USERS; // rosterFields() overlays the KV additions/removals next
   INSTANCE_ENGINE_VERSION = inst.engineVersion || "";
   UPDATE_FEED = inst.updateFeed || "";
   MCP_HOST_SUFFIXES = inst.mcpHostSuffixes || [];
@@ -397,10 +420,22 @@ function applyInstance(inst) {
 // (the raw/offline case). This flag lets the gate tell "genuinely no identity" (raw
 // build) from "config not loaded yet" (deployment, must fail closed). See the gate.
 let CONFIG_LOADED = false;
-async function loadConfig(env) {
-  if (!env || Date.now() - cfgAt < 1500) return;
-  const forced = !cfgAt; // a write handler busted the cache — roster must re-read now
-  cfgAt = Date.now(); // stamp first — a failed load retries next tick, never stampedes
+// ONE config load for ONE workspace: read whichever documents this serving mode keeps
+// config in, and RETURN the context they describe. It does the I/O and nothing else —
+// no global is written here, which is what lets the same function answer for a second
+// workspace without the first one's answer being in the way.
+//
+// KEEP-LAST-GOOD is the whole reason it takes `prev` and returns rather than assigns.
+// Every field starts at the previous context's value and is replaced only by a document
+// that actually parsed, so a read that fails, 404s or returns nonsense contributes
+// nothing instead of clearing what it owns. Returning `prev` itself (the `!env.ASSETS`
+// exit, or an unchanged bundle read) tells the caller "nothing to swap".
+//
+// The order inside bundle mode's try is load-bearing and matches what it replaced: a
+// throw while deriving routing leaves an instance document that already parsed applied,
+// because `next` only advances on a value that came back whole.
+async function loadTenantContext(tenantId, env, { prev = null, forced = false } = {}) {
+  let next = prev && prev.tenantId === tenantId ? prev : emptyTenantContext(tenantId);
   // Bundle mode: instance config lives in the store (pushed via /__publish/
   // _instance/config) and routing derives from the live manifests.
   if (bundleMode(env)) {
@@ -409,13 +444,12 @@ async function loadConfig(env) {
         env.BUNDLES.get("config/instance.json"),
         loadManifests(env, true),
       ]);
-      if (instObj) applyInstance(JSON.parse(await instObj.text()));
-      applyDerivedRouting(manifests);
+      if (instObj) next = withTenantFields(next, instanceFields(JSON.parse(await instObj.text())));
+      next = withTenantFields(next, derivedRoutingFields(manifests, next.SPACE_ICONS));
     } catch (e) {}
-    await applyRoster(env, forced);
-    return;
+    return withTenantFields(next, await rosterFields(next, env, forced));
   }
-  if (!env.ASSETS) return;
+  if (!env.ASSETS) return next;
   const grab = async (name) => {
     try {
       const r = await env.ASSETS.fetch("https://config/__config/" + name);
@@ -423,26 +457,70 @@ async function loadConfig(env) {
     } catch (e) { return null; }
   };
   const [inst, routing] = await Promise.all([grab("instance.json"), grab("routing.json")]);
-  if (inst) applyInstance(inst);
-  if (routing) {
-    BUILD_ID = routing.buildId || "dev";
-    VERSION_MAP = routing.versionMap || {};
-    PUBLIC_PREFIXES = routing.publicPrefixes || [];
-    PUBLIC_SKILL_PREFIXES = routing.publicSkillPrefixes || [];
-    RESTRICTED_BASES = routing.restrictedBases || [];
-    CANVAS_LOADER_EXTRAS = routing.canvasLoaderExtras || "";
-    // Assets mode gets the same two aggregates pre-merged by the build that shipped
-    // them (there is only ever one whole-site build in this mode, so the file is
-    // authoritative). Same globals, same serving route as bundle mode.
-    CANVAS_CATALOG = routing.canvasCatalog || [];
-    CANVAS_TRACKS = routing.canvasTracks || [];
-    MCP_HOST_ALLOWLIST = routing.mcpAllowlist || [];
-    mcpStaticHosts = new Set(MCP_HOST_ALLOWLIST);
-    SPACES = Array.isArray(routing.spaces) ? routing.spaces : [];
-    CHROME_POINTER = routing.chrome || null;
-    RUNTIME_CHROME = !!routing.runtimeChrome;
-  }
-  await applyRoster(env, forced);
+  if (inst) next = withTenantFields(next, instanceFields(inst));
+  // Assets mode gets the two canvas aggregates pre-merged by the build that shipped them
+  // (there is only ever one whole-site build in this mode, so the file is authoritative).
+  // Same fields, same serving route as bundle mode.
+  if (routing) next = withTenantFields(next, routingFields(routing));
+  return withTenantFields(next, await rosterFields(next, env, forced));
+}
+
+// Transitional: mirror a loaded context onto the module globals the ~110 read sites still
+// read. Every threading commit shrinks this function; A-fetch-entrypoint deletes it along
+// with the bindings it writes.
+//
+// SPACE_ICON_KEYS is deliberately absent: applySpaceIcons still writes it as a side
+// effect of building the space list, so mirroring the context's (unfilled) copy over it
+// would blank the hash allowlist the icon route checks.
+function applyTenantContext(ctx) {
+  CONFIG_USERS = ctx.CONFIG_USERS;
+  USERS = ctx.USERS;
+  CONFIG_LOADED = ctx.CONFIG_LOADED;
+  INSTANCE_ENGINE_VERSION = ctx.INSTANCE_ENGINE_VERSION;
+  UPDATE_FEED = ctx.UPDATE_FEED;
+  MCP_HOST_SUFFIXES = ctx.MCP_HOST_SUFFIXES;
+  MCP_HOST_ALLOWLIST = ctx.MCP_HOST_ALLOWLIST;
+  MCP_HOST_ALLOWLIST_URL = ctx.MCP_HOST_ALLOWLIST_URL;
+  mcpStaticHosts = ctx.mcpStaticHosts;
+  VANITY_REDIRECTS = ctx.VANITY_REDIRECTS;
+  RT_ORIGIN = ctx.RT_ORIGIN;
+  INSTANCE_SENTINELS = ctx.INSTANCE_SENTINELS;
+  MIN_CLIENT_PROTOCOL = ctx.MIN_CLIENT_PROTOCOL;
+  LOGIN_HINT = ctx.LOGIN_HINT;
+  LOGIN_PREFILL_EMAIL = ctx.LOGIN_PREFILL_EMAIL;
+  LOGIN_PREFILL_PASSWORD = ctx.LOGIN_PREFILL_PASSWORD;
+  BUILD_ID = ctx.BUILD_ID;
+  VERSION_MAP = ctx.VERSION_MAP;
+  PUBLIC_PREFIXES = ctx.PUBLIC_PREFIXES;
+  PUBLIC_SKILL_PREFIXES = ctx.PUBLIC_SKILL_PREFIXES;
+  RESTRICTED_BASES = ctx.RESTRICTED_BASES;
+  CANVAS_LOADER_EXTRAS = ctx.CANVAS_LOADER_EXTRAS;
+  CANVAS_CATALOG = ctx.CANVAS_CATALOG;
+  CANVAS_TRACKS = ctx.CANVAS_TRACKS;
+  SPACES = ctx.SPACES;
+  SPACE_ICONS = ctx.SPACE_ICONS;
+  CHROME_POINTER = ctx.CHROME_POINTER;
+  RUNTIME_CHROME = ctx.RUNTIME_CHROME;
+}
+
+// The transitional caller: one tick of the clock, then the mirror. It owns the two
+// properties the cache has to keep, and both are here rather than inside
+// loadTenantContext because the CALLER is what decides a failed read is not worth
+// swapping the context for:
+//
+//   STAMP-FIRST — the tick is stamped BEFORE the read, so a config document that is
+//   broken costs one attempt per 1.5s tick instead of one per concurrent request.
+//   KEEP-LAST-GOOD — the mirror runs only when the load handed back a different context.
+//   A read that produced nothing returns the reference it was given, and the gate keeps
+//   serving the last config that worked.
+async function loadConfig(tenantId, env) {
+  if (!env || Date.now() - cfgAt < 1500) return;
+  const forced = !cfgAt; // a write handler busted the cache — roster must re-read now
+  cfgAt = Date.now(); // stamp first — a failed load retries next tick, never stampedes
+  const next = await loadTenantContext(tenantId, env, { prev: TENANT_CTX, forced });
+  if (next === TENANT_CTX) return;
+  TENANT_CTX = next;
+  applyTenantContext(next);
 }
 
 // ---- The tenant resolver seam -----------------------------------------------
@@ -583,7 +661,12 @@ function __setConfigTestState({ cfgAt: c, rosterReadAt: r } = {}) {
   if (r !== undefined) { rosterReadAt = r; if (!r) rosterCache = null; }
 }
 const __usersNow = () => USERS;
-async function applyRoster(env, forced) {
+// The overlay as a VALUE: it reads KV and returns the three fields the overlay owns, on
+// top of the context the config documents just produced. Nothing is written here, so a
+// throw anywhere in the chain reaches the caller having changed nothing — and the answer
+// then is the config roster alone, which is the one thing that must never be an overlay's
+// to decide (the tombstone, not this, is the security boundary — see the note above).
+async function rosterFields(ctx, env, forced) {
   try {
     if (forced || !rosterCache || Date.now() - rosterReadAt >= ROSTER_TTL_MS) {
       rosterReadAt = Date.now();
@@ -593,13 +676,15 @@ async function applyRoster(env, forced) {
       ]);
     }
     const [roster, avatars, names, roles, spaces, icons] = rosterCache;
-    SPACE_ICONS = icons;
-    SPACES = applySpaceIcons(SPACES, icons);
-    USERS = applySpaces(
-      applyRoles(applyAvatars(applyNames(mergeRoster(CONFIG_USERS, roster), names), avatars), roles),
-      spaces,
-    );
-  } catch (e) { USERS = CONFIG_USERS; }
+    return {
+      SPACE_ICONS: icons,
+      SPACES: applySpaceIcons(ctx.SPACES, icons),
+      USERS: applySpaces(
+        applyRoles(applyAvatars(applyNames(mergeRoster(ctx.CONFIG_USERS, roster), names), avatars), roles),
+        spaces,
+      ),
+    };
+  } catch (e) { return { USERS: ctx.CONFIG_USERS }; }
 }
 
 // ---- Self-set display names -------------------------------------------------
@@ -1911,8 +1996,10 @@ function derivedRoutingFields(manifests, spaceIcons) {
   };
 }
 
-// Transitional: write the derived fields into the module globals the ~110 read sites
-// still use. Every threading commit shrinks this function; the last one deletes it.
+// Transitional test seam: write the derived fields into the module globals the ~110 read
+// sites still use. The request path no longer calls this — loadTenantContext takes the
+// same value and puts it on a context — but the gate, board and link-preview baselines
+// drive it directly to seed a routing table. It goes when the globals do.
 function applyDerivedRouting(manifests) {
   const f = derivedRoutingFields(manifests, SPACE_ICONS);
   BUILD_ID = f.BUILD_ID;
@@ -4585,11 +4672,11 @@ export default {
     // (The /__config refusal above comes first because it is the same answer for every
     // workspace and costs no read.)
     const { tenantId } = await resolveTenant(request, env);
-    // Nothing reads it yet: the seam lands on its own so the commits that thread it
-    // into loadConfig and the read sites are pure moves against a resolver that is
-    // already here and already tested. `void` says "not forgotten", not "unused".
-    void tenantId;
-    await loadConfig(env);
+    // Config is now loaded FOR a workspace: the answer above picks which one, and the
+    // load returns that workspace's context as one value. It is still mirrored onto the
+    // module globals the read sites use — A-fetch-entrypoint hands the value down
+    // instead and the globals go with it.
+    await loadConfig(tenantId, env);
 
     // Direct-publish API — self-authed (bearer tokens), before the gate like
     // the other tooling routes.

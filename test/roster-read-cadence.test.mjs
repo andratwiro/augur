@@ -52,14 +52,14 @@ test("roster KV reads ride a slow clock, not the 1.5s config tick", async () => 
 
   // Cold isolate: first load is forced, roster read happens.
   W.__setConfigTestState({ cfgAt: 0, rosterReadAt: 0 });
-  await W.loadConfig(env);
+  await W.loadConfig(W.DEFAULT_TENANT_ID, env);
   assert.ok(env.COMMENTS.gets > 0, "cold isolate reads the roster overlay");
   assert.ok(W.__usersNow().some((u) => u.email === "inv@x.test"), "overlay applied");
 
   // A natural 1.5s tick with a fresh roster cache: ZERO KV reads...
   env.COMMENTS.gets = 0;
   W.__setConfigTestState({ cfgAt: Date.now() - 2000 });
-  await W.loadConfig(env);
+  await W.loadConfig(W.DEFAULT_TENANT_ID, env);
   assert.equal(env.COMMENTS.gets, 0, "fresh cache tick costs no KV reads");
   // ...but the overlay is still applied on top of applyInstance's USERS reset.
   assert.ok(W.__usersNow().some((u) => u.email === "inv@x.test"), "cached overlay re-applied every tick");
@@ -68,7 +68,7 @@ test("roster KV reads ride a slow clock, not the 1.5s config tick", async () => 
   // Once the roster TTL elapses, the next tick re-reads KV.
   env.COMMENTS.gets = 0;
   W.__setConfigTestState({ cfgAt: Date.now() - 2000, rosterReadAt: Date.now() - 61_000 });
-  await W.loadConfig(env);
+  await W.loadConfig(W.DEFAULT_TENANT_ID, env);
   assert.ok(env.COMMENTS.gets > 0, "elapsed TTL re-reads the overlay");
 
   // An admin write busts with cfgAt = 0: forced fresh read, no 60s wait.
@@ -77,7 +77,7 @@ test("roster KV reads ride a slow clock, not the 1.5s config tick", async () => 
   }));
   env.COMMENTS.gets = 0;
   W.__setConfigTestState({ cfgAt: 0 });
-  await W.loadConfig(env);
+  await W.loadConfig(W.DEFAULT_TENANT_ID, env);
   assert.ok(env.COMMENTS.gets > 0, "cfgAt=0 bust forces a roster read");
   assert.ok(W.__usersNow().some((u) => u.email === "inv2@x.test"), "busted read sees the new invite");
 });

@@ -155,11 +155,13 @@ test("the resolver is declared once and called once, before the config load", ()
   assert.equal(calls.length, 1);
 });
 
+// The config load's own text, so both "can it fire" tests move together with it.
+const LOAD = "    await loadConfig(tenantId, env);";
+
 test("the checker can actually fire — a second call site fails it", () => {
-  const source = readFileSync(WORKER, "utf8").replace(
-    "    await loadConfig(env);",
-    "    await resolveTenant(request, env);\n    await loadConfig(env);",
-  );
+  const src = readFileSync(WORKER, "utf8");
+  assert.ok(src.includes(LOAD), "the config load's text moved — update this test with it");
+  const source = src.replace(LOAD, "    await resolveTenant(request, env);\n" + LOAD);
   const { problems } = checkTenantResolver(source);
   assert.ok(problems.some((p) => p.kind === "call-sites"), "a second call site must be a failure");
 });
@@ -168,7 +170,7 @@ test("the checker can actually fire — the call site after the config load fail
   const src = readFileSync(WORKER, "utf8");
   const call = "    const { tenantId } = await resolveTenant(request, env);";
   assert.ok(src.includes(call), "the call site's text moved — update this test with it");
-  const source = src.replace(call, "").replace("    await loadConfig(env);", "    await loadConfig(env);\n" + call);
+  const source = src.replace(call, "").replace(LOAD, LOAD + "\n" + call);
   const { problems } = checkTenantResolver(source);
   assert.ok(problems.some((p) => p.kind === "placement"), "resolving after the config load must be a failure");
 });
