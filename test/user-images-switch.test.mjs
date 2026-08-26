@@ -50,7 +50,7 @@ test("BOTH upload routes consult it, not just the one that was already gated", (
   assert.match(src, /async function meAvatarApi\(tenantId, request, env, me, tctx\)/,
     "meAvatarApi cannot see the switch");
   // /__asset — the route that already refused viewers.
-  const assetBlock = src.slice(src.indexOf('if (url.pathname.startsWith("/__asset"))'), src.indexOf('return assetApi(request, url, env);') + 40);
+  const assetBlock = src.slice(src.indexOf('if (url.pathname.startsWith("/__asset"))'), src.indexOf('return assetApi(tctx, request, url, env);') + 46);
   assert.match(assetBlock, /imagesDisabledRefusal/, "/__asset does not consult the switch");
 });
 

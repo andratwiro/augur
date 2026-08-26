@@ -57,7 +57,12 @@ const readStream = async (res) => {
   return Buffer.concat(chunks).toString("utf8");
 };
 
+// The KV path: no BUNDLES binding, which is a raw or offline build. That is deliberately
+// what this file exercises — it is about the KV BACKUP loop, and an instance whose images
+// are in R2 backs them up with the store rather than with the KV document.
+const CTX = Object.freeze({ tenantId: "acme" });
 const upload = (env, bytes, ct = "image/png") => W.assetApi(
+  CTX,
   new Request("https://x.test/__asset", { method: "POST", headers: { "content-type": ct }, body: bytes }),
   new URL("https://x.test/__asset"), env,
 );
@@ -88,7 +93,7 @@ test("a pasted image survives upload → backup → restore → serve, byte for 
 
   // 4. the restored instance serves it.
   const served = await W.assetApi(
-    new Request(`https://x.test/__asset/${hash}`), new URL(`https://x.test/__asset/${hash}`), fresh,
+    CTX, new Request(`https://x.test/__asset/${hash}`), new URL(`https://x.test/__asset/${hash}`), fresh,
   );
   assert.equal(served.status, 200);
   assert.deepEqual(new Uint8Array(await served.arrayBuffer()), PNG);

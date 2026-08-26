@@ -4932,6 +4932,8 @@ const OVERLAY_KV_KEYS = Object.freeze({
   // and why the row carries a revision.
   comments: Object.freeze({ doc: "c", layout: "keyed" }),
   boards: Object.freeze({ doc: "board", layout: "keyed" }),
+  // Canvas image METADATA — the bytes are in R2. See assetApi.
+  assets: Object.freeze({ doc: "basset-meta", layout: "keyed" }),
 });
 
 /** How many times a compare-and-swap retries before giving up. */
@@ -5522,10 +5524,41 @@ async function boardApi(tctx, request, url, env) {
 // browser caches it forever) and the doc carries only the tiny /__asset/<hash> URL.
 // Old boards with inline data URLs still render — <img src> takes either form.
 const ASSET_PREFIX = "basset:";
+const ASSET_R2_PREFIX = "assets/";
 const ASSET_MAX_BYTES = 4 * 1024 * 1024; // client compresses to ~<1MB; hard stop well below that x4
-async function assetApi(request, url, env) {
+
+// THE BYTES GO TO R2, THE ROW STAYS IN THE WORKSPACE. A pasted screenshot is megabytes,
+// and a Durable Object's SQLite caps a single stored value around 2MB — the realtime
+// worker's own NODE_CHUNK constant documents that ceiling. So the one family that could
+// not move into the workspace object moves to the same content-addressed R2 the published
+// blobs already use, and the workspace keeps a row saying the image exists, what it is and
+// how big — which is what a quota and a garbage collection pass will read.
+//
+// NO refCount, deliberately. Nothing counts references yet: the GC pass that would
+// maintain one is its own item, and a counter nobody increments is worse than no counter,
+// because the first thing that reads it deletes an image somebody is looking at.
+//
+// READS TRY R2 AND THEN KV, in that order, and the KV half is not legacy tolerance for its
+// own sake: every image pasted on a live instance before this is a `basset:<hash>` value,
+// and a board that half-renders is worse than one that cannot grow. The fallback drains on
+// its own as boards are re-pasted; nothing has to migrate for a board to keep working.
+async function assetApi(tctx, request, url, env) {
   const kv = kvFor(env);
-  if (!kv) return jsonResponse({ error: "no-kv-binding" }, 503);
+  const r2 = env.BUNDLES || null;
+  const store = overlayFor(env, tctx);
+  // ⚠️ THE SWITCH IS THE WORKSPACE STORE, NOT THE BUNDLE STORE, and the reason is BACKUPS.
+  // Every live instance already binds R2, so keying the write on that alone would move
+  // every new pasted image out of KV today — and out of the nightly KV backup with it,
+  // while the store backup walks `blobs/` and would not see `assets/` either. New images
+  // would be in neither copy, silently, which is the failure the canvas-image backup test
+  // exists because of.
+  //
+  // So the bytes move when the workspace moves: the same single switch as every other
+  // family in this phase, and the export endpoints that cover `assets/` are part of that
+  // migration rather than something this change quietly needs first.
+  const toR2 = !!(r2 && store && store.backing === "do");
+  if (!kv && !r2) return jsonResponse({ error: "no-kv-binding" }, 503);
+
   if (request.method === "POST" && url.pathname === "/__asset") {
     const ct = (request.headers.get("content-type") || "").toLowerCase().split(";")[0].trim();
     if (!/^image\/(jpeg|png|webp|gif)$/.test(ct)) return jsonResponse({ error: "bad-type" }, 415);
@@ -5533,25 +5566,53 @@ async function assetApi(request, url, env) {
     if (!buf.byteLength || buf.byteLength > ASSET_MAX_BYTES) return jsonResponse({ error: "too-large" }, 413);
     const digest = await crypto.subtle.digest("SHA-256", buf);
     const hash = [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, "0")).join("").slice(0, 40);
+
+    if (toR2) {
+      // Content-addressed → a re-paste of the same image is free. `head` rather than `get`
+      // so the check does not pull megabytes back to decide it already has them.
+      if (!(await r2.head(ASSET_R2_PREFIX + hash))) {
+        await r2.put(ASSET_R2_PREFIX + hash, buf, { httpMetadata: { contentType: ct } });
+      }
+      // The row is bookkeeping, not the record: the image is in R2 either way, so a failed
+      // metadata write must not fail an upload that succeeded.
+      try { await store.set("assets", "", hash, { ct, bytes: buf.byteLength, at: new Date().toISOString() }); }
+      catch (e) { /* the bytes are stored; the row can be rebuilt from a listing */ }
+      return jsonResponse({ url: "/__asset/" + hash });
+    }
+
+    // The KV path: every instance today, and every raw or offline build. Unchanged.
     const key = ASSET_PREFIX + hash;
-    // content-addressed → a re-paste of the same image is free (skip the duplicate write)
     if ((await kv.get(key, { type: "arrayBuffer" })) === null) {
       await kv.put(key, buf, { metadata: { ct } });
     }
     return jsonResponse({ url: "/__asset/" + hash });
   }
+
   if (request.method === "GET") {
     const hash = url.pathname.slice("/__asset/".length);
     if (!/^[0-9a-f]{40}$/.test(hash)) return jsonResponse({ error: "bad-input" }, 400);
-    const got = await kv.getWithMetadata(ASSET_PREFIX + hash, { type: "arrayBuffer" });
-    if (!got || !got.value) return jsonResponse({ error: "not-found" }, 404);
-    return new Response(got.value, {
-      headers: {
-        "content-type": (got.metadata && got.metadata.ct) || "image/jpeg",
-        // content-hashed = immutable: one KV read per browser, ever
-        "cache-control": "public, max-age=31536000, immutable",
-      },
-    });
+    // content-hashed = immutable: one read per browser, ever, whichever store answers.
+    const immutable = { "cache-control": "public, max-age=31536000, immutable" };
+    if (r2) {
+      const obj = await r2.get(ASSET_R2_PREFIX + hash);
+      if (obj) {
+        return new Response(obj.body, {
+          headers: {
+            "content-type": (obj.httpMetadata && obj.httpMetadata.contentType) || "image/jpeg",
+            ...immutable,
+          },
+        });
+      }
+    }
+    if (kv) {
+      const got = await kv.getWithMetadata(ASSET_PREFIX + hash, { type: "arrayBuffer" });
+      if (got && got.value) {
+        return new Response(got.value, {
+          headers: { "content-type": (got.metadata && got.metadata.ct) || "image/jpeg", ...immutable },
+        });
+      }
+    }
+    return jsonResponse({ error: "not-found" }, 404);
   }
   return jsonResponse({ error: "method-not-allowed" }, 405);
 }
@@ -6554,7 +6615,7 @@ async function handleRequest(request, env, ctx, url, trace) {
         const off = imagesDisabledRefusal(tctx);
         if (off) return off;
       }
-      return assetApi(request, url, env);
+      return assetApi(tctx, request, url, env);
     }
     // Canvas multiplayer: same-origin WebSocket proxied to the augur-realtime worker (one
     // BoardRoom Durable Object per board path — cursors/presence/live ops). Public like
@@ -6693,7 +6754,7 @@ export const __testables = Object.freeze({
   isPrefixBacked, backedPublicPrefixes,
   isPublicPath, isTrackPath, isRestrictedPath, versionFor, brandMark,
   boardApi, canvasesApi, virtualCanvas, rtProxy, CANVASES_KEY, BOARD_PREFIX, BOARD_MAX_BYTES,
-  assetApi, ASSET_PREFIX,
+  assetApi, ASSET_PREFIX, ASSET_R2_PREFIX, ASSET_MAX_BYTES,
   composeChrome, renderAppChrome, renderSpaceContextScript, __setChromeTestState,
   loadConfig, loadTenantContext, __setConfigTestState, __usersNow, pitiApi,
   CONFIG_STALE_CEILING_MS,
