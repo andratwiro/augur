@@ -17,6 +17,7 @@
 // flag ride in the manifest (a working-tree publish is visible, never hidden).
 
 import { spawn, spawnSync, execFileSync } from "node:child_process";
+import { sanitizeActor } from "../src/provenance.mjs";
 import { existsSync, readFileSync, readdirSync, realpathSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
@@ -560,7 +561,12 @@ async function publishOne(id, sourceDir) {
 
   for (let attempt = 1; attempt <= 4; attempt++) {
     const manifest = JSON.parse(await readFile(path.join(ROOT, "dist", "__manifests", id + ".json"), "utf8"));
-    manifest.source = { ...repoState(sourceDir), actor: process.env.USER || "" };
+    // `sanitizeActor` strips the reserved `augur:` namespace. $USER is an environment
+    // variable, so without this a real publish could stamp itself `augur:seed` and walk
+    // straight past anything that asks "has this workspace published something REAL yet".
+    // Enforced at the write because a read-side check has to be remembered by every
+    // future consumer of provenance, and this one cannot be.
+    manifest.source = { ...repoState(sourceDir), actor: sanitizeActor(process.env.USER) };
     // Hard rule: tree folders named *-conflict-* never ship implicitly — stale fork
     // litter must not re-enter the live site. Real conflicts compose fork prefixes
     // in the MANIFEST below; the tree is never the source of a fork URL.

@@ -192,7 +192,11 @@ test("a clean clone that is behind its upstream updates itself and completes the
     git(seed, "config", "user.name", "T");
     const { cpSync } = await import("node:fs");
     cpSync(path.join(ENGINE, "scripts"), path.join(seed, "scripts"), { recursive: true });
-    git(seed, "add", "-A", "scripts");
+    // publish.mjs imports from src/ (provenance, and anything added later), so the fake
+    // clone needs it too. Copying the whole directory rather than named files means the
+    // next such import does not silently break this fixture — which is how it broke once.
+    cpSync(path.join(ENGINE, "src"), path.join(seed, "src"), { recursive: true });
+    git(seed, "add", "-A", "scripts", "src");
     try { git(seed, "commit", "-qm", "overlay working tree"); } catch (e) { /* identical already */ }
     // `--abbrev-ref HEAD` answers the literal "HEAD" on a DETACHED checkout, and
     // `push HEAD:HEAD` is not a valid refspec. CI builds a detached merge commit for
@@ -312,7 +316,11 @@ test("the instance-ahead check alone updates the clone, with the timer sweep dis
     git(seed, "config", "user.email", "t@example.test"); git(seed, "config", "user.name", "T");
     const { cpSync } = await import("node:fs");
     cpSync(path.join(ENGINE, "scripts"), path.join(seed, "scripts"), { recursive: true });
-    git(seed, "add", "-A", "scripts");
+    // publish.mjs imports from src/ (provenance, and anything added later), so the fake
+    // clone needs it too. Copying the whole directory rather than named files means the
+    // next such import does not silently break this fixture — which is how it broke once.
+    cpSync(path.join(ENGINE, "src"), path.join(seed, "src"), { recursive: true });
+    git(seed, "add", "-A", "scripts", "src");
     try { git(seed, "commit", "-qm", "overlay"); } catch (e) {}
     // `--abbrev-ref HEAD` answers the literal "HEAD" on a DETACHED checkout, and
     // `push HEAD:HEAD` is not a valid refspec. CI builds a detached merge commit for
