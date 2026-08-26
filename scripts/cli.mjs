@@ -31,6 +31,7 @@ const map = {
   export: "export.mjs",
   restore: "restore.mjs",
   login: "login.mjs",
+  connect: "connect.mjs",
   clone: "clone.mjs",
   // Same script: `pull` is `clone` with a three-way merge instead of an overwrite, and one
   // file is what keeps the URL→source mapping from being written twice.
@@ -38,7 +39,7 @@ const map = {
   build: path.join("..", "build.js"),
 };
 if (!map[sub]) {
-  console.error("usage: augur <init|ship|dev|offline|build|deploy|publish|status|clone|pull|export|restore|login> [options]");
+  console.error("usage: augur <init|ship|dev|offline|build|deploy|publish|status|clone|pull|export|restore|connect|login> [options]");
   process.exit(sub ? 1 : 0);
 }
 const child = spawn(process.execPath, [path.join(SCRIPTS, map[sub]), ...rest], {

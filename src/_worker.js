@@ -2235,6 +2235,84 @@ async function mintPublishToken(kv, tctx, u, { ttlMs = null, label = null } = {}
   return { token, space };
 }
 
+/**
+ * The approval page. This is the ONE surface a person judges the request on, so it says
+ * plainly where a legitimate code comes from — the phishing residual is somebody being
+ * talked into approving a code that is not theirs, and no code length fixes that.
+ *
+ * The code is TYPED, never carried in the link. A URL that approves on click is a URL
+ * somebody can be sent.
+ *
+ * Self-contained, like the login and 404 pages beside it: this must render for somebody
+ * whose terminal is already waiting, so it depends on no chrome bundle and no space.
+ */
+function connectPage(tctx, me) {
+  const body = roleOf(me) === "viewer"
+    ? `<h1>Connect a terminal</h1>
+       <p>This account can look around but not publish, so it cannot approve a terminal.</p>
+       <a class="home" href="/">Back to Augur</a>`
+    : `<h1>Connect a terminal</h1>
+       <p>Type the code your terminal is showing. Approving it lets that terminal publish as
+          <strong>${escapeHtml(me.email)}</strong>.</p>
+       <p class="warn">Only approve a code you are reading off your own screen right now.
+          Nobody legitimate will ever send you one.</p>
+       <form id="pairf">
+         <input id="pairc" autocomplete="off" autocapitalize="characters" spellcheck="false"
+                placeholder="ABCD-EFGH" aria-label="Pairing code" />
+         <button type="submit">Approve</button>
+       </form>
+       <p id="pairm" role="status"></p>`;
+  return `<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="robots" content="noindex, nofollow" />
+  <title>Connect a terminal · Augur</title>
+  <style>
+    :root { --bg:#fbfbfd; --card:#fff; --fg:#16171a; --muted:#5b626e;
+            --line-2:rgba(16,17,26,0.15); --accent:#2c2150; color-scheme:light; }
+    * { box-sizing:border-box }
+    body { margin:0; min-height:100vh; display:grid; place-items:center; background:var(--bg);
+           color:var(--fg); font:15px/1.55 "Inter",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif; }
+    main { background:var(--card); border:1px solid var(--line-2); border-radius:14px;
+           padding:34px 32px; max-width:34rem; margin:24px; }
+    h1 { font-size:19px; margin:0 0 14px }
+    p { color:var(--muted); font-size:14px; margin:0 0 12px }
+    p.warn { color:var(--fg); font-weight:600 }
+    form { display:flex; gap:8px; align-items:center; margin:18px 0 12px }
+    input { font:600 16px ui-monospace,Menlo,monospace; letter-spacing:.12em; padding:10px 12px;
+            border:1px solid var(--line-2); border-radius:8px; width:11em }
+    button { font:600 14px inherit; color:#fff; background:var(--accent); border:0;
+             border-radius:9px; padding:11px 18px; cursor:pointer }
+    a.home { display:inline-block; margin-top:10px; color:var(--accent) }
+    @media (prefers-reduced-motion: reduce) { * { transition:none !important } }
+  </style>
+</head>
+<body>
+  <main>${body}</main>
+  <script>
+  (function(){
+    var f=document.getElementById('pairf'); if(!f) return;
+    var i=document.getElementById('pairc'), m=document.getElementById('pairm');
+    f.addEventListener('submit',function(e){
+      e.preventDefault(); m.textContent='Approving\u2026';
+      fetch('/__publish/_pair/approve',{method:'POST',headers:{'content-type':'application/json'},
+        body:JSON.stringify({code:i.value})})
+      .then(function(r){return r.json().catch(function(){return {};}).then(function(d){
+        if(r.ok&&d.ok){ m.textContent='Approved. Your terminal has it \u2014 you can close this.'; i.value=''; return; }
+        if(r.status===404){ m.textContent='That code is not valid. Check it, or start again in your terminal.'; return; }
+        if(r.status===429){ m.textContent='Too many attempts. Wait a few minutes.'; return; }
+        m.textContent=(d&&d.message)||'Could not approve that code.';
+      });})
+      .catch(function(){ m.textContent='Could not reach the site. Try again.'; });
+    });
+  })();
+  </script>
+</body>
+</html>`;
+}
+
 async function pairApi(tctx, request, url, env, me) {
   // Answer as though the routes are not here. A 403 would advertise the flow.
   if (!tctx.DEVICE_PAIRING) return null;
@@ -5686,6 +5764,13 @@ async function handleRequest(request, env, ctx, url, trace) {
     // three routes are unauthenticated, and it answers null when the instance has not
     // opted in, so the request falls through to the ordinary 404 rather than a 403 that
     // would advertise a flow to come back for.
+    // The approval page. Gated like any other page — this is the one place the flow WANTS
+    // an authenticated browser — and absent entirely when the instance has not opted in.
+    if (url.pathname === "/__connect" && tctx.DEVICE_PAIRING) {
+      const who = tctx.USERS.length ? await identify(request, env, tctx.USERS) : null;
+      if (!who && tctx.USERS.length) return htmlResponse(loginPage(tctx, "/__connect", false, url.href), 200);
+      return htmlResponse(connectPage(tctx, who), 200);
+    }
     if (url.pathname.startsWith("/__publish/_pair/")) {
       // Identity is resolved here rather than reusing the gate's `me` below, because this
       // route runs BEFORE the gate — the same early-exit shape /__version and the review
