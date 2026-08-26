@@ -101,11 +101,16 @@ function seededKv() {
     "users:names": JSON.stringify({ "a@x.test": "Ada" }),
     "users:avatars": JSON.stringify({ "a@x.test": "deadbeef" }),
     "users:invites": JSON.stringify({ tok1: { email: "b@x.test", expires: 1 } }),
-    "users:lastseen:a@x.test": JSON.stringify("2026-08-01T00:00:00.000Z"),
-    "avatar:deadbeef": JSON.stringify("data:image/png;base64,AAAA"),
+    // A BARE ISO STAMP, because that is what the worker writes: touchActivity does
+    // kv.put(key, new Date().toISOString()) and the admin list reads it with Date.parse.
+    // A JSON-quoted fixture here would be testing a shape production never stores.
+    "users:lastseen:a@x.test": "2026-08-01T00:00:00.000Z",
+    // VERBATIM, not JSON: meAvatarApi does kv.put(AVATAR_BLOB_PREFIX + k, body.avatar).
+    "avatar:deadbeef": "data:image/png;base64,AAAA",
     "publish:tokens": JSON.stringify({ hash1: { space: "alpha", label: "ci" } }),
     "spaces:icons": JSON.stringify({ acme: "iconhash" }),
-    "spaceicon:iconhash": JSON.stringify("data:image/png;base64,BBBB"),
+    // Verbatim for the same reason — kv.put(SPACE_ICON_BLOB_PREFIX + k, body.icon).
+    "spaceicon:iconhash": "data:image/png;base64,BBBB",
     "mail:suppressed": JSON.stringify(["bounced@x.test"]),
     statuses: JSON.stringify({ "/p/": "dev-ready" }),
     names: JSON.stringify({ "/p/": "Prototype" }),
@@ -215,6 +220,48 @@ test("it round-trips through the WORKSPACE STORE as well as through KV", async (
   for (const id of ["statuses", "names", "canvases", "c:", "board:", "pt:view", "pt:remarks"]) {
     assert.deepEqual(second.families[id], first.families[id], id);
   }
+});
+
+test("THE COPY LANDS THE IDENTITY FAMILIES IN THE OBJECT, and KV is left exactly as it was", async () => {
+  // `B-kv-to-do-migration-tool`'s acceptance test, and the shape `augur adopt` drives:
+  // export an instance's own state, hand it straight back, and check BOTH halves — the
+  // object now holds the roster, and KV still holds every byte the login gate reads.
+  //
+  // The second half is what makes phase one unable to take an instance down. Nothing reads
+  // the copy until `B-kv-read-cutover`, so if KV moved at all, this was not a copy.
+  const kv = seededKv();
+  const before = new Map([...kv.store.entries()]);
+  const ns = namespace();
+  const env = { COMMENTS: kv, BUNDLES: memR2(), TENANTS: ns };
+
+  const doc = await W.exportState(CTX, { COMMENTS: kv, BUNDLES: memR2() });
+  const res = await W.importState(CTX, env, { format: doc.format, families: doc.families });
+  assert.equal(res.ok, true);
+  assert.equal(res.workspaceObject, true, "the object has to say it took the copy");
+  assert.equal(res.atomic, true);
+
+  // ── the object holds the identity families ──
+  const store = ns.get(ns.idFromName(CTX.tenantId)).store;
+  const rows = (q) => [...store.sql.exec(q)];
+  const members = rows("SELECT email, role, name FROM members");
+  const ada = members.find((m) => m.email === "a@x.test");
+  assert.ok(ada, `the roster did not land: ${JSON.stringify(members)}`);
+  assert.equal(ada.role, "editor");
+  assert.equal(ada.name, "Ada", "a display name stored as a bare string still has to arrive");
+  assert.equal(rows("SELECT * FROM invites").length, 1, "the outstanding invite did not land");
+  assert.equal(rows("SELECT * FROM publish_tokens").length, 1, "the publish token did not land");
+  assert.equal(rows("SELECT * FROM lastseen").length, 1);
+  assert.ok(rows("SELECT * FROM blobs").some((b) => b.key === "avatar:deadbeef"), "the profile photo did not land");
+
+  // ── and the raw invite token is NOT in the object ──
+  const invite = rows("SELECT token_hash FROM invites")[0];
+  assert.notEqual(invite.token_hash, "tok1", "the object must store a hash, never the token itself");
+
+  // ── KV is byte-for-byte what it was ──
+  for (const [k, v] of before) {
+    assert.deepEqual(kv.store.get(k), v, `KV key ${k} changed — a copy must not move what the login gate reads`);
+  }
+  assert.deepEqual([...kv.store.keys()].sort(), [...before.keys()].sort(), "a copy must not add or drop a KV key");
 });
 
 test("A DOCUMENT THAT REPORTS A FAILED READ IS REFUSED, not half-replayed", async () => {

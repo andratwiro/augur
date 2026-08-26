@@ -89,7 +89,13 @@ export async function identityFromKv(families = {}, opts = {}) {
   const rowFor = (u, removedAt) => {
     const e = lc(u.email);
     const av = avatars[e] && typeof avatars[e] === "object" ? avatars[e] : null;
-    const nm = names[e] && typeof names[e] === "object" ? names[e] : null;
+    // `users:names` is documented as `{email: {name, at}}` and older instances hold a bare
+    // string. Both are read: a copy that understood only the current shape would drop the
+    // display name of everyone who set one before the shape changed, and a dropped name
+    // looks exactly like a name nobody set.
+    const nmRaw = names[e];
+    const nm = typeof nmRaw === "string" ? { name: nmRaw }
+      : (nmRaw && typeof nmRaw === "object" ? nmRaw : null);
     return {
       email: e,
       // The role overlay wins over the config's, which is the precedence `applyRoles` uses:
