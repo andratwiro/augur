@@ -103,14 +103,26 @@ const ORIGIN = (process.env.AUGUR_ORIGIN || DEPLOY_ENV.AUGUR_ORIGIN ||
 if (!ORIGIN) die("no target origin — set AUGUR_ORIGIN, or add \"siteOrigin\" to space.json.");
 // Token: env/instance file, else the saved `augur login` credential for this origin.
 let TOKEN = process.env.AUGUR_TOKEN || DEPLOY_ENV.AUGUR_TOKEN || "";
+// Read once, and keep it: the refusal below names the OTHER hosts you have tokens for,
+// which is the difference between "you never logged in" and "this workspace moved".
+let savedTokens = {};
+try {
+  const os = await import("node:os");
+  savedTokens = JSON.parse(readFileSync(path.join(os.homedir(), ".config", "augur", "tokens.json"), "utf8"));
+} catch (e) {}
+if (!TOKEN) TOKEN = (savedTokens[new URL(ORIGIN).host] || {}).token || "";
 if (!TOKEN) {
-  try {
-    const os = await import("node:os");
-    const saved = JSON.parse(readFileSync(path.join(os.homedir(), ".config", "augur", "tokens.json"), "utf8"));
-    TOKEN = (saved[new URL(ORIGIN).host] || {}).token || "";
-  } catch (e) {}
+  // NAME THE HOSTS YOU DO HAVE, because the commonest way to arrive here is a MOVE. A
+  // workspace that changed hostname leaves a token file full of entries for the old one,
+  // and "no publish token" on its own reads as "you never logged in" — which sends
+  // somebody looking for a problem they solved months ago.
+  const others = Object.keys(savedTokens).filter((h) => h !== new URL(ORIGIN).host);
+  die(`no publish token for ${new URL(ORIGIN).host}.\n`
+    + (others.length
+      ? `  You have one for ${others.join(", ")} — if this workspace moved, that is why.\n`
+        + `  Run \`augur login --origin ${ORIGIN}\` to get one for its new home.\n\n  ${MEANWHILE}`
+      : `  Run \`augur login\` once (it uses your web credentials). ${MEANWHILE}`));
 }
-if (!TOKEN) die(`no publish token — run \`augur login\` once (uses your web credentials). ${MEANWHILE}`);
 
 // Space discovery: GV_SPACES_ROOT when set (explicit wins, same as build.js),
 // else sibling clones (the maintainer-workspace layout), else ./spaces mounts. cwd
