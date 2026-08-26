@@ -230,6 +230,23 @@ snapshot runs in ASSETS mode where neither cache is reached at all — it stays 
 whatever these two answer. Checked by sabotage: keying both on a constant turns three of
 the five red and leaves the snapshot green.
 
+And the two KV-document caches the UNGATED routes poll — `CANVAS_REGISTRY` (the
+created-board registry, read on every asset 404 by `readCanvasRegistry`, which takes the
+workspace and not only the binding) and `PITI_REMARKS` (the companion's remark queue, read
+on every poll of `/__piti`). Same shape as the bundle-store pair, and sharper in one
+respect: both are read at EARLY EXITS in `fetch()`, ahead of the login page, because a
+board is a share link and the companion lives on public prototypes that carry no cookie.
+A single slot therefore served the second workspace to ask, inside a 15-second tick, the
+first one's boards at the first one's URLs — to a signed-out stranger, while that
+workspace's own boards answered the login page — and read the first one's queued remarks
+aloud to everyone behind it. Both are `Map`s keyed by tenant and bounded now, and both
+busts (`bustCanvasRegistry`, `bustPitiRemarks`) take the workspace, so a write makes
+itself visible on its own workspace's next request without sending every neighbour back to
+KV. The evidence is four cases in `test/tenant-isolation.test.mjs`, and two of them drive
+the real default export end to end, because "which workspace was answered" and "was
+anybody signed in" are the same question at an early exit. The byte snapshot pins no
+canvas board and no `/__piti` poll, so it is green either way.
+
 Excluded as per-isolate runtime caches, not config: `cfgAt`, `MANIFESTS`, `STORAGE_CACHE` —
 the latter two keyed by tenant rather than shared, per the paragraph above. `AVATAR_KEYS`
 was excluded here too and should not have been: it is the list of photo hashes the UNGATED
@@ -242,7 +259,7 @@ i.e. ~110–120 read sites once decls/assigns are removed — matching the plan'
 numbers here drift; the lint walks the module graph the worker pulls into the isolate —
 every module it reaches by a relative import, because module scope is per ISOLATE and a
 `let` one import away is shared exactly as widely — and counts what is actually declared —
-today 26 module-scope bindings across four modules: NO config global at all, 13
+today 24 module-scope bindings across four modules: NO config global at all, 11
 per-isolate caches, and 13 mutable-container constants that never vary by workspace. It
 fails CI, and therefore the
 deploy, on a binding it has never been told about, on an allowlist entry whose binding is
@@ -349,9 +366,14 @@ Two properties are load-bearing, and both mirror §2a rather than inventing anyt
   is kept — a deployment's identity does not change without a redeploy, and re-reading it
   would put a second config read on every request. A FAILED read is stamped instead
   (`tenantMemo = {at, tenantId: null}`, TTL 1.5s), so a broken config document costs one
-  retry per tick rather than one per request. `tenantMemo` is the one entry in the lint's
-  cache allowlist that would be a *wrong* answer if an isolate served two workspaces, and
-  the Host resolver that makes that possible is what deletes it.
+  retry per tick rather than one per request. `tenantMemo` is one of two entries left in
+  the lint's cache allowlist that would be a *wrong* answer if an isolate served two
+  workspaces, and the Host resolver that makes that possible is what deletes it. The other
+  is `rosterCache`/`rosterReadAt`, whose entry claims "overlay only, never the auth
+  boundary" — true of the security question and not of the isolation one, since a
+  workspace's roster additions, icons and photo hashes are its own. That one is pinned as
+  a KNOWN GAP at the foot of `test/tenant-isolation.test.mjs`, which goes red the day it
+  is keyed.
 
 ---
 
