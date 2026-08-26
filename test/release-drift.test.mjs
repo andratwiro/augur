@@ -142,3 +142,19 @@ test("the workflow runs it with full history and tags", () => {
   assert.match(wf, /fetch-tags:\s*true/);
   assert.match(wf, /node scripts\/release-drift\.mjs/);
 });
+
+test("the release check is token-gated, so the suite never reaches the network", () => {
+  // A tag is not what a self-hoster follows: engine-bump asks GitHub for the newest
+  // RELEASE. So this file compares the two — and that is the one part of it that needs the
+  // network, which the rest of it and all of these tests must not.
+  //
+  // A script that reached GitHub on every execution would be a script whose tests fail on a
+  // train and can be failed by somebody else's outage. The scheduled run always has a
+  // token; a run without one says UNCHECKED in its own output rather than passing silently.
+  const src = fs.readFileSync(new URL("../scripts/release-drift.mjs", import.meta.url), "utf8");
+  const at = src.indexOf("api.github.com");
+  assert.ok(at > 0, "the release comparison has to exist");
+  const guard = src.lastIndexOf("process.env.GITHUB_TOKEN", at);
+  assert.ok(guard > 0 && guard < at, "the fetch must sit behind a GITHUB_TOKEN check");
+  assert.match(src, /unchecked \(no GITHUB_TOKEN/, "a run that could not look has to say so rather than reporting OK");
+});

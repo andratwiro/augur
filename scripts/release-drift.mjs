@@ -70,6 +70,55 @@ try {
 
 const ageDays = Math.floor((Date.now() - Date.parse(tagIso)) / 86_400_000);
 const findings = [];
+
+// ── A TAG IS NOT WHAT A SELF-HOSTER FOLLOWS ──────────────────────────────────
+//
+// `engine-bump.yml` in release mode asks GitHub for the newest RELEASE and opens a pin PR
+// against that. A tag with no release attached is therefore invisible to every instance on
+// `TRACK: release` — and it silences this alarm, because everything above is measured from
+// tags. That is the precise shape of the failure this file exists to catch, arriving
+// through the file itself: main looks current, the newest tag looks fresh, and every
+// self-hoster is still being offered the release before it.
+//
+// It is not hypothetical. Cutting v0.15.0 as a tag while the newest release was still
+// v0.14.0 put the repo in exactly this state, and everything above reported OK.
+//
+// ⚠️ IT RUNS ONLY WITH A TOKEN, AND THAT IS DELIBERATE. This is the one part of this file
+// that needs the network, and the rest of it — plus its whole test suite — must not. A
+// script that reaches GitHub whenever it is executed is a script whose tests fail on a
+// train, and one that can be made to fail by somebody else's outage.
+//
+// `release-drift.yml` always has `GITHUB_TOKEN`, so the scheduled run — the one that
+// actually watches this — always checks. A local run without one says UNCHECKED in its own
+// output rather than passing silently, which is the honest answer to "I could not look".
+let releaseNote = "unchecked (no GITHUB_TOKEN — the scheduled run has one)";
+if (process.env.GITHUB_TOKEN) {
+  try {
+    const repo = process.env.GITHUB_REPOSITORY || "andratwiro/augur";
+    const res = await fetch(`https://api.github.com/repos/${repo}/releases/latest`, {
+      headers: {
+        accept: "application/vnd.github+json",
+        "user-agent": "augur-release-drift",
+        authorization: `Bearer ${process.env.GITHUB_TOKEN}`,
+      },
+    });
+    if (!res.ok) throw new Error(`GET releases/latest → ${res.status}`);
+    const latest = (await res.json()).tag_name;
+    releaseNote = latest;
+    if (latest !== newest) {
+      findings.push(
+        `the newest TAG is ${newest} but the newest RELEASE is ${latest} — ` +
+        `every instance on TRACK: release is still being offered ${latest}, because engine-bump reads releases, not tags`,
+      );
+    }
+  } catch (e) {
+    releaseNote = `unchecked (${(e && e.message) || e})`;
+    findings.push(
+      `could not confirm the newest RELEASE matches the newest tag: ${releaseNote}. ` +
+      `A tag with no release attached reaches nobody, and a token was present, so this is a failure to look rather than a decision not to.`,
+    );
+  }
+}
 if (ageDays > MAX_AGE_DAYS) {
   findings.push(`no release cut in ${ageDays} days (ceiling ${MAX_AGE_DAYS}) — newest is ${newest}, from ${tagIso.slice(0, 10)}`);
 }
@@ -77,11 +126,11 @@ if (ahead > MAX_COMMITS) {
   findings.push(`main is ${ahead} commits ahead of ${newest} (ceiling ${MAX_COMMITS}) — a self-hoster on TRACK: release is running none of them`);
 }
 
-const result = { ok: !findings.length, newest, tagIso, ageDays, ahead, maxAgeDays: MAX_AGE_DAYS, maxCommits: MAX_COMMITS, findings };
+const result = { ok: !findings.length, newest, newestRelease: releaseNote, tagIso, ageDays, ahead, maxAgeDays: MAX_AGE_DAYS, maxCommits: MAX_COMMITS, findings };
 if (asJson) { console.log(JSON.stringify(result, null, 2)); process.exit(findings.length ? 1 : 0); }
 
 if (!findings.length) {
-  console.log(`release-drift: OK — ${newest} is ${ageDays}d old with ${ahead} commit(s) since (ceilings: ${MAX_AGE_DAYS}d, ${MAX_COMMITS})`);
+  console.log(`release-drift: OK — ${newest} is ${ageDays}d old with ${ahead} commit(s) since, release: ${releaseNote} (ceilings: ${MAX_AGE_DAYS}d, ${MAX_COMMITS})`);
   process.exit(0);
 }
 for (const f of findings) console.log(`  ${f}`);
