@@ -2637,7 +2637,35 @@ async function publishAuth(tctx, request, env, spaceId, anySpace) {
   const m = /^Bearer\s+(.+)$/.exec(request.headers.get("Authorization") || "");
   if (!m) return null;
   const token = m[1].trim();
+  // THE BOOTSTRAP TOKEN IS DEAD ON A DEPLOYED INSTANCE, whatever its environment says.
+  //
+  // What it is: a plaintext string compared with `===`, answering with `space: "*"` —
+  // every workspace's published content, overwritable, with no KV read, no roster check
+  // and no expiry. It exists so `wrangler dev` can publish into a local store before any
+  // real token has been minted. The comment above this function has always said "never
+  // configure it on a deployed instance", and a comment is not a guard.
+  //
+  // Bundle mode is the engine's own name for "this is a real deployment": a live instance
+  // serves published content from the store, and assets mode is the local path (augur dev,
+  // npm run offline, a raw engine build). So the bypass is refused exactly where it would
+  // matter, and refusing costs local development nothing.
+  //
+  // It logs an ALARM rather than failing quietly. A correct bearer token arriving at a
+  // deployed instance means the variable is set somewhere it should not be, or someone is
+  // guessing at it; either way it is the one event here worth waking someone for. The line
+  // carries no token, not even a prefix — the alarm is that an attempt happened.
   if (env.PUBLISH_BOOTSTRAP_TOKEN && token === env.PUBLISH_BOOTSTRAP_TOKEN) {
+    if (bundleMode(env)) {
+      try {
+        console.log(JSON.stringify({
+          level: "alarm",
+          event: "bootstrap-token-refused",
+          tenant: (tctx && tctx.tenantId) || "-",
+          detail: "PUBLISH_BOOTSTRAP_TOKEN is set on a deployed instance and a request presented it. It grants star-scope publish with no KV read. Unset it on this worker and rotate anything that has been published since.",
+        }));
+      } catch { /* an alarm may never break the refusal it is announcing */ }
+      return null;
+    }
     return { space: "*", label: "bootstrap" };
   }
   const kv = kvFor(env);
