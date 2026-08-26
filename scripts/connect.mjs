@@ -84,9 +84,17 @@ let all = {};
 try { all = JSON.parse(readFileSync(file, "utf8")); } catch (e) {}
 // Same shape `augur login` writes, so publish/ship/status find it with no second lookup.
 // `via` is the one addition: a token nobody can account for is a token nobody revokes.
-all[new URL(ORIGIN).host] = { token: saved.token, space: saved.space, via: "connect", at: new Date().toISOString() };
+all[new URL(ORIGIN).host] = {
+  token: saved.token, space: saved.space, via: "connect", at: new Date().toISOString(),
+  ...(saved.expiresAt ? { expiresAt: saved.expiresAt } : {}),
+};
 writeFileSync(file, JSON.stringify(all, null, 2), { mode: 0o600 });
 
 log(`${C.ok}paired — publish access: ${saved.space === "*" ? "all spaces" : saved.space}${C.off}`);
 console.log(`ready — \`augur publish\` will now use this token for ${ORIGIN}`);
-console.log(`${C.dim}It expires on its own. Run \`augur connect\` again when it does.${C.off}`);
+if (saved.expiresAt) {
+  const days = Math.max(0, Math.round((Date.parse(saved.expiresAt) - Date.now()) / 86400000));
+  console.log(`${C.dim}It expires in ${days} days (${saved.expiresAt.slice(0, 10)}). Run \`augur connect\` again then.${C.off}`);
+} else {
+  console.log(`${C.dim}It expires on its own. Run \`augur connect\` again when it does.${C.off}`);
+}

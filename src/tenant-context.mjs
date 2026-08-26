@@ -99,6 +99,12 @@ const FIELDS = Object.freeze({
   // USER_IMAGES above and deliberately so: this one ADDS an unauthenticated endpoint that
   // ends in a publish token, so an instance opts in rather than discovers it.
   DEVICE_PAIRING:          { source: "instance", make: () => false },
+  // How long a publish token minted for a PERSON lives, in days. Both human doors —
+  // `augur login` and `augur connect` — read this one number, because two doors that hand
+  // out the same credential with different lifetimes is a difference nobody chose.
+  // Tokens an admin mints by hand for a machine are not covered: nothing re-runs a login
+  // for a nightly backup, and an expiry there fails silently at 4am. 0 disables expiry.
+  PUBLISH_TOKEN_TTL_DAYS:  { source: "instance", make: () => 30 },
 });
 
 export const TENANT_FIELD_NAMES = Object.freeze(Object.keys(FIELDS));
@@ -190,6 +196,13 @@ export function instanceFields(inst) {
     // Explicit `true` only — the inverse of USER_IMAGES, because the safe state here is
     // off and a typo must not switch a token-minting path on.
     DEVICE_PAIRING: doc.devicePairing === true,
+    // A number, and only a number. A typo — a string, null, a negative — falls back to the
+    // default rather than to "no expiry": a config mistake must not be the thing that
+    // quietly returns publish tokens to living forever. An explicit 0 IS honoured, because
+    // turning expiry off is a decision someone can legitimately make and has to spell.
+    PUBLISH_TOKEN_TTL_DAYS:
+      Number.isFinite(doc.publishTokenTtlDays) && doc.publishTokenTtlDays >= 0
+        ? doc.publishTokenTtlDays : 30,
     LOGIN_PREFILL_EMAIL: typeof prefill.email === "string" ? prefill.email : "",
     LOGIN_PREFILL_PASSWORD: typeof prefill.password === "string" ? prefill.password : "",
     // An instance document was actually applied — the gate may now trust "no users" to

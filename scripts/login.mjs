@@ -58,14 +58,24 @@ if (!r.ok) {
   else log(`login failed (${r.status}): ${err.slice(0, 200)}`);
   process.exit(1);
 }
-const { token, space } = await r.json();
+const { token, space, expiresAt } = await r.json();
 
 const dir = path.join(os.homedir(), ".config", "augur");
 mkdirSync(dir, { recursive: true });
 const file = path.join(dir, "tokens.json");
 let all = {};
 try { all = JSON.parse(readFileSync(file, "utf8")); } catch (e) {}
-all[new URL(ORIGIN).host] = { token, space, email, at: new Date().toISOString() };
+// `expiresAt` is stored as well as printed: a line in a terminal is gone by the time it
+// matters, and the file is what a later command can read to say "this ran out yesterday"
+// instead of "forbidden". An older instance sends none, and none means it does not expire.
+all[new URL(ORIGIN).host] = {
+  token, space, email, at: new Date().toISOString(),
+  ...(expiresAt ? { expiresAt } : {}),
+};
 writeFileSync(file, JSON.stringify(all, null, 2), { mode: 0o600 });
 log(`signed in as ${email} — publish access: ${space === "*" ? "all spaces" : space}`);
 console.log(`ready — \`augur publish\` will now use this login for ${ORIGIN}`);
+if (expiresAt) {
+  const days = Math.max(0, Math.round((Date.parse(expiresAt) - Date.now()) / 86400000));
+  console.log(`\x1b[2mit expires in ${days} days (${expiresAt.slice(0, 10)}) — run \`augur login\` again then\x1b[0m`);
+}

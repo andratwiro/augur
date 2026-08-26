@@ -7263,6 +7263,10 @@ async function main() {
     userImages: DEPLOY.userImages !== false,
     // Explicit true only — see DEVICE_PAIRING in src/tenant-context.mjs.
     devicePairing: DEPLOY.devicePairing === true,
+    // How long a publish token minted for a person lives. Carried raw: the worker is where
+    // a bad value falls back to the default, so build and runtime cannot disagree about
+    // what a typo means. See PUBLISH_TOKEN_TTL_DAYS in src/tenant-context.mjs.
+    ...(DEPLOY.publishTokenTtlDays === undefined ? {} : { publishTokenTtlDays: DEPLOY.publishTokenTtlDays }),
     loginPrefill: DEPLOY.loginPrefill || {},
   }), "utf8");
   await fs.writeFile(path.join(DIST, "__config", "routing.json"), JSON.stringify({

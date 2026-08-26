@@ -2268,9 +2268,8 @@ const PAIR_TTL_MS = 5 * 60 * 1000;
 // another, and a transcription failure looks exactly like an attack to whoever is watching.
 const PAIR_ALPHABET = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
 const PAIR_CODE_LEN = 8;
-// The minted token's own life. Existing tokens carry no expiry at all; this path is new,
-// so it is cheap not to repeat that.
-const PAIR_TOKEN_TTL_MS = 30 * 24 * 60 * 60 * 1000;
+// The minted token's own life comes from tctx.PUBLISH_TOKEN_TTL_DAYS — see
+// publishTokenTtlMs below. It used to be a constant here, and only this door read it.
 
 const randomFrom = (alphabet, n) => {
   const bytes = new Uint8Array(n);
@@ -2288,18 +2287,40 @@ const randomHex = (n) => {
 // "abcd-efgh" for "ABCDEFGH" has not made a security decision.
 const normalizePairCode = (raw) => String(raw || "").toUpperCase().replace(/[^A-Z0-9]/g, "");
 
-/** Mint a publish token for a user, the same shape `_login/token` writes. */
-async function mintPublishToken(kv, tctx, u, { ttlMs = null, label = null } = {}) {
+/**
+ * How long a publish token minted for a PERSON lives, in ms. 0 means it does not expire.
+ *
+ * ONE NUMBER FOR BOTH HUMAN DOORS. `augur login` (a password) and `augur connect` (a
+ * browser approval) hand out the same credential; two lifetimes for it would be a
+ * difference nobody chose, and the shorter one would look like a bug in the other flow.
+ *
+ * NOT FOR MACHINE TOKENS. A token an admin mints by hand at /__admin/tokens — "ci",
+ * "backup", "uptime-probe" — has no login to re-run, so an expiry there is an outage at
+ * 4am with nobody to fix it. Those are revoked deliberately or not at all, which is the
+ * honest arrangement: a machine credential's control is the revoke list, not a clock.
+ */
+function publishTokenTtlMs(tctx) {
+  const days = tctx && Number.isFinite(tctx.PUBLISH_TOKEN_TTL_DAYS) ? tctx.PUBLISH_TOKEN_TTL_DAYS : 30;
+  return days > 0 ? days * 24 * 60 * 60 * 1000 : 0;
+}
+
+/**
+ * Mint a publish token for a user. THE one place a person's token is written — both human
+ * doors call this, so an expiry, a label rule or a scope rule cannot land on one and miss
+ * the other.
+ */
+async function mintPublishToken(kv, tctx, u, { label = null } = {}) {
   const space = roleOf(u) === "admin" ? "*" : (tctx.SPACES.find((s) => s.default) || { id: null }).id;
   if (!space) return null;
   const token = randomHex(32);
   const raw = await kv.get(PUBLISH_TOKENS_KEY);
   const map = raw ? JSON.parse(raw) : {};
   const rec = { space, label: label || u.email, createdAt: new Date().toISOString() };
+  const ttlMs = publishTokenTtlMs(tctx);
   if (ttlMs) rec.expiresAt = new Date(Date.now() + ttlMs).toISOString();
   map[await tokenFor("pub:" + token)] = rec;
   await kv.put(PUBLISH_TOKENS_KEY, JSON.stringify(map));
-  return { token, space };
+  return { token, space, expiresAt: rec.expiresAt || null };
 }
 
 /**
@@ -2430,10 +2451,11 @@ async function pairApi(tctx, request, url, env, me) {
       await loginFail(env, ids);
       return jsonResponse({ error: "no-such-code" }, 404);
     }
-    const minted = await mintPublishToken(kv, tctx, me, { ttlMs: PAIR_TOKEN_TTL_MS });
+    const minted = await mintPublishToken(kv, tctx, me);
     if (!minted) return jsonResponse({ error: "no-default-space" }, 500);
     await kv.put(PAIR_PREFIX + code, JSON.stringify({
-      ...rec, status: "approved", token: minted.token, space: minted.space, approvedBy: me.email,
+      ...rec, status: "approved", token: minted.token, space: minted.space,
+      expiresAt: minted.expiresAt, approvedBy: me.email,
     }), { expirationTtl: Math.ceil(PAIR_TTL_MS / 1000) });
     return jsonResponse({ ok: true, space: minted.space });
   }
@@ -2454,13 +2476,13 @@ async function pairApi(tctx, request, url, env, me) {
     // response never reaches the caller. Losing a token to a dropped response is a
     // re-run of `augur connect`; a replayable claim is a second copy in somebody's logs.
     await kv.delete(PAIR_PREFIX + code);
-    return jsonResponse({ status: "approved", token: rec.token, space: rec.space });
+    return jsonResponse({ status: "approved", token: rec.token, space: rec.space, expiresAt: rec.expiresAt || null });
   }
 
   return jsonResponse({ error: "not-found" }, 404);
 }
 
-const PUBLISH_TOKENS_KEY = "publish:tokens"; // KV {sha256("pub:"+token): {space,label,createdAt}}
+const PUBLISH_TOKENS_KEY = "publish:tokens"; // KV {sha256("pub:"+token): {space,label,createdAt,expiresAt?}}
 const BLOB_MAX_BYTES = 25 * 1024 * 1024;
 // Inline-commit caps: enough for a typical few-file edit in one round trip,
 // small enough to keep a commit's R2 subrequests inside the free-plan budget.
@@ -3122,16 +3144,14 @@ async function publishApi(tctx, request, url, env) {
     if (roleOf(u) === "viewer") {
       return jsonResponse({ error: "viewer-role", message: "This account can look around but not publish." }, 403);
     }
-    const space = roleOf(u) === "admin" ? "*" : (tctx.SPACES.find((s) => s.default) || { id: null }).id;
-    if (!space) return jsonResponse({ error: "no-default-space" }, 500);
-    const bytes = new Uint8Array(32);
-    crypto.getRandomValues(bytes);
-    const token = [...bytes].map((b) => b.toString(16).padStart(2, "0")).join("");
-    const raw = await kv.get(PUBLISH_TOKENS_KEY);
-    const map = raw ? JSON.parse(raw) : {};
-    map[await tokenFor("pub:" + token)] = { space, label: u.email, createdAt: new Date().toISOString() };
-    await kv.put(PUBLISH_TOKENS_KEY, JSON.stringify(map));
-    return jsonResponse({ token, space });
+    // The SAME mint the pairing flow uses. It was a second copy of this code until the
+    // token grew an expiry, at which point the copy was a door that would have kept
+    // handing out credentials that live forever while the other one stopped.
+    const minted = await mintPublishToken(kv, tctx, u);
+    if (!minted) return jsonResponse({ error: "no-default-space" }, 500);
+    // `expiresAt` is in the response so the CLI can say when, rather than the holder
+    // finding out from a 403 on the day it matters.
+    return jsonResponse({ token: minted.token, space: minted.space, expiresAt: minted.expiresAt });
   }
 
   // Sanitized contributor profiles for identity-less builds (any valid publish
@@ -6355,7 +6375,7 @@ export const __testables = Object.freeze({
   deleteUrlPrefix, removeFromStore,
   revokePublishTokens, loginThrottled, loginSlowed, loginFail, DUMMY_HASH,
   pathOwnedBySpace, isPublishablePublicPrefix, removedPublicPrefixes, publishApi, loadManifests, LOGIN_MAX_FAILS,
-  tokenActorRefusal,
+  tokenActorRefusal, publishTokenTtlMs, mintPublishToken, adminTokensApi,
   adminStorageApi,
   isPrefixBacked, backedPublicPrefixes,
   isPublicPath, isTrackPath, isRestrictedPath, versionFor, brandMark,

@@ -263,6 +263,17 @@ set can still be removed. Set it on any instance whose password is published or
 shared with people who have agreed to nothing: the exposure is not abuse of your
 data, it is your domain hosting somebody else's illegal image at a stable URL under
 your name. Only an explicit `false` turns it off, so a typo cannot disable it),
+`publishTokenTtlDays`
+(number, default **30** — how long a publish token minted for a PERSON lives.
+Both human doors read this one number: `augur login` and `augur connect`. When it
+runs out the holder runs the same command again; nobody else has to do anything.
+Tokens an admin mints by hand at `/__admin/tokens` for a machine — CI, a nightly
+backup, an uptime probe — are NOT covered, because nothing re-runs a login for a
+cron job and an expiry there is an outage at 4am with nobody to fix it; those end
+on the revoke list. `0` turns expiry off. A value that is not a number falls back
+to 30 rather than to "forever", so a typo cannot quietly restore immortal tokens.
+Tokens minted before this existed carry no expiry and keep working — the check is
+strictly additive, so taking this engine retires nothing anyone is using),
 `runtimeChrome`
 (boolean — compose current page chrome at serve time instead of trusting what
 publishes baked in, so an engine deploy updates every page instantly; pages baked

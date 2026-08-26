@@ -105,6 +105,10 @@ function instanceDoc(n) {
     // Also a per-workspace boolean, and varied the OTHER way from userImages so the two
     // cannot be confused for each other in a comparison that reads only one of them.
     devicePairing: n.charCodeAt(0) % 2 !== 0,
+    // How long this workspace's publish tokens live. A number rather than a flag, and one
+    // a workspace legitimately sets for itself — a demo with a published password wants a
+    // shorter one than a private instance.
+    publishTokenTtlDays: n.length,
   };
 }
 
