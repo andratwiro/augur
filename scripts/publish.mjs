@@ -51,6 +51,12 @@ const ALL = flag("--all");
 // a login page where the page used to be, which reads as locked, not gone).
 // Deleting a prototype on purpose is the case this flag exists for.
 const ALLOW_UNPUBLISH = flag("--allow-unpublish");
+// ⚠️ ASK THE STORE TO RESOLVE A CONCURRENT EDIT, instead of recomposing here and retrying.
+// `C-repo-less-ship` sets it and nothing else does: a folder with no `.git` has no evidence
+// of what its owner edited, so it cannot compose — and without this a concurrent edit is a
+// `stale-base` 409 with no next move. With a repo the decision stays HERE, where the
+// evidence is. See src/publish-compose.mjs and the resolver in src/_worker.js.
+const FORK_ON_CONFLICT = flag("--fork-on-conflict");
 // --takeover: ship this WHOLE tree as the space, skipping per-unit composition —
 // the old (pre-protocol-5) semantics, for repo surgery, heals and migrations.
 // Composition normally makes a stale checkout harmless; takeover says "this tree
@@ -638,7 +644,11 @@ async function publishOne(id, sourceDir) {
           const res = await (await req(api(`${id}/commit`), {
             method: "POST",
             headers: { "content-type": "application/json" },
-            body: JSON.stringify({ ...(freshHashes.size ? { ...manifest, blobs } : manifest), baseVersion: cached.version, clientProtocol: CLIENT_PROTOCOL }),
+            body: JSON.stringify({
+              ...(freshHashes.size ? { ...manifest, blobs } : manifest),
+              baseVersion: cached.version, clientProtocol: CLIENT_PROTOCOL,
+              ...(FORK_ON_CONFLICT ? { forkOnConflict: true } : {}),
+            }),
           })).json();
           log(`${id}: ${total} files, ${freshHashes.size} blobs inline (${(bytes / 1e6).toFixed(1)} MB), v${res.version}${manifest.source.dirty ? " \x1b[33m[dirty]\x1b[0m" : ""}`);
           await writePubCache(id, { version: res.version, files, source: manifest.source, protocol: cached.protocol, kept: [] });
@@ -830,7 +840,8 @@ async function publishOne(id, sourceDir) {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify((check.protocol || 0) >= 3
-          ? { ...ship, baseVersion: check.liveVersion, clientProtocol: CLIENT_PROTOCOL }
+          ? { ...ship, baseVersion: check.liveVersion, clientProtocol: CLIENT_PROTOCOL,
+              ...(FORK_ON_CONFLICT ? { forkOnConflict: true } : {}) }
           : { ...ship, clientProtocol: CLIENT_PROTOCOL }),
       })).json();
     } catch (e) {

@@ -266,7 +266,12 @@ for the other, and each command nudges when the copy and the flags disagree.
 
 **Shipping a change** — `augur ship` is the default and what agents should run:
 commit (everything, untracked included) → publish (the live URL, in seconds) →
-push (retried). That order is deliberate: the commit makes losing work
+push (retried). **A folder with no `.git` ships too** — a hosted workspace may never
+have a repo, and `augur clone` produces exactly that folder. There, steps 1 and 3
+have nothing to do, publishing is the whole of it, and the guarantee git was
+providing does not vanish: the concurrent-edit decision moves to the STORE
+(`--fork-on-conflict`), then the folder pulls live back three-way so it cannot
+diverge. Same event, same words, one path. That order is deliberate: the commit makes losing work
 impossible, and the publish must not wait on the network. A rejected push
 reconciles automatically — different prototypes merge silently, a genuine
 same-prototype conflict keeps THEIR version at the real path and forks yours to

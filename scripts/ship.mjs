@@ -90,13 +90,35 @@ const gitQuiet = (...a) => {
   catch (e) { return { ok: false, out: `${e.stdout || ""}${e.stderr || ""}`.trim() }; }
 };
 
-const BRANCH = git("rev-parse", "--abbrev-ref", "HEAD");
+// ── ⚠️ THIS FOLDER MAY NOT BE A REPO, AND THAT IS NOT AN ERROR ───────────────
+//
+// `C-repo-less-ship`. "Repo-less multi-editor at v1, not phase two" is settled: a hosted
+// workspace may never have a git repo, and `augur clone` already produces a folder with no
+// `.git` in it on purpose. Until now the FIRST thing this script did after resolving the
+// workspace was `git rev-parse`, so shipping such a folder died with an uncaught
+// execFileSync throw — a stack trace, from the one command a person is told always works.
+//
+// So git is OPTIONAL here. Without it, two of the three steps have nothing to do: there is
+// nothing to commit to and nothing to push to. Publishing is the whole of it, and publish.mjs
+// was already git-tolerant — `repoState()` and `refuseShallow()` both no-op when git fails.
+//
+// ⚠️ AND THE CONFLICT PATH MOVES TO THE STORE RATHER THAN DISAPPEARING. A git-backed ship
+// resolves a concurrent edit locally, from evidence. A repo-less one has no evidence, so it
+// asks the store to resolve it (`--fork-on-conflict`, C-fork-on-conflict) and prints the
+// result in the same words. What must not happen is a second, quieter code path where a
+// concurrent edit silently overwrites somebody: same event, same vocabulary, same outcome.
+// `.git` is checked with existsSync rather than isDirectory because a worktree and a
+// submodule both make it a FILE, and both are real repositories.
+const HAS_GIT = existsSync(path.join(dir, ".git"));
+
+const BRANCH = HAS_GIT ? git("rev-parse", "--abbrev-ref", "HEAD") : null;
 // Who forked, for the folder name. `git var GIT_AUTHOR_IDENT` rather than
 // `git config user.email`, because that config is often unset — git then derives
 // an identity from the machine and stamps commits with it regardless. Asking for
 // the config gives you an empty string and a folder called "-conflict-someone";
 // asking git what it will ACTUALLY sign as gives you the person.
 const whoami = (() => {
+  if (!HAS_GIT) return "someone"; // unused without git: the store names the fork's owner
   const ident = gitQuiet("var", "GIT_AUTHOR_IDENT").out || "";
   const email = (/<([^>]*)>/.exec(ident) || [, ""])[1];
   const n = email.split("@")[0] || (ident.split("<")[0] || "").trim() || "someone";
@@ -149,7 +171,7 @@ function foldersOf(paths) {
   return [...out];
 }
 
-const porcelainLines = git("status", "--porcelain").split("\n").filter(Boolean);
+const porcelainLines = HAS_GIT ? git("status", "--porcelain").split("\n").filter(Boolean) : [];
 // Stale conflict-fork folders never ride into a person's commit: publish
 // (protocol 5) never writes tree forks, so an UNTRACKED `*-conflict-*` folder is
 // leftover litter — sweeping it would stamp this person's face and "edited just
@@ -168,7 +190,13 @@ let committed = null;
 if (untrackedLitter.length) {
   warn(`${untrackedLitter.length} stale conflict folder(s) left uncommitted — they never publish; fold what matters into the real folder, then delete them`);
 }
-if (dirtyPaths.length) {
+if (!HAS_GIT) {
+  // The generator still runs — derived files are content, not bookkeeping, and a workspace
+  // that declares one expects its indexes refreshed before what it publishes is decided.
+  // The gate still runs advisory, for the same reason it does on the git path.
+  if (!DRY) { runGenerate(); runGateAdvisory(); }
+  log("no git here — publishing the folder as it stands");
+} else if (dirtyPaths.length) {
   const touched = foldersOf(dirtyPaths);
   const subject = MSG || `Ship ${touched.slice(0, 3).join(", ")}${touched.length > 3 ? ` +${touched.length - 3} more` : ""}`;
   log(`${dirtyPaths.length} change(s) in ${touched.length} folder(s) — committing`);
@@ -196,7 +224,11 @@ if (dirtyPaths.length) {
 // wait on the git host, and publish's own store guard still stands between a
 // stale tree and everyone's live work.
 let forks = [];
-if (DRY) {
+if (!HAS_GIT) {
+  // Nothing to fetch and nothing to reconcile against. The equivalent guarantee — that a
+  // concurrent edit is resolved rather than overwritten — comes from the store instead, on
+  // the publish below.
+} else if (DRY) {
   log("would fetch origin and reconcile if behind");
 } else {
   const f = gitQuiet("fetch", "origin", BRANCH);
@@ -220,7 +252,12 @@ async function publish() {
     // --allow-unpublish passes straight through: deleting a prototype means
     // committing the deletion and shipping it, and ship is how that goes out.
     const p = spawn(process.execPath,
-      [path.join(ROOT, "scripts", "publish.mjs"), "--space", SPACE, ...(ALLOW_UNPUBLISH ? ["--allow-unpublish"] : [])],
+      [path.join(ROOT, "scripts", "publish.mjs"), "--space", SPACE,
+        ...(ALLOW_UNPUBLISH ? ["--allow-unpublish"] : []),
+        // ⚠️ ONLY WITHOUT GIT. With a repo, the client resolves a concurrent edit from
+        // evidence it can actually check, and asking the store instead would move the
+        // decision away from the only place that knows what this person edited.
+        ...(HAS_GIT ? [] : ["--fork-on-conflict"])],
       { cwd: dir, stdio: ["ignore", "pipe", "inherit"] });
     p.stdout.on("data", (d) => { tail += d.toString(); });
     p.on("close", resolve);
@@ -229,6 +266,31 @@ async function publish() {
   return tail.trim().split("\n").filter(Boolean).pop() || null;
 }
 let liveLine = await publish();
+
+// ── 2.5 without git, fold live back into the folder ──────────────────────────
+//
+// A git-backed ship reconciles BEFORE publishing and ends with a tree that matches what it
+// shipped. A repo-less one cannot: if the store resolved a concurrent edit, live now has
+// somebody else's version at the canonical path and mine at a fork — and this folder still
+// has mine at the canonical path. Left alone it diverges silently, and the next ship
+// re-publishes the same contested bytes and forks again, forever.
+//
+// So it pulls. `augur pull` is three-way, not last-writer-wins: it overwrites only where the
+// local file still matches what this machine last synced (a fast-forward), reports anything
+// that changed on both sides, and writes files it has never seen — which is exactly the fork
+// folder. With no conflict it is a no-op, because live is what was just shipped.
+if (!HAS_GIT && !DRY) {
+  const code = await new Promise((resolve) => {
+    const p = spawn(process.execPath, [path.join(ROOT, "scripts", "clone.mjs"), "--space", SPACE],
+      { cwd: dir, stdio: ["ignore", "inherit", "inherit"], env: { ...process.env, AUGUR_CLONE_MODE: "pull" } });
+    p.on("close", resolve);
+  });
+  // Exit 2 is `pull`'s "some files changed on both sides" — reported, not written. The
+  // publish already happened and is live; this is the folder catching up, so a partial
+  // catch-up is a warning and never a failed ship.
+  if (code === 2) warn("some local files differ from live and were left alone — see the conflict lines above");
+  else if (code !== 0) warn(`could not fold live back into this folder (exit ${code}) — your publish is live; run \`augur pull\` when you can`);
+}
 
 // ── 3. push, and the conflict it may hit ─────────────────────────────────────
 // A rejected push means someone else shipped first. Prototype HTML must not be
@@ -310,7 +372,10 @@ async function reconcile({ alreadyLive }) {
 }
 
 let pushed = false;
-if (NO_PUSH) {
+if (!HAS_GIT) {
+  // Nowhere to push to. Not a warning: this is the normal shape of a hosted workspace, and
+  // "GitHub does not know about this yet" would be advice about a thing that does not exist.
+} else if (NO_PUSH) {
   warn("--no-push: GitHub does not know about this yet. Run `augur ship` again when you're back online.");
 } else if (DRY) {
   log("would push");
@@ -346,7 +411,12 @@ if (NO_PUSH) {
 // live" — a stuck push is an `augur ship` rerun away, not a redo. The live URL still
 // has to be the LAST line of stdout (agents hand it straight to a human), so a push
 // failure gets its own line ahead of it rather than folded into it.
-function pushFailureNotice(pushed, noPush) {
+// Pure on purpose — test/ship-exit-code.test.mjs lifts it out of this file and runs it, so
+// every input it depends on is a parameter. `hasGit` is one of them: a folder with no repo
+// has nowhere to push to, and telling somebody GitHub is behind would be advice about a
+// thing that does not exist.
+function pushFailureNotice(pushed, noPush, hasGit) {
+  if (!hasGit) return null;
   if (pushed || noPush) return null;
   return "published (live), but git push failed — re-run `augur ship` to sync GitHub.";
 }
@@ -357,7 +427,7 @@ if (forks.length) {
   }
 }
 if (DRY) { console.log("(dry run, nothing changed)"); process.exit(0); }
-const notice = pushFailureNotice(pushed, NO_PUSH);
+const notice = pushFailureNotice(pushed, NO_PUSH, HAS_GIT);
 if (notice) console.log(notice);
 console.log(liveLine || `${SPACE} published`);
 process.exit(0);

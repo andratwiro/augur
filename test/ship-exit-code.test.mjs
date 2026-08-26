@@ -28,15 +28,23 @@ test("the notice was actually lifted out of ship.mjs", () => {
 });
 
 test("push succeeded: no notice", () => {
-  assert.equal(pushFailureNotice(true, false), null);
+  assert.equal(pushFailureNotice(true, false, true), null);
 });
 
 test("--no-push: no notice — the user explicitly asked to skip it", () => {
-  assert.equal(pushFailureNotice(false, true), null);
+  assert.equal(pushFailureNotice(false, true, true), null);
+});
+
+test("NO REPO: no notice, because there is nowhere to push to", () => {
+  // `C-repo-less-ship`. A hosted workspace may never have a git repo — `augur clone`
+  // already produces a folder with no `.git` — and "GitHub does not know about this yet"
+  // is advice about a thing that does not exist. The publish is the whole of the ship.
+  assert.equal(pushFailureNotice(false, false, false), null);
+  assert.equal(pushFailureNotice(true, false, false), null);
 });
 
 test("push failed (not --no-push): an explicit notice that says the work is live", () => {
-  const notice = pushFailureNotice(false, false);
+  const notice = pushFailureNotice(false, false, true);
   assert.match(notice, /published/i);
   assert.match(notice, /live/i);
   assert.match(notice, /push failed/i);
