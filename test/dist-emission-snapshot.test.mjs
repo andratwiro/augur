@@ -28,6 +28,7 @@ import path from "node:path";
 import crypto from "node:crypto";
 import { fileURLToPath } from "node:url";
 import { execFileSync } from "node:child_process";
+import { discoverModules } from "../scripts/no-tenant-globals.mjs";
 
 const ENGINE = fileURLToPath(new URL("..", import.meta.url));
 const BASELINE = fileURLToPath(new URL("./dist-emission.baseline.json", import.meta.url));
@@ -119,6 +120,31 @@ if (process.argv.includes("--write")) {
     const was = JSON.parse(fs.readFileSync(BASELINE, "utf8"));
     for (const m of ["_worker.js", "tenant-context.mjs", "tenant-cache.mjs", "mail.mjs", "kv-codec.mjs", "chrome/appchrome.mjs"]) {
       assert.ok(m in was, `${m} is no longer emitted into dist/`);
+    }
+  });
+
+  test("⚠️ EVERY MODULE THE WORKER IMPORTS IS EMITTED — the check that was missing", () => {
+    // THE FAILURE THIS EXISTS FOR, and it is not hypothetical. `_worker.js` ships verbatim,
+    // so a module it imports has to sit beside it or the import cannot resolve at the edge.
+    // The copy list used to be hand-written, in two places; adding one import broke the
+    // Pages build of every live instance with `Could not resolve "./purge.mjs"`, and nothing
+    // here noticed, because:
+    //
+    //   · the suite imports from `src/`, where the file exists;
+    //   · the baseline records what IS emitted, never what SHOULD be, so a module that was
+    //     never copied simply never appears in it and nothing is missing from anything;
+    //   · the only symptom is a failed Pages build, minutes later, in a different repo.
+    //
+    // build.js now DERIVES the copy list from the same walker, so this cannot drift — and
+    // this asserts it against the walker independently, because "derived from X" is only
+    // worth having if something checks X was the right thing to derive from.
+    const was = JSON.parse(fs.readFileSync(BASELINE, "utf8"));
+    const wanted = discoverModules(path.join(ENGINE, "src", "_worker.js"), path.join(ENGINE, "src"))
+      .filter((m) => m !== "_worker.js");
+    assert.ok(wanted.length > 3, `the walker found only ${wanted.length} modules`);
+    for (const m of wanted) {
+      assert.ok(m in was, `_worker.js imports ${m} and the build does not emit it — ` +
+        `every live instance's deploy will fail with "Could not resolve ./${m}"`);
     }
   });
 }

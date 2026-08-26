@@ -31,6 +31,9 @@ import { execFileSync } from "node:child_process";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { createHash } from "node:crypto";
+// The module walker the tenant-globals gate uses. One implementation of "what does the
+// worker import", so the deploy copy list and that gate can never see different graphs.
+import { discoverModules } from "./scripts/no-tenant-globals.mjs";
 // The page-level chrome renderer is shared with the serve-time worker (runtime-chrome):
 // build.js bakes it, src/_worker.js re-renders it. It also owns the small pure utilities
 // and the UI version so there is ONE source of truth for both — see src/chrome/appchrome.mjs.
@@ -7295,23 +7298,26 @@ async function main() {
     runtimeChrome: process.env.GV_RUNTIME_CHROME === "1" || DEPLOY.runtimeChrome === true,
   }), "utf8");
   await fs.writeFile(path.join(DIST, "_worker.js"), workerSrc, "utf8");
-  // The worker imports seven modules by relative path — the shared chrome renderer
-  // ("./chrome/appchrome.mjs"), the tenant context ("./tenant-context.mjs"), the
-  // per-workspace cache constructor ("./tenant-cache.mjs"), the Host-to-workspace parser
-  // ("./tenant-host.mjs"), the state-family account ("./state-inventory.mjs"), the mail
-  // transport ("./mail.mjs") and the KV backup codec
-  // ("./kv-codec.mjs"). _worker.js ships verbatim, so each must sit next to it in the
-  // deploy dir for the import to resolve at the edge (and under `wrangler pages dev`
-  // offline). Copied verbatim; all seven are listed in ENGINE_CHROME below, so they belong
-  // to the engine.
-  await fs.mkdir(path.join(DIST, "chrome"), { recursive: true });
-  await fs.copyFile(path.join(ROOT, "src", "chrome", "appchrome.mjs"), path.join(DIST, "chrome", "appchrome.mjs"));
-  await fs.copyFile(path.join(ROOT, "src", "tenant-context.mjs"), path.join(DIST, "tenant-context.mjs"));
-  await fs.copyFile(path.join(ROOT, "src", "tenant-cache.mjs"), path.join(DIST, "tenant-cache.mjs"));
-  await fs.copyFile(path.join(ROOT, "src", "tenant-host.mjs"), path.join(DIST, "tenant-host.mjs"));
-  await fs.copyFile(path.join(ROOT, "src", "state-inventory.mjs"), path.join(DIST, "state-inventory.mjs"));
-  await fs.copyFile(path.join(ROOT, "src", "mail.mjs"), path.join(DIST, "mail.mjs"));
-  await fs.copyFile(path.join(ROOT, "src", "kv-codec.mjs"), path.join(DIST, "kv-codec.mjs"));
+  // ── the modules _worker.js imports, DERIVED rather than listed ────────────────────
+  //
+  // `_worker.js` ships VERBATIM, so every module it imports by relative path has to sit
+  // beside it in the deploy dir or the import fails to resolve at the edge.
+  //
+  // ⚠️ THIS USED TO BE A HAND-WRITTEN LIST IN TWO PLACES — the copies here and the prefixes
+  // in ENGINE_CHROME below — and adding one import to the worker broke the deploy of every
+  // live instance with `Could not resolve "./purge.mjs"`. Nothing caught it: the suite
+  // imports from `src/`, where the file exists; the dist snapshot records what IS emitted,
+  // not what SHOULD be; and the failure only appears in a shell's Pages build, minutes
+  // later, on somebody else's repo. So the list is now WALKED from the worker's own imports
+  // and the two copies of it cannot disagree, because there is one.
+  const workerModules = discoverModules(
+    path.join(ROOT, "src", "_worker.js"), path.join(ROOT, "src"),
+  ).filter((rel) => rel !== "_worker.js");
+  for (const rel of workerModules) {
+    const dest = path.join(DIST, rel);
+    await fs.mkdir(path.dirname(dest), { recursive: true });
+    await fs.copyFile(path.join(ROOT, "src", rel), dest);
+  }
 
   // ── .assetsignore — deploy code is not a public file ────────────────────────────────
   // On Pages, `_worker.js` is a RESERVED NAME: Cloudflare runs it and never serves it. On
@@ -7551,13 +7557,12 @@ async function main() {
     "__canvas/DSEG7Classic-Bold.woff2", "__canvas/DSEG-LICENSE.txt",
     "piti.js", "404.html", "manifest.webmanifest", "sw.js", "_chrome.",
     "augur-eye.svg", "augur-icon-192.png", "augur-icon-512.png", "augur-mark.png",
-    "chrome/", // the shared chrome renderer module the worker imports (runtime-chrome)
-    "tenant-context.mjs", // the per-request config value the worker imports
-    "tenant-cache.mjs",   // the per-workspace cache constructor the worker imports
-    "tenant-host.mjs",    // the Host-to-workspace parser the worker imports
-    "state-inventory.mjs", // the state-family account the export endpoint walks
-    "mail.mjs",           // the mail transport the worker imports
-    "kv-codec.mjs",       // the KV backup value codec the worker imports
+    // Every module `_worker.js` imports, walked from the worker itself rather than listed.
+    // See the copy step above for why this is derived: a hand-written list here and a
+    // hand-written list there disagreed, and the disagreement only showed up as a failed
+    // Pages build on a live instance.
+    ...discoverModules(path.join(ROOT, "src", "_worker.js"), path.join(ROOT, "src"))
+      .filter((rel) => rel !== "_worker.js"),
   ];
   const MANIFEST_MIME = {
     html: "text/html; charset=utf-8", css: "text/css; charset=utf-8",
