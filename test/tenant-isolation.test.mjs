@@ -56,6 +56,15 @@
 // read by an UNGATED route, the case belongs in one of the two `fetch()`-driven sections
 // at the bottom instead: a function-level case cannot tell "answered the wrong workspace"
 // from "answered a stranger".
+//
+// ---- AND THE ROUTE-LEVEL BACKSTOP IS A DIFFERENT FILE --------------------------------
+// This file is the LOADER's harness: it holds `loadTenantContext` and the caches around it
+// to the contract, mostly in ASSETS mode. `test/tenant-route-sweep.test.mjs` is the other
+// half — the real default export, in BUNDLE mode (what every live instance serves), driven
+// over a table of ROUTES with two workspaces, sequentially inside every TTL and
+// concurrently. A new cache wants a case here AND a route there: this file says the value
+// is keyed, that file says the answer a stranger gets is this workspace's. Adding a route
+// there is one line, and it is the cheaper of the two to extend.
 
 import { test } from "node:test";
 import assert from "node:assert/strict";
