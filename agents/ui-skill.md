@@ -1,8 +1,8 @@
-# The UI skill — a space's design system
+# The UI skill — a workspace's design system
 
-A space's design system lives in one directory: `skills/<prefix>-ui/`. The build
+A workspace's design system lives in one directory: `skills/<prefix>-ui/`. The build
 auto-detects it (the dir under `skills/` ending in `-ui` that carries
-`<dirname>.css`, e.g. `skills/acme-ui/acme-ui.css` → prefix `acme`); a space can
+`<dirname>.css`, e.g. `skills/acme-ui/acme-ui.css` → prefix `acme`); a workspace can
 override the detection with `space.json` `{ "designSystem": { "skill": "<dir>" } }`.
 A design system is optional — plain self-contained HTML builds fine without one.
 
@@ -12,10 +12,10 @@ Prototypes and library demos reference skill assets by the canonical relative
 path — `../../../skills/<prefix>-ui/<file>` (any `../` depth) — never by absolute
 URL. The build rewrites those references so they resolve everywhere the page can
 be opened: on disk (`file://`) and at the site root. (The rewrite still handles a
-`/<id>/` prefix, but no instance mounts a space there any more — that tier is
-retired.) Each space ships its own copy of its skill, so
-primitives → components → pages stay hardwired to one source per space and a
-space can diverge its design system without touching another. Prototypes may
+`/<id>/` prefix, but no instance mounts a workspace there any more — that tier is
+retired.) Each workspace ships its own copy of its skill, so
+primitives → components → pages stay hardwired to one source per workspace and a
+workspace can diverge its design system without touching another. Prototypes may
 instead carry a byte-identical copy of an asset — they are the one tier allowed
 to fork.
 
@@ -65,7 +65,7 @@ shipped skill directory; that is derived output, not something to declare.
 
 ## registry.json — required once a skill exists
 
-A space that carries a UI skill must also carry a `registry.json` at the SPACE
+A workspace that carries a UI skill must also carry a `registry.json` at the WORKSPACE
 root: the overlay catalog naming the design system's families, so the comment
 overlay and gallery cards can label components. The build fails loudly without
 it (no silent unlabeled overlay). Shape:
@@ -78,7 +78,7 @@ it (no silent unlabeled overlay). Shape:
 ```
 
 `type` is `primitive` (base tier), `component`, `pattern` or `page`; `classes`
-lists the CSS family roots the overlay matches in the DOM. A space with no
+lists the CSS family roots the overlay matches in the DOM. A workspace with no
 skill needs no registry.
 
 ## Galleries
@@ -87,4 +87,4 @@ The tokens/primitives gallery tiers derive from the conventional file split
 (`<prefix>-tokens.css`, `<prefix>-primitives.css`, `gallery.html`). A skill
 without those files still builds, ships and serves fine — it just gets no
 derived primitives gallery. The `base/ components/ patterns/ pages/` tiers at
-the space root are independent of this and work with any skill.
+the workspace root are independent of this and work with any skill.

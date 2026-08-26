@@ -4,7 +4,7 @@ Augur has an infinite-canvas layer: sticky notes, shapes, text, images, tables,
 drawings, arrows, sections, stamps, and **live prototype tiles** — all
 multiplayer (shared cursors, presence, co-typing) with an agent able to join the
 room as a visible participant. A canvas IS a prototype (a small loader page in
-the space repo), so boards publish, share, and comment like any other prototype.
+the workspace repo), so boards publish, share, and comment like any other prototype.
 
 The deep reference — node schemas, the co-work protocol, engine internals — is
 **`../CANVAS.md`**. This file is the agent-facing contract only.
@@ -46,7 +46,7 @@ Boards are public by the same obscure-share-link model as prototypes.
 - **Images** upload via `POST /__asset` (content-hashed, immutable) — content
   type must be `image/jpeg|png|webp|gif` (else **415**), 4MB cap (else **413**);
   they read back at `GET /__asset/<40-hex-hash>`. Or point `src` at an image
-  committed in the space repo. Never write new data-URLs.
+  committed in the workspace repo. Never write new data-URLs.
 
 ## Co-working live (the default when changing a board)
 
@@ -65,8 +65,16 @@ stub the placeholder — *then* do the real work, and delete the stub when the
 artifact lands. Full protocol + daemon command set: **`../CANVAS.md` § "Working
 on the canvas"**.
 
+⏳ **A room is named by the PATH THE CLIENT SENDS, and that is not where this is
+going.** Today the path you pass is the room's identity, so two boards at the same
+path are the same room and the server takes the client's word for which one it is.
+Deriving the name server-side from the workspace plus the path is planned and not
+built. Nothing in this doc depends on which it is — you pass the board's path
+either way — but do not build anything that relies on choosing a room name, and do
+not read today's behaviour as a guarantee.
+
 **Origins:** with a deploy shell next door the client resolves them itself. From
-a bare space clone it works too: `space.json`'s `siteOrigin` supplies the site
+a bare workspace clone it works too: `space.json`'s `siteOrigin` supplies the site
 and the client connects through the site's `/__rt` proxy. Env overrides:
 `CANVAS_SITE_ORIGIN`, `CANVAS_RT_ORIGIN`.
 

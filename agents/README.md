@@ -1,14 +1,18 @@
-# agents/ — engine docs for agents working in a space
+# agents/ — engine docs for agents working in a workspace
 
-These files are the engine's contract for the everyday things a **space
+These files are the engine's contract for the everyday things a **workspace
 collaborator's agent** does with Augur: shipping work, reading review feedback,
 what the engine expects of a prototype folder, the `space.json` schema, users
 and avatars.
 
+The word for the thing is **workspace** — one per instance, served at its root.
+The FILE is still `space.json` and every identifier keeps its old spelling; see
+[space-json.md](./space-json.md) for why that is a decision and not a leftover.
+
 They ship WITH the engine so every instance gets the same, current contract —
 when an engine change alters behavior, the same commit updates the doc here.
-Space repos should link to these files (the engine clone sits next to every
-space clone that publishes), never copy them: a copied contract drifts.
+Workspace repos should link to these files (the engine clone sits next to every
+workspace clone that publishes), never copy them: a copied contract drifts.
 
 Read them by trigger, not up front:
 

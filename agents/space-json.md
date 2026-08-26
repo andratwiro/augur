@@ -1,22 +1,47 @@
-# space.json — the space's contract with the build
+# space.json — a workspace's contract with the build
 
-A directory is a space because it has a `space.json` at its root. This file is
-the single source of truth for the schema; docs elsewhere should link here,
-not restate it.
+A directory is a workspace because it has a `space.json` at its root. This file is
+the single source of truth for the schema; docs elsewhere should link here, not
+restate it.
+
+## ⚠️ THE FILE IS STILL CALLED `space.json`, AND IT STAYS THAT WAY
+
+The word for the thing is **workspace** — one workspace per instance, served at
+the root, the tier a person is a member of. Everywhere a doc talks about the
+concept it says workspace. The FILE keeps its old name, and that is a decision
+rather than an oversight:
+
+- **A filename is a compatibility surface, not prose.** Every workspace repo in
+  existence has a `space.json`, including the public starter people are told to
+  clone. Renaming it makes any clone taken before the rename build as "no
+  workspace found" — silently, because a directory with no `space.json` is simply
+  not a workspace.
+- **Reading both names would be worse than either.** Two spellings for one file,
+  forever, and every new reader has to learn they are the same thing. That is
+  precisely the disagreement this section exists to prevent.
+- **Nothing is bought.** `package.json` describes a "project" and nobody renames
+  it. The name is an identifier the build matches on; the noun is what a person
+  calls the thing.
+
+The same rule holds for every OTHER identifier here: `GV_SPACES_ROOT`, the
+`spaces/` folder, the `SPACES` key in the config, `/__publish/<space>/…`, and the
+`--space` flag. They are spellings on the wire and in a path, and renaming them
+breaks live deployments to gain a word. This doc keeps the name `space-json.md`
+for the same reason the file does.
 
 ```jsonc
 {
-  "id": "my-space",          // REQUIRED. The space's identity everywhere: its URL
+  "id": "my-space",          // REQUIRED. The workspace's identity everywhere: its URL
                              // prefix, its manifest in the store, its key in
                              // /_build.json (lowercase [a-z0-9-]). The repo name is
                              // a free label.
-  "name": "My Space",        // display name in the switcher / landing
+  "name": "My Workspace",    // display name in the switcher / landing
   "description": "…",        // one line for the site's link preview (the og:description
                              // an unfurl shows). Read from the DEFAULT
-                             // space only; empty ⇒ the engine's own tagline
-  "default": true,           // the space that builds at the site ROOT. An instance
-                             // serves exactly ONE space; the /<id>/ path mount for
-                             // additional spaces is RETIRED and nothing routes to it
+                             // workspace only; empty ⇒ the engine's own tagline
+  "default": true,           // the workspace that builds at the site ROOT. An
+                             // instance serves exactly ONE; the /<id>/ path mount for
+                             // additional ones is RETIRED and nothing routes to it
   "badge": "current",        // optional label rendered beside the name
   "adminOnly": true,         // INERT — parsed and carried, but it seals nothing. It
                              // only ever sealed a NON-default /<id>/ mount, and those
@@ -44,15 +69,16 @@ not restate it.
   "ignore": ["big-exports"], // extra top-level dirs the build must never treat
                              // as project folders
   "mcpAllowlists": ["path/to/mcp-allowlist.json"],  // hosts AND paths this
-                             // space's prototypes may reach through the /__mcp/
-                             // proxy (union across spaces at build time) — see
+                             // workspace's prototypes may reach through the
+                             // /__mcp/ proxy (union at build time) — see
                              // "The MCP proxy allowlist" below
-  "publishTracks": true,     // ship the space's tracks/ session music. Default false:
-                             // music plays in local preview (`augur dev` / offline) and
-                             // never leaves the machine. Published tracks are served to
-                             // instance ADMINS only, never publicly — set this for audio
-                             // you hold the right to put on someone else's server.
-  "siteOrigin": "https://your-site.pages.dev"  // where this space publishes;
+  "publishTracks": true,     // ship the workspace's tracks/ session music. Default
+                             // false: music plays in local preview (`augur dev` /
+                             // offline) and never leaves the machine. Published
+                             // tracks are served to instance ADMINS only, never
+                             // publicly — set this for audio you hold the right
+                             // to put on someone else's server.
+  "siteOrigin": "https://your-site.pages.dev"  // where this workspace publishes;
                              // lets login/publish work from a bare clone with
                              // no shell around
 }
@@ -64,7 +90,7 @@ field there, document it here in the same commit.
 
 ## The MCP proxy allowlist
 
-`mcpAllowlists` names JSON files this space ships. Each is shaped:
+`mcpAllowlists` names JSON files this workspace ships. Each is shaped:
 
 ```json
 {

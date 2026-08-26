@@ -50,7 +50,7 @@ a bad folder name after the fact; rename the display instead.
 ## Status chips
 
 An optional dev-status chip per prototype comes from `prototype-status.json`
-at the space root (see its `_comment` for the format; values are `in-progress`,
+at the workspace root (see its `_comment` for the format; values are `in-progress`,
 `dev-ready`, `ignore`); statuses are also cycled by clicking the
 chip on the live site (stored in KV, overlaying the committed baseline).
 

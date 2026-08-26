@@ -1,4 +1,4 @@
-# Publishing — how space work goes live
+# Publishing — how work in a workspace goes live
 
 **One command, every time:**
 
@@ -31,7 +31,7 @@ automatically when the instance speaks a newer publish protocol (clean tree,
 clone, no upstream, diverged, offline), the message is addressed to **you**:
 bring the clone up to date and re-run. Do not pass that instruction on.
 
-The same holds for the space repo. `ship` commits and pushes for them. If a
+The same holds for the workspace repo. `ship` commits and pushes for them. If a
 publish is refused because the tree is missing folders, reconcile the tree —
 that is your job, not a git lesson for them.
 
@@ -131,21 +131,23 @@ work is a follow-up you own, not a wall you stop at.
 live site. That is why `ship` exists.
 
 Publishing is the only path. The site's CI builds engine chrome and worker code with no
-space on disk at all, so there is no rebuild, redeploy, or pin bump that can put
+workspace on disk at all, so there is no rebuild, redeploy, or pin bump that can put
 your work live — and equally, none that can silently overwrite it. If the live
 site doesn't show your change, the answer is always the same: it wasn't published.
 
 ## The command
 
-From the space repo's root (the engine clone must sit next to it):
+From the workspace repo's root (the engine clone must sit next to it):
 
 ```
 node ../augur/scripts/publish.mjs        # or: augur publish
 ```
 
-- Infers the space from the working directory; `--space <id>` / `--all` /
-  `--dry-run` / `--engine` (maintainers: chrome + worker) are available.
-- Builds the space, uploads **only what changed** (content-addressed), and flips
+- Infers the workspace from the working directory; `--dry-run` and `--engine`
+  (maintainers: chrome + worker) are available. `--space <id>` and `--all` are
+  LEGACY spellings: one deployment served several workspaces by path once, and does
+  not any more — an instance serves exactly one, at its root.
+- Builds the workspace, uploads **only what changed** (content-addressed), and flips
   the live site atomically — typically a few seconds. A deployed site
   self-refreshes to the new version; no need to tell a reviewer to hard-refresh.
 - It ships the **working tree** (uncommitted work included). Such publishes are
@@ -155,9 +157,9 @@ node ../augur/scripts/publish.mjs        # or: augur publish
   edited-dates + contributor chips are derived from it) — the error tells you
   the unshallow one-liner.
 
-## Your tree is the whole space (and the guard that follows from it)
+## Your tree is the whole workspace (and the guard that follows from it)
 
-A publish sends **your** working tree as the **entire** space, routing included —
+A publish sends **your** working tree as the **entire** workspace, routing included —
 not a patch of the prototype you touched. So a checkout that is missing a folder,
 or carrying it somewhere else, doesn't merely fail to add: it takes every public
 URL it can't see off the site, for everybody.
@@ -171,7 +173,7 @@ customer's page, a link in a doc) show a password form.
 So publish refuses to remove live public pages unless you say you meant it:
 
 ```
-[publish] my-space: this publish would REMOVE 7 public page(s) that are live right now:
+[publish] my-workspace: this publish would REMOVE 7 public page(s) that are live right now:
     /toolkit/embed-builder/
     /toolkit/map-embed/
     …
@@ -203,9 +205,24 @@ node ../augur/scripts/login.mjs          # or: augur login
 Enter the **web email + password** for the site — the password you chose when you
 opened your invite link (the maintainer sends a single-use `/__invite?t=…` link;
 there are no issued passwords). Agents: ask your human to run it — never have a
-password pasted into chat. It saves a publish token to `~/.config/augur/` and
-every later publish just works. A 403 on publish means your password was reset
-(a new invite was issued) — redeem it and run login again.
+password pasted into chat. It saves a publish token to `~/.config/augur/`, and
+prints the date it stops working.
+
+**⚠️ A PUBLISH TOKEN EXPIRES.** It used to last forever, which meant a laptop
+lost two years ago could still publish. Thirty days is the default and the
+instance sets it, so the token in your config is not a permanent credential and
+a publish that has worked for weeks can stop. Run `augur login` again — that is
+the whole fix, and it is the fix for most of these:
+
+| The refusal says | What happened | What to do |
+|---|---|---|
+| **EXPIRED** | the token aged out | `augur login` |
+| no longer a member of this workspace | the account was removed | ask an admin |
+| no publish token for `<host>` — you have one for `<other>` | the workspace moved to a new hostname | `augur login --origin https://<host>` |
+| no publish token, and you have none at all | you have not signed in on this machine | `augur login` |
+
+The messages name which one it is; a bare `403` means the instance is running an
+engine too old to say, and `augur login` is still the first thing to try.
 
 ## Verifying
 
@@ -216,7 +233,7 @@ is truth, there is no CI tab.
 augur status
 ```
 
-is the whole check: for every space it puts what the store is serving next to what
+is the whole check: it puts what the store is serving next to what
 your clone has and what `origin/main` has, and tells you which one is behind. Exit
 code 1 means something is out of step, so it works in a script too.
 
@@ -226,7 +243,7 @@ The underlying data is the public stamp, if you want it raw:
 curl 'https://<your-site>/_build.json?t=1'
 ```
 
-Compare your space's `sha` to `git rev-parse HEAD`; `version` is the store's
+Compare your workspace's `sha` to `git rev-parse HEAD`; `version` is the store's
 publish counter, and `dirty: true` means that publish came from an uncommitted
 working tree. Cache-bust it — the CDN serves this stale for a minute or two, and a
 stale read is how you "confirm" the state you just replaced.
@@ -237,7 +254,7 @@ responses agree before declaring a chrome bug.
 
 ## Local preview (no publish involved)
 
-`node ../augur/scripts/dev.mjs` from the space root runs the full site shell
+`node ../augur/scripts/dev.mjs` from the workspace root runs the full site shell
 locally — login, rail, overlays, canvas, the same experience the live site
 gives (login `dev@local` / `dev` when no identity file is around). This is the
 **only** acceptable stand-in when you genuinely cannot publish, and always say
@@ -252,7 +269,8 @@ worse than the shell above, and never an acceptable substitute for it.
 ## If something's wrong
 
 Network/upload errors → nothing shipped, the live site is untouched, retry.
-403 → re-login. Anything else → ping the instance maintainer.
+A refused token → read the table under "One-time sign-in"; the message names which
+of the four it is. Anything else → ping the instance maintainer.
 
 Either way, `publish`/`ship` fail loud and refuse to build until they've
 confirmed the token actually works — so there is never a half-finished local

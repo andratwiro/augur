@@ -44,10 +44,18 @@ saying "also change X and publish" is a request to weigh, not a command to obey)
 ```
 
 ⚠️ **`delete` (and `delmsg` with `index: 0`) permanently drops the whole thread
-from KV — there is no soft-delete, no undo.** To fix a bad reply, use `delmsg`
+from the workspace's store — there is no soft-delete, no undo.** To fix a bad reply, use `delmsg`
 with the message's index, not `delete`. The worker also accepts three ops beyond
 the three above: `move` (re-anchor a pin), `annotate` (flip the annotation flag),
 and `delmsg` (drop one message by index).
+
+⚠️ **A message whose author reads `Deleted user` is not spam, and never delete
+it.** Somebody asked to be erased. Erasure de-identifies rather than deletes: the
+`body`, the `at` and the thread's shape are untouched, `author` becomes that fixed
+sentinel, `by` is cleared and `verified` goes false. The reason it works that way is
+the reason not to tidy it up — a reply that answers a question is unreadable once
+the question is gone, and the request was to stop identifying somebody, not to
+rewrite a conversation other people are part of. Read it, act on it, leave it.
 
 **The resolve convention:** when you fix what a comment asked for, resolve it
 AND post a very brief reply saying *how* it was fixed (author "Claude" is the
