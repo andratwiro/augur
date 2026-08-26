@@ -139,6 +139,25 @@ export const TENANT_SCHEMA = Object.freeze([
      n REAL NOT NULL
    )`,
 
+  // The publish counter, per space. R2 keeps the payloads — the blobs, `versions/<n>.json`,
+  // the manifest — and this table is the sole ISSUER of the next number.
+  //
+  // It exists because R2 has no compare-and-swap and the store's own counter is read,
+  // incremented and written back by the client of it: two commits landing together both
+  // compute the same next number, and the second PUT overwrites the first's
+  // `versions/<n>.json` — destroying a point in the history that recovery depends on,
+  // silently, while both publishes report success. A Durable Object is single-threaded, so
+  // the increment here cannot interleave.
+  //
+  // `version` is what was last ISSUED, not what is live. The two differ for as long as a
+  // commit is in flight, and after a failed one they differ forever — a number is burned
+  // rather than reused, which is the same trade the rollback path already makes for the
+  // same reason: reusing one means overwriting a version that exists.
+  `CREATE TABLE IF NOT EXISTS publish_versions (
+     space   TEXT PRIMARY KEY,
+     version INTEGER NOT NULL
+   )`,
+
   // The workspace's own signing keys — today exactly one, `session`, the HMAC key its
   // session cookies are signed with. See the header for why this is here and why it is not
   // the credential the rest of the file refuses to hold.
@@ -397,6 +416,52 @@ export class TenantStore {
   /** Whether this workspace has anybody in it — the gate's "is the roster on" question. */
   usersActive() {
     return this.members().length > 0;
+  }
+
+  /**
+   * Issue the next publish version for a space. Atomic: one statement, one object, one
+   * thread.
+   *
+   * `floor` is the version the STORE currently holds, and it is what makes adopting this
+   * safe on a workspace that has been publishing for months. The counter starts empty, so
+   * without a floor the first issue would be 1 and would overwrite `versions/1.json` — the
+   * exact history destruction this exists to prevent. With it, the first issue is
+   * `live + 1` and every later one comes from the counter alone.
+   *
+   * It is a MAX rather than a trust: once the counter is ahead (a number issued for a
+   * commit that then failed), a stale floor from a slow R2 read cannot drag it back.
+   */
+  nextPublishVersion(space, floor = 0) {
+    const f = Number.isFinite(floor) && floor > 0 ? Math.floor(floor) : 0;
+    const rows = [...this.sql.exec(
+      `INSERT INTO publish_versions (space, version) VALUES (?1, ?2 + 1)
+         ON CONFLICT(space) DO UPDATE SET version = MAX(publish_versions.version, ?2) + 1
+       RETURNING version`,
+      String(space), f,
+    )];
+    return rows.length ? Number(rows[0].version) : null;
+  }
+
+  /**
+   * The worker's way in. A Durable Object stub is not publicly routable — only code
+   * holding the binding can reach it — so this is an internal API, not a surface.
+   *
+   * Deliberately narrow: one verb, the one thing that cannot be done correctly anywhere
+   * else. Reads that a worker can serve from KV or R2 do not belong here yet, because
+   * every one added is a round trip on a request path that does not need it.
+   */
+  async fetch(request) {
+    const url = new URL(request.url);
+    if (url.pathname === "/publish-version" && request.method === "POST") {
+      let body = null;
+      try { body = await request.json(); } catch (e) { /* handled below */ }
+      const space = body && body.space;
+      if (!space) return Response.json({ error: "no-space" }, { status: 400 });
+      await this.init(body.workspaceId);
+      const version = this.nextPublishVersion(space, body.floor);
+      return Response.json({ version });
+    }
+    return Response.json({ error: "not-found" }, { status: 404 });
   }
 
   /** The plan this workspace is on, and every ceiling it carries, as one flat object. */

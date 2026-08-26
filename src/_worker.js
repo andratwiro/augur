@@ -3146,6 +3146,60 @@ function publishRefusalBody(refusal) {
   return message ? { error: "forbidden", message } : { error: "forbidden" };
 }
 
+// ---- The publish counter --------------------------------------------------
+// Three places mint a new version — commit, rollback, and the purge that removes a URL
+// prefix — and all three did the same read-compute-write against R2: read
+// `manifest.json`, add one, PUT `versions/<n>.json`. R2 has no compare-and-swap, so two
+// of those landing together both compute the same number and the second PUT overwrites
+// the first's version file. Both publishes report success; the history quietly loses a
+// point that recovery depends on.
+//
+// A Durable Object is single-threaded, so ONE object issuing the number cannot interleave.
+// R2 keeps the payloads; the DO keeps nothing but the counter.
+//
+// IT FAILS CLOSED, and that is the decision worth reading twice. A deployment that binds
+// TENANTS has said the DO is the issuer; falling back to the old arithmetic when the
+// object is briefly unreachable would mean the guarantee is "usually atomic", which is not
+// a guarantee — and the failure it would let through is silent history loss. A refused
+// commit is loud and the publisher re-runs one command. So: no binding → today's
+// behaviour, unchanged, on every instance that exists right now; binding present and
+// unreachable → refuse.
+async function nextPublishVersion(env, tctx, spaceId, cur) {
+  const floor = (cur && cur.version) || 0;
+  const store = tenantStub(env, tctx && tctx.tenantId);
+  if (!store) return { version: floor + 1 };
+  try {
+    const res = await store.fetch("https://workspace/publish-version", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ space: spaceId, floor, workspaceId: tctx.tenantId }),
+    });
+    const body = res.ok ? await res.json() : null;
+    // `> floor` rather than merely an integer: a counter that answered with something at
+    // or below what the store already holds would name an existing version file, which is
+    // the one answer that must never be acted on.
+    if (body && Number.isInteger(body.version) && body.version > floor) return { version: body.version };
+    throw new Error(`workspace store answered ${res.status}`);
+  } catch (err) {
+    try {
+      console.log(JSON.stringify({
+        level: "alarm",
+        event: "publish-version-unavailable",
+        tenant: (tctx && tctx.tenantId) || "-",
+        space: spaceId,
+        detail: "the workspace store could not issue a publish version, so the commit was refused rather than computed from the store's own copy — which would risk overwriting an existing version file.",
+      }));
+    } catch { /* an alarm may never break the refusal it is announcing */ }
+    return { error: "version-unavailable" };
+  }
+}
+
+/** The refusal a caller returns when the counter could not answer. */
+const versionUnavailable = () => jsonResponse({
+  error: "version-unavailable",
+  message: "This workspace's store could not issue a publish version. Nothing was published. Run the same command again.",
+}, 503);
+
 async function publishApi(tctx, request, url, env) {
   if (!env.BUNDLES) return jsonResponse({ error: "bundle-store-not-configured" }, 501);
   const [spaceId, op, arg] = url.pathname.slice("/__publish/".length).split("/");
@@ -3651,7 +3705,9 @@ async function publishApi(tctx, request, url, env) {
     const heads = await Promise.all(sample.map((h) => env.BUNDLES.head("blobs/" + h)));
     const miss = sample.filter((h, i) => !heads[i]);
     if (miss.length) return jsonResponse({ error: "blobs-missing", missing: miss.slice(0, 5) }, 409);
-    const version = ((cur && cur.version) || 0) + 1;
+    const issued = await nextPublishVersion(env, tctx, spaceId, cur);
+    if (issued.error) return versionUnavailable();
+    const version = issued.version;
     const out = { ...m, version, publishedAt: new Date().toISOString(), publishedBy: who.label || "" };
     await env.BUNDLES.put(`spaces/${spaceId}/versions/${version}.json`, JSON.stringify(out));
     await env.BUNDLES.put(`spaces/${spaceId}/manifest.json`, JSON.stringify(out));
@@ -3708,7 +3764,9 @@ async function publishApi(tctx, request, url, env) {
     const restored = JSON.parse(await prev.text());
     const curObj = await env.BUNDLES.get(`spaces/${spaceId}/manifest.json`);
     const cur = curObj ? JSON.parse(await curObj.text()) : null;
-    const version = ((cur && cur.version) || 0) + 1;
+    const issued = await nextPublishVersion(env, tctx, spaceId, cur);
+    if (issued.error) return versionUnavailable();
+    const version = issued.version;
     const out = {
       ...restored, version,
       publishedAt: new Date().toISOString(),
@@ -3767,7 +3825,12 @@ async function removeFromStore(tctx, env, spaceId, urlPrefix, by) {
     routing.canvasCatalog = routing.canvasCatalog.filter(
       (e) => !String((e && e.url) || "").startsWith(urlPrefix));
   }
-  const version = (cur.version || 0) + 1;
+  // The third mint, and the same counter. A delete commits as a normal new version so a
+  // rollback undoes it like any other publish — which means it can collide with a publish
+  // in exactly the way the other two can.
+  const issued = await nextPublishVersion(env, tctx, spaceId, cur);
+  if (issued.error) return { error: "version-unavailable" };
+  const version = issued.version;
   const out = {
     ...cur, files, routing, version,
     publishedAt: new Date().toISOString(),
@@ -6426,6 +6489,7 @@ export const __testables = Object.freeze({
   revokePublishTokens, loginThrottled, loginSlowed, loginFail, DUMMY_HASH,
   pathOwnedBySpace, isPublishablePublicPrefix, removedPublicPrefixes, publishApi, loadManifests, LOGIN_MAX_FAILS,
   tokenActorRefusal, publishTokenTtlMs, mintPublishToken, adminTokensApi,
+  nextPublishVersion,
   publishAuthDetailed, publishRefusalBody,
   adminStorageApi,
   isPrefixBacked, backedPublicPrefixes,
