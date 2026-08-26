@@ -4,6 +4,19 @@ A prototype and research repository for product teams. Real, clickable
 prototypes and the design system they are built from, on one site with login,
 comments and live boards on top. Underneath it is all git and static HTML.
 
+**Building the prototypes is the easy part.** An agent can produce a convincing
+screen in a minute, and most teams already have more of them than they can find.
+What is missing is everything around them: where the last version went, who
+changed it, which of the four things called "the dashboard" is the one being
+reviewed, and where the feedback landed. That is what this is. Prototypes live
+in one place with the design system they are made from, comments stick to the
+pixels they are about, boards let you run the real screens side by side, and
+every version is a commit you can walk back to.
+
+It runs on your own box, or on somebody else's. There is no editor to be locked
+out of and no export to negotiate: a prototype is a folder of static HTML in a
+git repository you already own.
+
 **See it running: [demo.augur.works](https://demo.augur.works)**, sign in with
 `visita@fulla.demo` / `regadora`. It resets every night, so scribble away.
 
@@ -75,6 +88,13 @@ is tracked to the pixel across every prototype that links the system.
 
 ## Try it locally
 
+**Under ten seconds from an empty folder to a page in your browser**, and that is
+a measured number rather than a hopeful one: three runs on a laptop with a fast
+connection came in at 7.3s, 9.0s and 9.2s, stopwatch from `git clone` to a `200`
+on `http://localhost:8788/` serving the real gallery. Most of that is the two
+clones, so a slower connection moves the number and nothing else does — the
+engine itself is about two seconds from cold to serving.
+
 ```bash
 git clone https://github.com/andratwiro/augur.git
 git clone https://github.com/andratwiro/augur-space-fulla.git
@@ -82,9 +102,16 @@ cd augur-space-fulla
 node ../augur/scripts/dev.mjs
 ```
 
-That is the full shell on your machine, with about a second of hot reload. The
-engine has no runtime dependencies, plain `node` is enough. Prototypes are
-self-contained static HTML and also open straight from disk.
+There is no install step and no build step in that list, and that is not an
+omission: **the engine has no runtime dependencies**, so plain `node` is enough.
+What you get is the full shell — the gallery, the library, review mode, boards —
+with about a second of hot reload on every save. No login prompt, because a bare
+clone has no user list to gate against; add one and the gate turns on.
+
+Prototypes are self-contained static HTML, so `index.html` also opens straight
+from disk. That is fine for your own glance and never a way to show anyone
+anything: no chrome, no comments, no boards, and the link works on exactly one
+machine.
 
 ## How it is put together
 
