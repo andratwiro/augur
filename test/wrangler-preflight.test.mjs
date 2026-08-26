@@ -159,6 +159,34 @@ test("the shell template declares the gate and every binding", () => {
   assert.match(tpl, /GV_ASSET_SOURCE\s*=\s*"r2"/, "the template does not put the instance in bundle mode");
 });
 
+test("THE SHIPPED TEMPLATE PASSES ITS OWN PREFLIGHT once its placeholders are filled", () => {
+  // The recipe is: copy templates/shell/wrangler.example.toml, fill it in, run the
+  // preflight. That path was never actually walked, and it FAILED — the template annotates
+  // almost every line, and the reader kept the trailing comment as part of the value, so
+  // `binding = "ASSETS"   # …` read as a binding that is not ASSETS. Two spurious findings
+  // on a correct config, in the script that gates the deploy.
+  //
+  // Which is the worse kind of wrong: a guard that fires on the file it tells you to copy
+  // is a guard the next person deletes.
+  const filled = fs.readFileSync(TEMPLATE, "utf8")
+    .replace(/^name = .*/m, 'name = "probe"')
+    .replace(/^account_id = .*/m, 'account_id = "0123456789abcdef0123456789abcdef"')
+    .replace(/^main = .*/m, 'main = "engine/src/entry.js"')
+    .replace(/^directory = .*/m, 'directory = "engine/dist"')
+    .replace(/^id = "<your-kv-namespace-id>"/m, 'id = "beef"')
+    .replace(/^bucket_name = .*/m, 'bucket_name = "b"');
+  accepts(filled);
+});
+
+test("a trailing comment is not part of the value, and a quoted # still is", () => {
+  // The two halves pull opposite ways. Keep the quoted `#` — that lesson cost a
+  // 24-character secret becoming a 6-character one — and drop the trailing comment, or
+  // the template cannot pass.
+  accepts(GOOD.replace('binding = "ASSETS"', 'binding = "ASSETS"   # the worker reads its config through this'));
+  accepts(GOOD.replace("run_worker_first = true", "run_worker_first = true  # THE GATE"));
+  assert.match(rejects(GOOD + '\n[vars]\nMAIL_API_KEY = "abc#def"  # a comment too\n'), /secret-in-vars/);
+});
+
 test("the committed fixture passes the preflight", () => {
   // It is what `wrangler deploy --dry-run` runs against in test/worker-bundles.test.mjs,
   // so a fixture that would not pass preflight would be proving the wrong thing.

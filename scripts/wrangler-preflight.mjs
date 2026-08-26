@@ -50,6 +50,27 @@ const raw = fs.readFileSync(CFG, "utf8");
 const lines = raw.split(/\r?\n/).map((l) => (/^\s*#/.test(l) ? "" : l));
 const body = lines.join("\n");
 
+/**
+ * A value, with a TRAILING comment removed and a quoted `#` left alone.
+ *
+ * Both halves are load-bearing and they pull in opposite directions. The shipped
+ * template annotates almost every line (`binding = "ASSETS"   # the worker reads its own
+ * config through this`), so a reader that keeps the comment sees the binding as
+ * `"ASSETS" # the worker…` and refuses a correct config — and a guard that fires on the
+ * template it tells you to copy is a guard somebody deletes. But a `#` INSIDE a quoted
+ * value is a legitimate character, and treating it as a comment is how a 24-character
+ * secret became a 6-character one somewhere else in this project.
+ *
+ * So: a quoted value ends at its closing quote and whatever follows is a comment; an
+ * unquoted one ends at the first `#`.
+ */
+function stripTrailingComment(v) {
+  const q = /^\s*(["'])((?:\\.|(?!\1).)*)\1/.exec(v);
+  if (q) return q[2];
+  const hash = v.indexOf("#");
+  return (hash === -1 ? v : v.slice(0, hash)).trim();
+}
+
 /** A bare `key = value` at top level or inside the named table. */
 function valueOf(key, table = null) {
   let cur = null;
@@ -58,7 +79,7 @@ function valueOf(key, table = null) {
     if (t) { cur = t[1].trim(); continue; }
     if (cur !== table) continue;
     const m = line.match(new RegExp(String.raw`^\s*${key}\s*=\s*(.+?)\s*$`));
-    if (m) return m[1].replace(/^["']|["']$/g, "");
+    if (m) return stripTrailingComment(m[1]);
   }
   return null;
 }
