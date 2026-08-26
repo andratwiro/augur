@@ -188,6 +188,7 @@ test("the store exposes no read or write verb it does not yet need", () => {
     "nextPublishVersion",
     "overlayCas", "overlayInsert", "overlayOwner", "overlayRead", "overlayReadRev",
     "overlayReplace", "overlaySet", "provision",
-    "quotas", "readCounter", "schemaVersion", "sessionKey", "sql", "usersActive", "workspaceId",
+    "quotas", "readCounter", "schemaVersion", "sessionKey", "sql", "status", "touchActivity",
+    "usersActive", "workspaceId",
   ]);
 });

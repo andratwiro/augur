@@ -2942,6 +2942,19 @@ async function assetPathExists(tenantId, env, url) {
 //
 // Shape is additive: `builtAt`, `engine.sha` and `spaces.<id>.sha`/`dirty` keep
 // their exact previous meaning, so existing checks keep working.
+/**
+ * A publish token's label, as a name rather than an address.
+ *
+ * Used wherever a `publishedBy` crosses a boundary: `/_build.json` is served BEFORE the
+ * gate, and the workspace status payload is read by an operator-facing isolate. Both want
+ * to say who published; neither may say it with somebody's address.
+ */
+function publisherDisplayName(tctx, label) {
+  if (!label) return "";
+  const u = userByEmail(label, tctx.USERS);
+  return u ? u.name : String(label).split("@")[0];
+}
+
 function synthBuildStamp(tctx, manifests) {
   const spaces = {}, engine = { sha: null };
   if (tctx.INSTANCE_ENGINE_VERSION) engine.version = tctx.INSTANCE_ENGINE_VERSION;
@@ -2949,11 +2962,7 @@ function synthBuildStamp(tctx, manifests) {
   // /_build.json is served BEFORE the gate, so publishedBy must not leak the raw email
   // the publish token is labelled with. Map it to the roster display name when known,
   // else the local-part — enough to say who published, without publishing addresses.
-  const byName = (label) => {
-    if (!label) return "";
-    const u = userByEmail(label, tctx.USERS);
-    return u ? u.name : String(label).split("@")[0];
-  };
+  const byName = (label) => publisherDisplayName(tctx, label);
   const provenance = (m) => ({
     ...(m.version ? { version: m.version } : {}),
     ...(m.publishedAt ? { publishedAt: m.publishedAt } : {}),
@@ -3358,6 +3367,9 @@ async function publishApi(tctx, request, url, env) {
         httpMetadata: { contentType: /^image\//.test(ct) ? ct : "image/jpeg" },
       });
       return jsonResponse({ ok: true, hash });
+    }
+    if (op === "status" && request.method === "GET") {
+      return jsonResponse(await workspaceStatus(tctx, env));
     }
     if (op === "import" && request.method === "POST") {
       let body;
@@ -3793,10 +3805,38 @@ async function publishApi(tctx, request, url, env) {
     const issued = await nextPublishVersion(env, tctx, spaceId, cur);
     if (issued.error) return versionUnavailable();
     const version = issued.version;
-    const out = { ...m, version, publishedAt: new Date().toISOString(), publishedBy: who.label || "" };
+    // `bytesReferenced` — what a person means by "my site is this big", computed ONCE here
+    // rather than on every read of it.
+    //
+    // Two reasons it is a header field. A status handler that re-parsed manifests to sum
+    // them would reproduce the CPU failure the etag guard in loadManifests exists because
+    // of (a multi-MB manifest's JSON.parse blew the limit on the refresh tick) with the
+    // whole fleet as the multiplier. And it is a scalar a workspace can volunteer about
+    // itself without anything outside reaching into its bucket.
+    //
+    // ⚠️ IT IS NOT WHAT COSTS MONEY, and the gap is not small: measured on a live instance,
+    // the tree references 1.94 MB across 54 blobs while the bucket holds 124 MB across 1371
+    // objects, because versions are never pruned and blobs are never collected. So roughly
+    // nine tenths of a mature workspace's footprint is rollback history. A storage ceiling
+    // has to be defined against RETAINED bytes or it will never fire. Hence the name:
+    // `bytesReferenced`, never `size`.
+    const bytesReferenced = Object.values(
+      Object.fromEntries(Object.values(m.files || {})
+        .filter((f) => f && f.h)
+        .map((f) => [f.h, Number(f.s) || 0])),
+    ).reduce((n, b) => n + b, 0);
+    const out = {
+      ...m, version, bytesReferenced,
+      publishedAt: new Date().toISOString(), publishedBy: who.label || "",
+    };
     await env.BUNDLES.put(`spaces/${spaceId}/versions/${version}.json`, JSON.stringify(out));
     await env.BUNDLES.put(`spaces/${spaceId}/manifest.json`, JSON.stringify(out));
     bustManifests(tctx.tenantId); cfgAt = 0; // this isolate flips immediately; others within ~1.5s
+    // THE HALF THE BROWSER-SESSION STAMP MISSES. `augur publish` carries a bearer token and
+    // never touches `/__me`, so a team shipping daily from CI reads as months idle on the
+    // per-person clock — and a dormancy sweep keyed on that would suspend a workspace
+    // somebody uses every day.
+    touchWorkspaceActivity(env, tctx, null);
     // ── Stale-bake self-heal. Pages are baked with the PUBLISHER's engine clone,
     // and nothing constrains how old that clone is — runtime chrome recomposes
     // marker-wrapped chrome at serve time, but pages baked before the markers
@@ -5427,6 +5467,94 @@ async function replayFamilies(store, kv, doc, ids) {
   return { written, skipped };
 }
 
+// ---- What a workspace volunteers about itself -------------------------------
+//
+// `B-tenant-status-payload`. The shape is FORCED rather than chosen: the control plane is
+// bound to nothing but its signup store, and its own test fails the build if that changes.
+// So it cannot list a bucket or scan a namespace to compute any of this. The workspace
+// computes its own facts and hands them over.
+//
+// COUNTS AND SCALARS ONLY. This is read by an operator-facing isolate, and a comment body
+// has no business being anywhere near one — so no customer content crosses, not even the
+// address a publish token is labelled with, which is mapped to a display name exactly the
+// way the public build stamp maps it.
+//
+// The three expensive numbers are all precomputed elsewhere: `bytesReferenced` is written
+// into the manifest header at publish (see the commit handler), the counts are
+// `SELECT COUNT(*)` in the workspace's own object, and `lastActivityAt` is one column
+// bumped at the two places that mean somebody used this workspace.
+async function workspaceStatus(tctx, env) {
+  const stub = tenantStub(env, tctx && tctx.tenantId);
+  let store = { provisioned: false, hasStoredData: false, unavailable: !stub };
+  if (stub) {
+    try {
+      const res = await stub.fetch("https://workspace/status");
+      if (res.ok) store = await res.json();
+    } catch (e) { store = { provisioned: false, hasStoredData: false, unavailable: true }; }
+  }
+
+  // The published side. Read from the manifest HEADER — nothing here parses a file list.
+  const spaces = {};
+  let bytesReferenced = 0;
+  let prototypes = 0;
+  let versions = 0;
+  let lastPublish = null;
+  try {
+    const manifests = await loadManifests(tctx.tenantId, env);
+    for (const [id, m] of Object.entries(manifests || {})) {
+      if (id === "_engine") continue;
+      const units = (m.routing && m.routing.unitSources) || {};
+      const dirtyUnits = Object.values(units).filter((u) => u && u.dirty).length;
+      bytesReferenced += Number(m.bytesReferenced) || 0;
+      prototypes += Object.keys(units).length;
+      versions += Number(m.version) || 0;
+      spaces[id] = {
+        version: Number(m.version) || 0,
+        prototypes: Object.keys(units).length,
+        // The only unreproducible state the system has: a prototype published from a tree
+        // that was never committed exists in no repository at all.
+        prototypesFromDirtyTree: dirtyUnits,
+        bytesReferenced: Number(m.bytesReferenced) || 0,
+        publishedAt: m.publishedAt || null,
+      };
+      if (!lastPublish || (m.publishedAt || "") > (lastPublish.at || "")) {
+        lastPublish = {
+          space: id,
+          version: Number(m.version) || 0,
+          at: m.publishedAt || null,
+          // Never the raw address a token is labelled with — the same mapping the public
+          // build stamp uses, for the same reason.
+          by: publisherDisplayName(tctx, m.publishedBy),
+          sha: (m.source && m.source.sha) || null,
+          dirty: !!(m.source && m.source.dirty),
+        };
+      }
+    }
+  } catch (e) { /* a store that cannot be read reports zeros, not a 500 */ }
+
+  return {
+    workspace: (tctx && tctx.tenantId) || null,
+    ...store,
+    prototypes, versions, bytesReferenced, spaces, lastPublish,
+    at: new Date().toISOString(),
+  };
+}
+
+/**
+ * Note that somebody used this workspace. Fire-and-forget: a status column is not worth
+ * failing a sign-in or a publish over, and the object throttles the write itself.
+ */
+function touchWorkspaceActivity(env, tctx, ctx) {
+  const stub = tenantStub(env, tctx && tctx.tenantId);
+  if (!stub) return;
+  const p = stub.fetch("https://workspace/activity", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ workspaceId: tctx.tenantId }),
+  }).catch(() => {});
+  if (ctx && typeof ctx.waitUntil === "function") ctx.waitUntil(p);
+}
+
 // ---- Quotas -----------------------------------------------------------------
 //
 // A ceiling is per WORKSPACE, seeded at provisioning (src/tenant-quotas.mjs) and counted
@@ -6850,6 +6978,10 @@ async function handleRequest(request, env, ctx, url, trace) {
     // with no user list, where everyone is the operator (accounts:false).
     if (url.pathname === "/__me") {
       if (me && ctx && ctx.waitUntil) ctx.waitUntil(touchLastSeen(env, me));
+      // The workspace's own activity clock, which is a different question from the
+      // person's: the dormancy policy asks whether the WORKSPACE is being used, and this is
+      // half of that answer (the other half is a publish, below).
+      if (me) touchWorkspaceActivity(env, tctx, ctx);
       // `spaces` is the switcher's whole input. The rail ships every space's row in the
       // HTML (build time cannot know the viewer), so the rows are hidden until this
       // answer names them — which means a signed-out visitor is told nothing at all.
@@ -6971,6 +7103,7 @@ async function handleRequest(request, env, ctx, url, trace) {
         if (u && real && ok) {
           const token = await userToken(env, u);
           if (ctx && ctx.waitUntil) ctx.waitUntil(touchLastSeen(env, u));
+          touchWorkspaceActivity(env, tctx, ctx);
           return new Response(null, {
             status: 303,
             headers: {
@@ -7225,7 +7358,7 @@ export const __testables = Object.freeze({
   tokenActorRefusal, publishTokenTtlMs, mintPublishToken, adminTokensApi,
   nextPublishVersion, overlayFor, overlayKvKey, statusApi, nameApi, pinsApi,
   exportState, importState,
-  quotaBump, quotaMinute, quotaDay,
+  quotaBump, quotaMinute, quotaDay, workspaceStatus, touchWorkspaceActivity,
   PITI_VIEW_KEY, PITI_REMARKS_KEY,
   publishAuthDetailed, publishRefusalBody,
   adminStorageApi,

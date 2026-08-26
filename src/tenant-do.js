@@ -449,6 +449,90 @@ export class TenantStore {
     return run();
   }
 
+  /**
+   * Note when somebody used this workspace — a sign-in OR a publish, coarsely.
+   *
+   * `lastActivityAt` exists nowhere else, and the four signals that do each cover a slice
+   * with a hole. `publishedAt` is publishes only. `users:lastseen:<address>` is browser
+   * sessions and is BLIND TO PUBLISHING, because `augur publish` carries a bearer token and
+   * never touches `/__me` — a team shipping daily from CI reads as months idle. Comment
+   * recency would mean reading every page's threads. The canvas registry's stamp is
+   * creation, not editing, and a board document carries no wall clock at all.
+   *
+   * So it is one column, bumped at both, and THROTTLED: skipping the write while the stored
+   * value is fresh is what stops a per-request write on a busy workspace, the same reason
+   * the browser-session stamp throttles.
+   *
+   * The dormancy clock the lifecycle policy promises is keyed on this. Anything narrower
+   * suspends workspaces that are being used, which is why "publish counts" is not an extra.
+   */
+  touchActivity(now = Date.now(), throttleMs = 15 * 60 * 1000) {
+    const rows = [...this.sql.exec(`SELECT v FROM meta WHERE k = 'last_activity_at'`)];
+    const prev = rows.length ? Date.parse(rows[0].v) || 0 : 0;
+    if (now - prev < throttleMs) return false;
+    this.sql.exec(
+      `INSERT INTO meta (k, v) VALUES ('last_activity_at', ?) ON CONFLICT(k) DO UPDATE SET v = excluded.v`,
+      new Date(now).toISOString(),
+    );
+    return true;
+  }
+
+  /**
+   * The facts this workspace can state about itself. No customer content, ever — counts and
+   * scalars only, because this is read by an operator-facing isolate and a comment body has
+   * no business being anywhere near one.
+   *
+   * ⚠️ IT MUST NOT WRITE, AND MUST NOT init(). `ns.get(ns.idFromName(name))` always hands
+   * back a live stub, and a Durable Object comes into existence on its first WRITE — so a
+   * status call on a typo or a released slug that applied the schema would spring an empty
+   * workspace into being and then report it as real. Everything below reads, and a workspace
+   * that has never been written to answers `hasStoredData: false`.
+   */
+  status() {
+    // OUR tables, not any table. A Durable Object's storage carries bookkeeping of its
+    // own — `_cf_*` in production, and `__miniflare_do_name` under a local run — so
+    // "does this object have any table at all" answers `true` for an object nobody has
+    // ever written to, which is the exact question this must not get wrong.
+    const ours = new Set(TENANT_SCHEMA
+      .map((stmt) => (/CREATE TABLE IF NOT EXISTS (\w+)/.exec(stmt) || [])[1])
+      .filter(Boolean));
+    const tables = new Set([...this.sql.exec(
+      `SELECT name FROM sqlite_master WHERE type = 'table'`,
+    )].map((r) => String(r.name)).filter((n) => ours.has(n)));
+    if (!tables.has("meta")) return { provisioned: false, hasStoredData: tables.size > 0 };
+
+    const meta = {};
+    for (const row of this.sql.exec(`SELECT k, v FROM meta`)) meta[row.k] = row.v;
+    const count = (sql, ...p) => {
+      const rows = [...this.sql.exec(sql, ...p)];
+      return rows.length ? Number(rows[0].n) : 0;
+    };
+    // `dbstat` is a compile-time SQLite option, so it is asked for rather than assumed: a
+    // null here means "this runtime cannot tell me", which is a different answer from zero.
+    let doStoredBytes = null;
+    try { doStoredBytes = count(`SELECT SUM(pgsize) AS n FROM dbstat`); } catch (e) { doStoredBytes = null; }
+
+    return {
+      provisioned: !!meta.provisioned_at,
+      hasStoredData: true,
+      // Nothing sets this yet — B-control-plane-verbs does. Reported as a field rather than
+      // omitted, so a caller never has to tell "not suspended" from "this build is too old
+      // to know".
+      suspended: meta.suspended === "1",
+      suspendedReason: meta.suspended_reason || null,
+      createdAt: meta.created_at || null,
+      lastActivityAt: meta.last_activity_at || null,
+      plan: meta.plan || DEFAULT_PLAN,
+      quotas: this.quotas(),
+      members: tables.has("members") ? count(`SELECT COUNT(*) AS n FROM members WHERE removed_at IS NULL`) : 0,
+      invites: tables.has("invites") ? count(`SELECT COUNT(*) AS n FROM invites`) : 0,
+      threads: tables.has("overlay") ? count(`SELECT COUNT(*) AS n FROM overlay WHERE family = 'comments'`) : 0,
+      boards: tables.has("overlay") ? count(`SELECT COUNT(*) AS n FROM overlay WHERE family = 'boards'`) : 0,
+      images: tables.has("overlay") ? count(`SELECT COUNT(*) AS n FROM overlay WHERE family = 'assets'`) : 0,
+      doStoredBytes,
+    };
+  }
+
   /** Whether this workspace exists as far as anything else is concerned. */
   isProvisioned() {
     return [...this.sql.exec(`SELECT v FROM meta WHERE k = 'provisioned_at'`)].length > 0;
@@ -727,6 +811,16 @@ export class TenantStore {
       await this.init(body.workspaceId);
       const version = this.nextPublishVersion(space, body.floor);
       return Response.json({ version });
+    }
+    // NO init() ON THIS ONE. See status() — a call on a typo must not create a workspace.
+    if (url.pathname === "/status" && request.method === "GET") {
+      return Response.json(this.status());
+    }
+    if (url.pathname === "/activity" && request.method === "POST") {
+      let body = null;
+      try { body = await request.json(); } catch (e) { /* an empty body is fine */ }
+      await this.init(body && body.workspaceId);
+      return Response.json({ wrote: this.touchActivity() });
     }
     if (url.pathname === "/state/import" && request.method === "POST") {
       let body = null;
