@@ -105,17 +105,89 @@ test("A VISITOR GETS A PLAIN PAGE, not a 404 and not the last published content"
   assert.equal(res.headers.get("Cache-Control"), "no-store");
 });
 
-test("⚠️ THE PAGE NAMES NOTHING — not the workspace, not the reason, not an address", async () => {
+test("⚠️ THE STRANGER'S PAGE NAMES NOTHING — not the workspace, not the reason", async () => {
   // A suspension can be an acceptable-use takedown. "Paused for breaking the rules" on a
-  // public page is a punishment nobody decided to hand out; the reason goes to the admins by
-  // mail, and a stranger sees the same page in every case.
-  const body = await W.suspensionPage().text();
-  for (const word of ["aup", "abuse", "violation", "breach", "payment", "unpaid", "dormant", "@"]) {
-    assert.ok(!body.toLowerCase().includes(word), `the page says "${word}"`);
+  // public page is a punishment nobody decided to hand out.
+  const paused = { suspended: true, reason: "aup: phishing page", at: "2026-08-26T10:00:00.000Z" };
+  const body = await W.suspensionPage(paused, false).text();
+  for (const word of ["aup", "phishing", "abuse", "violation", "breach", "payment", "unpaid", "@", "2026"]) {
+    assert.ok(!body.toLowerCase().includes(word), `the stranger's page says "${word}"`);
   }
   assert.match(body, /noindex/);
   assert.match(body, /paused/i);
-  assert.match(body, /not been deleted|not gone/i, "it does not say the data is still there");
+  assert.match(body, /not gone/i);
+});
+
+test("⚠️ AND IT PROMISES NOTHING — the first version told strangers it was coming back", async () => {
+  // "An admin can sign in and bring it back" is true of a dormancy pause and FALSE of an
+  // acceptable-use one and of a tombstone. A stranger was being told a workspace was
+  // returning when nobody had decided that. What is left is the one thing true in every
+  // case: it is paused, and it is not gone.
+  const t = await W.suspensionPage({ suspended: true, reason: "deleted", deleted: true }, false).text();
+  assert.ok(!/bring it back/i.test(t), "the stranger's page promises a return");
+  assert.ok(!/sign in/i.test(t), "the stranger's page tells a stranger to sign in");
+  // "Nothing has been deleted" is the one use of the word that is allowed, and it is true
+  // for the whole grace window. What must not appear is that this one IS a deletion.
+  assert.ok(!/is deleted|was deleted|erased/i.test(t), "the stranger's page reveals a tombstone");
+  assert.match(t, /nothing has been deleted/i);
+});
+
+// ── what a MEMBER sees ──────────────────────────────────────────────────────────────
+
+test("A MEMBER SEES THE REASON, the date, and the one thing that is true in every case", async () => {
+  // `F-suspended-instance-page`. Somebody who can prove they belong here is the person the
+  // reason is for.
+  const body = await W.suspensionPage({
+    suspended: true, reason: "aup: phishing page", at: "2026-08-26T10:00:00.000Z", deleted: false,
+  }, true).text();
+  assert.match(body, /aup: phishing page/);
+  assert.match(body, /2026-08-26/);
+  assert.match(body, /augur export --full/, "the export promise has no other surface");
+  assert.match(body, /nothing has been erased/i);
+  // It does not invent a procedure: how a workspace comes back depends on why it went, and
+  // only whoever paused it can say.
+  assert.ok(!/support@|contact us|write to us/i.test(body));
+});
+
+test("a MEMBER of a tombstoned workspace is told the erasure date, which a stranger is not", async () => {
+  const p = {
+    suspended: true, reason: "deleted", at: "2026-08-26T10:00:00.000Z",
+    deleted: true, purgeAfter: "2026-09-25T12:00:00.000Z",
+  };
+  const mine = await W.suspensionPage(p, true).text();
+  assert.match(mine, /deleted/i);
+  assert.match(mine, /2026-09-25/, "the erasure date is the number that matters");
+  assert.match(mine, /augur export --full/, "you can still leave with your work");
+  const theirs = await W.suspensionPage(p, false).text();
+  assert.ok(!theirs.includes("2026-09-25"));
+});
+
+test("the operator's reason is ESCAPED — it is not a stranger's input, and that is not the test", async () => {
+  const body = await W.suspensionPage({
+    suspended: true, reason: `<img src=x onerror="alert(1)">`, at: "2026-08-26T10:00:00.000Z",
+  }, true).text();
+  assert.ok(!body.includes("<img"), "operator text was interpolated raw");
+  assert.match(body, /&lt;img/);
+});
+
+test("a member page with no reason recorded still renders, without an empty row", async () => {
+  const body = await W.suspensionPage({ suspended: true }, true).text();
+  assert.match(body, /paused/i);
+  assert.ok(!body.includes("<dt>Reason</dt>"));
+});
+
+test("THE MEMBER CHECK IS NOT AN AUTHORIZATION DECISION, and the cookie gate is cheap", () => {
+  // Nothing is unlocked by answering yes; the only difference is whether a 503 states a
+  // reason. So the expensive question is asked only when a cookie is actually present, and
+  // a stranger, a crawler and a link in a chat cost a paused workspace nothing.
+  const withCookie = new Request("https://x.test/", {
+    headers: { Cookie: "__Host-augur_user=someone.abc" },
+  });
+  assert.equal(W.hasSessionCookie(withCookie), true);
+  assert.equal(W.hasSessionCookie(new Request("https://x.test/")), false);
+  assert.equal(W.hasSessionCookie(new Request("https://x.test/", { headers: { Cookie: "theme=dark" } })), false);
+  // ⏳ A legacy cookie name still counts — a member mid-rename is still a member.
+  assert.equal(W.hasSessionCookie(new Request("https://x.test/", { headers: { Cookie: "gv_user=x.y" } })), true);
 });
 
 test("a machine caller gets JSON, because a CLI reading a holding page as a manifest is worse", async () => {
@@ -272,6 +344,21 @@ test("THE ROUTER REFUSES A PAUSED WORKSPACE BEFORE IT READS ANY CONFIG AT ALL", 
       assert.match(body, /noindex/, path);
     }
   }
+});
+
+test("A COOKIE THAT PROVES NOTHING GETS THE STRANGER'S PAGE — the check fails to no", async () => {
+  // Nothing is unlocked by the member check, so every uncertainty resolves to "stranger":
+  // no config, no roster, an unreadable store, a cookie that names nobody. This fixture has
+  // a TENANTS binding and no store at all, and the page must still render rather than throw.
+  const env = suspendedEnv({ suspended: true, reason: "aup", at: "2026-08-26T10:00:00.000Z" });
+  W.__setTenantTestState({ memo: { at: Date.now(), tenantId: "wired-cookie" } });
+  const res = await worker.fetch(new Request("https://x.test/", {
+    headers: { Accept: "text/html", Cookie: "__Host-augur_user=nobody@example.test.deadbeef" },
+  }), env, { waitUntil() {} });
+  assert.equal(res.status, 503);
+  const body = await res.text();
+  assert.ok(!body.includes("aup"), "an unverified cookie was shown the reason");
+  assert.match(body, /paused/i);
 });
 
 test("A LIVE WORKSPACE IS NOT AFFECTED — the check answers no and the request carries on", async () => {

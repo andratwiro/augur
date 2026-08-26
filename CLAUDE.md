@@ -84,7 +84,13 @@ degradation here: an isolate that has never managed to read the flag refuses, be
 workspace can be paused for serving a phishing page and "the store blinked" is not a reason
 to serve it again. A stale answer is kept, exactly like the freeze. A visitor gets a plain
 `noindex` 503 that names nothing — not the workspace, not the reason — because a suspension
-can be a takedown and the reason belongs in mail to the admins, not on a public page.
+can be a takedown and the reason belongs to the people who can act on it. **A MEMBER gets a
+different page**: the reason as the operator recorded it, when it started, and for a
+tombstone the erasure date, plus the one thing true in every case — `augur export --full`
+still runs. It invents no procedure for coming back, because how a workspace returns depends
+on why it went. Proving membership costs a config read, so it is paid ONLY when a session
+cookie is actually present, and the check fails to "stranger" on anything at all: it unlocks
+nothing, and a wrong answer costs a member a sentence.
 **A single-workspace instance pays nothing**: no `TENANTS` binding, no question asked.
 
 **Nothing an isolate keeps may be shared between workspaces, and the proof of that is a

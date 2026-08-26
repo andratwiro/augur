@@ -5763,28 +5763,77 @@ async function readSuspension(tenantId, env, now = Date.now()) {
  * not what anybody should find in a search result.
  *
  * ⚠️ IT NAMES NOTHING. Not the workspace, not the reason, not who to write to about the
- * reason. A suspension can be an AUP takedown, and "paused for breaking the rules" on a
- * public page is a punishment nobody decided to hand out; the reason goes to the admins,
- * through mail, and the page a stranger sees is the same page in every case.
+ * reason. A suspension can be an acceptable-use takedown, and "paused for breaking the
+ * rules" on a public page is a punishment nobody decided to hand out; the reason belongs to
+ * the people who can act on it, which is what `suspensionPage(paused, true)` is for.
+ *
+ * ⚠️ AND IT PROMISES NOTHING EITHER. The first version of this page said "an admin can sign
+ * in and bring it back", which is true of a dormancy pause and FALSE of an acceptable-use
+ * one and of a tombstone — so a stranger was being told a workspace was coming back when
+ * nobody had decided that. What a stranger is told is the one thing true in every case:
+ * it is paused, and it is not gone.
  */
-function suspensionPage() {
+function suspensionPage(paused = null, forMember = false) {
+  const p = paused || {};
+  const body = forMember
+    ? memberSuspensionBody(p)
+    : `<h1>This workspace is paused</h1>`
+      + `<p>It is not gone, and nothing has been deleted. If you were expecting to find `
+      + `something here, whoever runs this workspace will know why.</p>`;
   const html = `<!doctype html><html lang="en"><head><meta charset="utf-8">`
     + `<meta name="viewport" content="width=device-width,initial-scale=1">`
     + `<meta name="robots" content="noindex,nofollow">`
     + `<title>Paused</title><style>`
     + `body{margin:0;min-height:100vh;display:grid;place-items:center;`
     + `font:16px/1.6 system-ui,sans-serif;color:#333;background:#faf9f7}`
-    + `main{max-width:32rem;padding:2rem;text-align:center}`
+    + `main{max-width:34rem;padding:2rem;text-align:left}`
     + `h1{font-size:1.25rem;font-weight:600;margin:0 0 .5rem}`
-    + `p{margin:0;color:#666}`
-    + `</style></head><body><main>`
-    + `<h1>This workspace is paused</h1>`
-    + `<p>It is not gone. Nothing has been deleted, and an admin can sign in and bring it back.</p>`
-    + `</main></body></html>`;
+    + `p{margin:0 0 .75rem;color:#555}`
+    + `dl{margin:0 0 1rem;display:grid;grid-template-columns:auto 1fr;gap:.15rem .75rem;color:#555}`
+    + `dt{color:#888}dd{margin:0}`
+    + `code{background:#f0eee9;padding:.1rem .35rem;border-radius:3px;font-size:.9em}`
+    + `</style></head><body><main>${body}</main></body></html>`;
   return new Response(html, {
     status: 503,
     headers: { "content-type": "text/html; charset=utf-8", "Retry-After": "3600", "Cache-Control": "no-store" },
   });
+}
+
+/**
+ * What a MEMBER of the paused workspace sees instead.
+ *
+ * `F-suspended-instance-page`. Somebody who can prove they belong here is the person the
+ * reason is for, so this page states it — the reason as the operator recorded it, when it
+ * started, and for a tombstone the date the data is actually erased.
+ *
+ * ⚠️ IT TELLS THEM THE ONE THING THAT IS TRUE IN EVERY CASE AND USEFUL IN ALL OF THEM: the
+ * export still works. That is not a consolation prize, it is the promise the lifecycle page
+ * makes — "if your reason for coming back is to leave, you can" — and this is the only
+ * surface where a person finds out how. Nothing else here is generic enough to promise: how
+ * a workspace comes back depends on why it went, and only the operator who paused it can
+ * say. So the page states the facts and does not invent a procedure.
+ *
+ * The reason is OPERATOR-WRITTEN TEXT and is escaped. It reaches this page from a control
+ * verb, so it is not a stranger's input, but "not a stranger's" is not "safe to interpolate".
+ */
+function memberSuspensionBody(p) {
+  const when = p.at ? String(p.at).slice(0, 10) : null;
+  const tombstone = !!p.deleted;
+  const rows = [
+    when ? `<dt>Since</dt><dd>${escapeHtml(when)}</dd>` : "",
+    p.reason ? `<dt>Reason</dt><dd>${escapeHtml(String(p.reason))}</dd>` : "",
+    tombstone && p.purgeAfter
+      ? `<dt>Erased on</dt><dd>${escapeHtml(String(p.purgeAfter).slice(0, 10))}</dd>` : "",
+  ].filter(Boolean).join("");
+  return `<h1>${tombstone ? "This workspace is deleted" : "This workspace is paused"}</h1>`
+    + `<p>${tombstone
+      ? "Everything is still here until the date below. After that it is erased."
+      : "Nothing has been erased. Your content, comments, boards and roster are exactly as they were."}</p>`
+    + (rows ? `<dl>${rows}</dl>` : "")
+    + `<p>You can still take everything with you: <code>augur export --full</code> runs `
+    + `normally on a paused workspace.</p>`
+    + `<p>Whoever paused this workspace is the only one who can lift it, and the reason `
+    + `above is what they recorded.</p>`;
 }
 
 /**
@@ -5798,6 +5847,34 @@ function wantsJson(request, url) {
   if (url.pathname.startsWith("/__")) return true;
   const accept = request.headers.get("Accept") || "";
   return !accept.includes("text/html");
+}
+
+/**
+ * Is there a session cookie at all? Not "is it valid" — this is the cheap gate in front of
+ * the expensive question, so a stranger with no cookie never causes a paused workspace to
+ * read its own config.
+ */
+function hasSessionCookie(request) {
+  const cookies = request.headers.get("Cookie") || "";
+  return [USER_COOKIE, ...LEGACY_USER_COOKIES].some((n) => cookies.includes(n + "="));
+}
+
+/**
+ * Does this cookie name somebody who belongs to the paused workspace?
+ *
+ * ⚠️ THIS IS NOT AN AUTHORIZATION DECISION and must never become one. Nothing is unlocked by
+ * answering yes — the only difference it makes is whether a 503 page states the reason for
+ * the pause. So it FAILS TO "NO" on anything at all: no config, no roster, an unreadable
+ * store, a cookie that resolves to nobody. The wrong answer here costs a member a sentence.
+ */
+async function isPausedWorkspaceMember(request, env, tenantId) {
+  try {
+    const tctx = await loadConfig(tenantId, env);
+    if (!tctx || !tctx.USERS.length) return false;
+    return !!(await identify(request, env, tctx.USERS));
+  } catch (e) {
+    return false;
+  }
 }
 
 /** The API-shaped refusal, for a caller that is plainly not a browser. */
@@ -7393,7 +7470,16 @@ async function handleRequest(request, env, ctx, url, trace) {
       // that is the one degradation in this file that shuts a door instead of opening one.
       if (paused === undefined || paused) {
         if (!isAllowedWhileSuspended(request, url)) {
-          return wantsJson(request, url) ? suspensionRefusal() : suspensionPage();
+          if (wantsJson(request, url)) return suspensionRefusal();
+          // ⚠️ A MEMBER SEES THE REASON; A STRANGER DOES NOT. Proving membership costs a
+          // config read and a cookie check, and it is paid ONLY when a session cookie is
+          // actually present — so a stranger, a crawler and a link in a chat still cost this
+          // paused workspace nothing at all, which is the property the check was placed above
+          // the config load for. See suspensionPage/memberSuspensionBody.
+          const forMember = hasSessionCookie(request)
+            ? await isPausedWorkspaceMember(request, env, tenantId)
+            : false;
+          return suspensionPage(paused === undefined ? null : paused, forMember);
         }
       }
     }
@@ -7919,7 +8005,7 @@ export const __testables = Object.freeze({
   readFreeze, setFreeze, isFrozenWrite, FROZEN_WRITES, FREEZE_KEY,
   readSuspension, isAllowedWhileSuspended, SUSPENDED_ALLOWED, SUSPENDED_ALLOWED_READS,
   SUSPENSION_TTL_MS,
-  suspensionPage, suspensionRefusal, wantsJson,
+  suspensionPage, suspensionRefusal, wantsJson, hasSessionCookie, memberSuspensionBody,
   PITI_VIEW_KEY, PITI_REMARKS_KEY,
   publishAuthDetailed, publishRefusalBody,
   adminStorageApi,
