@@ -329,6 +329,7 @@ const ALLOWLIST = {
     frozen: [
       "TENANT_SCHEMA",       // the DDL, identical for every workspace — what differs is where it is applied
       "FORBIDDEN_COLUMNS",   // column names the schema may not have; a fact about credentials
+      "CONTROL_VERBS",       // the whole of what the control plane may ask; the same six for every workspace
     ],
   },
 

@@ -55,6 +55,23 @@ refused in identical words on purpose. The resolver does NOT check whether a wor
 exists: that answer lives inside the object it would have to reach anyway, and asking here
 would put a round trip in front of every request.
 
+**What can be done TO a workspace from outside it is one list**: `CONTROL_VERBS` in
+`src/tenant-do.js` — `provision`, `status`, `suspend`, `resume`, `rotate`, `delete` — served
+under `/__control/<verb>` on the workspace object and reachable only by code holding the
+namespace binding. Two properties hold across all of them. **Only `provision` may create
+anything**: every other verb reads `meta` and refuses `not-provisioned` before `init()`,
+because each takes its workspace name from a URL an operator typed and a typo that
+provisioned would leave a workspace nobody knows exists. And **a refusal is a 4xx**, never
+an `ok: false` inside a 200 — the control plane logs a verb's verdict from the status line,
+so a refusal wearing a 200 is a suspension written into the audit log as having happened.
+`delete` is a TOMBSTONE (`DELETE_GRACE_MS`, the 30 days the hosted lifecycle page promises
+customers) and erases nothing; `destroy()` is the separate primitive that does. `rotate`
+really revokes publish tokens and ⏳ does NOT yet end sessions, because `userToken()` still
+HMACs on the Worker-wide `SESSION_SECRET` rather than the workspace's own signing key —
+`test/tenant-verbs.test.mjs` pins that gap so the day the read swaps over, a failing test
+says so. The list is written twice, here and as `TENANT_RPC` in the control plane, because
+the repos cannot import each other; both suites assert the other's copy.
+
 **Nothing an isolate keeps may be shared between workspaces, and the proof of that is a
 TEST, not a lint.** `test/tenant-route-sweep.test.mjs` drives the real worker in BUNDLE
 mode — what every live instance serves — with two workspaces over a table of routes,

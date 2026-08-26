@@ -181,14 +181,19 @@ test("the store exposes no read or write verb it does not yet need", () => {
   // is here because B-quota-schema put ceilings in this object and every enforcement point
   // to come reads them from one place — see test/tenant-quotas.test.mjs. The rest arrived
   // with B-provisioning-atomic, which needs to create a workspace and to answer whether it
-  // exists — see test/tenant-provisioning.test.mjs.
+  // exists — see test/tenant-provisioning.test.mjs. The four operator verbs and the three
+  // `meta` accessors they share arrived with B-control-plane-verbs — see
+  // test/tenant-verbs.test.mjs, and note that `deleteWorkspace` is a TOMBSTONE while
+  // `destroy` is the erasure primitive it does not call.
   const names = Object.getOwnPropertyNames(TenantStore.prototype).filter((n) => n !== "constructor");
   assert.deepEqual(names.sort(), [
-    "bumpCounter", "destroy", "fetch", "importOverlay", "init", "isProvisioned", "members",
+    "bumpCounter", "clearMeta", "controlResult", "deleteWorkspace", "destroy", "fetch",
+    "hasMeta", "importOverlay", "init", "isProvisioned", "members",
     "nextPublishVersion",
     "overlayCas", "overlayInsert", "overlayOwner", "overlayRead", "overlayReadRev",
     "overlayReplace", "overlaySet", "provision",
-    "quotas", "readCounter", "schemaVersion", "sessionKey", "sql", "status", "touchActivity",
-    "usersActive", "workspaceId",
+    "quotas", "readCounter", "readMeta", "resume", "rotate", "schemaVersion", "sessionKey",
+    "sql", "status", "suspend", "touchActivity",
+    "usersActive", "workspaceId", "writeMeta",
   ]);
 });

@@ -321,6 +321,31 @@ export function setWorkspacePlan(sql, plan, plans = PLANS) {
  * mint a valid session cookie for a neighbour. A key that is generated per workspace, into
  * that workspace's own storage, cannot be that.
  */
+/**
+ * How long a deleted workspace's data survives the delete.
+ *
+ * ⚠️ THIS NUMBER IS PUBLISHED, so it is not a tuning knob. The hosted lifecycle page tells
+ * customers "gone from the service in 30 days, gone from the backups within 70", the
+ * delete-confirmation screen has to say the same thing (`F-tenant-delete-ux`), and the
+ * backup rotation is what makes the second number true (`D-2-nightly-backup-worm`, 30 kept
+ * plus 40). Change this and all three change the same day, or the platform is promising
+ * something it does not do.
+ */
+export const DELETE_GRACE_MS = 30 * 24 * 60 * 60 * 1000;
+
+/**
+ * Every verb the outside world may ask a workspace to perform on itself.
+ *
+ * ⚠️ IT MUST MATCH `TENANT_RPC` in the control plane's src/provisioning.js EXACTLY. The two
+ * are separate repos and neither can import the other, so the list is written twice on
+ * purpose and the seam between them was open for a while: the control plane POSTed
+ * `/__control/<verb>` and this object routed `/status`, `/activity`, `/destroy` and nothing
+ * else, so every control-plane call was a 404 that nothing was watching for.
+ */
+export const CONTROL_VERBS = Object.freeze([
+  "provision", "status", "suspend", "resume", "rotate", "delete",
+]);
+
 export function newSigningKey(random = (b) => crypto.getRandomValues(b)) {
   const bytes = new Uint8Array(32);
   random(bytes);
@@ -515,11 +540,17 @@ export class TenantStore {
     return {
       provisioned: !!meta.provisioned_at,
       hasStoredData: true,
-      // Nothing sets this yet — B-control-plane-verbs does. Reported as a field rather than
-      // omitted, so a caller never has to tell "not suspended" from "this build is too old
-      // to know".
+      // Reported as fields rather than omitted, so a caller never has to tell "not
+      // suspended" from "this build is too old to know".
       suspended: meta.suspended === "1",
       suspendedReason: meta.suspended_reason || null,
+      suspendedAt: meta.suspended_at || null,
+      // A tombstone. The data is all still here until `purgeAfter`, which is why the two are
+      // reported together — "deleted" without the date reads as "gone", and for thirty days
+      // it is not.
+      deleted: !!meta.deleted_at,
+      deletedAt: meta.deleted_at || null,
+      purgeAfter: meta.purge_after || null,
       createdAt: meta.created_at || null,
       lastActivityAt: meta.last_activity_at || null,
       plan: meta.plan || DEFAULT_PLAN,
@@ -536,6 +567,179 @@ export class TenantStore {
   /** Whether this workspace exists as far as anything else is concerned. */
   isProvisioned() {
     return [...this.sql.exec(`SELECT v FROM meta WHERE k = 'provisioned_at'`)].length > 0;
+  }
+
+  // ── The operator verbs ────────────────────────────────────────────────────────────
+  //
+  // `B-control-plane-verbs`. Four things somebody can do TO a workspace from outside it,
+  // and one property they all share: THEY NEVER CREATE ONE. Each takes its name from a URL
+  // path an operator typed, and a typo that provisioned a workspace would be a workspace
+  // nobody knows exists, holding a signing key and a quota row, invisible to every list.
+  // So each refuses `not-provisioned` by reading `meta` the way `status()` does, before
+  // `init()` is anywhere near the call.
+
+  /**
+   * Stop this workspace serving, with a reason a person wrote.
+   *
+   * ⚠️ SETTING THE FLAG IS NOT THE ENFORCEMENT. Nothing consults it on the request path
+   * yet — that is `B-suspend-check-in-resolver`, which reads it on every resolve and
+   * short-circuits before any content, login gate or publish endpoint runs. Until then a
+   * suspension is a fact recorded here and reported by `status()`, and an operator reading
+   * "suspended" must not conclude the site is dark.
+   *
+   * Re-suspending an already-suspended workspace does NOT restart the clock or replace the
+   * reason, for the same reason re-freezing does not: a script that retries its first step
+   * must not lose why the suspension started or when.
+   */
+  suspend(reason = "", at = new Date().toISOString()) {
+    if (!this.hasMeta()) return { ok: false, error: "not-provisioned" };
+    if (!this.isProvisioned()) return { ok: false, error: "not-provisioned" };
+    const already = this.readMeta("suspended") === "1";
+    if (already) {
+      return { ok: true, changed: false, since: this.readMeta("suspended_at"), reason: this.readMeta("suspended_reason") };
+    }
+    this.writeMeta("suspended", "1");
+    this.writeMeta("suspended_at", at);
+    this.writeMeta("suspended_reason", String(reason || ""));
+    return { ok: true, changed: true, since: at, reason: String(reason || "") };
+  }
+
+  /**
+   * Let it serve again, and say how long it did not.
+   *
+   * The duration is returned because somebody planned around it — a customer was told
+   * "back within the hour", and "about an hour" from memory is not a number. Same reason
+   * `augur thaw` prints one.
+   *
+   * ⚠️ IT REFUSES TO RESUME A DELETED WORKSPACE. A delete suspends as part of tombstoning
+   * (see `deleteWorkspace`), so resume would otherwise be an undelete that puts a
+   * tombstoned workspace back on the air while its purge date still stands — a workspace
+   * serving traffic with a scheduled erasure behind it. Undeleting is `restore`, which is
+   * `E-gdpr-delete-tenant`'s to build, and it is a different act with a different audit line.
+   */
+  resume(at = new Date().toISOString()) {
+    if (!this.hasMeta()) return { ok: false, error: "not-provisioned" };
+    if (!this.isProvisioned()) return { ok: false, error: "not-provisioned" };
+    if (this.readMeta("deleted_at")) return { ok: false, error: "deleted" };
+    const since = this.readMeta("suspended_at");
+    if (this.readMeta("suspended") !== "1") return { ok: true, changed: false, suspendedMs: 0 };
+    for (const k of ["suspended", "suspended_at", "suspended_reason"]) this.clearMeta(k);
+    const ms = since ? Math.max(0, Date.parse(at) - Date.parse(since)) : 0;
+    return { ok: true, changed: true, suspendedMs: Number.isFinite(ms) ? ms : 0, since, until: at };
+  }
+
+  /**
+   * Cut off everything this workspace has handed out, in one transaction.
+   *
+   * The verb for "a credential of this workspace's is in somebody else's hands and we do
+   * not know which one". So it takes away BOTH kinds at once rather than offering a choice:
+   * an operator who has to pick which half to rotate under that pressure will pick wrong,
+   * and the cost of taking both is that people sign in again and CI re-logs-in once.
+   *
+   * ⚠️ ONE HALF OF THIS IS REAL TODAY AND ONE IS NOT, and the difference matters more than
+   * the code:
+   *
+   *   · PUBLISH TOKENS — really gone. The rows are deleted, and a bearer is only ever a row.
+   *   · SESSIONS — NOT YET. A session cookie HMACs on the Worker-wide `env.SESSION_SECRET`
+   *     (`userToken`, src/_worker.js), not on this key, so rotating the key here invalidates
+   *     nothing a browser is holding. The key has existed per workspace since provisioning
+   *     precisely so that swap is a read change rather than a migration, and it belongs with
+   *     putting this object on the request path (`B-cross-workspace-signin`). Until it
+   *     happens, ROTATE IS NOT A SESSION KILL, and an operator responding to a compromise
+   *     must reset the affected people's credentials as well — which does end their sessions,
+   *     because the token binds to each person's own effective secret.
+   *
+   * `test/tenant-verbs.test.mjs` pins that gap rather than describing it, so the day the read
+   * swaps over, the failing test is the one that tells you rotate became a session kill.
+   */
+  rotate(at = new Date().toISOString()) {
+    if (!this.hasMeta()) return { ok: false, error: "not-provisioned" };
+    if (!this.isProvisioned()) return { ok: false, error: "not-provisioned" };
+    const body = () => {
+      const before = [...this.sql.exec(`SELECT COUNT(*) AS n FROM publish_tokens`)][0];
+      const tokens = before ? Number(before.n) : 0;
+      this.sql.exec(`DELETE FROM publish_tokens`);
+      const key = newSigningKey();
+      this.sql.exec(
+        `INSERT INTO signing_keys (purpose, key, created_at, rotated_at) VALUES ('session', ?, ?, ?)
+           ON CONFLICT(purpose) DO UPDATE SET key = excluded.key, rotated_at = excluded.rotated_at`,
+        key, at, at,
+      );
+      return { ok: true, publishTokensRevoked: tokens, rotatedAt: at, sessionsEnded: false };
+    };
+    return this.ctx.storage.transactionSync ? this.ctx.storage.transactionSync(body) : body();
+  }
+
+  /**
+   * Tombstone this workspace and set the date its data is erased.
+   *
+   * ⚠️ IT DELETES NOTHING. That is the point of a tombstone: for the grace window the data
+   * is all still here, so a delete somebody regrets is a support mail rather than a
+   * catastrophe. Actually erasing it — the R2 prefix, this object's storage, dedup-safely —
+   * is `E-gdpr-delete-tenant`, and `destroy()` is the primitive it will use.
+   *
+   * ⚠️ A DELETE SUSPENDS, and it is the same flag rather than a second one. Otherwise
+   * everything that has to refuse a dead workspace — the resolver, the publish endpoints,
+   * the realtime join — would need two checks, and the second check is the one somebody
+   * forgets. `reason` says which it was, so an operator reading `status()` can still tell a
+   * suspension from a tombstone.
+   */
+  deleteWorkspace(at = new Date().toISOString(), graceMs = DELETE_GRACE_MS) {
+    if (!this.hasMeta()) return { ok: false, error: "not-provisioned" };
+    if (!this.isProvisioned()) return { ok: false, error: "not-provisioned" };
+    const existing = this.readMeta("deleted_at");
+    if (existing) {
+      return { ok: true, changed: false, deletedAt: existing, purgeAfter: this.readMeta("purge_after") };
+    }
+    const purgeAfter = new Date(Date.parse(at) + graceMs).toISOString();
+    const body = () => {
+      this.writeMeta("deleted_at", at);
+      this.writeMeta("purge_after", purgeAfter);
+      this.writeMeta("suspended", "1");
+      this.writeMeta("suspended_at", at);
+      this.writeMeta("suspended_reason", "deleted");
+      this.sql.exec(`DELETE FROM publish_tokens`);
+      return { ok: true, changed: true, deletedAt: at, purgeAfter };
+    };
+    return this.ctx.storage.transactionSync ? this.ctx.storage.transactionSync(body) : body();
+  }
+
+  /**
+   * A verb's answer, as HTTP.
+   *
+   * ⚠️ A REFUSAL IS A 4xx, NOT AN `ok: false` INSIDE A 200. The control plane logs a verb's
+   * verdict from the status line (`operator-route.js`), so a refusal wearing a 200 would be
+   * written into the audit log as a suspension that happened. 409 rather than 404 because
+   * the name was fine and the state was not — a 404 reads as "wrong URL" to whoever is
+   * looking at it three months later.
+   */
+  controlResult(out) {
+    if (out && out.ok === false) {
+      return Response.json(out, { status: out.error === "not-provisioned" ? 404 : 409 });
+    }
+    return Response.json(out);
+  }
+
+  /** Is the `meta` table there at all? The question `status()` asks, for the same reason. */
+  hasMeta() {
+    return [...this.sql.exec(
+      `SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'meta'`,
+    )].length > 0;
+  }
+
+  readMeta(k) {
+    const rows = [...this.sql.exec(`SELECT v FROM meta WHERE k = ?`, k)];
+    return rows.length ? rows[0].v : null;
+  }
+
+  writeMeta(k, v) {
+    this.sql.exec(
+      `INSERT INTO meta (k, v) VALUES (?, ?) ON CONFLICT(k) DO UPDATE SET v = excluded.v`, k, String(v),
+    );
+  }
+
+  clearMeta(k) {
+    this.sql.exec(`DELETE FROM meta WHERE k = ?`, k);
   }
 
   /**
@@ -835,6 +1039,46 @@ export class TenantStore {
    */
   async fetch(request) {
     const url = new URL(request.url);
+
+    // ── The control plane's door ───────────────────────────────────────────────────
+    //
+    // One prefix, one verb list, and the verb list is the whole of what the outside world
+    // can ask. Reachable only by code holding the namespace binding — a stub is not
+    // routable — so the boundary is the binding, not a token this object would have to
+    // keep. What this prefix adds is that the boundary is now READABLE: "what can the
+    // control plane do to a workspace" is answered by CONTROL_VERBS rather than by
+    // reading the whole handler.
+    //
+    // ⚠️ ONLY `provision` MAY CREATE ANYTHING. Every other verb refuses `not-provisioned`
+    // without calling init(), because each takes its workspace name from a URL an operator
+    // typed and a typo that provisioned would leave a workspace nobody knows exists.
+    if (url.pathname.startsWith("/__control/")) {
+      const verb = url.pathname.slice("/__control/".length);
+      if (!CONTROL_VERBS.includes(verb)) {
+        return Response.json({ error: "tenant-verb-not-allowed", verb }, { status: 404 });
+      }
+      if (verb === "status") return Response.json(this.status());
+      if (request.method !== "POST") {
+        return Response.json({ error: "method-not-allowed" }, { status: 405 });
+      }
+      let body = null;
+      try { body = await request.json(); } catch (e) { /* an empty body is fine for most */ }
+      const at = (body && body.at) || new Date().toISOString();
+      switch (verb) {
+        case "provision": {
+          if (!body || !body.workspaceId || !body.adminEmail) {
+            return Response.json({ error: "bad-input" }, { status: 400 });
+          }
+          const out = await this.provision(body);
+          return Response.json({ ok: true, ...out });
+        }
+        case "suspend": return this.controlResult(this.suspend(body && body.reason, at));
+        case "resume": return this.controlResult(this.resume(at));
+        case "rotate": return this.controlResult(this.rotate(at));
+        case "delete": return this.controlResult(this.deleteWorkspace(at));
+      }
+    }
+
     if (url.pathname === "/publish-version" && request.method === "POST") {
       let body = null;
       try { body = await request.json(); } catch (e) { /* handled below */ }
