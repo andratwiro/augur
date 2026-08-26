@@ -4654,21 +4654,32 @@ async function adminUsersApi(tctx, request, url, env, me, users = tctx.USERS, co
   // because a global admin administers everything by default.
   if (!me || !administersAny(me, spaces)) return jsonResponse({ error: "forbidden" }, 403);
   const kv = kvFor(env);
-  // A roster write lands in THIS isolate immediately (so the list the admin is looking
-  // at is right) and everywhere else within ROSTER_TTL_MS. The overlay bust is keyed by
-  // workspace, so the six KV documents re-read are the ones this write touched and no
-  // neighbour is sent back to its own store for a change that was never theirs. Only the
-  // live list is touched — a caller that injected its own roster (tests) gets its list
-  // back untouched.
-  const commitRoster = (roster) => {
-    const next = mergeRoster(configUsers, roster);
-    // ⚠️ Only when this call is answering for the LIVE roster of the workspace it was
-    // handed. `users === tctx.USERS` is what says so: the router lets the parameter
-    // default to the context's list, while a caller that injected its own (tests, and
-    // anything answering for a workspace other than the one it is about to write) gets
-    // its list back untouched. The isolate's own context advances so the next request
-    // sees the write without waiting for the tick.
-    if (users === tctx.USERS) TENANT_CTX = withTenantFields(TENANT_CTX, { USERS: next });
+  // A roster write lands in THIS isolate on its next request (so the list the admin is
+  // looking at is right) and everywhere else within ROSTER_TTL_MS. Two statements do
+  // that, and both name the workspace they belong to or nothing at all: the overlay bust
+  // is keyed by workspace, so the six KV documents re-read are the ones this write
+  // touched and no neighbour is sent back to its own store for a change that was never
+  // theirs; `cfgAt = 0` retires this isolate's config tick so that re-read happens now
+  // rather than up to 1.5s from now.
+  //
+  // ⚠️ NOTHING HERE WRITES `TENANT_CTX`, and that is the fix, not an omission. This used
+  // to also stamp the re-derived roster straight into the module slot, guarded by
+  // `users === tctx.USERS` — a true statement about the PARAMETER (the router lets it
+  // default to the context's list; a caller that injected its own gets that one back
+  // untouched) and a statement about nothing at all where it was used. The slot is one
+  // slot; this code runs several awaits deep (`readRoster`, `kv.put`, `revokeSecret`,
+  // `mintInvite`); a request for another workspace resolving during any one of them
+  // leaves ITS context in the slot, and the write-through then stamped this workspace's
+  // roster — its members AND their roles, which is an authorization answer — onto the
+  // neighbour's context. Comparing `TENANT_CTX === tctx` before writing would have closed
+  // that, and was rejected: it keeps a second writer to a slot whose only owner should be
+  // the config loader, it has to be re-argued every time an await is added above it, and
+  // it buys nothing, because the write-through was never observable. The two statements
+  // below send the next request for this workspace back to KV and rebuild `USERS` from
+  // what it finds — overwriting exactly what the slot write had put there. Immediacy
+  // comes from the bust; the slot write only ever added a way to be wrong.
+  // `test/tenant-ctx-writeback.test.mjs` pins both halves.
+  const commitRoster = () => {
     bustRosterOverlay(tctx.tenantId); cfgAt = 0;
   };
 
@@ -4771,7 +4782,7 @@ async function adminUsersApi(tctx, request, url, env, me, users = tctx.USERS, co
       // the new invitee "accepted" on arrival, holding someone else's old password.
       await revokeSecret(env, email);
       const token = await mintInvite(env, email);
-      commitRoster(roster);
+      commitRoster();
       // One record, not two: ask the deploy shell to commit this person to the
       // identity file. The overlay entry above made them live NOW; the file commit
       // (and the config push its deploy sends back) makes them durable — at which
@@ -4887,15 +4898,10 @@ async function adminUsersApi(tctx, request, url, env, me, users = tctx.USERS, co
       if (role === "viewer") await revokePublishTokens(env, email);
       else if (from === "admin") await revokePublishTokens(env, email);
 
-      // This isolate's roster now, everywhere on the next tick — same as invite/remove,
-      // and gated on the same "am I answering for the live list" test as commitRoster.
-      const nextRoles = await readRoles(env);
-      if (users === tctx.USERS) {
-        TENANT_CTX = withTenantFields(TENANT_CTX, {
-          USERS: applyRoles(mergeRoster(configUsers, roster), nextRoles),
-        });
-      }
-      bustRosterOverlay(tctx.tenantId); cfgAt = 0;
+      // This isolate's roster on its next request, everywhere within ROSTER_TTL_MS —
+      // through the same two statements as invite/remove, and for the same reason there
+      // is no third one writing the module slot here either (see commitRoster).
+      commitRoster();
 
       // identity.json stays the durable record: ask the shell to commit the new role,
       // and the config push its deploy sends back drains the overlay entry above.
@@ -4936,7 +4942,7 @@ async function adminUsersApi(tctx, request, url, env, me, users = tctx.USERS, co
       // …nor their spaces, least of all one they administered.
       try { await clearSpaces(env, email); } catch (e) {}
       try { await kv.delete(LASTSEEN_PREFIX + u.email); } catch (e) {}
-      commitRoster(roster);
+      commitRoster();
       // Symmetric to invite: the identity file should stop naming them too. The
       // tombstone above is the security boundary either way — this only keeps the
       // durable record honest.
