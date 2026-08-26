@@ -1,6 +1,6 @@
 {
   "name": "augur",
-  "version": "0.14.0",
+  "version": "0.15.0",
   "private": true,
   "files": [
     "scripts/",
@@ -36,7 +36,7 @@
     "dev": "node build.js && npx --yes serve dist",
     "offline": "node scripts/offline.mjs",
     "deploy": "node scripts/deploy.mjs",
-    "deploy:realtime": "set -a && . ./.env.deploy && set +a && npx wrangler deploy realtime/src/index.js -c \"${REALTIME_CONFIG:?set it in .env.deploy \u2014 path to the realtime.wrangler.toml in your deploy shell (see realtime/wrangler.example.toml)}\"",
+    "deploy:realtime": "set -a && . ./.env.deploy && set +a && npx wrangler deploy realtime/src/index.js -c \"${REALTIME_CONFIG:?set it in .env.deploy — path to the realtime.wrangler.toml in your deploy shell (see realtime/wrangler.example.toml)}\"",
     "posters": "node scripts/shoot.mjs --stale && node scripts/og.mjs --stale",
     "check": "node scripts/check-local.mjs"
   },
