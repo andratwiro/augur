@@ -374,8 +374,67 @@ export function newSigningKey(random = (b) => crypto.getRandomValues(b)) {
  * and the second must not mint a second signing key (which would sign the first one's
  * sessions out) or overwrite the first admin.
  */
+/**
+ * The families a seed pack may write, as a frozen list.
+ *
+ * ⚠️ AN ALLOWLIST, NOT THE OVERLAY'S OWN FAMILY LIST. A seed arrives from outside this object
+ * — the control plane hands it over at provisioning — and the families it may touch are the
+ * ones a NEW workspace can meaningfully have content in. `assets` is not here (canvas image
+ * metadata whose bytes live in R2, so a seeded row would point at nothing) and neither is
+ * `piti`. Adding one is a deliberate edit, which is the point.
+ */
+export const SEEDABLE_FAMILIES = Object.freeze(["comments", "boards", "statuses", "names", "canvases", "pins"]);
+
+/** How many rows a seed pack would write. Used to report, and to tell "none" from "empty". */
+function seedCount(seed) {
+  if (!seed || typeof seed !== "object") return 0;
+  let n = 0;
+  for (const family of SEEDABLE_FAMILIES) {
+    const scopes = seed[family];
+    if (!scopes || typeof scopes !== "object") continue;
+    for (const scope of Object.keys(scopes)) {
+      const map = scopes[scope];
+      if (map && typeof map === "object") n += Object.keys(map).length;
+    }
+  }
+  return n;
+}
+
+/**
+ * Write a seed pack into the overlay. Shape: `{ <family>: { <scope>: { <key>: <value> } } }`.
+ *
+ * ⚠️ EVERY INSERT IS `DO NOTHING`. Re-provisioning an existing workspace is a no-op that keeps
+ * the first admin, and it must be a no-op here too: a second provision must not overwrite a
+ * board somebody has been editing for a month with the sample it started as.
+ *
+ * A family that is not on the allowlist is SKIPPED, not an error. The seed comes from the
+ * control plane rather than from a stranger, and refusing the whole provision because a pack
+ * carried one unknown key would turn a cosmetic mismatch into a failed signup.
+ */
+function seedOverlay(sql, seed, at) {
+  if (!seed || typeof seed !== "object") return 0;
+  let written = 0;
+  for (const family of SEEDABLE_FAMILIES) {
+    const scopes = seed[family];
+    if (!scopes || typeof scopes !== "object" || Array.isArray(scopes)) continue;
+    for (const [scope, map] of Object.entries(scopes)) {
+      if (!map || typeof map !== "object" || Array.isArray(map)) continue;
+      for (const [k, v] of Object.entries(map)) {
+        if (v === null || v === undefined) continue;
+        sql.exec(
+          `INSERT INTO overlay (family, scope, k, v, at) VALUES (?1,?2,?3,?4,?5)
+             ON CONFLICT(family, scope, k) DO NOTHING`,
+          family, String(scope), String(k), JSON.stringify(v), at,
+        );
+        written++;
+      }
+    }
+  }
+  return written;
+}
+
 export function applyProvisioning(sql, {
-  workspaceId, adminEmail, adminName = "", plan = DEFAULT_PLAN, now, sessionKey,
+  workspaceId, adminEmail, adminName = "", plan = DEFAULT_PLAN, now, sessionKey, seed = null,
 } = {}) {
   if (!workspaceId) throw new Error("provisioning needs a workspace id");
   if (!adminEmail) throw new Error("provisioning needs an admin address");
@@ -396,10 +455,27 @@ export function applyProvisioning(sql, {
     String(adminEmail).trim().toLowerCase(), adminName || "", at,
   );
   seedQuotas(sql, plan);
+  // ── the seed, INSIDE the same body ────────────────────────────────────────────────
+  //
+  // `F-atomic-tenant-seed-write`. A workspace whose admin exists and whose first thread does
+  // not is a workspace whose owner arrives at an empty room the product promised would not
+  // be empty — and the repair is a second write that can fail on its own, at a moment nobody
+  // is watching. So the seed goes here, above `provisioned_at`, and inherits the ordering the
+  // admin and the signing key already have: a crash anywhere leaves the workspace
+  // unresolvable rather than half-furnished.
+  //
+  // ⚠️ WHAT IT CAN SEED IS THE OVERLAY, AND THAT IS THE HONEST BOUNDARY. The sample comment
+  // thread, a status, a card name — everything this object owns. PUBLISHED CONTENT IS NOT
+  // HERE and cannot be: prototypes are blobs in R2, a different store with no transaction in
+  // common with this one, and a seed pack that claimed otherwise would be claiming an
+  // atomicity nothing can provide. The order that makes that safe is the same one used
+  // everywhere else here — publish the content FIRST, then provision; content nobody can
+  // reach yet is invisible, an admin with no content is a promise broken on the first screen.
+  seedOverlay(sql, seed, at);
   sql.exec(`INSERT INTO meta (k, v) VALUES ('created_at', ?) ON CONFLICT(k) DO NOTHING`, at);
   // LAST. Everything above is invisible until this row exists.
   sql.exec(`INSERT INTO meta (k, v) VALUES ('provisioned_at', ?) ON CONFLICT(k) DO NOTHING`, at);
-  return { provisionedAt: at, created: true };
+  return { provisionedAt: at, created: true, seeded: seedCount(seed) };
 }
 
 /**
@@ -1166,6 +1242,8 @@ export class TenantStore {
           if (!body || !body.workspaceId || !body.adminEmail) {
             return Response.json({ error: "bad-input" }, { status: 400 });
           }
+          // `seed` rides in the SAME call, so it lands in the same transaction — see
+          // applyProvisioning. A second request to seed would be the exact gap this closes.
           const out = await this.provision(body);
           return Response.json({ ok: true, ...out });
         }

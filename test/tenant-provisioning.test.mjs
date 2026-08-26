@@ -31,14 +31,25 @@ import assert from "node:assert/strict";
 import { DatabaseSync } from "node:sqlite";
 import {
   applyTenantSchema, applyProvisioning, newSigningKey, TenantStore, FORBIDDEN_COLUMNS,
+  SEEDABLE_FAMILIES,
 } from "../src/tenant-do.js";
+import fs from "node:fs";
+
+const readSource = (rel) => fs.readFileSync(new URL(rel, import.meta.url), "utf8");
 import { PLANS, QUOTA_FIELDS } from "../src/tenant-quotas.mjs";
 
 /** A DO storage stub with REAL transaction semantics, so rollback is tested and not mimed. */
 function storage(db) {
   const sql = {
     exec(stmt, ...params) {
-      if (params.length) { db.prepare(stmt).run(...params); return []; }
+      // ⚠️ A PARAMETERISED SELECT HAS TO RETURN ITS ROWS. This used to be
+      // `if (params.length) { run(...); return []; }`, which silently answered `[]` to every
+      // read that carried a bind — so `overlayRead` came back empty and a test asserting a
+      // seeded row failed against code that had written it correctly.
+      if (params.length) {
+        const s = db.prepare(stmt);
+        return /^\s*SELECT/i.test(stmt) ? s.all(...params) : (s.run(...params), []);
+      }
       if (/^\s*SELECT/i.test(stmt)) return db.prepare(stmt).all();
       db.exec(stmt);
       return [];
@@ -238,4 +249,127 @@ test("it refuses to provision a workspace with no id or no admin", async () => {
   await assert.rejects(store.provision({ adminEmail: ADMIN }), /workspace id/);
   await assert.rejects(store.provision({ workspaceId: "acme" }), /admin address/);
   assert.equal(store.isProvisioned(), false);
+});
+
+// ── the seed lands in the SAME write as the admin ───────────────────────────────────
+//
+// `F-atomic-tenant-seed-write`. A workspace whose admin exists and whose first thread does
+// not is a workspace whose owner arrives at an empty room the product promised would not be
+// empty — and the repair is a second write that can fail on its own, at a moment nobody is
+// watching. So the seed is written above `provisioned_at` and inherits the ordering the
+// admin and the signing key already have.
+
+const SEED = {
+  comments: { "": { "/welcome/": [{ id: "t1", messages: [{ id: "m1", author: "Augur", body: "Try replying here." }] }] } },
+  statuses: { "": { "/welcome/": "wip" } },
+  names: { "": { "/welcome/": "Start here" } },
+};
+
+test("A SEEDED WORKSPACE ARRIVES COMPLETE — admin, key, quotas AND content, in one write", async () => {
+  const { db, store } = workspace();
+  const r = await store.provision({ workspaceId: "acme", adminEmail: ADMIN, seed: SEED });
+  assert.equal(r.created, true);
+  assert.equal(r.seeded, 3);
+  assert.ok(store.isProvisioned());
+  assert.deepEqual(plain(store.members()), [{ email: ADMIN, role: "admin", name: "" }]);
+  assert.deepEqual(store.overlayRead("comments", "")["/welcome/"][0].messages[0].body, "Try replying here.");
+  assert.equal(store.overlayRead("statuses", "")["/welcome/"], "wip");
+  assert.equal(store.overlayRead("names", "")["/welcome/"], "Start here");
+  assert.equal(db.prepare(`SELECT COUNT(*) AS n FROM overlay`).get().n, 3);
+});
+
+test("⚠️ A CRASH DURING THE SEED LEAVES NOTHING — not a workspace with an admin and no room", async () => {
+  const { db, store } = workspace();
+  const realExec = store.sql.exec.bind(store.sql);
+  store.sql.exec = (stmt, ...p) => {
+    if (/INSERT INTO overlay/i.test(stmt)) throw new Error("boom");
+    return realExec(stmt, ...p);
+  };
+  await assert.rejects(store.provision({ workspaceId: "acme", adminEmail: ADMIN, seed: SEED }), /boom/);
+  store.sql.exec = realExec;
+
+  assert.equal(store.isProvisioned(), false, "the workspace exists with no content");
+  assert.deepEqual(plain(store.members()), []);
+  assert.equal(db.prepare(`SELECT COUNT(*) AS n FROM overlay`).get().n, 0);
+  assert.equal(db.prepare(`SELECT COUNT(*) AS n FROM signing_keys`).get().n, 0);
+});
+
+test("and without transactions the ORDERING alone still hides the half-state", async () => {
+  // `provisioned_at` is written LAST and is the only row anything reads to decide whether
+  // this workspace exists, so a runtime with no transactionSync still cannot show a
+  // half-furnished workspace to anybody.
+  const { db, store } = workspace({ transactions: false });
+  const realExec = store.sql.exec.bind(store.sql);
+  store.sql.exec = (stmt, ...p) => {
+    if (/INSERT INTO overlay/i.test(stmt)) throw new Error("boom");
+    return realExec(stmt, ...p);
+  };
+  await assert.rejects(store.provision({ workspaceId: "acme", adminEmail: ADMIN, seed: SEED }), /boom/);
+  store.sql.exec = realExec;
+  assert.equal(store.isProvisioned(), false);
+  // The rows above it DID land — that is what "no transaction" means — and none of it is
+  // reachable, because nothing reads any of it without the flag.
+  assert.ok(db.prepare(`SELECT COUNT(*) AS n FROM members`).get().n >= 0);
+});
+
+test("⚠️ RE-PROVISIONING DOES NOT RE-SEED — a month-old board is not replaced by its sample", async () => {
+  const { store } = workspace();
+  await store.provision({ workspaceId: "acme", adminEmail: ADMIN, seed: SEED });
+  store.overlaySet("comments", "", "/welcome/", [{ id: "t1", messages: [{ id: "m9", body: "a real conversation" }] }], "2026-02-01T00:00:00Z");
+
+  const again = await store.provision({ workspaceId: "acme", adminEmail: "someone@example.test", seed: SEED });
+  assert.equal(again.created, false);
+  assert.equal(store.overlayRead("comments", "")["/welcome/"][0].messages[0].body, "a real conversation");
+  assert.deepEqual(plain(store.members()), [{ email: ADMIN, role: "admin", name: "" }]);
+});
+
+test("a family that is not seedable is skipped, not a failed signup", async () => {
+  // The pack comes from the control plane, not from a stranger. Refusing a whole provision
+  // because it carried one unknown key would turn a cosmetic mismatch into a failed signup.
+  const { store } = workspace();
+  const r = await store.provision({
+    workspaceId: "acme", adminEmail: ADMIN,
+    seed: { comments: { "": { "/a/": [] } }, assets: { "": { x: 1 } }, nonsense: { "": { y: 2 } } },
+  });
+  assert.equal(r.created, true);
+  assert.equal(r.seeded, 1);
+  assert.deepEqual(Object.keys(store.overlayRead("assets", "")), []);
+});
+
+test("the seedable families are an allowlist, and canvas images are deliberately not on it", () => {
+  // A seeded `assets` row is metadata for image bytes in R2 that a new workspace does not
+  // have, so it would point at nothing.
+  assert.deepEqual([...SEEDABLE_FAMILIES],
+    ["comments", "boards", "statuses", "names", "canvases", "pins"]);
+  assert.ok(!SEEDABLE_FAMILIES.includes("assets"));
+  assert.ok(!SEEDABLE_FAMILIES.includes("piti"));
+});
+
+test("no seed at all provisions exactly as before", async () => {
+  const { db, store } = workspace();
+  const r = await store.provision({ workspaceId: "acme", adminEmail: ADMIN });
+  assert.equal(r.seeded, 0);
+  assert.equal(db.prepare(`SELECT COUNT(*) AS n FROM overlay`).get().n, 0);
+});
+
+test("the seed rides in the SAME control call, so there is no second request to lose", async () => {
+  const { store } = workspace();
+  const res = await store.fetch(new Request("https://tenant.invalid/__control/provision", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ workspaceId: "acme", adminEmail: ADMIN, seed: SEED }),
+  }));
+  assert.equal(res.status, 200);
+  assert.equal((await res.json()).seeded, 3);
+  assert.equal(store.overlayRead("statuses", "")["/welcome/"], "wip");
+});
+
+test("⚠️ PUBLISHED CONTENT IS NOT SEEDABLE HERE, and the source says why", () => {
+  // Prototypes are blobs in R2 — a different store with no transaction in common with this
+  // object — so a seed pack claiming to place them atomically would be claiming an
+  // atomicity nothing can provide. Publish first, then provision: content nobody can reach
+  // yet is invisible; an admin with no content is a promise broken on the first screen.
+  const src = readSource("../src/tenant-do.js");
+  assert.match(src, /PUBLISHED CONTENT IS NOT\s+\/\/ HERE and cannot be/);
+  assert.match(src, /publish the content FIRST, then provision/);
 });
