@@ -29,10 +29,14 @@ const envWith = (kv) => ({ COMMENTS: kv, REVIEW_EXPORT_KEY: KEY });
 // the poll and the write that busts it have to name the same one — which is what a real
 // request does, both routes taking the id the resolver answered with.
 const TENANT = "workspace-under-test";
+// pitiApi takes the CONTEXT now: the overlay accessor it reads through decides between
+// the workspace's own store and the instance's KV, and the context is where the
+// workspace's identity lives.
+const TENANT_CTX = Object.freeze({ tenantId: TENANT });
 const getUrl = new URL("https://example.test/__piti?type=remarks&path=%2Fx%2Fp%2F&since=0");
 const getReq = () => new Request(getUrl);
-const poll = (kv) => W.pitiApi(TENANT, getReq(), getUrl, envWith(kv));
-const postRemark = (kv, text) => W.pitiApi(TENANT, new Request("https://example.test/__piti", {
+const poll = (kv) => W.pitiApi(TENANT_CTX, getReq(), getUrl, envWith(kv));
+const postRemark = (kv, text) => W.pitiApi(TENANT_CTX, new Request("https://example.test/__piti", {
   method: "POST", headers: { "content-type": "application/json", "X-Review-Key": KEY },
   body: JSON.stringify({ type: "remark", path: "/x/p/", text }),
 }), new URL("https://example.test/__piti"), envWith(kv));

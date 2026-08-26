@@ -1371,7 +1371,7 @@ test("the remark queue is still a cache, and a write busts only its OWN workspac
 
   // A remark posted to alpha shows up on alpha's very next poll…
   const url = new URL("https://x.test/__piti");
-  const posted = await W.pitiApi("alpha", new Request(url, {
+  const posted = await W.pitiApi(Object.freeze({ tenantId: "alpha" }), new Request(url, {
     method: "POST", headers: { "Content-Type": "application/json", "X-Review-Key": "k" },
     body: JSON.stringify({ type: "remark", path: "/p/", text: "for alpha only" }),
   }), url, { ...alpha.env, REVIEW_EXPORT_KEY: "k" });

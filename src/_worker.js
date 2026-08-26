@@ -4908,30 +4908,67 @@ async function reviewApi(tctx, request, url, env, authed) {
 // every one of them keeps the exact keys, the exact documents and the exact behaviour it
 // has now, including the races. This accessor is the seam that lets a family move without
 // its four call sites learning where it lives.
+// TWO KV LAYOUTS, because the families really do have two. `map` is one document holding
+// the whole `{key: value}` map — statuses, names, canvases, pins. `keyed` is one document
+// PER key — the piti channel's `pt:view` and `pt:remarks`, which are not a map at all but
+// two unrelated singletons that happen to share a prefix.
+//
+// The distinction lives here and only here. On the Durable Object both are rows, and no
+// call site has to know which layout its family happens to have in KV.
 const OVERLAY_KV_KEYS = Object.freeze({
-  statuses: "statuses",
-  names: "names",
-  canvases: "canvases",
-  pins: "pins",
+  statuses: Object.freeze({ doc: "statuses", layout: "map" }),
+  names: Object.freeze({ doc: "names", layout: "map" }),
+  canvases: Object.freeze({ doc: "canvases", layout: "map" }),
+  pins: Object.freeze({ doc: "pins", layout: "map" }),
+  piti: Object.freeze({ doc: "pt", layout: "keyed" }),
 });
 
-/** The KV key a family+scope lives under. Pins are per person; the rest are workspace-wide. */
-function overlayKvKey(family, scope) {
-  const base = OVERLAY_KV_KEYS[family];
-  if (!base) throw new Error(`unknown overlay family: ${family}`);
-  return scope ? `${base}:${scope}` : base;
+/**
+ * The KV key a family+scope+key lives under, exactly as every live instance already
+ * spells it. A `map` family's scope suffixes the document (`pins:<email>`); a `keyed`
+ * family's key does (`pt:view`).
+ */
+function overlayKvKey(family, scope, k) {
+  const spec = OVERLAY_KV_KEYS[family];
+  if (!spec) throw new Error(`unknown overlay family: ${family}`);
+  if (spec.layout === "keyed") {
+    if (!k) throw new Error(`${family} is stored one document per key; a key is required`);
+    return `${spec.doc}:${k}`;
+  }
+  return scope ? `${spec.doc}:${scope}` : spec.doc;
 }
 
+const overlayLayout = (family) => (OVERLAY_KV_KEYS[family] || {}).layout;
+
 function kvOverlay(kv) {
-  const read = async (family, scope = "") => {
+  const readMapDoc = async (family, scope) => {
     const raw = await kv.get(overlayKvKey(family, scope));
     return raw ? JSON.parse(raw) : {};
+  };
+  const readOne = async (family, scope, k) => {
+    if (overlayLayout(family) === "keyed") {
+      const raw = await kv.get(overlayKvKey(family, scope, k));
+      return raw === null || raw === undefined ? null : JSON.parse(raw);
+    }
+    const map = await readMapDoc(family, scope);
+    return Object.prototype.hasOwnProperty.call(map, k) ? map[k] : null;
+  };
+  const read = async (family, scope = "") => {
+    if (overlayLayout(family) !== "keyed") return readMapDoc(family, scope);
+    throw new Error(`${family} is stored one document per key; read its keys individually`);
   };
   return {
     backing: "kv",
     read,
+    readKey: readOne,
     async set(family, scope, k, v) {
-      const map = await read(family, scope);
+      if (overlayLayout(family) === "keyed") {
+        const key = overlayKvKey(family, scope, k);
+        if (v === null || v === undefined) await kv.delete(key);
+        else await kv.put(key, JSON.stringify(v));
+        return v === null || v === undefined ? null : v;
+      }
+      const map = await readMapDoc(family, scope);
       if (v === null || v === undefined) delete map[k]; else map[k] = v;
       await kv.put(overlayKvKey(family, scope), JSON.stringify(map));
       return map;
@@ -4940,7 +4977,7 @@ function kvOverlay(kv) {
       // Read-then-write, which is what it has always been: KV has no conditional put, so
       // two creates of one key can both pass the check. Named rather than hidden — the DO
       // backing below is where this stops being true.
-      const map = await read(family, scope);
+      const map = await readMapDoc(family, scope);
       if (Object.prototype.hasOwnProperty.call(map, k)) return { inserted: false, map };
       map[k] = v;
       await kv.put(overlayKvKey(family, scope), JSON.stringify(map));
@@ -4966,6 +5003,10 @@ function doOverlay(stub, tenantId) {
   return {
     backing: "do",
     read: async (family, scope = "") => (await call("read", { family, scope })).map,
+    readKey: async (family, scope, k) => {
+      const { map } = await call("read", { family, scope });
+      return Object.prototype.hasOwnProperty.call(map, k) ? map[k] : null;
+    },
     set: async (family, scope, k, v) => (await call("set", { family, scope, k, v })).map,
     insert: async (family, scope, k, v) => {
       const r = await call("insert", { family, scope, k, v });
@@ -5880,6 +5921,9 @@ async function reviewExport(tctx, request, url, env) {
 // sessions (a cleared queue can't collide with the client's last-seen id). Single
 // writer (one agent) => the read-modify-write on pt:remarks can't race in practice;
 // remarks older than 3 min are pruned on every write and the list is capped.
+// The two documents, named here so the KV keys a live instance already holds are readable
+// in the place that explains them. The accessor composes the same strings from the `piti`
+// family's `keyed` layout — see OVERLAY_KV_KEYS — and a test pins that they match.
 const PITI_VIEW_KEY = "pt:view";
 const PITI_REMARKS_KEY = "pt:remarks";
 // Per-isolate poll cache — see the GET remarks path in pitiApi.
@@ -5893,7 +5937,7 @@ const PITI_REMARKS_KEY = "pt:remarks";
 // same way: an evicted workspace re-reads its own document.
 const PITI_REMARKS_TTL_MS = 15_000;
 const PITI_REMARKS_CACHE_MAX = 256;
-// tenantId -> { at, raw }
+// tenantId -> { at, list }
 const PITI_REMARKS = tenantCache("piti-remarks", { max: PITI_REMARKS_CACHE_MAX });
 
 // A remark or a clear making itself visible on the next poll, for ITS workspace only.
@@ -5901,12 +5945,18 @@ function bustPitiRemarks(tenantId) {
   PITI_REMARKS.bust(tenantId);
 }
 
-// `tenantId` is carried for the cache above and nothing else: the KV keys are the
-// instance's, but which workspace's queue this isolate is holding is not something the
-// binding can answer.
-async function pitiApi(tenantId, request, url, env) {
-  const kv = kvFor(env);
-  if (!kv) return jsonResponse({ warning: "no-kv-binding" });
+// Takes the CONTEXT, for two reasons that used to be one. The cache above is keyed by
+// workspace, and the overlay accessor decides between the workspace's own store and the
+// instance's KV — neither of which a binding alone can answer.
+//
+// The two documents are the `piti` family, whose KV layout is one document PER key
+// (`pt:view`, `pt:remarks`) rather than one holding a map: they are two unrelated
+// singletons that happen to share a prefix, and pretending otherwise would put the view
+// on the wire on every poll of the remarks.
+async function pitiApi(tctx, request, url, env) {
+  const tenantId = tctx && tctx.tenantId;
+  const store = overlayFor(env, tctx);
+  if (!store) return jsonResponse({ warning: "no-kv-binding" });
   const secret = env.REVIEW_EXPORT_KEY;
   const given = url.searchParams.get("key") || request.headers.get("X-Review-Key") || "";
   const authed = !!secret && given.length === secret.length && given === secret;
@@ -5915,8 +5965,7 @@ async function pitiApi(tenantId, request, url, env) {
     // Agent reads what the user is looking at (secret-guarded — it's a peek at activity).
     if (url.searchParams.get("type") === "view") {
       if (!authed) return jsonResponse({ error: "forbidden" }, 403);
-      const raw = await kv.get(PITI_VIEW_KEY);
-      return jsonResponse({ view: raw ? JSON.parse(raw) : null });
+      return jsonResponse({ view: await store.readKey("piti", "", "view") });
     }
     // Browser polls the quips queued for its page (open). since=<last id seen>.
     // Cached per isolate: every poll is a KV read on the daily quota, and open tabs
@@ -5927,15 +5976,14 @@ async function pitiApi(tenantId, request, url, env) {
     // next poll), or empty — never a 500 at the cat.
     const path = clamp(url.searchParams.get("path") || "/", 600);
     const since = Number(url.searchParams.get("since")) || 0;
-    const cur = PITI_REMARKS.entry(tenantId, () => ({ at: 0, raw: null }));
+    const cur = PITI_REMARKS.entry(tenantId, () => ({ at: 0, list: null }));
     if (!cur.at || Date.now() - cur.at >= PITI_REMARKS_TTL_MS) {
       try {
-        cur.raw = await kv.get(PITI_REMARKS_KEY);
+        cur.list = await store.readKey("piti", "", "remarks");
         cur.at = Date.now();
-      } catch (e) {}
+      } catch (e) { /* keep the last good list; the stamp is NOT advanced, so the next poll retries */ }
     }
-    let all;
-    try { all = cur.raw ? JSON.parse(cur.raw) : []; } catch (e) { all = []; }
+    const all = Array.isArray(cur.list) ? cur.list : [];
     return jsonResponse({ remarks: all.filter((r) => r.path === path && r.id > since) });
   }
 
@@ -5954,7 +6002,7 @@ async function pitiApi(tenantId, request, url, env) {
         ts: Date.now(),
       };
       if (!view.path) return jsonResponse({ error: "bad-input" }, 400);
-      await kv.put(PITI_VIEW_KEY, JSON.stringify(view));
+      await store.set("piti", "", "view", view);
       return jsonResponse({ ok: true });
     }
 
@@ -5965,8 +6013,8 @@ async function pitiApi(tenantId, request, url, env) {
       const path = clamp(body.path, 600);
       const text = clamp(body.text, 220);
       if (!path || !text) return jsonResponse({ error: "bad-input" }, 400);
-      const raw = await kv.get(PITI_REMARKS_KEY);
-      let all = raw ? JSON.parse(raw) : [];
+      const stored = await store.readKey("piti", "", "remarks");
+      let all = Array.isArray(stored) ? stored : [];
       const cutoff = Date.now() - 3 * 60 * 1000;
       all = all.filter((r) => r.ts > cutoff); // prune stale before appending
       const num = (v, lo, hi) => (v == null || v === "" ? null : Math.max(lo, Math.min(hi, Number(v))));
@@ -5983,7 +6031,7 @@ async function pitiApi(tenantId, request, url, env) {
         ts: Date.now(),
       });
       if (all.length > 24) all = all.slice(-24);
-      await kv.put(PITI_REMARKS_KEY, JSON.stringify(all));
+      await store.set("piti", "", "remarks", all);
       bustPitiRemarks(tenantId);
       return jsonResponse({ ok: true, id: all[all.length - 1].id });
     }
@@ -5991,7 +6039,7 @@ async function pitiApi(tenantId, request, url, env) {
     // Agent wipes the queue at the start of a fresh wingman session (secret-guarded).
     if (body && body.type === "clear") {
       if (!authed) return jsonResponse({ error: "forbidden" }, 403);
-      await kv.put(PITI_REMARKS_KEY, JSON.stringify([]));
+      await store.set("piti", "", "remarks", []);
       bustPitiRemarks(tenantId);
       return jsonResponse({ ok: true });
     }
@@ -6163,7 +6211,7 @@ async function handleRequest(request, env, ctx, url, trace) {
     // Piti live channel bypasses the gate too: the cat lives on PUBLIC prototypes
     // (no cookie), so browser reads/view-writes are open; agent ops self-guard with
     // the export secret. Same early-exit shape as /__version and the review export.
-    if (url.pathname === "/__piti") return pitiApi(tctx.tenantId, request, url, env);
+    if (url.pathname === "/__piti") return pitiApi(tctx, request, url, env);
 
     // Platform MCP proxy — public prototypes call the platform through their own
     // origin (the platform's Bearer token is the real auth; see mcpProxy).
@@ -6584,6 +6632,7 @@ export const __testables = Object.freeze({
   pathOwnedBySpace, isPublishablePublicPrefix, removedPublicPrefixes, publishApi, loadManifests, LOGIN_MAX_FAILS,
   tokenActorRefusal, publishTokenTtlMs, mintPublishToken, adminTokensApi,
   nextPublishVersion, overlayFor, overlayKvKey, statusApi, nameApi, pinsApi,
+  PITI_VIEW_KEY, PITI_REMARKS_KEY,
   publishAuthDetailed, publishRefusalBody,
   adminStorageApi,
   isPrefixBacked, backedPublicPrefixes,

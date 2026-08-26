@@ -188,12 +188,18 @@ test("A CREATE THAT LOSES A RACE IS TOLD, on the workspace store", async () => {
 test("EVERY LIVE INSTANCE'S KEYS ARE UNCHANGED", async () => {
   // The straddle. No instance binds TENANTS, so every one of them keeps reading and
   // writing the documents it already has — under exactly the names it already uses. A key
-  // rename here would look like every status, name, board and pin vanishing at once.
+  // rename here would look like every status, name, board, pin and queued remark vanishing
+  // at once.
   assert.equal(W.overlayKvKey("statuses", ""), "statuses");
   assert.equal(W.overlayKvKey("names", ""), "names");
   assert.equal(W.overlayKvKey("canvases", ""), "canvases");
   assert.equal(W.overlayKvKey("pins", ""), "pins");
   assert.equal(W.overlayKvKey("pins", "who@example.test"), "pins:who@example.test");
+  // The keyed layout: one document per key, and the two names the worker still spells out
+  // beside the piti channel itself.
+  assert.equal(W.overlayKvKey("piti", "", "view"), W.PITI_VIEW_KEY);
+  assert.equal(W.overlayKvKey("piti", "", "remarks"), W.PITI_REMARKS_KEY);
+  assert.throws(() => W.overlayKvKey("piti", ""), /one document per key/);
   assert.throws(() => W.overlayKvKey("invented", ""), /unknown overlay family/);
 
   // And the documents an instance already holds are read as they are.
@@ -217,4 +223,52 @@ test("the workspace store wins over KV when both are bound", async () => {
   const env = { COMMENTS: slowKV({ statuses: JSON.stringify({ "/stale/": "ignore" }) }), TENANTS: namespace() };
   const got = await (await W.statusApi(CTX, new Request(statusUrl), statusUrl, env)).json();
   assert.deepEqual(got.map, {}, "the KV document answered for a workspace with its own store");
+});
+
+// ── the keyed family ─────────────────────────────────────────────────────────
+
+test("THE PITI CHANNEL ROUND-TRIPS ON BOTH BACKINGS, and a poll does not read the view", async () => {
+  // Two unrelated singletons that share a prefix, not a map. Modelling them as one map
+  // would put the view on the wire on every poll of the remarks — and the poll is the hot
+  // path, taken by every open tab on a public prototype.
+  const url = (q) => new URL(`https://x.test/__piti${q}`);
+  const send = (env, body) => W.pitiApi(CTX, new Request(url("?key=s3cret"), {
+    method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body),
+  }), url("?key=s3cret"), env);
+
+  for (const [name, base] of backings()) {
+    const env = { ...base, REVIEW_EXPORT_KEY: "s3cret" };
+    assert.equal((await send(env, { type: "view", path: "/p/", screen: "one", w: 1, h: 1 })).status, 200, name);
+    const view = await (await W.pitiApi(CTX, new Request(url("?type=view&key=s3cret")), url("?type=view&key=s3cret"), env)).json();
+    assert.equal(view.view.path, "/p/", `${name}: the view did not round-trip`);
+
+    assert.equal((await send(env, { type: "remark", path: "/p/", text: "mind the contrast" })).status, 200, name);
+    const polled = await (await W.pitiApi(CTX, new Request(url("?path=/p/")), url("?path=/p/"), env)).json();
+    assert.equal(polled.remarks.length, 1, `${name}: the remark was not queued`);
+    assert.equal(polled.remarks[0].text, "mind the contrast", name);
+
+    assert.equal((await send(env, { type: "clear" })).status, 200, name);
+    const after = await (await W.pitiApi(CTX, new Request(url("?path=/p/")), url("?path=/p/"), env)).json();
+    assert.deepEqual(after.remarks, [], `${name}: clear left something behind`);
+    // The view survives a clear — they are two documents, and always were.
+    const stillThere = await (await W.pitiApi(CTX, new Request(url("?type=view&key=s3cret")), url("?type=view&key=s3cret"), env)).json();
+    assert.equal(stillThere.view.path, "/p/", `${name}: clearing the queue took the view with it`);
+  }
+});
+
+test("the piti documents an instance already holds are read as they are", async () => {
+  // The straddle again, from the other side: a live instance's `pt:remarks` array is
+  // picked up unchanged by the KV backing.
+  //
+  // Its OWN workspace id, because the remark cache is per-isolate and keyed by workspace:
+  // reusing the one the test above cleared would read that cleared list back, and the
+  // assertion would fail for a reason that has nothing to do with what it is checking.
+  const ctx = Object.freeze({ tenantId: "acme-with-history" });
+  const env = {
+    COMMENTS: slowKV({ "pt:remarks": JSON.stringify([{ id: 1, path: "/p/", text: "from before", ts: Date.now() }]) }),
+    REVIEW_EXPORT_KEY: "s3cret",
+  };
+  const u = new URL("https://x.test/__piti?path=/p/");
+  const got = await (await W.pitiApi(ctx, new Request(u), u, env)).json();
+  assert.equal(got.remarks[0].text, "from before");
 });
