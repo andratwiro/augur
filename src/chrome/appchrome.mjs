@@ -44,9 +44,16 @@ export function fmtDate(ms) {
   });
 }
 
-export function relTime(ms) {
-  if (!ms) return "";
-  const sec = Math.round(Math.max(0, Date.now() - ms) / 1000);
+/**
+ * How long ago, as words: "3 days", "7 months", "" for anything under a minute.
+ *
+ * ONE COUNTER, so the two sentences a card can carry — "Edited 3 days ago" and the
+ * currency line's "Untouched for 7 months" — can never disagree about the number. A
+ * second unit table is how one card ends up saying two different ages of the same file.
+ * `now` is a parameter so a test can state the clock instead of arranging one.
+ */
+export function spanWords(ms, now = Date.now()) {
+  const sec = Math.round(Math.max(0, now - ms) / 1000);
   const units = [
     ["year", 31536000],
     ["month", 2592000],
@@ -56,9 +63,15 @@ export function relTime(ms) {
   ];
   for (const [name, s] of units) {
     const v = Math.floor(sec / s);
-    if (v >= 1) return `Edited ${v} ${name}${v > 1 ? "s" : ""} ago`;
+    if (v >= 1) return `${v} ${name}${v > 1 ? "s" : ""}`;
   }
-  return "Edited just now";
+  return "";
+}
+
+export function relTime(ms, now = Date.now()) {
+  if (!ms) return "";
+  const span = spanWords(ms, now);
+  return span ? `Edited ${span} ago` : "Edited just now";
 }
 
 // ── Icons / marks used by the chrome (co-located so the module is self-contained) ──

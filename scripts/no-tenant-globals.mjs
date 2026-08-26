@@ -374,6 +374,17 @@ const ALLOWLIST = {
       "LIB_KEYS",  // the fixed gallery tiers
     ],
   },
+
+  // What is current in a workspace and what has been left behind. Pure — manifest stamps
+  // and a status map in, rows out — and it deliberately stores nothing: staleness is
+  // DERIVED from the per-file editedAt the commit handler already records, so there is no
+  // per-workspace anything to keep here. The threshold and the age arithmetic are number
+  // literals the lint proves harmless on its own.
+  "src/currency.mjs": {
+    frozen: [
+      "STATUS_LABELS",  // the status vocabulary's words; the same four for every workspace
+    ],
+  },
 };
 
 // Flattened for the checker and for anything that wants to read the list: module -> name

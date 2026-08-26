@@ -211,11 +211,25 @@ by more things than a comment thread is. This replaces a class of bug rather tha
 adding a feature — provenance used to come from `git log` and publishing keeps
 disturbing that evidence (a mass commit, a shallow clone's graft author, a
 reconcile-adoption; each needed its own build.js guard, and every guard was a
-tell). ⏳ **Nothing renders it yet and build.js still derives from git**, because a
-card cannot read a stamp assigned AFTER the build that draws it; moving the render
-to a client-side read against the live manifest is `C-manifest-provenance`'s
-second half. A file that predates the field stays UNSTAMPED — absent is the honest
-answer, and inventing one would tell the same lie the derivation told.
+tell). **The gallery renders it, from the live manifest at serve time.** build.js
+still bakes a git-derived date, because a card cannot read a stamp assigned AFTER
+the build that draws it — that line is the baseline, and `CURRENCY_JS` replaces it
+with the recorded one from `/__currency` on load. A file that predates the field
+stays UNSTAMPED — absent is the honest answer, and inventing one would tell the
+same lie the derivation told, so a unit with no record simply keeps the baked line.
+
+**What is current, and what has been left behind** (`src/currency.mjs`). The same
+read answers a gallery card and an agent, because two reads become two definitions
+of current: `/__currency` for a session, `/__publish/<space>/currency` for a publish
+token (`?since=14d` is the whole of "what changed here lately" — see
+[agents/currency.md](agents/currency.md)). A card carries its status as a WORD next
+to the date, and a unit untouched past `STALE_AFTER_DAYS` says so — "Untouched for
+7 months", with the colour drained out of its poster. **Staleness is DERIVED and must
+stay derived**: it is computed from `editedAt` and a clock, stores nothing, and adds
+no field. The obvious "improvement" — an `archived` flag — is accurate only for the
+units somebody came back to mark, which are exactly the units that were never the
+problem. Nothing baked at build time carries the stale treatment either: a git date
+is good enough to caption a card and not good enough to accuse one.
 
 **Direct publish (the bundle store).** With `GV_ASSET_SOURCE=r2` + a `BUNDLES` R2
 binding, the worker serves those manifests from content-addressed R2 blobs and takes

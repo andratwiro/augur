@@ -15,10 +15,12 @@
 // engine already made this exact choice for messages: `by: personId(email)`, a one-way hash,
 // resolved to a name and a face at RENDER time from the roster.
 //
-// ⏳ NOTHING RENDERS IT YET, and the item stays open for that. build.js still derives dates
-// and chips from git and must, because a card cannot read a stamp that is assigned AFTER the
-// build that draws it. What this buys today is that provenance starts accumulating truthfully
-// from now, so the render move lands on real history rather than a flag day of "unknown".
+// THE GALLERY NOW RENDERS IT, at serve time — see test/currency.test.mjs. build.js still
+// derives the baked date from git and must, because a card cannot read a stamp that is
+// assigned AFTER the build that draws it; that line is the baseline the served answer
+// replaces. What this file buys the render is that a stamp, once written, is never
+// disturbed — so "untouched for 7 months" is a fact about the work and not about the
+// publish that happened to run last.
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";

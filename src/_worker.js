@@ -66,6 +66,16 @@ import { sendMail, mailNotice } from "./mail.mjs";
 // deliberately does NOT check, and why a worker must never probe its own front door.
 import { runHealth } from "./health-cron.mjs";
 
+// What is current in a workspace and what has been left behind. Same deal again: build.js
+// copies it next to the worker so the relative import resolves at the edge. Pure — manifest
+// stamps and a status map in, rows out — and it stores NOTHING: staleness is derived from
+// the per-file `editedAt` the commit handler already records, never from a second field
+// somebody would have to maintain. See src/currency.mjs.
+import {
+  STALE_AFTER_DAYS, STATUS_LABELS, currencyRows, parseSince,
+  freshness, whenWords, unitKey, unitProvenance,
+} from "./currency.mjs";
+
 // KV's identity documents translated into the workspace object's rows. Same deal again:
 // build.js copies it next to the worker so the relative import resolves at the edge. Pure
 // and stateless — the mapping is where a copy silently loses somebody, so it is a function
@@ -3706,6 +3716,22 @@ async function publishApi(tctx, request, url, env) {
     });
   }
 
+  // What is current in this workspace and what has been left behind — the SAME read the
+  // gallery paints from, reached with the credential an agent actually holds.
+  //
+  // `F-currency-default` asks for "what is current here" to be answerable in one call, and
+  // the browser's door (`/__currency`) is gated on a SESSION COOKIE, which no agent has:
+  // `augur login` mints a publish token, not a session. Without this the read is exposed to
+  // people and not to agents, which is half the item. It is the weakest thing a publish
+  // token can do — it names units this token could overwrite and reads their dates — and it
+  // is scoped to this token's own workspace, unlike the cookie door, which answers about
+  // the whole instance.
+  //
+  // `?since=14d` is the whole of "what changed here lately".
+  if (op === "currency" && request.method === "GET") {
+    return currencyAnswer(tctx, request, url, env, spaceId);
+  }
+
   // Version list, newest first. Manifest history is never pruned and blobs are
   // never garbage-collected, so this doubles as the rollback menu.
   if (op === "versions" && request.method === "GET") {
@@ -6636,7 +6662,13 @@ const quotaRefusal = (what, verdict) => jsonResponse({
 // baseline comes from the committed prototype-status.json, and this overlays live
 // edits on top. Values: in-progress | dev-ready | ignore | reviewed (components).
 const STATUS_KEY = "statuses";
-const VALID_STATUS = Object.freeze({ "in-progress": 1, "dev-ready": 1, ignore: 1, reviewed: 1 });
+// The vocabulary is `STATUS_LABELS` in src/currency.mjs and NOWHERE ELSE. What this route
+// accepts and what a card says a status IS are the same list by construction: a status the
+// gallery can print but this route rejects, or the reverse, is a word that exists on one
+// surface only, which is the failure `F-currency-default` is about.
+const VALID_STATUS = Object.freeze(
+  Object.fromEntries(Object.keys(STATUS_LABELS).map((k) => [k, 1])),
+);
 
 async function statusApi(tctx, request, url, env, me) {
   const store = overlayFor(env, tctx);
@@ -6657,6 +6689,69 @@ async function statusApi(tctx, request, url, env, me) {
     return jsonResponse({ map: await store.set("statuses", "", key, status, me ? me.email : null) });
   }
   return jsonResponse({ error: "method-not-allowed" }, 405);
+}
+
+// ---- Currency API: what is current here, and what has been left behind -------
+//
+// `F-currency-default`. ONE read, answering both audiences, because two reads become two
+// definitions of "current". A gallery card paints its freshness sentence from it, and an
+// agent asked "what changed here in the last two weeks" answers from `?since=14d` in a
+// single call instead of walking a manifest.
+//
+// It STORES NOTHING and it adds no field. Status comes from the overlay map the chip has
+// always written; freshness is computed from the per-file `editedAt` the commit handler
+// records. There is deliberately no "archived" flag: the person who abandons a prototype
+// is the last person who will ever come back to tick a box, so a flag would be accurate
+// only for the units that were never the problem.
+//
+// GET only, and there is nothing to POST — see src/currency.mjs for the whole decision.
+//
+// ⚠️ IT IS REACHABLE TWO WAYS AND IT IS ONE ANSWER. A browser arrives at `/__currency`
+// with a session cookie; an agent has a PUBLISH TOKEN and no cookie, so it arrives at
+// `/__publish/<workspace>/currency`, which is a scoped view of this same function. The two
+// doors exist because the two callers hold different credentials — not because there are
+// two definitions of current, which is the thing this item is about. Both call
+// `currencyAnswer`, so a divergence would have to be written on purpose.
+async function currencyAnswer(tctx, request, url, env, onlySpace) {
+  if (request.method !== "GET") return jsonResponse({ error: "method-not-allowed" }, 405);
+  // A window that was not understood is REFUSED, never quietly widened to everything:
+  // answering a different question than the one asked is how an agent reports a dead
+  // workspace as busy.
+  const raw = url.searchParams.get("since");
+  const sinceMs = raw ? parseSince(raw) : 0;
+  if (raw && !sinceMs) {
+    return jsonResponse({
+      error: "bad-since",
+      message: "since is a number and h, d or w — 36h, 14d, 2w. A bare number means days.",
+    }, 400);
+  }
+  const store = overlayFor(env, tctx);
+  const [statuses, all] = await Promise.all([
+    store ? store.read(STATUS_KEY) : Promise.resolve({}),
+    loadManifests(tctx.tenantId, env),
+  ]);
+  // A publish token is scoped to a workspace, so the token door answers about that
+  // workspace and no other — the scoping is applied to the INPUT rather than filtered out
+  // of the rows, because a filter is a place for a row to survive.
+  const spaces = onlySpace
+    ? (all[onlySpace] ? { [onlySpace]: all[onlySpace] } : {})
+    : all;
+  const now = Date.now();
+  const units = currencyRows(spaces, statuses, { now, sinceMs });
+  return jsonResponse({
+    // Echoed, never assumed: a client that hardcoded 90 would keep saying "untouched"
+    // against a threshold the instance had moved.
+    staleAfterDays: STALE_AFTER_DAYS,
+    now: new Date(now).toISOString(),
+    since: raw || null,
+    count: units.length,
+    units,
+  });
+}
+
+/** The browser's door: whatever the session may see, which is the whole workspace. */
+function currencyApi(tctx, request, url, env) {
+  return currencyAnswer(tctx, request, url, env, null);
 }
 
 // ---- Pins API (KV-backed, single key) ---------------------------------------
@@ -8314,6 +8409,14 @@ async function handleRequest(request, env, ctx, url, trace) {
       if (denied) return denied;
       return statusApi(tctx, request, url, env, me);
     }
+    // What is current here and what has been left behind. A pure READ of two facts the
+    // workspace already holds, gated exactly like the galleries it paints — a viewer may
+    // see it, and there is nothing here for anyone to write. `?since=14d` narrows it to
+    // what actually changed, which is the whole of an agent's "what happened lately".
+    if (url.pathname === "/__currency") {
+      if (!authed) return jsonResponse({ error: "unauthorized" }, 401);
+      return currencyApi(tctx, request, url, env);
+    }
     if (url.pathname === "/__pins") {
       if (!authed) return jsonResponse({ error: "unauthorized" }, 401);
       return pinsApi(tctx, request, url, env, me);
@@ -8502,6 +8605,8 @@ export const __testables = Object.freeze({
   pathOwnedBySpace, isPublishablePublicPrefix, removedPublicPrefixes, publishApi, loadManifests, LOGIN_MAX_FAILS,
   tokenActorRefusal, publishTokenTtlMs, mintPublishToken, adminTokensApi,
   nextPublishVersion, overlayFor, overlayKvKey, statusApi, nameApi, pinsApi,
+  currencyApi, currencyRows, freshness, whenWords, parseSince, unitKey, unitProvenance,
+  STALE_AFTER_DAYS, STATUS_LABELS, VALID_STATUS,
   exportState, importState,
   quotaBump, quotaMinute, quotaDay, workspaceStatus, touchWorkspaceActivity,
   deleteWorkspace, purgeDue, blobGc, clearFamilies, NEVER_CLEARED,

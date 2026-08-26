@@ -42,6 +42,12 @@ import {
   CHROME_MARK_START, CHROME_MARK_END,
   UI_VERSION, ic, titleCase, fmtDate, relTime,
 } from "./src/chrome/appchrome.mjs";
+// What is current here and what has been left behind. Shared with the worker, which
+// answers /__currency from it; build.js takes the poster exclusion and the status words so
+// the baked card and the served answer cannot disagree. NOT the threshold: build.js draws
+// no stale treatment at all — see currencyLine for why a git date may caption a card and
+// may not accuse one. See src/currency.mjs.
+import { isGeneratedAsset, STATUS_LABELS } from "./src/currency.mjs";
 
 const ROOT = path.dirname(fileURLToPath(import.meta.url));
 // Augur composes ONE read-only submodule PER SPACE, mounted at spaces/<id>/. Each space
@@ -154,10 +160,15 @@ const SRC_CANVAS_7SEG_LICENSE = path.join(ROOT, "src", "canvas", "DSEG-LICENSE.t
 // prototypes/ folder, so it is never copied to dist. Set per space by setSpaceContext().
 // See STATUS_META for the allowed values.
 let STATUS_FILE = null;
+// The WORDS come from src/currency.mjs, which is also what the worker validates a status
+// write against and what the currency payload labels a row with. Only the CSS class is
+// build.js's own, because only build.js has a stylesheet. A status the gallery can print
+// but the API rejects — or the reverse — is a word that exists on one surface only, which
+// is the failure F-currency-default is about.
 const STATUS_META = {
-  "in-progress": { label: "In progress", cls: "is-wip" },
-  "dev-ready": { label: "Dev ready", cls: "is-ready" },
-  ignore: { label: "Ignore", cls: "is-ignore" },
+  "in-progress": { label: STATUS_LABELS["in-progress"], cls: "is-wip" },
+  "dev-ready": { label: STATUS_LABELS["dev-ready"], cls: "is-ready" },
+  ignore: { label: STATUS_LABELS.ignore, cls: "is-ignore" },
 };
 
 // Status is shown as a small circular glyph (GitHub-Projects idiom), not a text
@@ -715,8 +726,10 @@ async function isDir(p) {
 // contributor pass ignores these basenames — an author who only regenerated posters gets
 // no credit and stamps no date; a commit that ALSO changed a real file still counts via
 // that file. Prototype content images (assets/img/*.webp) are NOT generated — kept.
-const GENERATED_ASSET_BASENAMES = new Set(["preview.webp", "og.jpg"]);
-function isGeneratedAsset(p) { return GENERATED_ASSET_BASENAMES.has(path.basename(p)); }
+// ONE list, in src/currency.mjs, because the stamp-derived answer (`editedAt`, served by
+// /__currency) and this git-derived one have to call the same files "not a person's work".
+// Two lists would eventually disagree, and the disagreement would show up as one card
+// claiming two different ages of itself.
 
 const SPACE_DATES = new Map(); // space root → parsed maps (one git pass per space per build)
 function spaceDates(repoRoot) {
@@ -1771,6 +1784,37 @@ const PAGE_CSS = `
     .card-proto:has(.status-chip.is-ignore):hover,
     .card-opp:has(.status-chip.is-ignore):hover { opacity: 1; }
     @media (prefers-reduced-motion: reduce) { .status-chip { transition: none; } }
+    /* ---- Currency: current and abandoned must look different (F-currency-default) ----
+       The state WORD next to the date, so a status is legible without hovering the glyph.
+       It never says "Ignore" — that is the default, and the dim above already says it. */
+       Each word takes the colour of the GLYPH it names, so the two readings of the same
+       fact agree: the in-progress chip is a half-filled ink ring and the dev-ready chip is
+       a green check. Amber is deliberately NOT used here — it is spent, below, on the one
+       thing on this card that is a finding rather than a label. */
+    .proto-state { font-weight: 600; }
+    .proto-state.is-wip { color: #1c1c22; }    /* the in-progress glyph's own ink */
+    .proto-state.is-ready { color: #146c43; }  /* green, AA on white at 13px */
+    /* Untouched past the threshold. A DIFFERENT axis from the ignore dim on purpose:
+       ignore is "nobody is tracking this", stale is "nobody has touched this", and a card
+       can be either, both, or neither. Opacity was taken, so abandonment reads as colour
+       draining out of the poster — the archive-photo idiom — while the meta text stays at
+       full contrast, because dimming the words would hide the one part that says why. */
+    .card-proto.is-stale .preview :is(iframe, .preview-img, .preview-ph),
+    .card-opp.is-stale .preview :is(iframe, .preview-img, .preview-ph) {
+      filter: grayscale(1) contrast(.92);
+    }
+    .card-proto.is-stale:hover .preview :is(iframe, .preview-img, .preview-ph),
+    .card-opp.is-stale:hover .preview :is(iframe, .preview-img, .preview-ph) { filter: none; }
+    .card-proto.is-stale, .card-opp.is-stale { border-color: var(--line-2); }
+    /* The finding, stated — "Untouched for 7 months", not the same sentence in a colour.
+       Weight AND hue, so it survives a greyscale display and a colour-blind reader. Amber
+       appears nowhere else on a card, on purpose: a hue that means two things means one of
+       them badly, and "In progress · Untouched for a year" in one colour read as one word. */
+    .proto-when--stale { color: #8a5300; font-weight: 560; }
+    @media (prefers-reduced-motion: reduce) {
+      .card-proto.is-stale .preview :is(iframe, .preview-img, .preview-ph),
+      .card-opp.is-stale .preview :is(iframe, .preview-img, .preview-ph) { transition: none; }
+    }
     /* Status picker — opens on hover/click so a state is CHOSEN, not cycled into
        (each cycle step used to save and re-rank the card). Light, unlike the dark
        right-click menu: the state glyphs are the same ones on the cards, and they
@@ -3832,6 +3876,125 @@ const STATUS_JS = `
 })();
 `;
 
+// ── Currency: what is current here, and what has been left behind ─────────────
+//
+// `F-currency-default`. The card bakes a git-derived date at build time because that is
+// all a build can know; the RECORDED truth — `editedAt`, stamped per file at commit — is
+// only readable at serve time, so it arrives here, from one /__currency call that also
+// answers an agent's "what changed in the last two weeks".
+//
+// ⚠️ THE STATE WORD IS MIRRORED FROM THE CHIP, NOT TAKEN FROM THE PAYLOAD, even though the
+// payload carries it. The chip is the element a click changes, STATUS_JS already keeps it
+// correct through an optimistic paint and a rollback, and a second reader of the same fact
+// would sit there showing "In progress" under a chip somebody had just set to Dev ready.
+// The payload keeps the field because the AGENT needs status and freshness in ONE call —
+// that duplication is deliberate and this is the note saying so.
+//
+// ⚠️ AND ABSENT IS NOT FRESH. A unit the payload does not mention — content published
+// before the stamp existed — keeps the baked line and gets no treatment. Defaulting the
+// unknown either way invents the exact fact the stamp exists to stop being invented:
+// false-stale accuses live work, false-fresh is the junk drawer with a clean bill of
+// health. Cards therefore convert one by one as content is republished.
+const CURRENCY_JS = `
+(function(){
+  var units = Array.prototype.slice.call(document.querySelectorAll('[data-currency]'));
+  var folders = Array.prototype.slice.call(document.querySelectorAll('[data-currency-folder]'));
+  if(!units.length && !folders.length) return;
+  var CACHE = 'augur_currency', TTL = 60000;
+  // Baked from STATUS_META, which takes its words from STATUS_LABELS — so the word a click
+  // paints, the word the build baked and the word the API validates are one table. Scraping
+  // the chip's aria-label for it worked and was a second parser of a sentence.
+  var WORDS = ${JSON.stringify(
+    Object.fromEntries(Object.entries(STATUS_META).map(([k, m]) => [k, [m.cls, m.label]])),
+  )};
+
+  // The state word rides on the chip's own data-status, so there is one live copy of it.
+  function mirror(line){
+    var card = line.closest('.card-proto, .card-opp'); if(!card) return;
+    var chip = card.querySelector('[data-status-key]'); if(!chip) return;
+    var sync = function(){
+      var s = chip.getAttribute('data-status') || 'ignore';
+      var word = line.querySelector('.proto-state');
+      // No word for "ignore" — it is the default every unit starts at, so printing it would
+      // put a word on every card and a signal on none. Nor for a state this build has never
+      // heard of: a newer instance's vocabulary is not something to render as a guess.
+      if(s === 'ignore' || !WORDS[s]){ if(word) word.remove(); return; }
+      if(!word){
+        word = document.createElement('span');
+        word.className = 'proto-state';
+        line.insertBefore(word, line.firstChild);
+        line.insertBefore(document.createTextNode(' \\u00b7 '), word.nextSibling);
+      }
+      word.className = 'proto-state ' + WORDS[s][0];
+      word.textContent = WORDS[s][1];
+    };
+    sync();
+    new MutationObserver(sync).observe(chip, { attributes: true, attributeFilter: ['data-status'] });
+  }
+  units.forEach(mirror);
+
+  function paintUnit(line, u){
+    var when = line.querySelector('.proto-when'); if(!when || !u.when) return;
+    when.textContent = u.when;
+    if(u.editedAt) when.setAttribute('title', new Date(u.editedAt).toLocaleString());
+    markStale(line, when, u.stale === true);
+  }
+  function markStale(line, when, stale){
+    when.classList.toggle('proto-when--stale', stale);
+    var card = line.closest('.card-proto, .card-opp');
+    if(card) card.classList.toggle('is-stale', stale);
+  }
+
+  // A folder is as current as its most recent unit, and abandoned only when EVERY unit in
+  // it is — one live prototype is enough to make a project live.
+  function paintFolder(el, byKey){
+    var prefix = el.getAttribute('data-currency-folder') + '/';
+    var newest = null, known = 0, stale = 0;
+    for(var k in byKey){
+      if(k.indexOf(prefix) !== 0) continue;
+      var u = byKey[k];
+      if(u.stale === null || u.stale === undefined) continue;
+      known++; if(u.stale) stale++;
+      if(!newest || (u.editedAt > newest.editedAt)) newest = u;
+    }
+    if(!known || !newest || !newest.when) return;
+    el.textContent = newest.when;
+    if(newest.editedAt) el.setAttribute('title', new Date(newest.editedAt).toLocaleString());
+    var allStale = stale === known;
+    el.classList.toggle('proto-when--stale', allStale);
+    var card = el.closest('.card-opp');
+    if(card) card.classList.toggle('is-stale', allStale);
+  }
+
+  function load(){
+    var now = Date.now();
+    try {
+      var c = JSON.parse(sessionStorage.getItem(CACHE) || 'null');
+      if(c && now - c.at < TTL) return Promise.resolve(c.byKey);
+    } catch(e){}
+    return fetch('/__currency', {headers:{'Accept':'application/json'}})
+      .then(function(r){ return r.json(); })
+      .then(function(d){
+        var byKey = {};
+        ((d && d.units) || []).forEach(function(u){ byKey[u.key] = u; });
+        try { sessionStorage.setItem(CACHE, JSON.stringify({at: now, byKey: byKey})); } catch(e){}
+        return byKey;
+      }).catch(function(){ return null; });
+  }
+
+  // A failed read leaves the baked line exactly as it is — the card keeps saying the one
+  // thing the build could prove, which is the honest degradation.
+  load().then(function(byKey){
+    if(!byKey) return;
+    units.forEach(function(line){
+      var u = byKey[line.getAttribute('data-currency')];
+      if(u) paintUnit(line, u);
+    });
+    folders.forEach(function(el){ paintFolder(el, byKey); });
+  });
+})();
+`;
+
 // Clickable two-state validation chip for a component row (utmost-right cell). Unlike
 // prototypes there is NO "ignore" — a component is either "in-progress" (default) or
 // "reviewed" (validated). Keyed "components/<name>" so it shares the /__status KV map
@@ -5622,7 +5785,7 @@ const CHROME_CSS_BODY = `${FONT_CSS}${PAGE_CSS}${NAV_CSS}${TABBAR_CSS}`;
 // Order preserved exactly from shell()'s original inline sequence. `;\n` between
 // IIFEs so concatenation can't trigger ASI call-chaining «…})()(function…».
 const CHROME_JS_BODY = [
-  CAROUSEL_JS, chromeScript(), STATUS_JS, COMP_STATUS_JS, CARD_MENU_JS,
+  CAROUSEL_JS, chromeScript(), STATUS_JS, CURRENCY_JS, COMP_STATUS_JS, CARD_MENU_JS,
   PINS_JS, PROFILE_JS, SETTINGS_JS, NEWCANVAS_JS, SPACE_JS, TABBAR_JS(),
   RESEARCH_JS, FACE_JS,
 ].join("\n;\n") + "\n;\n" +
@@ -5861,7 +6024,7 @@ function renderRootIndex(opportunities) {
           ${preview(coverSrc, cover && cover.poster)}
           <div class="opp-meta">
             <div class="opp-name-row"><div class="proto-name">${titleCase(opp.name)}</div>${facePile(opp.people)}</div>
-            <div class="proto-date">${plural(opp.prototypes.length, "prototype")} &middot; <span title="${fmtDate(opp.mtimeMs)}">${relTime(opp.mtimeMs)}</span></div>
+            <div class="proto-date">${plural(opp.prototypes.length, "prototype")} &middot; <span class="proto-when" data-currency-folder="${escAttr(SPACE_KEY + opp.name)}" title="${fmtDate(opp.mtimeMs)}">${relTime(opp.mtimeMs)}</span></div>
           </div>
         </div>`;
     })
@@ -5881,6 +6044,43 @@ function renderRootIndex(opportunities) {
     wrapClass: "wrap--wide",
     body,
   });
+}
+
+/**
+ * The line under a prototype's name: what state it is in, and when it was last touched.
+ *
+ * `F-currency-default`. Both facts already existed and neither was legible on a card — the
+ * state was a 20px glyph on the poster that you had to know to hover, and the recorded edit
+ * date was rendered nowhere at all. In a workspace where a second version of a screen costs
+ * a folder, a gallery whose live thing and dead thing look identical has stopped being a
+ * repository, and it stops quietly: nothing breaks, the shelf just fills up.
+ *
+ * THE STATE WORD IS ABSENT FOR "ignore", and that is the point rather than an omission.
+ * Ignore is the default every prototype starts at, so printing it would put a word on every
+ * card and signal on none; the dimming that `.card-*:has(.status-chip.is-ignore)` already
+ * does says it better. A word appears exactly when somebody has said something.
+ *
+ * ⚠️ WHAT IS BAKED HERE IS THE BASELINE, NOT THE ANSWER. `p.mtimeMs` is git-derived, and a
+ * card cannot read a stamp that is assigned by the publish that ships it, so CURRENCY_JS
+ * replaces the sentence with the recorded `editedAt` from /__currency on load. Baking
+ * something rather than an empty box is what keeps the line from reflowing after paint.
+ *
+ * ⚠️ AND NO STALE TREATMENT IS BAKED, deliberately, even though the threshold is right
+ * there and this date would answer it. A git date is a caption and not an accusation: the
+ * whole reason `editedAt` is RECORDED at commit is that publishing keeps disturbing git's
+ * evidence — a mass poster commit, a shallow clone's graft author, a reconcile-adoption —
+ * and the failure of a distorted date here is not "a wrong caption", it is the grey
+ * treatment landing on work somebody shipped yesterday, which is the one failure that
+ * costs the signal its credibility permanently. So the treatment turns on only from the
+ * recorded stamp, and a card whose payload says nothing stays ordinary.
+ */
+function currencyLine(key, p) {
+  const cur = STATUS_META[p.status] ? p.status : "ignore";
+  const word = cur === "ignore"
+    ? ""
+    : `<span class="proto-state ${STATUS_META[cur].cls}">${STATUS_META[cur].label}</span> &middot; `;
+  return `<div class="proto-date" data-currency="${escAttr(key)}">${word}`
+    + `<span class="proto-when" title="${fmtDate(p.mtimeMs)}">${relTime(p.mtimeMs)}</span></div>`;
 }
 
 // Clickable dev-status chip for a prototype card. Build-time state comes from
@@ -5919,7 +6119,7 @@ function renderOpportunityIndex(opp) {
           <div class="proto-meta">
             <div class="proto-text">
               <div class="proto-name">${dname}</div>
-              <div class="proto-date" title="${fmtDate(p.mtimeMs)}">${relTime(p.mtimeMs)}</div>
+              ${currencyLine(SPACE_KEY + opp.name + "/" + p.name, p)}
             </div>
             ${facePile(p.editors)}
           </div>
@@ -5970,7 +6170,7 @@ function renderPlaygroundIndex(projects) {
           <div class="proto-meta">
             <div class="proto-text">
               <div class="proto-name">${dname}</div>
-              <div class="proto-date" title="${fmtDate(p.mtimeMs)}">${relTime(p.mtimeMs)}</div>
+              ${currencyLine(SPACE_KEY + "playground/" + p.name, p)}
             </div>
             ${facePile(p.editors)}
           </div>
