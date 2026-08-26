@@ -89,7 +89,32 @@ jobs:
             [ "$NEW_SHA" != "$CUR_SHA" ] || { echo "Engine pin already at $NEW_SHA — nothing to do."; exit 0; }
             git update-index --cacheinfo "160000,$NEW_SHA,engine"
             git commit -m "Bump engine pin → ${NEW_SHA:0:12}"
-            git push origin HEAD:main
+            # RETRY ON A LOST RACE, because losing one silently strands the instance.
+            # Anyone pushing to this shell while the bump runs — a doc edit, a config
+            # change — makes the push non-fast-forward. That failure is not "try again
+            # later": nothing tries again until the next engine push or the next cron
+            # sweep, so the instance sits on a stale engine and nothing says so. Observed
+            # on a live shell, one second apart.
+            #
+            # The retry RE-APPLIES the pin onto whatever landed, rather than rebasing:
+            # this checkout is shallow (actions/checkout fetches one commit), so a rebase
+            # has no common ancestor to work from and fails for a reason that has nothing
+            # to do with the conflict. Re-applying needs no history at all, and it is
+            # exactly as correct — the commit sets ONE value, a submodule pointer that was
+            # resolved before the loop.
+            pushed=""
+            for attempt in 1 2 3; do
+              if git push origin HEAD:main; then pushed=1; break; fi
+              echo "push rejected (attempt $attempt) — someone else pushed; re-applying the pin"
+              git fetch origin main
+              git reset --hard FETCH_HEAD
+              if [ "$(git ls-tree HEAD engine | awk '{print $3}')" = "$NEW_SHA" ]; then
+                echo "Another run already pinned ${NEW_SHA:0:12} — nothing to do."; exit 0
+              fi
+              git update-index --cacheinfo "160000,$NEW_SHA,engine"
+              git commit -m "Bump engine pin → ${NEW_SHA:0:12}"
+            done
+            [ -n "$pushed" ] || { echo "::error::could not push the pin bump after 3 attempts"; exit 1; }
             echo "Bumped engine pin: ${CUR_SHA:0:12} → ${NEW_SHA:0:12} — starting deploy.yml"
             gh workflow run deploy.yml --ref main
             exit 0
