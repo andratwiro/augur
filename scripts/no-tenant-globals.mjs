@@ -226,6 +226,7 @@ const ALLOWLIST = {
       "PITI_REMARKS",
       "ROSTER_OVERLAY",
       "FREEZE_STATE",
+      "SUSPENSION_STATE",
     ],
 
     // Fixed tables, frozen at the declaration so a write throws rather than turning the
@@ -243,6 +244,8 @@ const ALLOWLIST = {
       "STATE_KV_PREFIXED",    // which inventory entries are one document per key when exported
       "NEVER_CLEARED",        // families a reset may never empty; a fact about credentials, not a workspace
       "FROZEN_WRITES",        // the paths a migration freeze closes; the same list for every workspace
+      "SUSPENDED_ALLOWED",       // what a paused workspace still answers — the published promise, as a list
+      "SUSPENDED_ALLOWED_READS", // and the read verbs of the bundle store an export walks
       "__testables",          // the table of helpers the suite imports; the request path reads none of it
     ],
 

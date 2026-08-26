@@ -696,7 +696,14 @@ export class TenantStore {
       this.writeMeta("deleted_at", at);
       this.writeMeta("purge_after", purgeAfter);
       this.writeMeta("suspended", "1");
-      this.writeMeta("suspended_at", at);
+      // ⚠️ THE REASON IS REPLACED AND THE DATE IS NOT, and the asymmetry is the point.
+      // Somebody reading this workspace has to know it is a tombstone rather than a pause,
+      // so "deleted" wins over whatever it was suspended for. But how long it has been dark
+      // is a different fact from when it was deleted, `deleted_at` already records the
+      // second, and overwriting the first would lose it: a workspace suspended for the AUP
+      // at 10:00 and deleted at 12:00 has been dark since 10:00, and that is the number
+      // somebody asks for. (Real workerd caught this — the first version wrote both.)
+      if (!this.readMeta("suspended_at")) this.writeMeta("suspended_at", at);
       this.writeMeta("suspended_reason", "deleted");
       this.sql.exec(`DELETE FROM publish_tokens`);
       return { ok: true, changed: true, deletedAt: at, purgeAfter };
@@ -718,6 +725,30 @@ export class TenantStore {
       return Response.json(out, { status: out.error === "not-provisioned" ? 404 : 409 });
     }
     return Response.json(out);
+  }
+
+  /**
+   * Is this workspace paused, and why — three rows and nothing else.
+   *
+   * ⚠️ SEPARATE FROM `status()` ON PURPOSE. This one is on the REQUEST PATH: the front door
+   * asks it before serving anything (`B-suspend-check-in-resolver`), so it must stay three
+   * indexed reads. `status()` counts members, invites, threads, boards and images and asks
+   * `dbstat` for a page total — fine for an operator console, absurd behind every page view.
+   * If a field is ever wanted here, weigh it against being run on every request of every
+   * workspace, not against how useful it would be on a dashboard.
+   *
+   * A workspace that does not exist answers `suspended: false`, the same as a live one.
+   * Whether the name means anything is the front door's other question and this is not it —
+   * and it must not create the workspace to find out, so nothing here calls `init()`.
+   */
+  suspension() {
+    if (!this.hasMeta()) return { suspended: false, reason: null, at: null, deleted: false };
+    return {
+      suspended: this.readMeta("suspended") === "1",
+      reason: this.readMeta("suspended_reason"),
+      at: this.readMeta("suspended_at"),
+      deleted: !!this.readMeta("deleted_at"),
+    };
   }
 
   /** Is the `meta` table there at all? The question `status()` asks, for the same reason. */
@@ -1091,6 +1122,10 @@ export class TenantStore {
     // NO init() ON THIS ONE. See status() — a call on a typo must not create a workspace.
     if (url.pathname === "/status" && request.method === "GET") {
       return Response.json(this.status());
+    }
+    // The request path's question, and the reason it is not /status. No init() either.
+    if (url.pathname === "/suspension" && request.method === "GET") {
+      return Response.json(this.suspension());
     }
     if (url.pathname === "/activity" && request.method === "POST") {
       let body = null;

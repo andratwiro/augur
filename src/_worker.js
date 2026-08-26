@@ -5654,6 +5654,160 @@ function freezeRefusal(doc) {
   }, 503, { "Retry-After": "60" });
 }
 
+// ---- Suspension: the workspace is paused, and the front door says so ---------
+//
+// `B-suspend-check-in-resolver`. A suspension is set on the workspace object
+// (`B-control-plane-verbs`) and enforced HERE, once, before anything else runs. Until this
+// existed the flag was a fact recorded in a database that changed nothing anybody could see.
+//
+// ── ⚠️ WHAT A SUSPENSION STOPS IS NOT "EVERYTHING", AND THE PLAN ITEM WAS WRONG ─────
+//
+// The item's VERIFY says "confirm EVERY endpoint (page serving, /__publish/*, /__board,
+// /__rt, /__asset) refuses". That is refuted by what this platform PUBLISHES TO CUSTOMERS,
+// which is the later and more considered document — the hosted lifecycle page, under
+// "What a suspension actually means":
+//
+//     What stops: the public site stops being served.
+//     What keeps working: SIGNING IN — the owner and admins can always sign in.
+//                         EXPORTING — a full export runs normally on a suspended workspace.
+//                         "If your reason for coming back is to leave, you can."
+//
+// A suspension that also closed the export would make that sentence false, and it is the
+// sentence that makes a suspension a pause rather than a hostage-taking. So the allow list
+// below is not a convenience: it is the promise, in code, and the promise is what the two
+// have to agree on. If the promise changes, this list changes the same day.
+//
+// ── ⚠️ IT FAILS CLOSED, WHICH IS THE OPPOSITE OF EVERY OTHER DEGRADATION HERE ───────
+//
+// A workspace can be suspended because it is serving a phishing page. "The store was
+// unreachable for a moment" is not a reason to serve it again, so an isolate that has never
+// managed to read the flag refuses rather than serves. What that costs is the case where a
+// workspace object is unreachable and the site would otherwise still serve static content —
+// and in hosted mode that workspace's comments, boards, roster and sign-in are all in that
+// object, so what would be left is a page with nothing working on it.
+//
+// A STALE ANSWER IS KEPT, exactly like the freeze: a resume that takes one tick longer costs
+// nothing, and a suspension that evaporates for a tick is the takedown not happening.
+//
+// ── AND IT COSTS A SINGLE-WORKSPACE INSTANCE NOTHING AT ALL ─────────────────────────
+//
+// No `TENANTS` binding — every self-hosted instance, and both live ones — returns before any
+// work at all. There is no read, no cache entry and no code path taken.
+const SUSPENSION_TTL_MS = 10_000;
+// tenantId -> { at, doc } — `doc` null means "not suspended", undefined means "never read"
+const SUSPENSION_STATE = tenantCache("suspension", { max: 64 });
+
+/**
+ * What a suspended workspace still answers. THE PUBLISHED PROMISE, as a list.
+ *
+ * Sign-in, because an admin has to be able to get in — and because a dormancy suspension
+ * is documented to lift on an admin's first sign-in. Token minting, because the export runs
+ * from the CLI on a publish token and an admin who lost theirs would otherwise be locked out
+ * of their own data by the pause. The state export and the read side of the bundle store,
+ * because that IS the export.
+ *
+ * ⚠️ NOTHING THAT WRITES IS ON THIS LIST, including `/__publish/<space>/commit`. Taking your
+ * work out is not the same act as putting more in, and the second is what the pause is for.
+ */
+const SUSPENDED_ALLOWED = Object.freeze([
+  "/__auth",
+  "/__logout",
+  "/__publish/_login/token",
+  "/__publish/_state/export",
+]);
+
+/** The read side of the bundle store — what `augur export` walks. GET only. */
+const SUSPENDED_ALLOWED_READS = Object.freeze([
+  "manifest", "versions", "version", "blob",
+]);
+
+function isAllowedWhileSuspended(request, url) {
+  if (SUSPENDED_ALLOWED.some((p) => url.pathname === p)) return true;
+  // /__publish/<space>/<verb>[/...] — only the four reads, and only as reads.
+  const m = /^\/__publish\/(?!_)[^/]+\/([^/]+)/.exec(url.pathname);
+  if (m && (request.method === "GET" || request.method === "HEAD")) {
+    return SUSPENDED_ALLOWED_READS.includes(m[1]);
+  }
+  return false;
+}
+
+/**
+ * This workspace's suspension, or null. `undefined` means the answer is not known and the
+ * caller must refuse — see the fail-closed note above.
+ */
+async function readSuspension(tenantId, env, now = Date.now()) {
+  const stub = tenantStub(env, tenantId);
+  if (!stub) return null; // single-workspace instance: not a question that exists
+  const cur = SUSPENSION_STATE.entry(tenantId, () => ({ at: 0, doc: undefined }));
+  if (!cur.at || now - cur.at >= SUSPENSION_TTL_MS) {
+    try {
+      const res = await stub.fetch("https://workspace/suspension");
+      const body = await res.json();
+      cur.doc = body && body.suspended ? body : null;
+      cur.at = now;
+    } catch (e) { /* keep the last answer, whatever it was — including "never read" */ }
+  }
+  return cur.doc;
+}
+
+/**
+ * The page a visitor sees. Plain, and it says what it is.
+ *
+ * ⚠️ NOT A 404, and the lifecycle page promises exactly that: "Visitors to your subdomain
+ * see a plain page saying the workspace is paused, not a 404 and not your last published
+ * content." A 404 says the address is wrong, which sends the wrong person looking for a
+ * typo; the last published content is what a suspension exists to stop serving.
+ *
+ * 503 with a Retry-After, so a crawler treats it as temporary and does not drop the URLs of
+ * a workspace that is coming back. `noindex` because a paused workspace's holding page is
+ * not what anybody should find in a search result.
+ *
+ * ⚠️ IT NAMES NOTHING. Not the workspace, not the reason, not who to write to about the
+ * reason. A suspension can be an AUP takedown, and "paused for breaking the rules" on a
+ * public page is a punishment nobody decided to hand out; the reason goes to the admins,
+ * through mail, and the page a stranger sees is the same page in every case.
+ */
+function suspensionPage() {
+  const html = `<!doctype html><html lang="en"><head><meta charset="utf-8">`
+    + `<meta name="viewport" content="width=device-width,initial-scale=1">`
+    + `<meta name="robots" content="noindex,nofollow">`
+    + `<title>Paused</title><style>`
+    + `body{margin:0;min-height:100vh;display:grid;place-items:center;`
+    + `font:16px/1.6 system-ui,sans-serif;color:#333;background:#faf9f7}`
+    + `main{max-width:32rem;padding:2rem;text-align:center}`
+    + `h1{font-size:1.25rem;font-weight:600;margin:0 0 .5rem}`
+    + `p{margin:0;color:#666}`
+    + `</style></head><body><main>`
+    + `<h1>This workspace is paused</h1>`
+    + `<p>It is not gone. Nothing has been deleted, and an admin can sign in and bring it back.</p>`
+    + `</main></body></html>`;
+  return new Response(html, {
+    status: 503,
+    headers: { "content-type": "text/html; charset=utf-8", "Retry-After": "3600", "Cache-Control": "no-store" },
+  });
+}
+
+/**
+ * Would an HTML page be the wrong answer here?
+ *
+ * Two signals, and the path is the one that matters: every `/__…` route is machinery, and
+ * `augur publish` reading a holding page as its manifest is a worse failure than a person
+ * seeing JSON. `Accept` is the second because a browser sends `text/html` and a CLI does not.
+ */
+function wantsJson(request, url) {
+  if (url.pathname.startsWith("/__")) return true;
+  const accept = request.headers.get("Accept") || "";
+  return !accept.includes("text/html");
+}
+
+/** The API-shaped refusal, for a caller that is plainly not a browser. */
+function suspensionRefusal() {
+  return jsonResponse({
+    error: "suspended",
+    message: "This workspace is paused. Signing in and running a full export still work; nothing else does.",
+  }, 503, { "Retry-After": "3600" });
+}
+
 /** Freeze or thaw, and report how long a freeze lasted — the number a migration publishes. */
 async function setFreeze(tctx, env, { on, reason, by }) {
   const kv = kvFor(env);
@@ -7226,6 +7380,23 @@ async function handleRequest(request, env, ctx, url, trace) {
     // can say. Refuse HERE, before the config load — there is no workspace to load config
     // for, and every branch below assumes there is one.
     if (!tenantId) return unknownHostResponse();
+
+    // ── the suspension ────────────────────────────────────────────────────────
+    // BEFORE the config load, because a paused workspace should not read its own store to
+    // find out it is paused, and the page a visitor sees needs nothing from it. One list,
+    // read once — see SUSPENDED_ALLOWED for what still answers and why it is the promise
+    // the lifecycle page makes rather than a convenience. Costs a single-workspace
+    // instance nothing: no TENANTS binding, no question.
+    if (env && env.TENANTS) {
+      const paused = await readSuspension(tenantId, env);
+      // `undefined` is "this isolate has never managed to read the flag". It refuses, and
+      // that is the one degradation in this file that shuts a door instead of opening one.
+      if (paused === undefined || paused) {
+        if (!isAllowedWhileSuspended(request, url)) {
+          return wantsJson(request, url) ? suspensionRefusal() : suspensionPage();
+        }
+      }
+    }
     // ONE context for this request, for THAT workspace, built here and handed down.
     // `tctx` is the config half of the request — users, prefixes, versions, the gate's
     // flag — as a single frozen value, and from here on the router reads it and nothing
@@ -7746,6 +7917,9 @@ export const __testables = Object.freeze({
   quotaBump, quotaMinute, quotaDay, workspaceStatus, touchWorkspaceActivity,
   deleteWorkspace, blobGc, clearFamilies, NEVER_CLEARED,
   readFreeze, setFreeze, isFrozenWrite, FROZEN_WRITES, FREEZE_KEY,
+  readSuspension, isAllowedWhileSuspended, SUSPENDED_ALLOWED, SUSPENDED_ALLOWED_READS,
+  SUSPENSION_TTL_MS,
+  suspensionPage, suspensionRefusal, wantsJson,
   PITI_VIEW_KEY, PITI_REMARKS_KEY,
   publishAuthDetailed, publishRefusalBody,
   adminStorageApi,

@@ -72,6 +72,21 @@ HMACs on the Worker-wide `SESSION_SECRET` rather than the workspace's own signin
 says so. The list is written twice, here and as `TENANT_RPC` in the control plane, because
 the repos cannot import each other; both suites assert the other's copy.
 
+**A suspension is enforced at the front door, once, before the config load** —
+`readSuspension` + `SUSPENDED_ALLOWED` in `src/_worker.js`, checked right after the resolve
+so a paused workspace never reads its own store to find out it is paused. **What it stops is
+not "everything"**: the hosted lifecycle page promises customers that signing in and a full
+export both keep working on a suspended workspace ("if your reason for coming back is to
+leave, you can"), so `SUSPENDED_ALLOWED` is that promise as a list — `/__auth`, `/__logout`,
+`/__publish/_login/token`, `/__publish/_state/export`, plus the four READ verbs of the bundle
+store an export walks. Nothing that writes. **It fails CLOSED**, unlike every other
+degradation here: an isolate that has never managed to read the flag refuses, because a
+workspace can be paused for serving a phishing page and "the store blinked" is not a reason
+to serve it again. A stale answer is kept, exactly like the freeze. A visitor gets a plain
+`noindex` 503 that names nothing — not the workspace, not the reason — because a suspension
+can be a takedown and the reason belongs in mail to the admins, not on a public page.
+**A single-workspace instance pays nothing**: no `TENANTS` binding, no question asked.
+
 **Nothing an isolate keeps may be shared between workspaces, and the proof of that is a
 TEST, not a lint.** `test/tenant-route-sweep.test.mjs` drives the real worker in BUNDLE
 mode — what every live instance serves — with two workspaces over a table of routes,

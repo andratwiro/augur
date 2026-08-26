@@ -184,7 +184,9 @@ test("the store exposes no read or write verb it does not yet need", () => {
   // exists — see test/tenant-provisioning.test.mjs. The four operator verbs and the three
   // `meta` accessors they share arrived with B-control-plane-verbs — see
   // test/tenant-verbs.test.mjs, and note that `deleteWorkspace` is a TOMBSTONE while
-  // `destroy` is the erasure primitive it does not call.
+  // `destroy` is the erasure primitive it does not call. `suspension` is separate from
+  // `status` because it is the one method on the REQUEST PATH — three indexed reads, not
+  // five counts and a page total — see B-suspend-check-in-resolver.
   const names = Object.getOwnPropertyNames(TenantStore.prototype).filter((n) => n !== "constructor");
   assert.deepEqual(names.sort(), [
     "bumpCounter", "clearMeta", "controlResult", "deleteWorkspace", "destroy", "fetch",
@@ -193,7 +195,7 @@ test("the store exposes no read or write verb it does not yet need", () => {
     "overlayCas", "overlayInsert", "overlayOwner", "overlayRead", "overlayReadRev",
     "overlayReplace", "overlaySet", "provision",
     "quotas", "readCounter", "readMeta", "resume", "rotate", "schemaVersion", "sessionKey",
-    "sql", "status", "suspend", "touchActivity",
+    "sql", "status", "suspend", "suspension", "touchActivity",
     "usersActive", "workspaceId", "writeMeta",
   ]);
 });

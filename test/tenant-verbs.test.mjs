@@ -278,6 +278,19 @@ test("A DELETE SUSPENDS TOO, using the SAME flag rather than a second one", asyn
   assert.equal(s.suspendedReason, "deleted", "an operator cannot tell a tombstone from a suspension");
 });
 
+test("deleting an ALREADY-SUSPENDED workspace replaces the reason and keeps the date", async () => {
+  // How long it has been dark and when it was deleted are different facts, `deleted_at`
+  // records the second, and the first is the one somebody asks for. Real workerd caught the
+  // version that overwrote both.
+  const { store } = await provisioned();
+  await control(store, "suspend", { reason: "aup", at: "2026-08-26T10:00:00.000Z" });
+  await control(store, "delete", { at: "2026-08-26T12:00:00.000Z" });
+  const s = store.status();
+  assert.equal(s.suspendedReason, "deleted");
+  assert.equal(s.suspendedAt, "2026-08-26T10:00:00.000Z", "the pause start was overwritten");
+  assert.equal(s.deletedAt, "2026-08-26T12:00:00.000Z");
+});
+
 test("a delete revokes publish tokens, so a tombstoned workspace cannot be published to", async () => {
   const { db, store } = await provisioned();
   db.prepare(`INSERT INTO publish_tokens (token_hash, label, created_at) VALUES ('aaa','ci','x')`).run();
