@@ -1,0 +1,165 @@
+{
+  "generatedAt": "74e865c90fee347307775e8e5d03bd94f0a44e56",
+  "derived": {
+    "BUILD_ID": "xtnr0t",
+    "VERSION_MAP": {
+      "/toolkit/map/": "v7"
+    },
+    "PUBLIC_PREFIXES": [
+      "/playground/sketch/",
+      "/toolkit/map/"
+    ],
+    "PUBLIC_SKILL_PREFIXES": [],
+    "RESTRICTED_BASES": [],
+    "CANVAS_LOADER_EXTRAS": "",
+    "CANVAS_CATALOG": [],
+    "CANVAS_TRACKS": [],
+    "MCP_HOST_ALLOWLIST": [],
+    "MCP_PATH_ALLOWLIST": [],
+    "SPACES": [
+      {
+        "id": "alpha",
+        "default": true,
+        "adminOnly": false,
+        "name": "Alpha"
+      }
+    ],
+    "CHROME_POINTER": {
+      "css": "/_chrome.0.15.0.abcdef01.css",
+      "js": "/_chrome.0.15.0.abcdef01.js",
+      "ui": "0.15.0"
+    },
+    "RUNTIME_CHROME": true
+  },
+  "buildStamp": {
+    "builtAt": "2026-08-20T09:14:02.000Z",
+    "engine": {
+      "sha": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+      "version": 12,
+      "publishedAt": "2026-08-19T22:00:00.000Z",
+      "publishedBy": "ci",
+      "builtWithEngine": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+    },
+    "spaces": {
+      "alpha": {
+        "sha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "version": 41,
+        "publishedAt": "2026-08-20T09:14:02.000Z",
+        "publishedBy": "Them",
+        "builtWithEngine": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+      }
+    }
+  },
+  "gate": {
+    "/toolkit/map/": {
+      "public": true,
+      "version": "v7"
+    },
+    "/toolkit/map/index.html": {
+      "public": true,
+      "version": "v7"
+    },
+    "/toolkit/map": {
+      "public": true,
+      "version": "v7"
+    },
+    "/toolkit/map/app.js": {
+      "public": true,
+      "version": "v7"
+    },
+    "/playground/sketch/": {
+      "public": true,
+      "version": "xtnr0t"
+    },
+    "/index.html": {
+      "public": false,
+      "version": "xtnr0t"
+    },
+    "/__search.json": {
+      "public": false,
+      "version": "xtnr0t"
+    },
+    "/sw.js": {
+      "public": true,
+      "version": "xtnr0t"
+    },
+    "/nothing/here/": {
+      "public": false,
+      "version": "xtnr0t"
+    }
+  },
+  "serve": {
+    "/toolkit/map/": {
+      "status": 200,
+      "location": null,
+      "contentType": "text/html; charset=utf-8",
+      "etag": "\"3333333333333333333333333333333333333333333333333333333333333333\"",
+      "cacheControl": "public, no-cache",
+      "body": "blob:33333333"
+    },
+    "/toolkit/map/index.html": {
+      "status": 200,
+      "location": null,
+      "contentType": "text/html; charset=utf-8",
+      "etag": "\"3333333333333333333333333333333333333333333333333333333333333333\"",
+      "cacheControl": "public, no-cache",
+      "body": "blob:33333333"
+    },
+    "/toolkit/map": {
+      "status": 308,
+      "location": "https://x.test/toolkit/map/",
+      "contentType": null,
+      "etag": null,
+      "cacheControl": null,
+      "body": null
+    },
+    "/toolkit/map/app.js": {
+      "status": 200,
+      "location": null,
+      "contentType": "application/javascript; charset=utf-8",
+      "etag": "\"4444444444444444444444444444444444444444444444444444444444444444\"",
+      "cacheControl": "public, no-cache",
+      "body": "blob:44444444"
+    },
+    "/playground/sketch/": {
+      "status": 200,
+      "location": null,
+      "contentType": "text/html; charset=utf-8",
+      "etag": "\"6666666666666666666666666666666666666666666666666666666666666666\"",
+      "cacheControl": "public, no-cache",
+      "body": "blob:66666666"
+    },
+    "/index.html": {
+      "status": 200,
+      "location": null,
+      "contentType": "text/html; charset=utf-8",
+      "etag": "\"1111111111111111111111111111111111111111111111111111111111111111\"",
+      "cacheControl": "public, no-cache",
+      "body": "blob:11111111"
+    },
+    "/__search.json": {
+      "status": 200,
+      "location": null,
+      "contentType": "application/json; charset=utf-8",
+      "etag": "\"2222222222222222222222222222222222222222222222222222222222222222\"",
+      "cacheControl": "public, no-cache",
+      "body": "blob:22222222"
+    },
+    "/sw.js": {
+      "status": 200,
+      "location": null,
+      "contentType": "application/javascript; charset=utf-8",
+      "etag": "\"7777777777777777777777777777777777777777777777777777777777777777\"",
+      "cacheControl": "public, no-cache",
+      "body": "blob:77777777"
+    },
+    "/nothing/here/": {
+      "status": 404,
+      "location": null,
+      "contentType": "text/plain;charset=UTF-8",
+      "etag": null,
+      "cacheControl": null,
+      "body": null
+    }
+  }
+}
