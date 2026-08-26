@@ -434,7 +434,21 @@ let LOGIN_PREFILL_PASSWORD = "";
 // version it compares against and the feed it prefers are both per-workspace
 // (`tctx.INSTANCE_ENGINE_VERSION`, `tctx.UPDATE_FEED`); only this fallback is fixed.
 const DEFAULT_UPDATE_FEED = "https://api.github.com/repos/andratwiro/augur/releases/latest";
+// How long a workspace may keep being served from a config this isolate can no longer
+// refresh. Below the ceiling a transient store blip costs nothing — the gate, the roster
+// and the public prefixes that were working keep working. Above it, "the last config that
+// worked" has stopped being a description of the workspace and become a photograph of it,
+// and a photograph is exactly what must not decide who may sign in or which paths are
+// public. So the isolate stops answering for that workspace instead. The trade is
+// deliberate and it is availability for correctness: a store outage longer than this
+// takes the site down rather than serving a minute-old picture of it.
+const CONFIG_STALE_CEILING_MS = 60_000;
 let cfgAt = 0;
+// When a config load for TENANT_CTX's workspace last SUCCEEDED — not when one was last
+// attempted, which is what cfgAt records. The two differ only while reads are failing,
+// which is the entire window this stamp exists to measure. 0 = this isolate has never
+// had a good config for the workspace in the slot, so there is nothing to keep.
+let cfgGoodAt = 0;
 // The context this isolate is currently serving from — config as ONE value instead of
 // twenty-nine bindings. It is the keep-last-good half of the cache above, expressed as a
 // reference: a tick that reads nothing usable returns this same object, so "keep the last
@@ -481,34 +495,56 @@ function applyInstance(inst) {
 //
 // KEEP-LAST-GOOD is the whole reason it takes `prev` and returns rather than assigns.
 // Every field starts at the previous context's value and is replaced only by a document
-// that actually parsed, so a read that fails, 404s or returns nonsense contributes
-// nothing instead of clearing what it owns. Returning `prev` itself (the `!env.ASSETS`
-// exit, or an unchanged bundle read) tells the caller "nothing to swap".
+// that actually parsed, so a document that is not there contributes nothing instead of
+// clearing what it owns. Returning `prev` itself (the `!env.ASSETS` exit, or an unchanged
+// bundle read) tells the caller "nothing to swap".
 //
-// The order inside bundle mode's try is load-bearing and matches what it replaced: a
-// throw while deriving routing leaves an instance document that already parsed applied,
-// because `next` only advances on a value that came back whole.
+// ⚠️ ABSENT AND FAILED ARE DIFFERENT, and telling them apart is this function's job.
+// They used to collapse into the same `null`, which is what made a broken read
+// indistinguishable from a raw build: both produced the empty-array/empty-string
+// defaults, and the empty defaults are the open gate.
+//
+//   ABSENT — a 404, a store key that is not there, a 200 whose body is not JSON (a
+//   deployment whose asset host answers a missing file with its own HTML page). Nothing
+//   was said about this workspace, so nothing changes: the field keeps `prev`'s value, or
+//   its factory default on a cold isolate. `CONFIG_LOADED` stays false and the gate shuts
+//   on its own — a genuinely raw build with no config source at all never gets here,
+//   because `!env.ASSETS` (and bundle mode's absent bindings) returned already.
+//
+//   FAILED — the read THREW, or the asset host answered with something other than a 404
+//   it could not serve. The store could not tell us what this workspace is, which is not
+//   the same as telling us it is empty. It propagates, and `loadConfig` decides whether
+//   there is a last-good context recent enough to keep serving or whether the request
+//   must be refused.
+//
+// Bundle mode is ALL-OR-NOTHING per tick for the same reason: an instance document that
+// parsed is discarded along with the routing derivation that then threw, rather than
+// leaving one half of a tick applied on top of the other half's stale values.
 async function loadTenantContext(tenantId, env, { prev = null, forced = false } = {}) {
   let next = prev && prev.tenantId === tenantId ? prev : emptyTenantContext(tenantId);
   // Bundle mode: instance config lives in the store (pushed via /__publish/
   // _instance/config) and routing derives from the live manifests.
   if (bundleMode(env)) {
-    try {
-      const [instObj, manifests] = await Promise.all([
-        env.BUNDLES.get("config/instance.json"),
-        loadManifests(tenantId, env, true),
-      ]);
-      if (instObj) next = withTenantFields(next, instanceFields(JSON.parse(await instObj.text())));
-      next = withTenantFields(next, derivedRoutingFields(manifests, next.SPACE_ICONS));
-    } catch (e) {}
+    const [instObj, manifests] = await Promise.all([
+      env.BUNDLES.get("config/instance.json"),
+      loadManifests(tenantId, env, true),
+    ]);
+    // An absent instance document is a store that has never been pushed one — ABSENT.
+    // A present one that will not parse is a FAILED read, and throws from here.
+    if (instObj) next = withTenantFields(next, instanceFields(JSON.parse(await instObj.text())));
+    next = withTenantFields(next, derivedRoutingFields(manifests, next.SPACE_ICONS));
     return withTenantFields(next, await rosterFields(next, env, forced));
   }
   if (!env.ASSETS) return next;
   const grab = async (name) => {
-    try {
-      const r = await env.ASSETS.fetch("https://config/__config/" + name);
-      return r.ok ? await r.json() : null;
-    } catch (e) { return null; }
+    // A throw from the binding is a FAILED read and propagates — deliberately not caught.
+    const r = await env.ASSETS.fetch("https://config/__config/" + name);
+    if (r.status === 404) return null; // ABSENT: this build shipped no such document
+    if (!r.ok) throw new Error(`config read failed: ${name} answered ${r.status}`);
+    // A 200 that is not JSON is the asset host's own fallback page, not config. Treated
+    // as ABSENT rather than FAILED: it is what a build with no config document looks like
+    // on a host that answers misses with a page instead of a 404.
+    try { return await r.json(); } catch (e) { return null; }
   };
   const [inst, routing] = await Promise.all([grab("instance.json"), grab("routing.json")]);
   if (inst) next = withTenantFields(next, instanceFields(inst));
@@ -537,31 +573,77 @@ function applyTenantContext(ctx) {
   RUNTIME_CHROME = ctx.RUNTIME_CHROME;
 }
 
-// The transitional caller: one tick of the clock, then the mirror. It owns the two
-// properties the cache has to keep, and both are here rather than inside
-// loadTenantContext because the CALLER is what decides a failed read is not worth
-// swapping the context for:
+// The transitional caller: one tick of the clock, then the mirror. It owns the three
+// properties the cache has to keep, and all three are here rather than inside
+// loadTenantContext because the CALLER is what decides what a failed read is worth:
 //
 //   STAMP-FIRST — the tick is stamped BEFORE the read, so a config document that is
-//   broken costs one attempt per 1.5s tick instead of one per concurrent request.
+//   broken costs one attempt per 1.5s tick instead of one per concurrent request. It is
+//   stamped before the failure is classified too: a store that is refusing every read
+//   must not get one attempt per request just because the answers are useless.
 //   KEEP-LAST-GOOD — the mirror runs only when the load handed back a different context.
 //   A read that produced nothing returns the reference it was given, and the gate keeps
-//   serving the last config that worked.
+//   serving the last config that worked. A read that FAILED keeps it too, but only for
+//   as long as CONFIG_STALE_CEILING_MS.
+//   FAIL-CLOSED — a failed read for a workspace this isolate has no recent good config
+//   for produces NO context at all. The caller refuses the request; it does not serve one
+//   built from the empty defaults, because the empty defaults are indistinguishable from
+//   a raw build and a raw build's gate is open by design.
 //
-// It RETURNS the context it settled on — the value fetch() hands down. Every exit
-// returns one, including the two that do no work: "the clock says this tenant's config
-// is fresh" and "nothing parsed" both mean the caller should serve from the context
-// already in hand, not from an empty one. Returning nothing there would hand the router
-// a hole where its config should be.
+// It RETURNS the context it settled on, or `null` for "this request cannot be answered".
+// The exits that do no work still return one: "the clock says this workspace's config is
+// fresh" and "nothing parsed" both mean the caller should serve from the context already
+// in hand.
+//
+// Everything is scoped to the workspace ASKED FOR, never to whatever the isolate looked
+// at last. `TENANT_CTX` is one slot (see the note on its declaration), so a second
+// workspace has no last-good here at all — and the answer for a workspace with no
+// last-good is to reload, or to refuse, never to borrow the neighbour's.
 async function loadConfig(tenantId, env) {
-  if (!env || Date.now() - cfgAt < 1500) return TENANT_CTX;
-  const forced = !cfgAt; // a write handler busted the cache — roster must re-read now
+  // Is the context in the slot this workspace's? If not, this workspace is cold: no
+  // fresh clock to ride, no last-good to keep, nothing to hand back on a failure.
+  const mine = TENANT_CTX.tenantId === tenantId;
+  // No config source bound at all — an offline shell or a raw engine build. There is
+  // nothing to read and therefore nothing that can fail; this is the case that is open
+  // BY DESIGN, and it must never become a refusal.
+  if (!env) return mine ? TENANT_CTX : emptyTenantContext(tenantId);
+  if (mine && Date.now() - cfgAt < 1500) return TENANT_CTX;
+  // A write handler busted the cache, or this workspace has never loaded — either way
+  // the roster must re-read now rather than ride its own longer clock.
+  const forced = !mine || !cfgAt;
   cfgAt = Date.now(); // stamp first — a failed load retries next tick, never stampedes
-  const next = await loadTenantContext(tenantId, env, { prev: TENANT_CTX, forced });
+  let next;
+  try {
+    next = await loadTenantContext(tenantId, env, { prev: mine ? TENANT_CTX : null, forced });
+  } catch (e) {
+    // The store could not say what this workspace is. Keep serving the last config that
+    // worked while it is still young enough to be worth trusting; past that, and on a
+    // cold isolate that has no last config at all, refuse.
+    if (mine && cfgGoodAt && Date.now() - cfgGoodAt < CONFIG_STALE_CEILING_MS) return TENANT_CTX;
+    return null;
+  }
+  cfgGoodAt = Date.now();
   if (next === TENANT_CTX) return TENANT_CTX;
   TENANT_CTX = next;
   applyTenantContext(next);
   return TENANT_CTX;
+}
+
+// What a request gets when its workspace's config cannot be read and this isolate has no
+// recent good copy of it. Deliberately NOT the login page: the login page is an answer
+// about who may see this site, and answering it requires the very config that is missing.
+// A 503 says the opposite of what an empty context would say — "ask again", not "there is
+// nothing here to protect".
+function configUnavailableResponse() {
+  return new Response("Configuration unavailable — try again shortly.\n", {
+    status: 503,
+    headers: {
+      "Content-Type": "text/plain; charset=utf-8",
+      "Cache-Control": "no-store",
+      "Retry-After": "5",
+      "X-Robots-Tag": "noindex, nofollow, noarchive",
+    },
+  });
 }
 
 // ---- The tenant resolver seam -----------------------------------------------
@@ -697,8 +779,12 @@ const ROSTER_TTL_MS = 60_000;
 let rosterReadAt = 0;
 let rosterCache = null;
 // Test hooks: the cadence above is timing state a test can't reach otherwise.
-function __setConfigTestState({ cfgAt: c, rosterReadAt: r, mcpHostAllowlist: m, manifests, storage } = {}) {
+function __setConfigTestState({ cfgAt: c, cfgGoodAt: g, rosterReadAt: r, mcpHostAllowlist: m, manifests, storage } = {}) {
   if (c !== undefined) cfgAt = c;
+  // The last-good stamp is set INDEPENDENTLY of the tick stamp, because ageing one past
+  // the other is the whole staleness-ceiling story: `{cfgAt: 0}` means "a new tick", and
+  // only `{cfgGoodAt: …}` means "and the last config that worked is this old".
+  if (g !== undefined) cfgGoodAt = g;
   if (r !== undefined) { rosterReadAt = r; if (!r) rosterCache = null; }
   // The proxy's derived host lists, back to cold. Falsy clears; the Map is keyed by
   // workspace, so a case that does not clear it is asserting about whatever the previous
@@ -4947,6 +5033,12 @@ export default {
     // Note what is NOT here: no second resolve, and no config read that picks its own
     // workspace. Everything below is downstream of these two lines.
     const tctx = await loadConfig(tenantId, env);
+    // No context means the config for THIS workspace could not be read and this isolate
+    // has no recent good copy of it. Refuse here, before a single route runs: every
+    // decision below — who is signed in, which paths are public, which store to serve
+    // from — is a config question, and answering it from the empty defaults would answer
+    // it the way a raw build with no identity answers it, which is "open".
+    if (!tctx) return configUnavailableResponse();
 
     // Direct-publish API — self-authed (bearer tokens), before the gate like
     // the other tooling routes.
@@ -5410,5 +5502,6 @@ export const __testables = {
   boardApi, canvasesApi, virtualCanvas, rtProxy, CANVASES_KEY, BOARD_PREFIX, BOARD_MAX_BYTES,
   composeChrome, renderAppChrome, renderSpaceContextScript, __setChromeTestState,
   loadConfig, loadTenantContext, __setConfigTestState, __usersNow, pitiApi,
+  CONFIG_STALE_CEILING_MS,
   resolveTenant, DEFAULT_TENANT_ID, TENANT_MEMO_TTL_MS, __setTenantTestState,
 };

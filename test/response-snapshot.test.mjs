@@ -148,14 +148,18 @@ const TREE = {
   "/__review/comments.js": { ct: "application/javascript; charset=utf-8", body: "/* s0 review overlay stub */\n" },
 };
 
-function assetsStub(tree, { failConfig = false } = {}) {
+function assetsStub(tree, { failConfig = false, absentConfig = false } = {}) {
   return {
     // loadConfig()'s grab() calls ASSETS.fetch with a STRING url ("https://config/
     // __config/<name>"); assetFetch() calls it with a Request. Accept both, exactly as
     // the real Pages ASSETS binding does.
     async fetch(req) {
       const p = new URL(typeof req === "string" ? req : req.url).pathname;
+      // The two ways a cold isolate can end up with no config, which the worker now tells
+      // apart: the read FAILED (the store could not answer) and the document is ABSENT
+      // (this build shipped none). They fail closed differently and both are in the corpus.
       if (failConfig && p.startsWith("/__config/")) throw new Error("cold-isolate: config read forced to fail");
+      if (absentConfig && p.startsWith("/__config/")) return new Response("Not Found", { status: 404 });
       const f = tree[p];
       if (!f) return new Response("Not Found", { status: 404 });
       return new Response(f.body, { status: 200, headers: { "Content-Type": f.ct } });
@@ -248,12 +252,23 @@ async function collectWarm() {
   return snap;
 }
 
-// The cold isolate: a FRESH module evaluation (import with a query so Node re-evaluates
-// it → cfgAt=0, CONFIG_LOADED=false, USERS=[]) whose very first config read FAILS. The
-// gate must FAIL CLOSED. A separate module instance so it can never taint the warm run.
-async function coldRecord() {
-  const Cold = await import("../src/_worker.js?cold-isolate");
-  const env = { COMMENTS: memKV(), ASSETS: assetsStub(TREE, { failConfig: true }), SESSION_SECRET };
+// A cold isolate: a FRESH module evaluation (import with a distinct query so Node
+// re-evaluates it → cfgAt=0, cfgGoodAt=0, CONFIG_LOADED=false, USERS=[]) whose very first
+// config read produces nothing. The gate must FAIL CLOSED — and there are two of these,
+// because there are two ways to have no config and the worker no longer confuses them:
+//
+//   `failConfig` — the read THREW. This isolate has never had a good config for this
+//   workspace, so there is nothing to keep serving and the request is REFUSED (503).
+//   Falling through to the empty defaults here is the regression §2a names as the single
+//   most dangerous one: the empty defaults are what a raw build looks like, and a raw
+//   build's gate is open.
+//   `absentConfig` — the documents 404. Nothing failed; this build simply shipped no
+//   config. The request is served, and CONFIG_LOADED false is what shuts the gate.
+//
+// A separate module instance each, so neither can taint the other or the warm run.
+async function coldRecord({ query, ...opts } = {}) {
+  const Cold = await import("../src/_worker.js?" + query);
+  const env = { COMMENTS: memKV(), ASSETS: assetsStub(TREE, opts), SESSION_SECRET };
   const ctx = { waitUntil() {} };
   const res = await Cold.default.fetch(new Request("https://example.test/"), env, ctx);
   const ct = res.headers.get("Content-Type");
@@ -268,25 +283,37 @@ async function coldRecord() {
   };
 }
 
-// ---- The guard that must be able to fire (§2a) ------------------------------
-test("cold isolate whose first config read fails FAILS CLOSED (CONFIG_LOADED)", async () => {
-  const { res } = await coldRecord();
-  // Fail-closed = the login page, NOT the gated index asset. If the gate defaulted to
-  // "loaded/empty" instead of "not yet loaded", authed would flip true on this cold
-  // isolate and the index fixture would be served open — exactly the regression §2a
-  // names as the single most dangerous one. These two assertions ARE that guard: make
-  // the gate fail open (authed = true) and this test fails.
+// ---- The guards that must be able to fire (§2a) -----------------------------
+test("cold isolate whose first config READ FAILED is REFUSED, never served open", async () => {
+  const { res } = await coldRecord({ query: "cold-fail", failConfig: true });
+  // The store could not say what this workspace is, and this isolate has no last-good
+  // config to keep serving. Refuse. NOT the gated index asset — and deliberately not the
+  // login page either: rendering an answer about who may see this site means trusting a
+  // context nothing filled, and an unfilled context is byte-identical to a raw build's.
+  assert.equal(res.status, 503, "no config and no last-good means the request cannot be answered");
+  assert.doesNotMatch(res.body, /INDEX-FIXTURE/,
+    "the gated index must NOT be served on a cold isolate whose config failed to load");
+  // Make loadConfig return the empty context instead of null and this goes back to 200.
+});
+
+test("cold isolate whose config documents are ABSENT fails closed on CONFIG_LOADED, and is not refused", async () => {
+  const { res } = await coldRecord({ query: "cold-absent", absentConfig: true });
+  // Nothing failed — this build shipped no config, which is a real and supported state.
+  // So the request IS answered, and what answers it is the gate: CONFIG_LOADED starts
+  // FALSE and only an instance document that actually parsed sets it true. THIS is the
+  // guard on that flag. Flip its default in the tenant-context factory to `true` and
+  // `authed` flips with it, the index fixture is served open, and this test goes red.
   assert.equal(res.status, 200, "the login page is served with 200 (password-manager friendly)");
   assert.match(res.body, /action="\/__auth"/, "the login form is what a locked gate returns");
   assert.doesNotMatch(res.body, /INDEX-FIXTURE/,
-    "the gated index must NOT be served on a cold isolate whose config failed to load");
+    "a deployment with no config document must not be mistaken for a raw build with an open gate");
 });
 
 // ---- The baseline gate -------------------------------------------------------
 test("response snapshot matches the checked-in baseline", async () => {
   const snapshot = await collectWarm();
-  const cold = await coldRecord();
-  snapshot["cold-isolate-fail-closed"] = cold.snap;
+  snapshot["cold-isolate-fail-closed"] = (await coldRecord({ query: "cold-fail-snap", failConfig: true })).snap;
+  snapshot["cold-isolate-config-absent"] = (await coldRecord({ query: "cold-absent-snap", absentConfig: true })).snap;
 
   if (UPDATE) {
     writeFileSync(BASELINE, JSON.stringify(snapshot, null, 2) + "\n");

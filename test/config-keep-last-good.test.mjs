@@ -14,9 +14,12 @@
 //
 // The counterweight is the opposite rule and lives in the same place: a COLD isolate
 // whose FIRST read fails has no last-good to keep, so it must fail CLOSED rather than
-// look like a raw build with no identity. That one is pinned by the cold-isolate case in
-// test/response-snapshot.test.mjs; here we pin its other half, that a warm isolate does
-// not throw away a gate that works.
+// look like a raw build with no identity. So does a warm one once the last good config
+// is older than CONFIG_STALE_CEILING_MS. That half is pinned by
+// test/config-fail-closed.test.mjs and by the two cold-isolate cases in
+// test/response-snapshot.test.mjs; here we pin this half, that a warm isolate inside the
+// ceiling does not throw away a gate that works. Neither file means anything alone —
+// keep-last-good is safe exactly as long as there IS a last good config and it is young.
 //
 // Both serving modes are covered on purpose. The response snapshot corpus runs in ASSETS
 // mode, so the bundle branch — which is what every deployed instance actually runs — has

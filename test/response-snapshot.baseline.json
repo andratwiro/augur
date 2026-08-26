@@ -102,6 +102,16 @@
     "bodyHash": "6e287a82412567136f9216cff630af24e10e7fb142dee19b89af365c909d15d2"
   },
   "cold-isolate-fail-closed": {
+    "status": 503,
+    "headers": {
+      "cache-control": "no-store",
+      "content-type": "text/plain; charset=utf-8",
+      "retry-after": "5",
+      "x-robots-tag": "noindex, nofollow, noarchive"
+    },
+    "bodyHash": "73bc1a43648906433714d9c375e610c40c0c29b158257c37ae379ed12d05b2e5"
+  },
+  "cold-isolate-config-absent": {
     "status": 200,
     "headers": {
       "cache-control": "no-store",

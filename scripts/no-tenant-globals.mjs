@@ -57,6 +57,7 @@ const IN_FLIGHT = {
 // those two are named as the work that fixes them.
 const CACHES = {
   cfgAt:            "config TTL stamp; superseded per tenant by createTenantContextCache",
+  cfgGoodAt:        "when the config in the TENANT_CTX slot last loaded without a read failing — the staleness ceiling's clock; it is read only when the slot holds the workspace being asked about, so a second workspace finds no last-good and fails closed rather than inheriting this one's; goes into createTenantContextCache with TENANT_CTX",
   TENANT_CTX:       "the last good context this isolate loaded, in ONE slot; like the globals it mirrors it would answer a second workspace with the first one's config, and the per-tenant createTenantContextCache is what replaces it when fetch() threads the context down",
   rosterReadAt:     "roster read clock; a stale stamp costs a re-read, and identify() still resolves per request",
   rosterCache:      "the last roster document read from KV; overlay only, never the auth boundary",
