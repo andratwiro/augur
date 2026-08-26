@@ -794,6 +794,31 @@ export class TenantStore {
   }
 
   /**
+   * Destroy everything this workspace holds.
+   *
+   * `deleteAll` is the Durable Object's own verb and it is the only honest one: dropping
+   * the tables would leave a database with a schema in it, which reads as an empty
+   * workspace rather than as no workspace, and the difference matters to the status verb
+   * and to anyone auditing what was actually erased.
+   *
+   * A runtime without `deleteAll` falls back to dropping every table this schema created —
+   * named from the schema itself, so a table added later is dropped without anybody
+   * remembering to add it here too.
+   */
+  async destroy() {
+    this.ready = false;
+    if (typeof this.ctx.storage.deleteAll === "function") {
+      await this.ctx.storage.deleteAll();
+      return { method: "deleteAll" };
+    }
+    const tables = TENANT_SCHEMA
+      .map((stmt) => (/CREATE TABLE IF NOT EXISTS (\w+)/.exec(stmt) || [])[1])
+      .filter(Boolean);
+    for (const t of tables) this.sql.exec(`DROP TABLE IF EXISTS ${t}`);
+    return { method: "drop-tables", tables };
+  }
+
+  /**
    * The worker's way in. A Durable Object stub is not publicly routable — only code
    * holding the binding can reach it — so this is an internal API, not a surface.
    *
@@ -821,6 +846,10 @@ export class TenantStore {
       try { body = await request.json(); } catch (e) { /* an empty body is fine */ }
       await this.init(body && body.workspaceId);
       return Response.json({ wrote: this.touchActivity() });
+    }
+    if (url.pathname === "/destroy" && request.method === "POST") {
+      // No init(): destroying a workspace that does not exist must not create one first.
+      return Response.json(await this.destroy());
     }
     if (url.pathname === "/state/import" && request.method === "POST") {
       let body = null;

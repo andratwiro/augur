@@ -3368,6 +3368,19 @@ async function publishApi(tctx, request, url, env) {
       });
       return jsonResponse({ ok: true, hash });
     }
+    if (op === "delete" && request.method === "POST") {
+      let body = null;
+      try { body = await request.json(); } catch (e) { /* a dry run needs no body */ }
+      return jsonResponse(await deleteWorkspace(tctx, env, {
+        confirm: body && body.confirm,
+        dryRun: !(body && body.confirm),
+      }));
+    }
+    if (op === "blob-gc" && request.method === "POST") {
+      let body = null;
+      try { body = await request.json(); } catch (e) { /* a dry run needs no body */ }
+      return jsonResponse(await blobGc(env, { dryRun: !(body && body.confirm === "reclaim") }));
+    }
     if (op === "status" && request.method === "GET") {
       return jsonResponse(await workspaceStatus(tctx, env));
     }
@@ -5467,6 +5480,178 @@ async function replayFamilies(store, kv, doc, ids) {
   return { written, skipped };
 }
 
+// ---- Deleting a workspace, and reclaiming what nothing references -----------
+//
+// `E-gdpr-delete-tenant`. Two operations, deliberately separate, and the separation is the
+// safety property rather than a scheduling convenience.
+//
+// DELETING A WORKSPACE removes its own R2 prefix and destroys its Durable Object storage.
+// Both are bounded to that workspace and neither can reach a neighbour.
+//
+// RECLAIMING BYTES IS A DIFFERENT JOB, because blobs are content-addressed and GLOBALLY
+// deduped: `blobs/<sha256>` is one object however many workspaces publish the same file.
+// So "delete the blobs this workspace referenced" is wrong in the one direction that
+// matters — it takes bytes another workspace is serving. Knowing a blob is orphaned means
+// reading every REMAINING manifest and every retained version of every workspace, which is
+// a full-bucket walk. Doing that inside a delete request would mean either a slow delete or
+// a partial scan, and a partial scan concludes that a blob nothing-it-managed-to-read
+// references is unreferenced. So the delete records what it MIGHT have orphaned and the
+// sweep decides, later, with the whole picture.
+//
+// THE SWEEP REFUSES TO CONCLUDE FROM A PARTIAL READ. If it read no manifest at all, or a
+// listing was truncated and not walked to the end, it reports and deletes nothing — a
+// sweep that found "everything is orphaned" because it could not look is the single worst
+// outcome available here.
+
+/** Every blob hash a manifest document references. */
+const hashesIn = (m) => Object.values((m && m.files) || {}).map((f) => f && f.h).filter(Boolean);
+
+/** Walk one space's live manifest and every retained version. */
+async function spaceHashes(env, id) {
+  const out = new Set();
+  let read = 0;
+  const live = await env.BUNDLES.get(`spaces/${id}/manifest.json`);
+  if (live) { read++; for (const h of hashesIn(JSON.parse(await live.text()))) out.add(h); }
+  let cursor, truncated = false;
+  do {
+    const page = await env.BUNDLES.list({ prefix: `spaces/${id}/versions/`, cursor });
+    for (const o of page.objects || []) {
+      const v = await env.BUNDLES.get(o.key);
+      if (!v) continue;
+      read++;
+      try { for (const h of hashesIn(JSON.parse(await v.text()))) out.add(h); }
+      catch (e) { truncated = true; } // an unreadable version is a hole in the picture
+    }
+    cursor = page.truncated ? page.cursor : null;
+    if (page.truncated && !page.cursor) { truncated = true; break; }
+  } while (cursor);
+  return { hashes: out, read, truncated };
+}
+
+/**
+ * Every space id the store holds, and whether that list is COMPLETE.
+ *
+ * The completeness matters more than the list: a sweep that saw half the spaces would
+ * conclude that the other half's blobs are orphaned, and a sweep that saw none would
+ * conclude that all of them are. Both are the same mistake at different scales, and both
+ * are silent.
+ */
+async function storeSpaceIds(env) {
+  const ids = [];
+  let cursor, complete = true;
+  do {
+    const page = await env.BUNDLES.list({ prefix: "spaces/", delimiter: "/", cursor });
+    for (const p of page.delimitedPrefixes || []) ids.push(p.slice("spaces/".length, -1));
+    cursor = page.truncated ? page.cursor : null;
+    if (page.truncated && !page.cursor) { complete = false; break; }
+  } while (cursor);
+  return { ids, complete };
+}
+
+/**
+ * Delete one workspace: its published prefix and its own object's storage.
+ *
+ * `confirm` must be the workspace's own id. Not ceremony — a star-scope token can already
+ * overwrite everything a workspace has published, and rollback undoes that; this is the one
+ * verb whose result no rollback reaches, so the caller says which workspace out loud.
+ */
+async function deleteWorkspace(tctx, env, { confirm, dryRun = true } = {}) {
+  const id = tctx && tctx.tenantId;
+  if (!id) return { ok: false, reason: "no-workspace" };
+  if (!dryRun && confirm !== id) return { ok: false, reason: "confirm-mismatch", expected: id };
+  if (!env.BUNDLES) return { ok: false, reason: "no-store" };
+
+  // What this workspace referenced — recorded so the sweep has a starting point, and so a
+  // dry run can say what it would eventually reclaim.
+  const listed = await storeSpaceIds(env);
+  if (!listed.complete) return { ok: false, reason: "incomplete-listing" };
+  const mine = listed.ids.filter((s) => s === id || s.startsWith(`${id}/`));
+  const maybeOrphaned = new Set();
+  const keys = [];
+  for (const s of mine) {
+    const { hashes } = await spaceHashes(env, s);
+    for (const h of hashes) maybeOrphaned.add(h);
+    keys.push(`spaces/${s}/manifest.json`);
+    let cursor;
+    do {
+      const page = await env.BUNDLES.list({ prefix: `spaces/${s}/versions/`, cursor });
+      for (const o of page.objects || []) keys.push(o.key);
+      cursor = page.truncated ? page.cursor : null;
+    } while (cursor);
+  }
+
+  if (dryRun) {
+    return { ok: true, dryRun: true, workspace: id, objects: keys.length, maybeOrphaned: maybeOrphaned.size };
+  }
+
+  for (const k of keys) await env.BUNDLES.delete(k);
+
+  // The object last: while its storage exists the workspace can still say what it was, and
+  // a delete that died between the two halves is better left with the record than with the
+  // content.
+  let store = { skipped: "no-object" };
+  const stub = tenantStub(env, id);
+  if (stub) {
+    try {
+      const res = await stub.fetch("https://workspace/destroy", { method: "POST" });
+      store = res.ok ? await res.json() : { error: res.status };
+    } catch (e) { store = { error: String((e && e.message) || e).slice(0, 200) }; }
+  }
+  return {
+    ok: true, workspace: id, objects: keys.length, store,
+    // Handed back rather than acted on: only the sweep can tell an orphan from a blob
+    // another workspace is serving.
+    maybeOrphaned: [...maybeOrphaned],
+  };
+}
+
+/**
+ * Delete the blobs no remaining workspace references, live or in any retained version.
+ *
+ * Deferred and batched on purpose — see the header. It reads EVERY space's manifests before
+ * it deletes anything, and refuses outright if that picture is incomplete.
+ */
+async function blobGc(env, { dryRun = true } = {}) {
+  if (!env.BUNDLES) return { ok: false, reason: "no-store" };
+  const listed = await storeSpaceIds(env);
+  // The space listing FIRST, and its completeness before anything else: half a list means
+  // the other half's blobs read as orphaned, and no list at all means all of them do.
+  if (!listed.complete) return { ok: false, reason: "incomplete-listing" };
+  const spaces = listed.ids;
+  const referenced = new Set();
+  let manifestsRead = 0, incomplete = false;
+  for (const s of spaces) {
+    const r = await spaceHashes(env, s);
+    for (const h of r.hashes) referenced.add(h);
+    manifestsRead += r.read;
+    if (r.truncated) incomplete = true;
+  }
+  // A sweep that found "everything is orphaned" because it could not look is the single
+  // worst outcome available here, so it is the one this refuses to reach.
+  if (incomplete) return { ok: false, reason: "incomplete-scan" };
+  if (spaces.length && !manifestsRead) return { ok: false, reason: "no-manifests-read" };
+
+  const orphans = [];
+  let cursor, blobsSeen = 0;
+  do {
+    const page = await env.BUNDLES.list({ prefix: "blobs/", cursor });
+    for (const o of page.objects || []) {
+      blobsSeen++;
+      const hash = o.key.slice("blobs/".length);
+      if (!referenced.has(hash)) orphans.push(o.key);
+    }
+    cursor = page.truncated ? page.cursor : null;
+    if (page.truncated && !page.cursor) return { ok: false, reason: "incomplete-listing" };
+  } while (cursor);
+
+  if (!dryRun) for (const k of orphans) await env.BUNDLES.delete(k);
+  return {
+    ok: true, dryRun, spaces: spaces.length, manifestsRead,
+    blobs: blobsSeen, referenced: referenced.size,
+    reclaimed: orphans.length, keys: orphans.slice(0, 20),
+  };
+}
+
 // ---- What a workspace volunteers about itself -------------------------------
 //
 // `B-tenant-status-payload`. The shape is FORCED rather than chosen: the control plane is
@@ -7359,6 +7544,7 @@ export const __testables = Object.freeze({
   nextPublishVersion, overlayFor, overlayKvKey, statusApi, nameApi, pinsApi,
   exportState, importState,
   quotaBump, quotaMinute, quotaDay, workspaceStatus, touchWorkspaceActivity,
+  deleteWorkspace, blobGc,
   PITI_VIEW_KEY, PITI_REMARKS_KEY,
   publishAuthDetailed, publishRefusalBody,
   adminStorageApi,
