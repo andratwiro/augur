@@ -3021,9 +3021,20 @@ function tokenActorRefusal(tctx, e) {
   return null;
 }
 
-async function publishAuth(tctx, request, env, spaceId, anySpace) {
+/**
+ * The one resolve, with its reason. `{entry}` when the token may publish here, `{refusal}`
+ * — one of no-token, unknown-token, token-expired, not-a-member, viewer-role,
+ * not-an-admin, wrong-space — when it may not.
+ *
+ * The reason exists so an EXPIRED token can say so. A publish token now runs out (30 days
+ * by default), and a CLI that answers "403 forbidden" to the one failure every holder will
+ * eventually hit sends them looking for a permissions problem they do not have. Nothing
+ * here is an oracle: a reason is only ever reached by a token that is IN the map, i.e. by
+ * the person holding it. A token nobody minted gets `unknown-token` and learns nothing.
+ */
+async function publishAuthDetailed(tctx, request, env, spaceId, anySpace) {
   const m = /^Bearer\s+(.+)$/.exec(request.headers.get("Authorization") || "");
-  if (!m) return null;
+  if (!m) return { entry: null, refusal: "no-token" };
   const token = m[1].trim();
   // THE BOOTSTRAP TOKEN IS DEAD ON A DEPLOYED INSTANCE, whatever its environment says.
   //
@@ -3052,23 +3063,25 @@ async function publishAuth(tctx, request, env, spaceId, anySpace) {
           detail: "PUBLISH_BOOTSTRAP_TOKEN is set on a deployed instance and a request presented it. It grants star-scope publish with no KV read. Unset it on this worker and rotate anything that has been published since.",
         }));
       } catch { /* an alarm may never break the refusal it is announcing */ }
-      return null;
+      return { entry: null, refusal: "unknown-token" };
     }
-    return { space: "*", label: "bootstrap" };
+    return { entry: { space: "*", label: "bootstrap" }, refusal: null };
   }
   const kv = kvFor(env);
-  if (!kv) return null;
+  if (!kv) return { entry: null, refusal: "no-store" };
   try {
     const h = await tokenFor("pub:" + token);
     const raw = await kv.get(PUBLISH_TOKENS_KEY);
     const map = raw ? JSON.parse(raw) : {};
     const e = map[h];
-    if (!e) return null;
+    if (!e) return { entry: null, refusal: "unknown-token" };
     // An EXPIRED token is no token. Strictly additive: only a record that carries an
     // `expiresAt` can fail this, and every token minted before device pairing existed has
     // none — so this cannot retire a credential somebody is still using. The pairing flow
     // is the first path here that sets one.
-    if (e.expiresAt && Date.parse(e.expiresAt) <= Date.now()) return null;
+    if (e.expiresAt && Date.parse(e.expiresAt) <= Date.now()) {
+      return { entry: null, refusal: "token-expired" };
+    }
     // A star-scope token is admin-equivalent — it pushes instance config, i.e. the user
     // list itself. `augur login` labels the token it mints with the holder's email, so if
     // that address is still on the roster but is no longer an admin, the token has
@@ -3091,11 +3104,46 @@ async function publishAuth(tctx, request, env, spaceId, anySpace) {
           scope: e.space === "*" ? "*" : "space",
         }));
       } catch { /* a log line may never break the refusal it is announcing */ }
-      return null;
+      return { entry: null, refusal };
     }
-    if (!anySpace && e.space !== "*" && e.space !== spaceId) return null;
-    return e;
-  } catch (err) { return null; }
+    if (!anySpace && e.space !== "*" && e.space !== spaceId) {
+      return { entry: null, refusal: "wrong-space" };
+    }
+    return { entry: e, refusal: null };
+  } catch (err) { return { entry: null, refusal: "no-store" }; }
+}
+
+/**
+ * The verdict alone. Every caller that only needs "may this token publish here" uses this,
+ * so the reason above is opt-in rather than something three call sites have to unpack.
+ */
+async function publishAuth(tctx, request, env, spaceId, anySpace) {
+  return (await publishAuthDetailed(tctx, request, env, spaceId, anySpace)).entry;
+}
+
+/**
+ * The body a refusal answers with.
+ *
+ * `error` stays `forbidden` for every reason but one, so nothing that already branches on
+ * it has to change. The exception is EXPIRY, which gets its own code because it is the one
+ * refusal a legitimate holder will certainly hit one day and the one with a fix they can
+ * run themselves — and a CLI that prints "403 forbidden" for it sends them looking for a
+ * permissions problem they do not have.
+ *
+ * The other reasons carry a `message` and no new code. Saying "this account is no longer a
+ * member here" to somebody holding a token labelled with their own address tells them
+ * nothing they could not work out, and saves an afternoon.
+ */
+function publishRefusalBody(refusal) {
+  if (refusal === "token-expired") {
+    return { error: "token-expired", message: "This publish token has expired. Run `augur login` again." };
+  }
+  const message = {
+    "not-a-member": "This token's account is no longer a member of this workspace.",
+    "viewer-role": "This account can look around but not publish.",
+    "not-an-admin": "This token was minted for an admin and this account is no longer one. Run `augur login` again for a token scoped to what it may still publish.",
+  }[refusal];
+  return message ? { error: "forbidden", message } : { error: "forbidden" };
 }
 
 async function publishApi(tctx, request, url, env) {
@@ -3160,7 +3208,8 @@ async function publishApi(tctx, request, url, env) {
   // URLs resolve at runtime against the instance's real identity, so a build
   // from a bare space clone renders the same faces an identity-file build does.
   if (spaceId === "_instance" && op === "profiles" && request.method === "GET") {
-    if (!(await publishAuth(tctx, request, env, spaceId, true))) return jsonResponse({ error: "forbidden" }, 403);
+    const anyAuth = await publishAuthDetailed(tctx, request, env, spaceId, true);
+    if (!anyAuth.entry) return jsonResponse(publishRefusalBody(anyAuth.refusal), 403);
     // No `role` here: any valid publish token (including a non-admin default-space one)
     // can read this, and it only needs the fields that render editor faces — leaking
     // who the admins are is gratuitous.
@@ -3173,8 +3222,9 @@ async function publishApi(tctx, request, url, env) {
     return jsonResponse({ profiles });
   }
 
-  const who = await publishAuth(tctx, request, env, spaceId);
-  if (!who) return jsonResponse({ error: "forbidden" }, 403);
+  const auth = await publishAuthDetailed(tctx, request, env, spaceId);
+  if (!auth.entry) return jsonResponse(publishRefusalBody(auth.refusal), 403);
+  const who = auth.entry;
 
   // Instance config push (star-scope tokens only): the deploy shell's identity +
   // knobs become config/instance.json — the bundle-mode source loadConfig reads.
@@ -6376,6 +6426,7 @@ export const __testables = Object.freeze({
   revokePublishTokens, loginThrottled, loginSlowed, loginFail, DUMMY_HASH,
   pathOwnedBySpace, isPublishablePublicPrefix, removedPublicPrefixes, publishApi, loadManifests, LOGIN_MAX_FAILS,
   tokenActorRefusal, publishTokenTtlMs, mintPublishToken, adminTokensApi,
+  publishAuthDetailed, publishRefusalBody,
   adminStorageApi,
   isPrefixBacked, backedPublicPrefixes,
   isPublicPath, isTrackPath, isRestrictedPath, versionFor, brandMark,

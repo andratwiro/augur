@@ -47,7 +47,10 @@ async function publishes(ctx, env, token) {
   try {
     const res = await W.publishApi(ctx, bearer(token), url, env);
     if (res.status !== 403) return true;
-    return (await res.json()).error !== "forbidden";
+    // Two codes mean "publishAuth refused", not one: expiry got its own so the CLI can
+    // print the fix. Any other 403 came from further down the route.
+    const { error } = await res.json();
+    return error !== "forbidden" && error !== "token-expired";
   } finally { console.log = quiet; }
 }
 

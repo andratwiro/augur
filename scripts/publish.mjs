@@ -219,6 +219,21 @@ if (targetSpace && !byId[targetSpace]) die(`unknown space "${targetSpace}" (have
         `or AUGUR_ORIGIN. ${MEANWHILE}`);
   }
   if (r.status === 401 || r.status === 403) {
+    // The instance usually knows exactly what is wrong, and saying so beats a list of
+    // three guesses. A publish token expires now (30 days by default), so "it's likely
+    // expired, revoked, or not scoped" is about to become the message every holder sees
+    // on the one failure that has a fix they can run themselves.
+    let body = null;
+    try { body = await r.json(); } catch (e) {}
+    if (body && body.error === "token-expired") {
+      die(`this publish token has EXPIRED.\n\n`
+        + `  Run \`augur login\` (or \`augur connect\`) again — that is the whole fix, and it\n`
+        + `  takes a few seconds. Nothing published is affected.\n\n  ${MEANWHILE}`);
+    }
+    if (body && body.message) {
+      die(`publish token rejected by ${ORIGIN}: ${body.message}\n\n  ${MEANWHILE}`);
+    }
+    // An older instance, or a refusal with no reason to give.
     die(`publish token rejected (${r.status}) by ${ORIGIN} — it's likely expired, revoked, or not ` +
         `scoped for "${probeSpace}". Run \`node scripts/login.mjs\` (or \`augur login\`) again. ${MEANWHILE}`);
   }
@@ -855,6 +870,12 @@ if (ALL || ENGINE_ONLY) {
   const settled = await Promise.allSettled(jobs.map(([, p]) => p));
   const failed = settled.filter((s) => s.status === "rejected");
   for (const f of failed) log(`FAILED: ${f.reason && f.reason.message}`);
+  // A token that runs out BETWEEN the preflight and here is rare — seconds apart — but
+  // when it happens the raw `403 {"error":"token-expired"}` above is the only clue, and it
+  // is buried in a list of failures. Say it once, in words, at the end.
+  if (failed.some((f) => f.reason && f.reason.info && f.reason.info.error === "token-expired")) {
+    die(`this publish token EXPIRED mid-publish. Run \`augur login\` again and re-run. ${MEANWHILE}`);
+  }
   if (failed.length) die(`${failed.length} target(s) failed — see above. ${MEANWHILE}`);
   results = jobs
     .map(([id], i) => [id, settled[i].value])
