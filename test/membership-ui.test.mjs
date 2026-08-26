@@ -130,7 +130,7 @@ const adminPage = new Function(
 )();
 
 // The nav lives in the RAIL, not inside the content — workspace settings replaces the
-// sidebar rather than adding a second nav column beside it (Figma's shape). So the
+// sidebar rather than adding a second nav column beside it. So the
 // sections markup must carry no nav of its own.
 const adminRail = new Function(
   `${STUBS}

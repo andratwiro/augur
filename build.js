@@ -1298,7 +1298,7 @@ const FONT_CSS = `
     }`;
 
 const PAGE_CSS = `
-    /* Linear-style shell — light edition: near-white canvas, indigo accent, Inter type.
+    /* Tooling shell — light edition: near-white canvas, indigo accent, Inter type.
        This is the TOOLING UI; a light shell sits comfortably next to a light product brand. */
     :root {
       --bg: #fbfbfd;          /* page canvas */
@@ -1311,7 +1311,7 @@ const PAGE_CSS = `
       --line: rgba(16,17,26,0.09);
       --line-2: rgba(16,17,26,0.15);
       --accent: #5159c9;      /* indigo, darkened for AA as text/icon on white */
-      --accent-solid: #5e6ad2;/* Linear indigo (fills) */
+      --accent-solid: #5e6ad2;/* indigo, undarkened — for fills, where AA-on-white does not apply */
       --radius: 12px;
       --maxw: 1080px;
       --font-display: "LentiaNova", "Inter", -apple-system, BlinkMacSystemFont, sans-serif;
@@ -1354,7 +1354,7 @@ const PAGE_CSS = `
       font-size: 12px; font-weight: 560; letter-spacing: .05em; text-transform: uppercase;
       color: var(--faint); margin: 0 0 14px;
     }
-    /* Folder bar — compact one-line header (Linear list-view idiom): up-link,
+    /* Folder bar — compact one-line header, list-view idiom: up-link,
        title, count, then a dashed rule running to the edge. Tight + app-like. */
     .folderbar { display: flex; align-items: center; gap: 10px; margin: 0 0 20px; }
     .folderbar__up {
@@ -1397,20 +1397,60 @@ const PAGE_CSS = `
     .preview--canvas .canvas-map svg { display: block; width: 100%; height: 100%; }
     .empty { color: var(--muted); }
     /* Empty states are ONE treatment across every surface that has one (the landing page,
-       Base, Components, Patterns, Pages, Tokens) — same element, same measure, same
-       rhythm — because a reader meets several of them on the same blank workspace and any
-       difference between them reads as a difference in kind. They run to two paragraphs:
-       what the surface is worth having, then the sentence you say to an agent to get it.
+       Playground, Base, Components, Patterns, Pages, Tokens, Changelog): a ghost of the
+       thing that will fill the page, then one line saying how to fill it. A reader meets
+       several of them on the same blank workspace, so any difference between them reads
+       as a difference in kind.
+
+       The ghost does the explaining. That is why the sentence is one sentence: it only
+       has to say what to ask for, and the shape above it has already said what arrives.
        Scoped to the paragraph so table cells that also use .empty keep their own sizing. */
     p.empty { margin: -2px 0 18px; max-width: 70ch; font-size: 13.5px; line-height: 1.5; }
-    /* Two paragraphs are one block, not two captions — tighten the seam so the break
-       reads as a break rather than a gap. */
-    p.empty + p.empty { margin-top: -10px; }
-    /* The one <em> an empty state uses is a sentence to SAY, not a word to stress — lift
-       it out of muted so it reads as the quotable line; italic here only costs legibility. */
-    p.empty em { font-style: normal; color: var(--fg); }
+    .ghosts + p.empty { margin-top: 0; }
     p.empty a { color: var(--accent); text-decoration: none; }
     p.empty a:hover { text-decoration: underline; }
+
+    /* ---- Ghosts: the shape of what will live here ----------------------------------
+       The real grid and the real card with the content taken out, so a blank tab still
+       shows what it is for. Two rules earn their place:
+
+       STATIC, NEVER A SHIMMER. The card shimmer at .preview::after means "an image is on
+       its way". Nothing is on its way here, and one of the readers this ghost is written
+       for (a workspace with a real design system that the Tokens page cannot see) would
+       read a shimmer as "still loading" and wait. So ghosts borrow the dashed, hatched
+       .is-pending vocabulary the Pages roadmap already uses, which says "planned".
+
+       NO DATA ATTRIBUTES. data-fitem would count ghosts as search hits, data-fgroup would
+       hide the block on the first keystroke, and data-rename-key would put a rename item
+       on their context menu. Ghosts carry none of the three, and aria-hidden keeps them
+       out of the accessibility tree, where the sentence says everything they say. */
+    .ghosts {
+      pointer-events: none; user-select: none; margin: 0 0 18px;
+      max-height: 340px; overflow: hidden;
+      -webkit-mask-image: linear-gradient(to bottom, #000 45%, transparent 100%);
+              mask-image: linear-gradient(to bottom, #000 45%, transparent 100%);
+    }
+    /* The hover states are on the shared card rules, and a card that lifts under a
+       cursor it cannot be clicked with reads as broken. pointer-events:none stops the
+       click, not the :hover, so the lift has to be cancelled here. */
+    .ghosts .card-proto:hover, .ghosts .card-opp:hover { transform: none; box-shadow: none; }
+    .ghosts .comp-table tr:hover td { background: transparent; }
+    .ghosts .fsection + .fsection { margin-top: 28px; }
+    /* ONE ghost vocabulary across all eight surfaces: a dashed outline with a hatched
+       tile where the content goes. The folder cards and the token cards are solid white
+       when populated, so they have to be talked out of it here — two treatments on the
+       same blank workspace read as two different kinds of nothing. */
+    .ghosts .card-opp, .ghosts .tok, .ghosts .tok-row {
+      border: 1px dashed var(--line-2); background: transparent;
+    }
+    .ghosts .sp-bar, .ghosts .tok-sw { background: var(--line-2); box-shadow: none; }
+    .ghost-line { display: block; height: 9px; border-radius: 999px; background: var(--line-2); }
+    .ghost-line + .ghost-line { margin-top: 7px; }
+    .ghosts .tok-meta, .ghosts .comp-badges { margin-top: 8px; }
+    .ghost-chip { display: inline-block; height: 16px; border-radius: 999px; background: var(--line-2); }
+    .ghost-sw, .ghost-bar { background: var(--line-2); }
+    .ghost-dot { display: inline-block; width: 22px; height: 22px; border-radius: 50%; background: var(--line-2); }
+    .ghost-thumb { display: block; aspect-ratio: 16 / 10; background: var(--bg-2); border-radius: 6px; }
 
     /* Research/context surface — quiet gated metadata (count + filenames). Colour stays
        on the cover + status; this reads as metadata, not a CTA. */
@@ -2755,7 +2795,7 @@ const TABBAR_CSS = `
     }
 `;
 
-// Rail item glyphs — real Lucide icons (ISC license), the clean line set Linear-class
+// Rail item glyphs — real Lucide icons (ISC license), a uniform-stroke line set as
 // apps use. `ic()` (the shared <svg> wrapper) and GV_MARK are imported from the chrome
 // module; the icons below that are NOT part of the page chrome still build with it.
 // Role icons, one per role — the People table shows the role as icon + label, so the
@@ -5280,7 +5320,7 @@ function renderAdminPage() {
     /* People table — name + email, role, last active (the default sort, newest first).
        Row click opens the per-person menu; everything credential-related ends in a link. */
     .folderbar{ max-width:820px; } /* so the Invite button lands on the table's right edge */
-    /* Workspace admin: a left nav beside the sections, the shape Figma's admin uses.
+    /* Workspace admin: a left nav beside the sections — the rail is replaced, not doubled.
        The nav is what makes the scope legible — you are administering ONE workspace,
        named at the top, with a way back to it. */
     .auwrap{ display:block; }
@@ -5695,20 +5735,76 @@ function preview(href, hasPoster) {
 // ── Empty states ─────────────────────────────────────────────────────────────
 // Eight surfaces have one (the landing page, Base, Components, Patterns, Pages, Tokens,
 // Playground, Changelog) and a blank workspace shows all eight, so they are one thing
-// rendered eight times rather than eight renderers each inventing a treatment. The
-// shape, everywhere: first what this surface is worth having, in behaviour someone can
-// picture; then the one sentence to say to an agent to get it, styled to be lifted and
-// pasted; then the folder path and the contract doc last — reachable, because somebody
-// has to type them eventually, but nobody has to understand them to take the first step.
-// Asking an agent IS the way in: there is no import button on any of these pages, and
-// pretending otherwise by leading with a file path is what the old one-liners did.
-// Changelog is the one exception and says why at its own renderer — the file it reads
-// belongs to the engine, so there is nothing there a workspace can ask an agent for.
+// rendered eight times rather than eight renderers each inventing a treatment.
 //
-// Length is part of the treatment, not a side effect: at the width these render, each
-// surface is 8–10 lines of prose. One that runs half again as long stops reading as the
-// same thing, and the way it gets there is always one more mechanism nobody asked for.
+// The shape, everywhere: a GHOST of what will fill the page, then ONE line saying how to
+// fill it. The ghost is the explanation. It is the real grid and the real card with the
+// content taken out, so somebody who has never seen a populated Tokens page can see the
+// shape of one before they own it, and the sentence underneath is then free to be short.
+//
+// WHAT THESE ARE NOT. They are not written for an agent. An agent works out how to
+// operate by reading the repo, so a folder path, a contract-doc filename or a quoted
+// prompt on the page is noise to the only reader who is actually standing there. They
+// name no other company's product either: the engine ships its comments unminified, so
+// a comparison written into a comment is a comparison a visitor can read.
+//
+// Changelog is the one surface with nothing to ask for — the file it reads belongs to
+// the engine, not to a workspace — so its line says when it fills instead of how.
 const emptyState = (...paras) => paras.map((p) => `<p class="empty">${p}</p>`).join("");
+
+// ── Ghosts ───────────────────────────────────────────────────────────────────
+// Each builder mirrors ONE populated layout. Keep them beside the renderers they shadow:
+// when a card grows a row, its ghost has to grow one too, and the only thing that keeps
+// that honest is the two templates sitting where the same person reads both.
+//
+// The rules, all three enforced by construction rather than by review:
+//   · no data-fitem / data-fgroup / data-rename-key — a ghost is not a search hit, not a
+//     filter group, and has no name to rename;
+//   · no interactive children (no status chip, no pin star, no copy target) — a dead
+//     control reads as a broken one;
+//   · aria-hidden on the wrapper — the sentence below already says what these say.
+const ghostLine = (w) => `<span class="ghost-line" style="width:${w}"></span>`;
+const ghosts = (inner) => `<div class="ghosts" aria-hidden="true">${inner}</div>`;
+
+/** Folder cards, as on the landing page and Playground (.opp-grid / .card-opp).
+    `preview--pending` rather than `preview--ph`: the placeholder tile is what a real
+    card with no poster wears, and it also carries the shimmer, so a ghost built from it
+    would look like a card whose image is still arriving. */
+const ghostFolderGrid = (n = 6) => ghosts(`<div class="opp-grid">${
+  Array.from({ length: n }, () => `<div class="card-opp"><div class="preview preview--pending"></div><div class="proto-meta"><div class="proto-text">${ghostLine("58%")}${ghostLine("30%")}</div></div></div>`).join("")
+}</div>`);
+
+/** Prototype cards, as on Base, Patterns and Pages (.page-grid / .card-proto). The
+    dashed .is-pending shell is deliberate: it is the vocabulary this site already uses
+    for "planned, nothing on its way", which is exactly what an empty tier is. */
+const ghostCardGrid = (n = 8) => ghosts(`<div class="page-grid">${
+  Array.from({ length: n }, () => `<div class="card-proto is-pending"><div class="preview preview--pending"></div><div class="proto-meta">${ghostLine("56%")}</div></div>`).join("")
+}</div>`);
+
+/** The Components table. The real <thead> stays: it names the four columns, carries no
+    data, and pins the column widths so the ghost rows sit at the populated proportions. */
+const ghostCompTable = (n = 4) => ghosts(`<table class="comp-table"><thead><tr><th>Preview</th><th>Component</th><th>What it is</th><th class="comp-status">Status</th></tr></thead><tbody>${
+  Array.from({ length: n }, () => `<tr><td><span class="ghost-thumb"></span></td><td><div class="comp-name">${ghostLine("110px")}</div><div class="comp-badges"><span class="ghost-chip" style="width:54px"></span><span class="ghost-chip" style="width:40px"></span></div></td><td><div class="comp-desc">${ghostLine("100%")}${ghostLine("62%")}</div></td><td class="comp-status"><span class="ghost-dot"></span></td></tr>`).join("")
+}</tbody></table>`);
+
+/** The Tokens page: a palette grid, then a size ramp. The section labels are REAL words
+    because "Palette" and "Size" are true of every design system, so naming them teaches
+    more than four more grey bars would. The counts beside them are NOT ghosted: a made-up
+    number is the one thing on this page that would be a lie. */
+const ghostTokens = () => ghosts(
+  `<div class="fsection"><p class="section-eyebrow">Palette</p><div class="tok-grid">${
+    Array.from({ length: 3 }, () => `<div class="tok"><span class="tok-sw ghost-sw"></span><div class="tok-body">${ghostLine("70%")}<div class="tok-meta">${ghostLine("84px")}</div></div></div>`).join("")
+  }</div></div>` +
+  `<div class="fsection"><p class="section-eyebrow">Size</p><div class="tok-list">${
+    [18, 44, 96, 190].map((px) => `<div class="tok-row"><span class="sp-track"><span class="sp-bar ghost-bar" style="width:${px}px"></span></span><div class="tok-body">${ghostLine("42%")}</div></div>`).join("")
+  }</div></div>`
+);
+
+/** The changelog timeline. Its own CSS is only emitted on the populated branch, so the
+    ghost is built from the shared vocabulary rather than from .cl-entry. */
+const ghostChangelog = (n = 3) => ghosts(`<div style="display:flex;flex-direction:column;gap:14px;max-width:720px">${
+  Array.from({ length: n }, () => `<div style="border:1px dashed var(--line-2);border-radius:var(--radius);padding:14px 16px">${ghostLine("92px")}<div style="margin-top:10px">${ghostLine("46%")}</div><div style="margin-top:10px">${ghostLine("100%")}${ghostLine("74%")}</div></div>`).join("")
+}</div>`);
 
 // An empty surface still gets its title bar. Without one the page is a floating
 // sentence with no indication of which tab you are looking at, and the populated
@@ -5727,23 +5823,18 @@ const emptyHead = (title, keepOnMobile = false) =>
 
 function renderRootIndex(opportunities) {
   if (!opportunities.length) {
-    // The one page a stranger lands on first, so it is the only one that says what the
-    // whole site is FOR: the tabs are the parts, this is the work. "Real pages, not
-    // pictures of pages" is the difference from every design tool the reader has used,
-    // and dropping a comment onto the running thing is the reason to send the link.
+    // The one page a stranger lands on first. The ghost is folder cards, because this
+    // page is one card per FOLDER and not one per prototype — the map below is over
+    // `opportunities`, each card's cover is that folder's newest prototype, and the
+    // folderbar counts folders. Getting that wrong here once shipped a first sentence
+    // that described a page which does not exist, so the ghost has to agree with the
+    // populated branch and not with what somebody remembers of it.
     // wrap--wide + the title bar match this page's own populated branch.
-    //
-    // It also has to describe THIS page, and this page is one card per folder, not one
-    // per prototype: the map above is over `opportunities`, each card's cover is that
-    // folder's most recent prototype, and the folderbar counts folders. The prototypes
-    // themselves are one card-open away. `PROJECTS_LABEL` because a workspace that calls
-    // these Clients gets a header saying Clients, and the sentence under it has to agree.
     return shell({
       title: "Augur",
       wrapClass: "wrap--wide",
-      body: emptyHead(PROJECTS_LABEL) + emptyState(
-        `The design-system tabs are the parts; this page is the work. Your ${PROJECTS_LABEL.toLowerCase()} sit here as cards, most recently worked on first, each wearing its newest prototype; open one and the rest are inside — real pages, not pictures of pages, so anyone you send the link to can click through it and drop a comment straight onto the thing they are commenting on.`,
-        `Nothing published yet. A prototype is plain self-contained HTML with no build step, which is why the way in is your agent: <em>&ldquo;Build me a clickable prototype of &lt;the screen you have in mind&gt; in this workspace, following the engine's <code>agents/prototype-contract.md</code>, and publish it.&rdquo;</em> It lands under <code>&lt;project&gt;/prototypes/&lt;name&gt;/</code>, and that folder becomes your first card here seconds later.`
+      body: emptyHead(PROJECTS_LABEL) + ghostFolderGrid() + emptyState(
+        `Ask your agent for a clickable prototype and it shows up here, ready to send.`
       ),
     });
   }
@@ -5837,18 +5928,16 @@ function renderOpportunityIndex(opp) {
 
 function renderPlaygroundIndex(projects) {
   if (!projects.length) {
-    // The only tab whose point is what it does NOT ask of you: a playground folder has
-    // no project around it and no `prototypes/` nesting, which is the whole reason to
-    // put something here rather than in a project. The public-URL clause is not trivia —
-    // `playground/` ships verbatim (agents/prototype-contract.md), so "throwaway" is
-    // about how much it owes you, never about who can see it.
+    // What this tab is for is what it does NOT ask of you: no project around it and no
+    // `prototypes/` nesting. The same folder-card ghost as the landing page, because
+    // that is what Playground renders, and the sentence carries the one thing the ghost
+    // cannot say — that nothing has to exist around it first.
     return shell({
       title: "Playground",
       activeTab: "playground",
       wrapClass: "wrap--wide",
-      body: emptyHead("Playground") + emptyState(
-        `Not everything you build belongs under one of your ${PROJECTS_LABEL.toLowerCase()}. A tryout of one interaction, a spike to settle an argument, a screen you want a link to before it has a home — this is where those live, carrying the same comments, stars and boards as anything else on the site.`,
-        `Nothing here yet. A playground piece is a single self-contained folder with no project around it, so ask your agent: <em>&ldquo;Build me a quick throwaway of &lt;the idea&gt; in this workspace's playground, following the engine's <code>agents/prototype-contract.md</code>.&rdquo;</em> It lands under <code>playground/&lt;name&gt;/</code> and publishes to the public <code>/playground/</code> URL exactly as written, so nothing private belongs in one.`
+      body: emptyHead("Playground") + ghostFolderGrid() + emptyState(
+        `Ask your agent for something quick that doesn't need a project.`
       ),
     });
   }
@@ -5888,24 +5977,24 @@ function renderPlaygroundIndex(projects) {
 }
 
 function renderPagesIndex(pages) {
-  // Pages is the tier where a design system stops being a list and starts being a
-  // judgement, so that is the sentence. The pendingPages clause earns its place because
-  // this is the one tab that can honestly be non-empty before anything is built, and
-  // nobody discovers that from a folder path.
+  // Pages is the tier where a design system stops being a list and becomes a screen you
+  // can judge, and that is what the ghost shows.
   const emptyCopy = emptyState(
-    `A whole screen, built from everything below it — where a design system stops being a list of parts and becomes something you can look at and judge. A token that reads fine on its own and a component that reads fine on its own can still make an ugly screen together, and this is the tab where you find that out. Nobody is testing a flow here: these are reference screens, not prototypes.`,
-    `Nothing here yet. Each page is a self-contained folder under <code>pages/&lt;name&gt;/</code>, so ask your agent: <em>&ldquo;Compose a reference page for &lt;the screen&gt; out of this workspace's design system, following the engine's <code>agents/prototype-contract.md</code>.&rdquo;</em> Screens you have not built yet can still show up: list them under <code>"pendingPages"</code> in <code>space.json</code> (<code>agents/space-json.md</code>) and each gets a Pending card, so this tab reads as a roadmap instead of a gap.`
+    `Ask your agent to build a whole screen out of your design system.`
   );
   // The bare return is for a tab with NOTHING on it. A workspace that has declared a
-  // roadmap and built none of it yet has something to show, and the old early return
-  // swallowed it — the copy above promises those cards, so it has to be the branch that
-  // does not eat them.
+  // roadmap and built none of it yet has something to show, and an early return once
+  // swallowed it.
+  //
+  // ONLY THIS BRANCH GETS THE GHOST. The other caller below puts `emptyCopy` directly
+  // above the REAL Pending grid, whose cards are the same dashed shell the ghost is made
+  // of — a ghost there would be indistinguishable from the roadmap sitting under it.
   if (!pages.length && !PENDING_PAGES.length) {
     return shell({
       title: "Pages",
       activeTab: "pages",
       wrapClass: "wrap--wide",
-      body: emptyHead("Pages", true) + emptyCopy,
+      body: emptyHead("Pages", true) + ghostCardGrid() + emptyCopy,
     });
   }
 
@@ -5985,14 +6074,12 @@ function renderComponentsIndex(components) {
       title: "Components",
       activeTab: "components",
       wrapClass: "wrap--wide",
-      // The populated view is a TABLE — name, one line on what it is, a status chip —
-      // so what this tab is worth having is a place to LOOK SOMETHING UP before you
-      // build a second one of it. It is also the tab whose contents are not read out of
-      // the folder: every word in that table comes from registry.json, which is worth a
-      // clause here because an agent that skips it produces a tab of nameless rows.
-      body: emptyHead("Components", true) + emptyState(
-        `A button is an atom; a search field with its filter chips, its clear button and its no-results line is a component — several atoms assembled into something with a job. This is the table of those: what each one is in one line, and whether it is settled or still wants a look, so whoever builds tomorrow's screen finds the piece that already exists instead of quietly building a second one.`,
-        `Nothing here yet. Each component is a demo folder under <code>components/&lt;name&gt;/</code>, but the names, descriptions and badges in this table are not read out of the folder — they come from <code>registry.json</code> at the top of the workspace, which is also what lets the comment overlay name what you are pointing at. Ask your agent: <em>&ldquo;Add a Components demo for &lt;the component&gt; and register it in <code>registry.json</code>, following the engine's <code>agents/ui-skill.md</code>.&rdquo;</em>`
+      // The only tab whose populated view is a TABLE, so its ghost is a table: this is
+      // where you look something up before you build a second one of it. The real
+      // <thead> stays in the ghost because it names the four columns, holds no data,
+      // and pins the column widths, so the grey rows sit at the populated proportions.
+      body: emptyHead("Components", true) + ghostCompTable() + emptyState(
+        `Ask your agent for a component you keep rebuilding, like a search field.`
       ),
     });
   }
@@ -6049,14 +6136,16 @@ function renderComponentsIndex(components) {
 // folders (base/<name>/, patterns/<name>/). Same card contract as Pages.
 // `empty` is per-tier, not derived from `activeTab`: a base atom and a composition
 // pattern are different things, and one sentence with the noun swapped is exactly the
-// bare-path empty state this replaced.
+// bare-path empty state this replaced. The GHOST is shared, because both tiers render
+// the identical card grid — put a ghost in a per-tier `empty` string and the two will
+// drift apart the first time one of them is edited.
 // Both tiers it serves are design-system tabs, so the empty title bar is kept on a
 // phone — see emptyHead. A future non-library caller would want that argument off.
 function renderTierGrid(items, { title, activeTab, empty, addHint }) {
   if (!items.length) {
     return shell({
       title, activeTab, wrapClass: "wrap--wide",
-      body: emptyHead(title, true) + empty,
+      body: emptyHead(title, true) + ghostCardGrid() + empty,
     });
   }
   const card = (p) => `
@@ -6079,25 +6168,22 @@ function renderTierGrid(items, { title, activeTab, empty, addHint }) {
 const renderBaseIndex = (items) =>
   renderTierGrid(items, {
     title: "Base", activeTab: "base",
-    addHint: "The source-grounded atoms — buttons, inputs, cards, badges, modal, icons. Components and Patterns are built from these; everything below drinks from <a href=\"/tokens/\">Tokens</a>.",
-    // What a base atom is FOR is the thing nobody says out loud: it is the one button,
-    // so there is never a sixth one. Live HTML you can click is the difference from the
-    // library the reader already knows, so that is where the analogy lands.
+    addHint: "The atoms every screen here borrows: buttons, inputs, cards, badges, modal, icons. Components and Patterns are built out of these, and all of them wear <a href=\"/tokens/\">Tokens</a>.",
+    // One page per atom, every state on it. The sentence names three of them rather than
+    // saying "atoms", which is a word for the person who already has a design system.
     empty: emptyState(
-      `One button, styled once, that every screen in here borrows. Base is that set — buttons, inputs, cards, badges, icons — each on its own page showing every state it can be in: the main components of a Figma library, except these are live HTML, so you click them instead of squinting at them.`,
-      `Nothing here yet. Each atom is a small self-contained page in its own folder, so ask your agent: <em>&ldquo;Build a Base demo page for each atom in this workspace's design system — one folder per atom, every state on the page — following the engine's <code>agents/ui-skill.md</code>.&rdquo;</em> They land under <code>base/&lt;name&gt;/</code>, and everything they wear comes from <a href="/tokens/">Tokens</a>.`
+      `Ask your agent for your buttons, inputs and cards, one page each.`
     ),
   });
 const renderPatternsIndex = (items) =>
   renderTierGrid(items, {
     title: "Patterns", activeTab: "patterns",
-    addHint: "Curated recurring compositions — several Components arranged the way real screens repeatedly arrange them.",
-    // A pattern is the one tier you cannot honestly ask for up front — it is a repetition
-    // you notice, not a thing you plan — so the next step here is "build pages first",
-    // and saying so is worth more than a folder path.
+    addHint: "Layouts that keep coming back: several Components arranged the way real screens arrange them again and again.",
+    // The one tier you cannot ask for up front, because a pattern is a repetition you
+    // notice rather than a thing you plan. So this sentence sends the reader away to
+    // build Pages and come back, which is the only empty state here that does.
     empty: emptyState(
-      `Real screens repeat themselves: a list with its filters down one side, a detail view with a sticky action bar, a table that turns into cards on a phone. A pattern is one of those arrangements captured once — bigger than a component, smaller than a screen — so the fifth list gets built the way the first four were instead of being re-decided.`,
-      `Nothing here yet, and the honest way to fill this tab is backwards: build a few <a href="/pages/">Pages</a> first, notice what you laid out the same way twice, then pull it out. When you spot one, ask your agent: <em>&ldquo;Pull &lt;the layout I keep repeating&gt; out into a Patterns demo, following the engine's <code>agents/ui-skill.md</code>.&rdquo;</em> It lands under <code>patterns/&lt;name&gt;/</code>.`
+      `Build a few <a href="/pages/">Pages</a> first, then ask your agent to pull out what repeats.`
     ),
   });
 
@@ -6323,40 +6409,24 @@ function renderTokensIndex(graph) {
         ${sectionBody(g)}
       </details>`).join("");
 
-  // The hint names the vocabulary this workspace's own skill declares. With nothing
-  // parsed there is nothing to name, so the empty branch is an empty STATE rather than a
-  // caption — emptyState(), the same element and rhythm the other seven surfaces use.
+  // READ THIS BEFORE EDITING THE SENTENCE. Three different workspaces land on the empty
+  // branch and it has to be TRUE for all three:
+  //   1. no design system at all;
+  //   2. a skill that declares `cssPrefixes` but a tokens file that is still empty;
+  //   3. a FULL tokens file and no `skill.json`, so the graph looks for the default
+  //      prefixes, matches none of them, and the page is blank although the design
+  //      system is not.
+  // Reader 3 is why this sentence can never say "you don't have one". A first sentence
+  // that described a page which does not exist has already shipped here once, and that
+  // is the shape it took. "or to check why the one you have isn't showing" is the whole
+  // fix for reader 3, and it is the reason this line is longer than the other seven.
   //
-  // Three workspaces land on that branch and it has to read true for all three: one with
-  // no skill at all; one whose skill declares `cssPrefixes` but whose tokens file is still
-  // empty; and — the case that costs the most — one with a FULL tokens file and no
-  // `skill.json`, where the graph looks for the default prefixes, matches none of it, and
-  // the page is empty although the design system is not. Hence "nothing is reaching it"
-  // and never "you have none": for that third reader the closing clause is the whole fix.
-  // `DS.prefix` is null with no skill, so the placeholders stay literal — interpolating it
-  // would offer that reader "null-tokens.css".
-  //
-  // The sentence in <em> is styled to be lifted and pasted, so it has to survive being
-  // lifted: it names what a design system is made of rather than pointing back at a
-  // clause that does not travel with it.
-  //
-  // `agents/ui-skill.md` is a path in the ENGINE repo, which sits beside the workspace
-  // clone for the agent but may not be on the reader's disk at all. Making it a link
-  // would mean shipping the agents/ docs as chrome, which is a routing change, not an
-  // empty-state one — so it is named for the agent, and the reason to name it is given
-  // rather than asserted: it is where the requirements live, and the one that decides
-  // whether THIS page has anything on it is `cssPrefixes`.
-  //
-  // It carries the `registry.json` requirement too — a HARD build failure (loadCatalog
-  // throws; there is no fallback) — and that used to be spelled out here. It is out:
-  // this surface was half again as long as the ones it is meant to match, the build
-  // failure is not a fact about Tokens, and the doc the sentence already names is where
-  // an agent meets it anyway. Length is part of the treatment — see emptyState.
+  // `DS.prefix` is null with no skill, so nothing interpolates it into the empty branch —
+  // it would offer reader 1 "null-tokens.css".
   const hint = names.length
-    ? `<p class="tier-hint">The design-system variables (${cssPrefixes.map((p) => `<code>--${p}-*</code>`).join(", ")}), parsed live from <code>${DS.prefix}-tokens.css</code> — each with its alias chain down to a raw value and how much of the system drinks from it. This is the bottom of every import chain Base · Components · Patterns · Pages resolve to. <strong>Click any token name or value to copy it</strong>; expand a consumer count to see exactly what uses it.</p>`
-    : emptyState(
-        `Change one colour in one file and every screen changes with it. This page is the list of what you can change: your workspace's colours, type, sizes and shadows, each traced down to its raw value and to everything that uses it — the styles panel from Figma, except generated from your own stylesheet on every build, so it is never a stale copy of it. A hex typed straight into a screen never appears here.`,
-        `Nothing is reaching it yet, and there is no import button — the way in is your agent. Hand it your brand colours or an existing stylesheet, or ask it to propose a set: <em>&ldquo;Set this workspace up with a design system — colours, type, sizes, shadows — following the engine's <code>agents/ui-skill.md</code>.&rdquo;</em> Name that doc: it holds the <code>"cssPrefixes"</code> line that points this page at your CSS, the first thing to check if a design system is already sitting there.`
+    ? `<p class="tier-hint">Your design-system variables (${cssPrefixes.map((p) => `<code>--${p}-*</code>`).join(", ")}), read live from <code>${DS.prefix}-tokens.css</code>, each with its alias chain down to a raw value and a count of what uses it. Every screen under Base, Components, Patterns and Pages resolves to something on this page. <strong>Click any token name or value to copy it.</strong> Expand a count to see exactly what uses it.</p>`
+    : ghostTokens() + emptyState(
+        `Ask your agent for a design system, or to check why the one you have isn't showing here.`
       );
 
   return shell({
@@ -6495,9 +6565,8 @@ function renderChangelogPage(entries) {
     ? head(entries.length) +
       `<div data-fgroup><div class="cl-list">${cards}</div></div>${filterEmpty()}` +
       `<style>${CHANGELOG_CSS}${CHANGELOG_HELP_CSS}</style><script>${CHANGELOG_JS}</script>`
-    : head(0) + emptyState(
-        `The rest of the site is what your team is building; this page is what the tool underneath it did. One dated entry per update worth telling anyone about, newest on top, each date re-reading itself as &ldquo;Yesterday&rdquo; or &ldquo;2 weeks ago&rdquo; every time the page loads, so nobody ever goes back to touch an old one.`,
-        `Nothing here yet. Entries are plain markdown in the engine's own <code>changelog.md</code> — one <code>## YYYY-MM-DD &mdash; Title</code> heading each, then a sentence or two anyone could read — and they reach a live site the way the rest of the chrome does, with an engine update rather than a publish.`
+    : head(0) + ghostChangelog() + emptyState(
+        `What changes in Augur shows up here with the next engine update.`
       ) + `<style>${CHANGELOG_HELP_CSS}</style>`;
   return shell({ title: "Changelog", activeTab: "changelog", body });
 }

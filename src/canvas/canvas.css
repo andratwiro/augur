@@ -63,7 +63,7 @@ html, body { margin: 0; height: 100%; overflow: hidden; background: #f6f6f6; }
    Applying it unconditionally would turn every node into a containing block + stacking
    context — a real cost on a big board, for nothing. */
 .gvc-node.rot { transform: rotate(var(--gvc-rot, 0deg)); }
-/* FigJam's selection is a HAIRLINE flush to the node, not a ring standing off it — the node
+/* The selection is a HAIRLINE flush to the node, not a ring standing off it — the node
    stays the loudest thing on the board and the chrome gets out of its way. */
 /* Screen-constant selection ring: --gvc-inv (set per zoom in applyTransform)
    cancels the world scale, so the ring reads ~2.5px on screen at every zoom —
@@ -77,9 +77,9 @@ html, body { margin: 0; height: 100%; overflow: hidden; background: #f6f6f6; }
 
 /* the host must NOT clip (it would cut the corner resize handles, which straddle the edge) —
    the inner wrap carries the padding + overflow clip instead.
-   Proportions are FigJam's, measured off a reference screenshot and normalised to the note's
+   Proportions were measured off a reference screenshot and normalised to the note's
    width (so zoom and DPR cancel): padding 8.7% a side, author label ~5% and sitting ~10% up
-   from the bottom edge, and a radius of exactly 0 — a FigJam sticky's corners are SHARP. */
+   from the bottom edge, and a radius of exactly 0 — a sticky's corners are SHARP. */
 .gvc-sticky {
   min-width: 96px; min-height: 96px; border-radius: 0;
   background: #fce495; box-shadow: 0 4px 10px rgba(0, 0, 0, .14); font-size: 16px; line-height: 1.35;
@@ -201,7 +201,7 @@ svg.stk { display: block; overflow: visible; }
 .gvc-resize.ne { left: 100%; top: 0; cursor: nesw-resize; }
 .gvc-resize.sw { left: 0; top: 100%; cursor: nesw-resize; }
 .gvc-resize.se { left: 100%; top: 100%; cursor: nwse-resize; }
-/* rotate pads: a square hanging just OUTSIDE each corner (FigJam's affordance — the corner
+/* rotate pads: a square hanging just OUTSIDE each corner (the corner
    dot resizes, a hair beyond it rotates). Invisible, cursor-only. transform-origin is the
    corner it hangs off, so the JS counter-scale keeps it pinned there at every zoom. Below
    the corner dots (z-index 1) so the resize grab always wins the overlap. */
@@ -210,7 +210,7 @@ svg.stk { display: block; overflow: visible; }
 .gvc-rot.ne { left: 100%; top: 0; margin: -22px 0 0 0; transform-origin: 0 100%; }
 .gvc-rot.sw { left: 0; top: 100%; margin: 0 0 0 -22px; transform-origin: 100% 0; }
 .gvc-rot.se { left: 100%; top: 100%; margin: 0; transform-origin: 0 0; }
-/* Figma's rotate cursor: one curved arrow, black on a white keyline (so it reads on any
+/* Rotate cursor: one curved arrow, black on a white keyline (so it reads on any
    node), TURNED PER CORNER — 45° off the vertical toward the corner it hangs on, so it
    always points the way that corner will travel. Four literal data URIs because a cursor
    image cannot be transformed in CSS; they differ only in the `rotate(N 16 16)` wrapper.
@@ -639,7 +639,7 @@ svg.stk { display: block; overflow: visible; }
   content: ""; position: absolute; inset: 0; border-radius: 50%; pointer-events: none; z-index: 1;
   box-shadow: inset 0 0 0 2px #fff;
 }
-/* …and the whole viewport wears their color (FigJam-style): border + Following pill.
+/* …and the whole viewport wears their color: border + Following pill.
    The pill is PART of the border — same background color, hanging flush from the top
    edge — with Stop as a darker inset segment. Both colors are set inline (the peer's). */
 #gvc-follow-frame { position: fixed; inset: 0; border: 5px solid #2563eb; pointer-events: none; z-index: 70; }
@@ -830,7 +830,7 @@ svg.stk { display: block; overflow: visible; }
 /* sound is waiting on this tab's first click (autoplay policy) — say so quietly */
 #gvc-sesspanel .go.blocked, #gvc-sesspanel .act.blocked { border: 1px solid #fcd34d; background: #fffbeb; color: #b45309; }
 
-/* dark hover tooltips (data-tip), FigJam-quiet: no caret, slight delay */
+/* dark hover tooltips (data-tip), deliberately quiet: no caret, slight delay */
 #gvc-sesspanel [data-tip] { position: relative; }
 #gvc-sesspanel [data-tip]:hover::after { content: attr(data-tip); position: absolute; top: calc(100% + 8px); left: 50%; transform: translateX(-50%); background: #1e1e1e; color: #fff; font-size: 12px; font-weight: 500; padding: 6px 10px; border-radius: 7px; white-space: nowrap; z-index: 7; pointer-events: none; opacity: 0; animation: gvc-tipin .12s ease .4s forwards; }
 @keyframes gvc-tipin { to { opacity: 1; } }

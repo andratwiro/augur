@@ -1571,7 +1571,7 @@
   function setMode(m) { state.mode = m; if (m === "add") closeCard(); render(); }
 
   /* ---------- placing mode: no catcher, no tint ----------
-     FigJam's model, and the only one that works over an infinite canvas: nothing is laid
+     The only model that works over an infinite canvas: nothing is laid
      over the page. A full-screen catcher had to swallow every gesture to catch the click,
      which meant the board underneath could not be panned or zoomed while you commented —
      and it tinted the thing you were trying to look at.

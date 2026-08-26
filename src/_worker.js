@@ -320,7 +320,7 @@ function isPublicPath(tctx, pathname) {
   if (tctx.PUBLIC_SKILL_PREFIXES.some((p) => pathname.startsWith(p)) &&
       /\.(css|js|mjs|woff2?|ttf|otf|svg|png|jpe?g|webp|gif|ico|json|map)$/i.test(pathname)) return true;
   // Composed OG/unfurl card for any page — always fetchable so link-preview bots
-  // (Slack, iMessage, Twitter) can load the image even if its folder is gated.
+  // can load the image even if its folder is gated.
   if (pathname.endsWith("/og.jpg")) return true;
   // The composed reference Pages (DS gallery, shipped under /pages/<slug>/) are
   // public so they can be shared without the password. They're self-contained and
@@ -1744,8 +1744,8 @@ function brandMark(tctx) {
 // the field on the space entry, so it rides routing.json and published manifests alike).
 const ENGINE_TAGLINE = "Real, clickable prototypes and the design system they are built from, on one site with login, comments and live boards on top.";
 
-// <head> block for the gate: the <title> plus the meta an unfurl bot reads (a Notion
-// bookmark, a Slack/iMessage card). A gated instance's only public HTML is the gate,
+// <head> block for the gate: the <title> plus the meta an unfurl bot reads (a link
+// bookmark, a chat card). A gated instance's only public HTML is the gate,
 // so this IS the instance's link preview: the default space's name and description,
 // and the same public, KV-overridable /space-icon.png that brandMark() wears — an
 // icon changed from the admin panel updates the unfurl with no deploy. requestUrl

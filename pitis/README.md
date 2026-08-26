@@ -14,7 +14,7 @@ general repo files (CLAUDE.md, build.js logic, shared CSS, agent memory, etc.).
 - **Shift + Ñ** anywhere toggles the piti on/off. Remembered per-browser via
   `localStorage['piti-revealed']` (there is **no** typed secret). While active, the
   whole page uses a **custom arrow cursor** (dark arrow + white outline; `html.piti-cursor`).
-- A quiet, Linear-styled **paw in the site footer** (the addon's `footerHtml()`) opens
+- A quiet, chrome-styled **paw in the site footer** (the addon's `footerHtml()`) opens
   the **customizer** as an in-page **overlay modal** over the dimmed site (piti.js
   `openModal()` loads `/pitis/` in an iframe). Direct `/pitis/` visits work standalone.
 - **Admin-only, identity-gated.** Summoning requires a signed-in **admin** — `auto()`

@@ -48,7 +48,7 @@ there.
 A card used to show one face, whoever touched it last. Now it shows all of them.
 
 ## 2026-08-19 — Links to your site look like your site
-Paste an Augur link into Slack, Notion or a message and the preview now carries
+Paste an Augur link into a chat, a document or a message and the preview now carries
 your own name, description and picture — including the sign-in page, which used
 to unfurl as nothing at all. A link to a canvas shows a picture of the board.
 

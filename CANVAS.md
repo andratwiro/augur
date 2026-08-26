@@ -387,7 +387,7 @@ hour's board edits existed only on screen.)
   OS pointer wears it too; peers render it with a name pill. Cursor layer lives
   OUTSIDE `#gvc-ui` so ⌘. keeps people visible. Names come from `/__me`, else
   "Guest".
-- **Follow mode (like FigJam)** — every client publishes its camera as
+- **Follow mode** — every client publishes its camera as
   `{t:"view", v:{x,y,s,w,h}}` (throttled ~10/s, change-gated, kept on the socket
   attachment so a fresh follow syncs before the peer next moves). Click a presence
   chip → your camera soft-lerps to *their viewport* (pan AND zoom), tracked live;
@@ -440,7 +440,7 @@ avatars (humans and Clawd agents alike) and a **session inset** (mini record +
 seven-segment time) that opens a *Timer and music* panel. One timer and one track
 per board, the same for everyone; anyone can drive it. Start / pause / resume /
 stop / +1 min, up to 99:59; the digits are editable when idle (`7` → 7:00, `7:30`
-→ 7m30s). **The ending is audible, not visual** (FigJam-parity): each of the last
+→ 7m30s). **The ending is audible, not visual**: each of the last
 five seconds carries a whole tick-TOCK (a bandpassed noise knock at two pitches,
 260ms apart), a three-note mallet bell closes 00:00 — all synthesized, no
 assets — and then the timer simply REVERTS to the duration it just ran, back
@@ -547,7 +547,7 @@ zoom. Posters reuse the poster stack (`scripts/shoot.mjs` / `og.mjs`).
 
 ## Option-drag = duplicate; ⌘D
 
-Hold Option and drag a node (or selection) to leave a copy behind (the Figma/Miro
+Hold Option and drag a node (or selection) to leave a copy behind (the duplicate-drag
 idiom; the copy cursor shows while Option is held).
 
 - **Option is a LIVE modifier, checked continuously for the whole drag — NOT
@@ -608,7 +608,7 @@ the single-selection toolbar). It **re-renders** the nodes rather than grabbing 
 screen: 2x the node's NATURAL size regardless of `board.view.scale`, exact bounds,
 no permission prompt. Rasterizer: `nodesToPng({els, rect, scale, background,
 poster, onInfo})` in `src/canvas/capture.js`, lazy-loaded from
-`/__canvas/capture.js` on first use. SCREENSHOT semantics (unlike Figma's cut-out):
+`/__canvas/capture.js` on first use. SCREENSHOT semantics (not a cut-out on transparency):
 the frame is the selection box + 12px bleed, holding everything visible in that
 rectangle; selection/resize/hit/focus chrome is stripped, but tile/section/image
 labels are kept (rendered at 100%-zoom, the box GROWS upward to hold them). Three
@@ -678,7 +678,7 @@ never clip, shrink back on edit while the height is auto. `allowShrink` is false
 render, so opening an old board never reflows it; a resize-drag sets `node.hFixed`
 and the box stops hugging.
 
-- **A sticky shrinks its TEXT before it grows its BOX** (`fitStickyFont`, FigJam's
+- **A sticky shrinks its TEXT before it grows its BOX** (`fitStickyFont`, the sticky-note
   model): `fontSize` is a CEILING, the text steps down `STICKY_FONT_RAMP` until it
   fits; only when the bottom rung overflows does the note grow. Two traps: (1) fit
   against the height the note WANTS (`STICKY_H` in auto mode, its own height once
@@ -799,7 +799,7 @@ upgrades).
   · T text · E stamp · R square · O circle · L line · X elbow · ⇧S section · ⇧T
   table · C comment · Esc select. ⌘⇧C, ⌘C/⌘X/⌘V and ⌘D/⌘Z/⌘⇧Z are handled ahead of
   the tool letters, so ⌘C never toggles comments.
-- **←↑→↓ nudge the selection** one WORLD unit, ⇧ ten (the FigJam pair) — world, not
+- **←↑→↓ nudge the selection** one WORLD unit, ⇧ ten — world, not
   screen, so alignment done at 400% survives zooming out. `nudge()` reuses the drag's
   `withSectionChildren` (a section takes its contents along) and ends on the same
   `scheduleSave()`, so key-repeat lands as ONE undo step and one write. It is handled

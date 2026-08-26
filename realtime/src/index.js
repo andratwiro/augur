@@ -15,7 +15,7 @@
  * dirty-alarm + flush on empty) — never reads it back except once, to migrate a
  * pre-existing board into storage (lazy, first touch, per board).
  *
- * VERSIONED NODES (the Figma/Excalidraw model, not a CRDT). Every node carries
+ * VERSIONED NODES (per-node last-writer-wins on a version int, not a CRDT). Every node carries
  * `v` (int, bumped by whoever mutates it) and `vn` (random tiebreak). The room applies
  * an op only if it's NEWER than what it holds (v, then vn); losers get a corrective op
  * back so every client converges on the same winner. Deletes leave a tombstone

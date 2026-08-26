@@ -70,9 +70,9 @@
   var DEFAULT_STICKY = "#a9cbf5"; // soft default blue
   // the size a sticky is dropped at — and, while its height is still automatic, the floor
   // autoFit will not shrink it below (a note you typed two words into stays a note).
-  // 220, not 160: measured against FigJam, a sticky's line box is ~10% of its width (its
+  // 220, not 160: against the measured reference, a sticky's line box is ~10% of its width (its
   // default note is 240 world px). At 160 our 16px default read 13.5% — a third too big —
-  // so the same sentence needed 6 lines where FigJam fit 4. Growing the NOTE keeps 16px
+  // so the same sentence needed 6 lines where the reference fit 4. Growing the NOTE keeps 16px
   // readable and lands the ratio at 16 * 1.35 / 220 = 9.8%.
   var STICKY_W = 220, STICKY_H = 220;
   // .gvc-stickyin vertical padding (19 top + 40 bottom, the bottom leaving room for the author)
@@ -88,7 +88,7 @@
   var SECTION_COLORS = ["#6b7280", "#e03131", "#e8590c", "#f0a000", "#2f9e44", "#0c8599", "#1971c2", "#7048e8", "#c2255c"];
   // stamp wheel, clockwise from the top — a die-cut sticker set, drawn as flat
   // SVGs with a white outline (paint-order:stroke) so they read as stickers, not OS emoji.
-  // "avatar" is the FACE slot: it stamps the signed-in person's own photo (FigJam's move).
+  // "avatar" is the FACE slot: it stamps the signed-in person's own photo.
   var STAMPS = ["thumbs-up", "+1", "star", "question", "thumbs-down", "sticker", "avatar", "heart"];
   // keys that are no longer on the wheel but still paint — boards made before the face
   // stamp landed carry "laugh" nodes, and a stamp must never silently become a different one
@@ -258,7 +258,7 @@
   function svgIcon(paths) {
     return '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">' + paths + "</svg>";
   }
-  // Lucide icons (lucide.dev, ISC — the set shadcn/Augur already use) render in their native
+  // Lucide icons (lucide.dev, ISC — the set Augur already uses) render in their native
   // 24-viewBox; slightly thinner stroke than stock to sit with the toolbar's line weight.
   function lucideIcon(paths) {
     return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">' + paths + "</svg>";
@@ -419,7 +419,7 @@
       // so the last ~9px of each side still gives you the two-axis grab.
       // A text box has no draggable height (it wraps and auto-grows), so it gets e/w only.
       //
-      // ROTATE pads sit just OUTSIDE each corner — the FigJam affordance: a hair beyond the
+      // ROTATE pads sit just OUTSIDE each corner — the affordance is positional: a hair beyond the
       // resize dot the cursor turns into the curved arrow and the drag spins the node. They
       // go in FIRST (and stay below the dots) so the corner itself always resizes.
       if (ROTATABLE[node.type]) {
@@ -816,7 +816,7 @@
       else if (k === "i") cmd = "italic";
       else if (k === "u") cmd = "underline";
       else if (k === "s" && e.shiftKey) cmd = "strikeThrough";
-      else if (e.shiftKey && code === "Digit8") cmd = "ul"; // ⌘⇧8 / ⌘⇧7 — the Docs/Notion list keys
+      else if (e.shiftKey && code === "Digit8") cmd = "ul"; // ⌘⇧8 / ⌘⇧7 — the conventional rich-text list keys
       else if (e.shiftKey && code === "Digit7") cmd = "ol";
       if (!cmd) return;
       e.preventDefault();
@@ -914,7 +914,7 @@
     for (var i = 0; i < STICKY_FONT_RAMP.length; i++) if (STICKY_FONT_RAMP[i] < ceil) out.push(STICKY_FONT_RAMP[i]);
     return out;
   }
-  // FigJam's sticky model, and the reason a sticky reads as a sticky: the NOTE holds its shape
+  // The sticky model, and the reason a sticky reads as a sticky: the NOTE holds its shape
   // and the TEXT shrinks to fit it. Step down the ladder until the words fit `h`; only when the
   // bottom rung still overflows does autoFit let the note grow (so nothing is ever clipped).
   //
@@ -1679,7 +1679,7 @@
       // aligning the section, not its stickies) and must not treat the passengers as targets
       var moving = withSectionChildren(selected);
       drag = { mode: "move", sx: e.clientX, sy: e.clientY, moved: false, shiftToggle: shiftToggle, dblAction: dblAction, bbox: selectionRect(selected), items: moving.map(function (sid) { var n = nodeById(sid); return { id: sid, origId: sid, arrow: n.type === "arrow", ox: n.x, oy: n.y, ox1: n.x1, oy1: n.y1, ox2: n.x2, oy2: n.y2 }; }) };
-      // Option-drag duplicates (the Figma idiom) — `origId` and `selBefore` are what let the
+      // Option-drag duplicates — `origId` and `selBefore` are what let the
       // drag swap between the originals and their copies as Option goes down and up.
       drag.copying = false;
       drag.selBefore = selected.slice();
@@ -1793,7 +1793,7 @@
   }
   // ---- Option-drag = duplicate ---------------------------------------------
   // Option is a LIVE MODIFIER, checked continuously for as long as the drag lasts — not a
-  // decision made once at pointerdown. That's how Figma behaves and it's the only model that
+  // decision made once at pointerdown. It is the only model that
   // survives contact with real hands: people press-and-drag first and reach for Option a
   // moment later, or let go of Option before the mouse. Both directions work, any number of
   // times, mid-drag.
@@ -2082,7 +2082,7 @@
     else if (TOOL.type === "table") { var tb = addNode({ type: "table", x: w.x - 190, y: w.y - 88 }); select(tb.id); pop(tb.id); setTool("select"); }
     else if (TOOL.type === "stamp") {
       // 46, not 64: a sticker is an accent on the thing it lands on, not a peer of it —
-      // at 64 it read as a third of a sticky. Sized against FigJam's proportion.
+      // at 64 it read as a third of a sticky. Sized against the same measured reference as STICKY_W.
       var sn = { type: "stamp", stamp: armedStamp, x: w.x - 23, y: w.y - 23, w: 46, h: 46, rot: stampTilt() };
       if (armedStamp === "avatar") { var f = myFace(); if (f.src) sn.src = f.src; if (f.name) sn.name = f.name; sn.color = f.color; }
       var st = addNode(sn); pop(st.id); /* stamps stay armed */
@@ -2231,7 +2231,7 @@
     return ae;
   }
   // ←↑→↓ move the selection: the fine adjustment a mouse can't make. One world unit a press,
-  // ten with Shift — the FigJam/Figma pair. WORLD units, not screen pixels, so a nudge means
+  // ten with Shift — the conventional pair. WORLD units, not screen pixels, so a nudge means
   // the same thing at every zoom (lining two things up at 400% must not come undone at 100%).
   // Snapping deliberately stays out of it: the nudge is what you reach for precisely when the
   // snap has put a node somewhere you didn't want it.
@@ -2651,7 +2651,7 @@
   // it renders at 2x the node's NATURAL size whatever the board is zoomed to (a tile you're
   // reading at 30% still comes out crisp), and it knows where the node ends, so no cropping.
   //
-  // SCREENSHOT semantics, deliberately unlike Figma's cut-out-on-transparency: the shot is the
+  // SCREENSHOT semantics, deliberately NOT a cut-out of the selected nodes on transparency: the shot is the
   // selection's box plus a small bleed, holding EVERYTHING visible in that rectangle — the
   // paper, the grid, and every node that overlaps it. A note sitting on a section brings the
   // section's colour with it, which is what a screenshot would have given you. What does NOT
@@ -3065,7 +3065,7 @@
   }
   function hideSelBar() { if (selBar) selBar.classList.add("hidden"); if (palette) palette.classList.add("hidden"); if (lockMenu) lockMenu.classList.add("hidden"); if (fontMenu) fontMenu.classList.add("hidden"); }
 
-  // ---- toolbar: icons — Lucide (the shadcn set) wherever one exists --------
+  // ---- toolbar: icons — Lucide, the same set as the rail, wherever one exists ----
   var I_SELECT = '<path d="M4.037 4.688a.495.495 0 0 1 .651-.651l16 6.5a.5.5 0 0 1-.063.947l-6.124 1.58a2 2 0 0 0-1.438 1.435l-1.579 6.126a.5.5 0 0 1-.947.063z"/>'; // mouse-pointer-2
   var I_HAND = '<path d="M18 11V6a2 2 0 0 0-2-2a2 2 0 0 0-2 2"/><path d="M14 10V4a2 2 0 0 0-2-2a2 2 0 0 0-2 2v2"/><path d="M10 10.5V6a2 2 0 0 0-2-2a2 2 0 0 0-2 2v8"/><path d="M18 8a2 2 0 1 1 4 0v6a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.86-5.99-2.34l-3.6-3.6a2 2 0 0 1 2.83-2.82L7 15"/>'; // hand
   var I_TEXT = '<polyline points="4 7 4 4 20 4 20 7"/><line x1="9" x2="15" y1="20" y2="20"/><line x1="12" x2="12" y1="4" y2="20"/>'; // type
@@ -3610,7 +3610,7 @@
     sessPill = el("button", { class: "gvc-sesspill", type: "button", "aria-label": "Timer and music" },
       [sessPillIcon, sessPillTime, sessPillSpk]);
     sessPill.addEventListener("click", function (e) { e.stopPropagation(); sessToggle(); });
-    // Top RIGHT: ONE white card for the whole room (FigJam-parity):
+    // Top RIGHT: ONE white card for the whole room:
     // presence avatars — humans and Clawds — on the left, and the session control as a
     // colored INSET segment inside the same card. The card is #gvc-topright itself; the
     // presence row mounts before the pill when multiplayer boots. A timer you set alone
@@ -3814,7 +3814,7 @@
   // 00:00. Everyone announces it locally off the same authoritative countdown, so it lands
   // together without the room having to broadcast anything at the moment it matters.
   //
-  // Then it REVERTS (FigJam-parity): the countdown that just ran drops
+  // Then it REVERTS: the countdown that just ran drops
   // away and the panel goes back to idle holding the duration it ran, ready to go again — no
   // red 00:00 parked in the corner of everyone's board for the rest of the session. The room
   // is not told: an expired timer wires as null there too, so a late joiner sees the same
@@ -4513,7 +4513,7 @@
   var mpCursorLayer = null, mpPresence = null, mpCurPend = null, mpCurTimer = null;
   var GEO_KEYS = ["x", "y", "w", "h", "x1", "y1", "x2", "y2", "rot"];
 
-  // ---- node versions (the Figma/Excalidraw model, not a CRDT) --------------
+  // ---- node versions (per-node last-writer-wins on a version int, not a CRDT) ----
   // Every node carries `v` (bumped by whoever mutates it — the diff tick below) and `vn`
   // (random tiebreak). The room applies the same total order server-side, so "which write
   // wins" has ONE answer everywhere; a stale tab reconnecting after a night's sleep loses
@@ -5422,7 +5422,7 @@
       mpPresence.appendChild(chip);
     });
   }
-  // ---- follow mode: mirror a peer's viewport (the FigJam idiom) --------------
+  // ---- follow mode: mirror a peer's viewport ---------------------------------
   // Click a face → your camera glides to THEIR viewport and tracks it — pan AND zoom,
   // their visible world rect fitted into your window (peers publish it via {t:"view"}).
   // While following, the screen wears their color as a border and a "Following <name>"
@@ -5645,7 +5645,7 @@
     document.body.appendChild(mpCursorLayer); // outside #gvc-ui so ⌘. keeps cursors visible
     mpPresence = el("div", { id: "gvc-presence", class: "hidden" });
     // into the top-right card, BEFORE the session pill (avatars left, session right —
-    // the FigJam order), not straight onto the UI layer
+    // that order), not straight onto the UI layer
     if (topRightEl) topRightEl.insertBefore(mpPresence, topRightEl.firstChild);
     else ui.appendChild(mpPresence);
     transformCbs.push(mpPositionCursors);

@@ -1,5 +1,5 @@
 // The gate is the only HTML an anonymous unfurl bot ever sees on a gated instance,
-// so its <head> IS the instance's link preview (a Notion bookmark, a Slack card).
+// so its <head> IS the instance's link preview (a link bookmark, a chat card).
 // These hold: workspace-branded title/description/icon/og tags when a default space
 // is mounted, engine fallbacks when none is, absolute og:url/og:image derived from
 // the request, and attribute-safe escaping of space-authored strings.

@@ -2,7 +2,7 @@
 
 **Status:** design, approved 2026-08-16
 **Touches:** `build.js` only
-**Reference:** Figma's account menu → Settings modal → photo crop dialog
+**Reference:** account menu → Settings modal → photo crop dialog
 
 ## Problem
 

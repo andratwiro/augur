@@ -1,6 +1,6 @@
 # Link previews — what an instance looks like when its URL is pasted somewhere
 
-Paste an instance's URL into Notion, Slack or iMessage and the unfurl bot fetches it
+Paste an instance's URL anywhere that unfurls links and the bot fetches it
 anonymously, so what it sees is the login gate. The gate's `<head>` is therefore the
 instance's entire link preview, and it is branded per instance:
 

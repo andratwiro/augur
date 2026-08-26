@@ -12,7 +12,7 @@ not restate it.
                              // a free label.
   "name": "My Space",        // display name in the switcher / landing
   "description": "…",        // one line for the site's link preview (the og:description
-                             // a Notion/Slack unfurl shows). Read from the DEFAULT
+                             // an unfurl shows). Read from the DEFAULT
                              // space only; empty ⇒ the engine's own tagline
   "default": true,           // the space that builds at the site ROOT. An instance
                              // serves exactly ONE space; the /<id>/ path mount for

@@ -58,6 +58,31 @@ jobs:
         # the engine does not own — and names nobody. It runs BEFORE the word scan
         # because it is the one that catches the client nobody has met yet.
         run: node scripts/no-foreign-vocabulary.mjs
+      - name: No other company's product named in the engine (no-product-names)
+        # A different axis from the guard above: that one is about a WORKSPACE's private
+        # vocabulary, this one is about design tools cited to describe a behaviour. There
+        # were 50, and 32 of them were fetchable by any visitor — build.js runs no
+        # minifier, so comments in src/canvas/*, src/review/comments.js and build.js's
+        # emitted CSS ship byte-for-byte to the browser, and one mention was live prose on
+        # /changelog/. "It is only a comment" was never true here, which is why the rule
+        # reaches the whole repo and why it is enforced in `check` rather than only `test`.
+        #
+        # It carries a closed denylist AND a shape rule, and the shape rule is the one
+        # that matters: measured against the pre-purge tree it caught 31 of the 50 on its
+        # own, including every name no list had. Its own header states the gap it does not
+        # cover (a lowercase ambiguous name in running prose) rather than implying cover.
+        run: node scripts/no-product-names.mjs
+      - name: Empty states are a ghost and one line (ui-copy-lint)
+        # Nothing had ever constrained the text of an empty state: no test, no script, no
+        # build assertion. That is how a first sentence describing a page that does not
+        # exist shipped, and how eight surfaces grew to two paragraphs each at a mean
+        # sentence of 49.8 words. This holds the structure (one paragraph, twenty words)
+        # and the tics that produced the last one.
+        #
+        # It cannot tell whether a sentence is TRUE — the false first sentence would have
+        # passed every rule it has — and it says so in its own output rather than letting
+        # a green run read as proof. Truth stays a review question.
+        run: node scripts/ui-copy-lint.mjs
       - name: No instance, product, or personal words in the engine
         # The engine is generic — instance-specific values belong in deploy.config.json /
         # space.json, never in engine code, scripts, docs, or shipped chrome. Scan the
