@@ -34,6 +34,8 @@
 // immediacy that was already coming from the bust.
 import { test } from "node:test";
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 import { __testables as W } from "../src/_worker.js";
 
 function memKV() {
@@ -179,4 +181,43 @@ test("the roster bust, not a slot write, is what makes an admin write visible ne
   await W.loadConfig("alpha", alpha);
   assert.deepEqual(emails(), ["alpha-admin@x.test", "invited@alpha.test"],
     "the next request did not see the invite");
+});
+
+test("the module config slot has exactly one owner in the request path", () => {
+  // The invariant the two cases above are instances of, stated once over the source so a
+  // NEW writer is a red test rather than a review someone has to remember to do. Removing
+  // the two admin write-throughs and un-branding the /__config refusal (which read the
+  // slot to render a neighbour's 404) leaves `loadConfig` as the only function in the
+  // request path that touches `TENANT_CTX` at all — every other name below is a test seam
+  // that exists so a unit test can seed a workspace without a config load.
+  //
+  // Adding a name here is not forbidden; it is the point. It means someone deliberately
+  // gave the slot a second owner, and had to say so in a file that explains why the last
+  // second owner leaked a roster across workspaces.
+  const OWNERS = new Set([
+    "TENANT_CTX",           // the declaration itself
+    "loadConfig",           // the owner: the tick, the swap, keep-last-good, fail-closed
+    "applyInstance",        // test seam — seed a workspace from an instance document
+    "applyDerivedRouting",  // test seam — seed routing from a set of manifests
+    "__setChromeTestState", // test seam — seed the chrome pointer + workspace list
+    "__usersNow",           // test hook — read back what the config tick settled on
+  ]);
+  const src = readFileSync(fileURLToPath(new URL("../src/_worker.js", import.meta.url)), "utf8");
+  const found = new Map(); // owner -> first line number
+  let owner = null;
+  src.split("\n").forEach((line, i) => {
+    // Top-level declarations only: this file indents everything nested, so a name at
+    // column 0 is the enclosing function of every line until the next one.
+    const decl = /^(?:export )?(?:async )?function (\w+)/.exec(line)
+      || /^(?:export )?(?:const|let|var) (\w+)\s*=/.exec(line);
+    if (decl) owner = decl[1];
+    if (line.trim().startsWith("//")) return;   // prose about the slot is not a use of it
+    if (!line.includes("TENANT_CTX")) return;
+    if (!found.has(owner)) found.set(owner, i + 1);
+  });
+  const strangers = [...found].filter(([name]) => !OWNERS.has(name));
+  assert.deepEqual(strangers, [],
+    "a new function reaches for the module config slot — see this file's header before allowing it");
+  // …and the owner is still there, so a rename cannot pass this by emptying it.
+  assert.ok(found.has("loadConfig"), "loadConfig no longer touches the slot — did it move?");
 });

@@ -545,7 +545,7 @@ const ROUTES = [
     path: () => "/__config/instance.json",
     read: async (res) => `${res.status} ${/tenantId|users/.test(await res.text())}`,
     own: () => "404 false",
-    shared: "the refusal predates the resolve and is the same answer for every workspace by construction; what it must never do — echo a config document — is what is asserted",
+    shared: "the refusal predates the resolve, takes no context at all (configSealedResponse), and is therefore the same answer for every workspace by construction; what it must never do — echo a config document — is what is asserted",
   }),
 
   route("me-anon", {

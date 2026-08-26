@@ -635,6 +635,38 @@ function configUnavailableResponse() {
   });
 }
 
+// What an EXTERNAL request to /__config/* gets. That path is the channel the worker reads
+// its own config over (`env.ASSETS.fetch("https://config/__config/…")`, which never enters
+// this fetch handler), so no page links to it, no human navigates to it, and any request
+// that arrives here is a probe or a mistake.
+//
+// It takes NO context, and that is the point. The refusal predates the resolve on purpose
+// — the answer is the same for every workspace and costs no read, so making it wait on a
+// config load would only add a way for a broken store to turn a sealed path into a 503 —
+// and a response written before the resolve has no workspace to be branded FOR. It used to
+// render the branded 404 from the module slot instead: the last context this isolate
+// happened to load, which on a multi-workspace isolate is a neighbour's. What actually
+// leaked was one bit (the branded page emits a favicon link only when the context has a
+// default space, and the href is relative, so it resolves against the requesting host) —
+// small enough that the branding was never worth arguing about, and beside the point. The
+// point is that "every response this router builds comes from the workspace resolved for
+// THIS request" was a rule with exactly one exception, the exception sat on an ungated
+// path, and a rule with an exception is the thing the next reader copies. Unbranded, the
+// rule has none, and the module slot has no reader left in the request path at all.
+//
+// Plain text rather than a stripped-down HTML page: a machine-facing path should answer
+// like one, and there is no styling here to drift back into branding.
+function configSealedResponse() {
+  return new Response("Not found\n", {
+    status: 404,
+    headers: {
+      "Content-Type": "text/plain; charset=utf-8",
+      "Cache-Control": "no-store",
+      "X-Robots-Tag": "noindex, nofollow, noarchive",
+    },
+  });
+}
+
 // ---- The tenant resolver seam -----------------------------------------------
 // ONE function answers "which workspace is this request for", and fetch() calls it
 // ONCE, before any config is read. Everything downstream takes the answer as a
@@ -5139,11 +5171,11 @@ export default {
     // reads only — instance.json carries the user list. Reject external requests
     // BEFORE any asset serving, unconditionally (even in open/legacy mode).
     if (url.pathname === "/__config" || url.pathname.startsWith("/__config/")) {
-      // This refusal deliberately predates the resolve — it is the same answer for
-      // every workspace and costs no read — so there is no per-request context to hand
-      // the branded 404 yet. TENANT_CTX, the last good one this isolate loaded, is what
-      // the page renders from — the same bytes it has always answered with.
-      return notFoundResponse(TENANT_CTX);
+      // Context-free by construction: the refusal predates the resolve, so there is no
+      // workspace to answer for and it does not reach for one. See configSealedResponse —
+      // this used to render the branded 404 out of the module slot, i.e. out of whichever
+      // workspace this isolate loaded last.
+      return configSealedResponse();
     }
 
     // Which workspace this request belongs to — resolved ONCE, here, before anything
