@@ -76,6 +76,16 @@ const MAX_MSG = 8 * 1024 * 1024; // a node op can carry an inlined image; KV cap
 // is what makes it provably not per-isolate state rather than a promise that it is not.
 const COLORS = Object.freeze(["#e8590c", "#1971c2", "#2f9e44", "#9c36b5", "#e64980", "#f08c00", "#0c8599", "#6741d9"]);
 
+// The board mirror's KV binding, under either name.
+//
+// The standalone realtime worker binds it as BOARD_KV; the engine worker binds the same
+// namespace as COMMENTS, which its own template has always documented as "the same
+// namespace the Pages project binds as COMMENTS". Folding realtime into the engine worker
+// therefore removes a redundant binding rather than adding one — but the standalone worker
+// is still deployed on three instances, so this accepts both names for as long as both
+// deployments exist. COMMENTS wins where both are present, which is the engine worker.
+const boardKv = (env) => (env && (env.COMMENTS || env.BOARD_KV)) || null;
+
 const BOARD_PREFIX = "board:";   // same key scheme as the Pages worker's /__board rail
 const PERSIST_MS = 45000;        // dirty → alarm → KV mirror write; ≤ ~80 writes/hour per hot board
 const RETRY_MS = 5000;           // re-arm delay after a FAILED mirror write (KV hiccup — retry soon)
@@ -476,7 +486,7 @@ export class BoardRoom {
       // solo clients and terminal scripts legitimately write /__board while the room is
       // empty, and waking up storage-only would erase their work at the next mirror write.
       try {
-        const raw = this.env.BOARD_KV && this.path ? await this.env.BOARD_KV.get(BOARD_PREFIX + this.path) : null;
+        const raw = boardKv(this.env) && this.path ? await boardKv(this.env).get(BOARD_PREFIX + this.path) : null;
         const kv = raw ? JSON.parse(raw) : null;
         if (kv && Array.isArray(kv.nodes)) this.reconcileSeed(kv); // no sender — corrections go nowhere, accepted ops are already durable
       } catch (e) {}
@@ -493,7 +503,7 @@ export class BoardRoom {
     const wasDirty = !!(await this.ctx.storage.get("dirty"));
     let kvDoc = null;
     try {
-      const raw = this.env.BOARD_KV && this.path ? await this.env.BOARD_KV.get(BOARD_PREFIX + this.path) : null;
+      const raw = boardKv(this.env) && this.path ? await boardKv(this.env).get(BOARD_PREFIX + this.path) : null;
       kvDoc = raw ? JSON.parse(raw) : null;
     } catch (e) {}
     let src = null;
@@ -740,7 +750,7 @@ export class BoardRoom {
     if (this.dirty && !this.alarmSet) { this.alarmSet = true; this.ctx.storage.setAlarm(Date.now() + RETRY_MS); }
   }
   async mirror() {
-    if (!this.doc || !this.env.BOARD_KV || this.ephemeral) return;
+    if (!this.doc || !boardKv(this.env) || this.ephemeral) return;
     if (!(await this.isDirty())) return;
     await this.clearDirty(); // before the await: ops during the write re-set it
     try {
@@ -750,7 +760,7 @@ export class BoardRoom {
       // permanently (close-the-laptop-after-a-blip). If KV moved since OUR last mirror,
       // reconcile it in (version-ruled, so a lagging copy merges to nothing) and let the
       // live clients hear whatever was genuinely new.
-      const kvRaw = await this.env.BOARD_KV.get(BOARD_PREFIX + this.path);
+      const kvRaw = await boardKv(this.env).get(BOARD_PREFIX + this.path);
       if (kvRaw && hashStr(kvRaw) !== (await this.ctx.storage.get("mhash"))) {
         try {
           const kv = JSON.parse(kvRaw);
@@ -761,7 +771,7 @@ export class BoardRoom {
         } catch (e2) {}
       }
       const out = JSON.stringify(this.wireDoc());
-      await this.env.BOARD_KV.put(BOARD_PREFIX + this.path, out);
+      await boardKv(this.env).put(BOARD_PREFIX + this.path, out);
       this.ctx.storage.put("mhash", hashStr(out));
     } catch (e) {
       console.error("KV mirror write failed", e);

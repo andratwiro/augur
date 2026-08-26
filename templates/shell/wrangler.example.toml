@@ -70,6 +70,30 @@ id = "<your-kv-namespace-id>"
 binding = "BUNDLES"
 bucket_name = "<your-r2-bucket>"
 
+# ── Canvas rooms, once this instance serves them from its own worker ────────────────────
+#
+# Uncomment BOTH blocks together, and only when you are ready to retire this instance's
+# standalone `augur-realtime-<instance>` worker. The class already ships in the engine's
+# deploy entry, so wrangler resolves it; what these add is the binding and the migration
+# that creates the Durable Object namespace.
+#
+# The room's KV mirror uses the COMMENTS binding above — the same namespace the standalone
+# worker binds as BOARD_KV, which is why folding realtime in here removes a binding rather
+# than adding one. The room accepts either name for as long as both deployments exist.
+#
+# ⚠️ The rooms in THIS namespace are new and empty: a Durable Object's storage belongs to
+# the script that created it, so boards do not travel from the standalone worker. They
+# migrate on first touch from the KV mirror, which lags by up to 45 seconds — so cut over
+# when boards are quiet, not mid-session.
+#
+# [[durable_objects.bindings]]
+# name = "ROOMS"
+# class_name = "BoardRoom"
+#
+# [[migrations]]
+# tag = "v1"
+# new_sqlite_classes = ["BoardRoom"]
+
 [vars]
 # Bundle mode. Without this the worker falls back to assets mode and every published page
 # answers 404 while the site itself looks healthy.
