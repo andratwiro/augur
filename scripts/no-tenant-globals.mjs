@@ -84,7 +84,6 @@ const ALLOWLIST = {
       rosterCache:      "the last roster document read from KV; overlay only, never the auth boundary",
       MANIFESTS:        "the live content manifests each workspace's store lists, KEYED BY WORKSPACE and bounded; the value IS one workspace's published content and its gate-deciding routing, so the key is what stops a neighbour's bytes answering at this workspace's URLs",
       STORAGE_CACHE:    "the R2 fill gauge the admin panel shows, KEYED BY WORKSPACE and bounded; the number measures one workspace's own store",
-      AVATAR_KEYS:      "hashes the avatar index vouches for; a hash is content-addressed, so it means the same thing everywhere",
       mcpHostAllowlist: "the proxy host lists resolved from each workspace's published document, KEYED BY WORKSPACE and bounded; the value is derived from one workspace's config, so the key is what stops a neighbour answering from it",
       canvasRegAt:      "canvas registry clock; a stale stamp costs a re-read",
       canvasRegRaw:     "the last canvas registry document read from KV",

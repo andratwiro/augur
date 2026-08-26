@@ -791,14 +791,16 @@ async function rosterFields(ctx, env, forced) {
       ]);
     }
     const [roster, avatars, names, roles, spaces, icons] = rosterCache;
+    // The photo pass hands back the users AND the hashes it stamped — see applyAvatars —
+    // so the rest of the pipeline runs on its users while the Set travels to the context
+    // rather than to a module binding.
+    const faces = applyAvatars(applyNames(mergeRoster(ctx.CONFIG_USERS, roster), names), avatars);
     return {
       SPACE_ICONS: icons,
       // SPACES + SPACE_ICON_KEYS, together — see applySpaceIcons.
       ...applySpaceIcons(ctx.SPACES, icons),
-      USERS: applySpaces(
-        applyRoles(applyAvatars(applyNames(mergeRoster(ctx.CONFIG_USERS, roster), names), avatars), roles),
-        spaces,
-      ),
+      AVATAR_KEYS: faces.AVATAR_KEYS,
+      USERS: applySpaces(applyRoles(faces.USERS, roles), spaces),
     };
   } catch (e) { return { USERS: ctx.CONFIG_USERS }; }
 }
@@ -1146,7 +1148,6 @@ async function meNameApi(request, env, me) {
 // config-baked photo therefore acts as a SEED — the value someone sees until they
 // change it — which is what lets an instance carrying baked photos take this feature
 // by pin bump with nothing to migrate.
-let AVATAR_KEYS = new Set(); // the hashes the index vouches for; see the /__avatar/ route
 
 async function readAvatars(env) {
   const kv = kvFor(env);
@@ -1160,6 +1161,13 @@ async function readAvatars(env) {
 // Copies, never in-place mutation: roster entries are the very objects instance.json
 // produced, so stamping `avatar` onto them would outlive the overlay — a photo removed
 // from KV would keep serving until the next config reload replaced `CONFIG_USERS`.
+//
+// Returns the stamped users AND the hashes it stamped, together, for the same reason
+// applySpaceIcons does: the Set is what the ungated /__avatar/ route checks before it
+// reads KV, so it belongs to the workspace whose roster produced it. Assigning it to a
+// module binding gave the whole isolate whichever workspace loaded config last — its own
+// photos then 404 for everyone else, and, where two workspaces share a KV namespace, a
+// neighbour's photo serves at this workspace's URL to anyone who knows the hash.
 function applyAvatars(users, index) {
   const keys = new Set();
   const out = (users || []).map((u) => {
@@ -1169,8 +1177,7 @@ function applyAvatars(users, index) {
     keys.add(k);
     return { ...u, avatar: "/__avatar/" + AVATAR_KV_PREFIX + k };
   });
-  AVATAR_KEYS = keys;
-  return out;
+  return { USERS: out, AVATAR_KEYS: keys };
 }
 
 // Validate a posted photo: the declared mime must be one we serve, the payload must
@@ -1241,9 +1248,11 @@ async function meAvatarApi(request, env, me) {
 }
 
 // Serve a self-set photo. The index-backed AVATAR_KEYS check comes FIRST so an ungated
-// route can't be turned into a KV read amplifier by anyone typing hashes at it.
-async function serveKvAvatar(env, k) {
-  if (!AVATAR_KEYS.has(k)) return new Response("Not found", { status: 404 });
+// route can't be turned into a KV read amplifier by anyone typing hashes at it. It is
+// asked of the CALLING workspace's context, so a hash is only ever served by the
+// workspace whose index vouches for it — same rule as serveSpaceIcon.
+async function serveKvAvatar(tctx, env, k) {
+  if (!tctx.AVATAR_KEYS.has(k)) return new Response("Not found", { status: 404 });
   const kv = kvFor(env);
   const raw = kv ? await kv.get(AVATAR_BLOB_PREFIX + k) : null;
   const parsed = raw && parseAvatarDataUri(raw);
@@ -5140,7 +5149,7 @@ export default {
     if (url.pathname.startsWith("/__avatar/")) {
       const key = url.pathname.slice("/__avatar/".length);
       if (key.startsWith(AVATAR_KV_PREFIX)) {
-        return serveKvAvatar(env, key.slice(AVATAR_KV_PREFIX.length));
+        return serveKvAvatar(tctx, env, key.slice(AVATAR_KV_PREFIX.length));
       }
       const u = tctx.USERS.find((x) => x.avatar && x.avatar.startsWith("data:") && avatarKey(x) === key);
       const m = u && /^data:([^;,]+);base64,(.*)$/.exec(u.avatar);

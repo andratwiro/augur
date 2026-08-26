@@ -1341,18 +1341,24 @@ test("parseAvatarDataUri rejects non-raster types, junk and oversized payloads",
 test("applyAvatars: a self-set photo beats a config-baked one, and never mutates the config object", () => {
   const config = { email: "a@example.test", name: "A", avatar: "data:image/png;base64,AAAA" };
   const other = { email: "b@example.test", name: "B" };
-  const users = W.applyAvatars([config, other], { "a@example.test": { k: "abc123" } });
+  const { USERS: users, AVATAR_KEYS: keys } =
+    W.applyAvatars([config, other], { "a@example.test": { k: "abc123" } });
   assert.equal(users[0].avatar, "/__avatar/u/abc123", "self-set wins");
   assert.equal(users[1], other, "an untouched user is passed through as-is");
   assert.equal(config.avatar, "data:image/png;base64,AAAA",
     "the config entry itself is unchanged — otherwise removing the photo could not fall back to it");
+  // The hashes travel WITH the users, as a value: the ungated /__avatar/ route checks
+  // them, so they belong to the workspace whose roster produced them, not to the isolate.
+  assert.deepEqual([...keys], ["abc123"]);
   // …and dropping the overlay entry restores the seed, which is what makes DELETE work.
-  assert.equal(W.applyAvatars([config], {})[0].avatar, "data:image/png;base64,AAAA");
+  const dropped = W.applyAvatars([config], {});
+  assert.equal(dropped.USERS[0].avatar, "data:image/png;base64,AAAA");
+  assert.deepEqual([...dropped.AVATAR_KEYS], []);
 });
 
 test("applyAvatars matches addresses case-insensitively and ignores malformed entries", () => {
   const users = [{ email: "Mixed@Example.test" }, { email: "junk@example.test" }];
-  const out = W.applyAvatars(users, { "mixed@example.test": { k: "k1" }, "junk@example.test": { k: 42 } });
+  const out = W.applyAvatars(users, { "mixed@example.test": { k: "k1" }, "junk@example.test": { k: 42 } }).USERS;
   assert.equal(out[0].avatar, "/__avatar/u/k1");
   assert.equal(out[1].avatar, undefined);
 });
@@ -1402,7 +1408,7 @@ test("DELETE /__me/avatar drops the index entry (and the config seed comes back)
   assert.deepEqual(await res.json(), { ok: true, avatar: null });
   assert.deepEqual(JSON.parse(await kv.get(W.USER_AVATARS_KEY)), {});
   const seeded = { email: PLAIN.email, avatar: "data:image/png;base64,AAAA" };
-  assert.equal(W.applyAvatars([seeded], await W.readAvatars(env))[0].avatar, "data:image/png;base64,AAAA");
+  assert.equal(W.applyAvatars([seeded], await W.readAvatars(env)).USERS[0].avatar, "data:image/png;base64,AAAA");
 });
 
 test("serving a self-set photo: known key returns the bytes, unknown key never reads KV", async () => {
@@ -1414,14 +1420,19 @@ test("serving a self-set photo: known key returns the bytes, unknown key never r
   await W.meAvatarApi(meAvatarPost(uri), env, PLAIN);
   const k = await W.avatarHash(uri);
 
-  // The route trusts the in-memory index, which only a config tick fills.
-  W.applyAvatars([{ email: PLAIN.email }], await W.readAvatars(env));
+  // The route trusts the index the CALLING workspace's config tick built, handed to it as
+  // a context — never a module binding, which would be whichever workspace loaded last.
+  const tctx = W.applyAvatars([{ email: PLAIN.email }], await W.readAvatars(env));
   reads = 0;
-  const miss = await W.serveKvAvatar(env, "deadbeef");
+  const miss = await W.serveKvAvatar(tctx, env, "deadbeef");
   assert.equal(miss.status, 404);
   assert.equal(reads, 0, "an ungated route must not be a KV read amplifier for typed-in hashes");
 
-  const hit = await W.serveKvAvatar(env, k);
+  // A neighbour's context vouches for nothing here, so the same hash is not served to it.
+  const neighbour = await W.serveKvAvatar({ AVATAR_KEYS: new Set() }, env, k);
+  assert.equal(neighbour.status, 404, "a workspace whose index does not vouch for a hash must not serve it");
+
+  const hit = await W.serveKvAvatar(tctx, env, k);
   assert.equal(hit.status, 200);
   assert.equal(hit.headers.get("Content-Type"), "image/jpeg");
   assert.equal(hit.headers.get("X-Content-Type-Options"), "nosniff");
@@ -1435,9 +1446,9 @@ test("an indexed key whose blob vanished 404s rather than serving a broken image
   const uri = jpegUri();
   await W.meAvatarApi(meAvatarPost(uri), env, PLAIN);
   const k = await W.avatarHash(uri);
-  W.applyAvatars([{ email: PLAIN.email }], await W.readAvatars(env));
+  const tctx = W.applyAvatars([{ email: PLAIN.email }], await W.readAvatars(env));
   await kv.delete(W.AVATAR_BLOB_PREFIX + k);
-  assert.equal((await W.serveKvAvatar(env, k)).status, 404);
+  assert.equal((await W.serveKvAvatar(tctx, env, k)).status, 404);
 });
 
 test("removing a user takes their face out of the index too", async () => {

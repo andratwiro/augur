@@ -46,6 +46,11 @@ const FIELDS = {
   // ---- identity ----------------------------------------------------------------
   CONFIG_USERS:            { source: "instance", make: () => [] },
   USERS:                   { source: "derived",  make: () => [] }, // CONFIG_USERS + KV roster overlay
+  // The photo hashes this workspace's avatar index vouches for. `/__avatar/` is ungated,
+  // so this Set is what it checks BEFORE reading KV — an authorization list, not a memo,
+  // and derived from one workspace's roster. Same shape and same reason as
+  // SPACE_ICON_KEYS below.
+  AVATAR_KEYS:             { source: "derived",  make: () => new Set() },
   CONFIG_LOADED:           { source: "runtime",  make: () => false },
 
   // ---- gate / routing ----------------------------------------------------------

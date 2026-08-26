@@ -104,6 +104,11 @@ function kvDoc(n) {
     // asserts the overlay actually landed, so a rename cannot hollow this fixture out.
     "users:roster": JSON.stringify({ add: { [`two@${n}.invalid`]: { email: `two@${n}.invalid`, name: `Two of ${n}` } }, remove: [] }),
     [W.SPACE_ICONS_KEY]: JSON.stringify({ [n]: { k: `${n}icon`, mime: "image/png", at: 1 } }),
+    // The photo index, whose hashes the ungated /__avatar/ route will serve. Keyed on the
+    // address the ROSTER OVERLAY above adds, deliberately: that person survives into the
+    // next workspace's merged roster, so a shared read hands the neighbour a hash its own
+    // index never vouched for — the gap at its sharpest rather than at its mildest.
+    [W.USER_AVATARS_KEY]: JSON.stringify({ [`two@${n}.invalid`]: { k: `${n}face`, mime: "image/png", at: 1 } }),
   };
 }
 
@@ -1055,14 +1060,20 @@ test("the multiplayer proxy dials the CALLING workspace's realtime worker", asyn
 //
 // `rosterFields()` reads its six KV documents through the module-scope `rosterCache` /
 // `rosterReadAt` pair, which no tenant keys. Within ROSTER_TTL_MS the SECOND workspace to
-// load reuses the FIRST workspace's KV read, and the fields the overlay owns — USERS, and
-// the workspace icon index — come back as the neighbour's.
+// load reuses the FIRST workspace's KV read, and the fields the overlay owns — USERS, the
+// workspace icon index, and the photo hashes /__avatar/ will serve — come back as the
+// neighbour's.
+//
+// Note what this gap is NOT any more: those fields live on the CONTEXT, so each workspace
+// is at least answered from its own value rather than from whatever the isolate loaded
+// last. What is still shared is the KV READ they are built from. Keying that read closes
+// the gap; nothing else has to move.
 //
 // This is pinned rather than merely noted so that closing it cannot happen unremarked:
 // the case below goes RED the day the roster cache is keyed by tenant. When it does,
-// delete this section and move USERS and SPACE_ICONS into the interleaved comparison
-// above (they are excluded from it today only because their KV read is shared, which is
-// why that test's fixtures bind no KV at all).
+// delete this section and move USERS, SPACE_ICONS and AVATAR_KEYS into the interleaved
+// comparison above (they are excluded from it today only because their KV read is shared,
+// which is why that test's fixtures bind no KV at all).
 //
 // The allowlist entry in scripts/no-tenant-globals.mjs calls this cache "overlay only,
 // never the auth boundary", which is true of the SECURITY question — identify() resolves
@@ -1080,6 +1091,10 @@ test("KNOWN GAP: a workspace's roster overlay is served to the next workspace to
     Object.keys(a.SPACE_ICONS), ["alpha"],
     "alpha did not get its own icon index — the fixture is not exercising the icon path",
   );
+  assert.deepStrictEqual(
+    [...a.AVATAR_KEYS], ["alphaface"],
+    "alpha did not get its own photo hashes — the fixture is not exercising the avatar path",
+  );
 
   // No reset: beta loads inside ROSTER_TTL_MS, exactly as a second workspace served by the
   // same isolate would.
@@ -1091,6 +1106,12 @@ test("KNOWN GAP: a workspace's roster overlay is served to the next workspace to
   assert.deepStrictEqual(
     Object.keys(b.SPACE_ICONS), ["alpha"],
     "the workspace icon index is no longer shared — see above, this gap is CLOSED",
+  );
+  // The sharpest form of the gap: beta's context vouches for a hash beta's own photo index
+  // never named, so /__avatar/u/alphaface serves — ungated — out of a shared KV namespace.
+  assert.deepStrictEqual(
+    [...b.AVATAR_KEYS], ["alphaface"],
+    "the photo index is no longer shared — see above, this gap is CLOSED",
   );
 
   // What is NOT leaked, and must stay that way: everything the config documents own.
