@@ -310,3 +310,27 @@ test("a dry run writes nothing and does not freeze", async () => {
     from.server.close(); to.server.close();
   }
 });
+
+test("it waits out the freeze cache before reading the source", () => {
+  // `freeze` returning is not the same as writes having stopped. The worker reads the flag
+  // through a per-isolate cache with a 10-second life (FREEZE_TTL_MS), so an isolate that
+  // has not looked since the flag was set goes on accepting writes for the full ten — and
+  // those land in the workspace AFTER the copy starts reading it, which is the loss the
+  // freeze exists to prevent, arriving through the freeze itself.
+  const src = fs.readFileSync(new URL("../scripts/migrate.mjs", import.meta.url), "utf8");
+  const settle = /FREEZE_SETTLE_MS\s*=\s*([\d_]+)/.exec(src);
+  assert.ok(settle, "migrate must wait a NAMED interval after freezing, not an anonymous one");
+  const ms = Number(settle[1].replace(/_/g, ""));
+
+  const worker = fs.readFileSync(new URL("../src/_worker.js", import.meta.url), "utf8");
+  const ttl = /FREEZE_TTL_MS\s*=\s*([\d_]+)/.exec(worker);
+  assert.ok(ttl, "the worker's freeze cache life has to be findable, or this test cannot check the wait against it");
+  const cache = Number(ttl[1].replace(/_/g, ""));
+
+  assert.ok(ms > cache, `the wait (${ms}ms) must exceed the worker's freeze cache (${cache}ms), or writes are still landing when the export begins`);
+
+  // Ordering, not just presence: waiting after the export would be waiting for nothing.
+  const at = src.indexOf("FREEZE_SETTLE_MS));");
+  const exportAt = src.indexOf('"export everything"');
+  assert.ok(at > 0 && exportAt > at, "the wait has to happen BEFORE the export step");
+});

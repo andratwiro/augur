@@ -89,10 +89,25 @@ log(`working directory: ${OUT}`);
 
 // 1. Freeze. Before the export, never after: a copy taken while writes are still landing
 //    is a copy that is already behind by the time it finishes.
+//
+//    ⚠️ AND THEN WAIT, because `freeze` returning is not the same as writes having stopped.
+//    The worker reads the freeze flag through a per-isolate cache with a 10-second life
+//    (`FREEZE_TTL_MS` in src/_worker.js), so an isolate that last looked 9 seconds ago goes
+//    on accepting writes for another second, and one that has not looked at all since the
+//    flag was set can accept them for the full ten. Those writes land in the workspace
+//    being copied AFTER the copy starts reading it — which is exactly the loss the freeze
+//    exists to prevent, arriving through the freeze itself.
+//
+//    Waiting the cache out is the whole fix and it costs eleven seconds of a migration
+//    somebody scheduled. Shortening the TTL instead would put a KV read in front of every
+//    write on every instance forever, to save eleven seconds on an operation run by hand.
+const FREEZE_SETTLE_MS = 11_000;
 if (FREEZE && !DRY) {
   await step("freeze the source", "freeze.mjs",
     ["--reason", `being moved to ${TO}`],
     { AUGUR_ORIGIN: FROM, AUGUR_TOKEN: FROM_TOKEN });
+  log(`waiting ${FREEZE_SETTLE_MS / 1000}s for every isolate's freeze cache to expire — a write accepted now would be copied late or not at all`);
+  await new Promise((r) => setTimeout(r, FREEZE_SETTLE_MS));
 }
 
 // 2 + 3.
