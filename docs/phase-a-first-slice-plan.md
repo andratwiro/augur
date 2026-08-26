@@ -244,51 +244,77 @@ told about, and equally on an allowlist entry whose binding is gone — so the l
 as the threading lands rather than turning into standing permission. Each thread-\* commit
 deletes a `let` from the worker and its line from the allowlist in the same change.
 
-### 2a. The fail-open-stale config cache — `loadTenantContext()` / `loadConfig()`
+### 2a. The config cache — stale within a floor — `loadTenantContext()` / `loadConfig()`
 
 ```
 async function loadTenantContext(tenantId, env, { prev, forced }) {
   let next = prev;                                  // start from the last good context
-  ... bundle: try { instanceFields / derivedRoutingFields } catch (e) {}
-  ... assets: grab() returns null on !ok/throw; only folds in when truthy
+  ... ABSENT (404 / no store key / a 200 that is not JSON) -> contributes nothing
+  ... FAILED (a throw, or a non-404 the host could not serve) -> propagates
   return withTenantFields(next, await rosterFields(next, env, forced));
 }
 async function loadConfig(tenantId, env) {          // the transitional caller
-  if (!env || Date.now() - cfgAt < 1500) return;    // per-isolate 1.5s TTL
+  const mine = TENANT_CTX.tenantId === tenantId;    // is the slot this workspace's?
+  if (!env) return mine ? TENANT_CTX : empty(…);    // no config source: open BY DESIGN
+  if (mine && Date.now() - cfgAt < 1500) return TENANT_CTX;   // per-isolate 1.5s TTL
   cfgAt = Date.now();                               // stamp FIRST (no stampede)
-  const next = await loadTenantContext(...);
-  if (next === TENANT_CTX) return;                  // nothing parsed — keep last good
+  try { next = await loadTenantContext(…); }
+  catch { return (mine && fresh(cfgGoodAt)) ? TENANT_CTX : null; }  // stale, then closed
+  cfgGoodAt = Date.now();
+  if (next === TENANT_CTX) return TENANT_CTX;       // nothing parsed — keep last good
   TENANT_CTX = next; applyTenantContext(next);      // mirror onto the globals, for now
+  return TENANT_CTX;
 }
 ```
 
-Two properties make it **fail-open-stale**, and both must be preserved as the sweep
-replaces the mirror with a threaded context:
+**A read that FAILED is not a document that is ABSENT**, and telling the two apart is what
+the load's classification is for. They used to collapse into the same swallowed `null`,
+which is what made a broken read indistinguishable from a raw build: both produced the
+empty-array/empty-string defaults, and the empty defaults are the open gate.
+
+Three properties, and all three must be preserved as the sweep replaces the mirror with a
+threaded context:
 
 1. **Stamp-first**: a failed load does not retry until the next tick, so a broken config
-   read cannot stampede KV/ASSETS on the hot path.
-2. **Keep-last-good**: on any failure the previous values stay in service. Every field
-   starts at the previous context's and is replaced only by a document that actually
-   parsed, so a read that fails contributes nothing; when nothing came back the load hands
-   back the very object it was given and the mirror does not run. A transient read failure
-   never wipes a working gate.
+   read cannot stampede KV/ASSETS on the hot path. The stamp lands before the failure is
+   classified, so a store refusing every read still gets one attempt per tick.
+2. **Keep-last-good**: the previous values stay in service. Every field starts at the
+   previous context's and is replaced only by a document that actually parsed, so an
+   ABSENT document contributes nothing; when nothing came back the load hands back the
+   very object it was given and the mirror does not run. A FAILED read keeps them too —
+   for `CONFIG_STALE_CEILING_MS` (60s). A transient read failure never wipes a working
+   gate.
+3. **Fail-closed floor**: past that ceiling, and on a cold isolate that has no last-good
+   for this workspace at all, `loadConfig` returns **`null`** and `fetch()` answers
+   `configUnavailableResponse()` — a 503 — before a single route runs. It does not serve a
+   context built from the empty defaults, because the empty defaults ARE a raw build and a
+   raw build's gate is open. `cfgGoodAt` is the clock that separates the two, and it is
+   read only when `TENANT_CTX.tenantId` is the workspace being asked about: a second
+   workspace finds no last-good and is refused rather than handed the neighbour's.
 
-Both are pinned in `test/config-keep-last-good.test.mjs`, in **both serving modes** — the
+The trade in (3) is deliberate and it is availability for correctness: a store outage
+longer than a minute takes the site down rather than letting a photograph of the workspace
+decide who may sign in and which paths are public.
+
+(1) and (2) are pinned in `test/config-keep-last-good.test.mjs`, (3) and the ABSENT/FAILED
+distinction in `test/config-fail-closed.test.mjs`, both in **both serving modes** — the
 response snapshot corpus runs in assets mode, so the bundle branch every deployed instance
 actually runs has no byte-level baseline watching it.
 
-The one **fail-CLOSED** counterweight lives beside it: `CONFIG_LOADED` lets the gate
-distinguish "genuinely no identity" (raw build → open) from "config not loaded yet in this
-cold isolate" (deployment → must fail closed), consumed in `fetch()` as
-`authed = expectsConfig ? tctx.CONFIG_LOADED : true`. It starts FALSE and only an instance
-document that actually parsed sets it true — that default comes from the context factory
-(`emptyTenantContext`), and `instanceFields` is the only thing that flips it. It lives
-nowhere else: there is no module binding mirroring it, so a second workspace starts
-un-loaded rather than inheriting the first one's verdict.
+The **fail-CLOSED counterweight for the ABSENT case** lives beside them: `CONFIG_LOADED`
+lets the gate distinguish "genuinely no identity" (raw build → open) from "no config
+document loaded yet in this cold isolate" (deployment → must fail closed), consumed in
+`fetch()` as `authed = expectsConfig ? tctx.CONFIG_LOADED : true`. It starts FALSE and only
+an instance document that actually parsed sets it true — that default comes from the
+context factory (`emptyTenantContext`), and `instanceFields` is the only thing that flips
+it. It lives nowhere else: there is no module binding mirroring it, so a second workspace
+starts un-loaded rather than inheriting the first one's verdict.
 **This cold-isolate fail-closed semantics is the single most dangerous thing in the sweep
 to regress** — a context that defaults to "loaded/empty" instead of "not yet loaded"
-reopens the gate on a cold isolate whose first config read failed. The baseline snapshot
-includes a cold-isolate request for exactly this, and the guard is checked by flipping the
+reopens the gate on a cold isolate whose config documents are missing. The baseline
+snapshot carries a cold-isolate request for exactly this (`cold-isolate-config-absent`,
+where the reads succeed and 404) alongside the one for the refusal
+(`cold-isolate-fail-closed`, where they throw), and the guard is checked by flipping the
 factory's default to `true` and watching that test go red — never by trusting the pass.
 
 ### 2b. The tenant resolver seam — `resolveTenant(request, env)`
