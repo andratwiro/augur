@@ -638,6 +638,46 @@ export class TenantStore {
   }
 
   /**
+   * Write a whole snapshot of the overlay in ONE transaction.
+   *
+   * `MIG-do-import-endpoint`. Every other write path in this codebase is a
+   * read-modify-write: read a document, change part of it, put it back. That is survivable
+   * for one edit and wrong for a restore, where a failure halfway leaves a workspace with
+   * some families from the copy and some from whatever was there before — a state that
+   * matches no backup and no moment in time, and that nobody can tell apart from a
+   * successful restore by looking.
+   *
+   * So it is all of it or none of it. `transactionSync` gives that for free inside a
+   * Durable Object; a runtime without one gets the same ORDER but not the same guarantee,
+   * and says so to its caller rather than pretending.
+   *
+   * The bundle is `{family: {scope: {key: value}}}` — DO families, not KV document names.
+   * Translating one to the other is the worker's job: this object has never needed to know
+   * what anything was called in KV, and a restore is a poor moment to teach it.
+   */
+  importOverlay(bundle, at) {
+    const stamp = at || new Date().toISOString();
+    const written = [];
+    const body = () => {
+      for (const [family, scopes] of Object.entries(bundle || {})) {
+        for (const [scope, map] of Object.entries(scopes || {})) {
+          this.sql.exec(`DELETE FROM overlay WHERE family = ? AND scope = ?`, String(family), String(scope));
+          for (const [k, v] of Object.entries(map || {})) {
+            this.sql.exec(
+              `INSERT INTO overlay (family, scope, k, v, rev, at) VALUES (?,?,?,?,1,?)`,
+              String(family), String(scope), String(k), JSON.stringify(v), stamp,
+            );
+          }
+          written.push(scope ? `${family}/${scope}` : family);
+        }
+      }
+    };
+    const atomic = typeof this.ctx.storage.transactionSync === "function";
+    if (atomic) this.ctx.storage.transactionSync(body); else body();
+    return { written, atomic };
+  }
+
+  /**
    * The worker's way in. A Durable Object stub is not publicly routable — only code
    * holding the binding can reach it — so this is an internal API, not a surface.
    *
@@ -655,6 +695,15 @@ export class TenantStore {
       await this.init(body.workspaceId);
       const version = this.nextPublishVersion(space, body.floor);
       return Response.json({ version });
+    }
+    if (url.pathname === "/state/import" && request.method === "POST") {
+      let body = null;
+      try { body = await request.json(); } catch (e) { /* handled below */ }
+      if (!body || !body.overlay || typeof body.overlay !== "object" || Array.isArray(body.overlay)) {
+        return Response.json({ error: "bad-input" }, { status: 400 });
+      }
+      await this.init(body.workspaceId);
+      return Response.json(this.importOverlay(body.overlay));
     }
     if (url.pathname === "/quota/bump" && request.method === "POST") {
       let body = null;

@@ -81,7 +81,9 @@ function namespace() {
         }, {}));
       }
       const store = objects.get(id.name);
-      return { id, fetch: (u, init) => store.fetch(new Request(u, init)) };
+      // `store` is exposed so a test can reach INTO the object — to break its writes, or to
+      // read a table directly. Nothing in the worker uses it.
+      return { id, store, fetch: (u, init) => store.fetch(new Request(u, init)) };
     },
   };
 }
@@ -353,4 +355,100 @@ test("AN IMAGE PASTED BEFORE THE R2 MOVE IS IN THE COPY, and a restore moves it"
   const got = await call(env, `/__publish/_state/asset/${hash}`);
   assert.equal(got.status, 200);
   assert.deepEqual(new Uint8Array(await got.arrayBuffer()), bytes);
+});
+
+// ── the import is one transaction, not a family-by-family replay ─────────────
+//
+// `MIG-do-import-endpoint`. Family by family is survivable for an edit and wrong for a
+// restore: a failure halfway leaves a workspace with some families from the copy and some
+// from whatever was there before — a state matching no backup and no moment in time, which
+// nobody can tell apart from a successful restore by looking.
+
+test("THE IMPORT IS ATOMIC WHEN THERE IS AN OBJECT TO BE ATOMIC IN, and says which", async () => {
+  const from = { COMMENTS: seededKv(), BUNDLES: memR2() };
+  const doc = await exportVia(from);
+
+  const withStore = { COMMENTS: memKv(), BUNDLES: memR2(), TENANTS: namespace() };
+  const a = await W.importState(CTX, withStore, doc);
+  assert.equal(a.ok, true);
+  assert.equal(a.atomic, true, "an instance with a workspace object did not get a transaction");
+
+  const withoutStore = { COMMENTS: memKv(), BUNDLES: memR2() };
+  const b = await W.importState(CTX, withoutStore, doc);
+  assert.equal(b.ok, true);
+  assert.equal(b.atomic, false, "an instance with no object claimed a guarantee it cannot give");
+});
+
+test("A FAILURE PART-WAY LEAVES THE WORKSPACE AS IT WAS", async () => {
+  // The property the whole item is for. The object already holds a workspace; a restore
+  // dies mid-write; what is there afterwards must be what was there before, not a mixture.
+  const ns = namespace();
+  const env = { COMMENTS: memKv(), BUNDLES: memR2(), TENANTS: ns };
+  await W.importState(CTX, env, {
+    format: 1, families: { statuses: { "/before/": "dev-ready" }, names: { "/before/": "Before" } },
+  });
+  const before = await W.exportState(CTX, env);
+  assert.deepEqual(before.families.statuses, { "/before/": "dev-ready" });
+
+  // Break the object's write halfway through the second family.
+  const stub = ns.get(ns.idFromName("acme"));
+  const real = stub.store.sql.exec.bind(stub.store.sql);
+  let writes = 0;
+  stub.store.sql.exec = (stmt, ...p) => {
+    if (/^\s*INSERT INTO overlay/.test(stmt) && ++writes === 2) throw new Error("the isolate went away");
+    return real(stmt, ...p);
+  };
+  await assert.rejects(W.importState(CTX, env, {
+    format: 1, families: { statuses: { "/after/": "ignore" }, names: { "/after/": "After" } },
+  }));
+  stub.store.sql.exec = real;
+
+  const after = await W.exportState(CTX, env);
+  assert.deepEqual(after.families.statuses, before.families.statuses, "a half-written restore landed");
+  assert.deepEqual(after.families.names, before.families.names);
+});
+
+test("TWO WORKSPACES IMPORTED SIDE BY SIDE HOLD NO TRACE OF EACH OTHER", async () => {
+  // The other half of the VERIFY, and it is structural rather than enforced: two
+  // workspaces are two objects with two databases, so there is no key one could construct
+  // that reads the other.
+  const ns = namespace();
+  const one = Object.freeze({ ...CTX, tenantId: "one" });
+  const two = Object.freeze({ ...CTX, tenantId: "two" });
+  const env = { COMMENTS: memKv(), BUNDLES: memR2(), TENANTS: ns };
+
+  await W.importState(one, env, { format: 1, families: { statuses: { "/one/": "dev-ready" }, "c:": { "/p/": [{ id: "one-thread" }] } } });
+  await W.importState(two, env, { format: 1, families: { statuses: { "/two/": "reviewed" }, "c:": { "/p/": [{ id: "two-thread" }] } } });
+
+  const outOne = await W.exportState(one, env);
+  const outTwo = await W.exportState(two, env);
+  assert.deepEqual(outOne.families.statuses, { "/one/": "dev-ready" });
+  assert.deepEqual(outTwo.families.statuses, { "/two/": "reviewed" });
+  assert.equal(JSON.stringify(outOne.families["c:"]).includes("two-thread"), false, "one workspace holds the other's comments");
+  assert.equal(JSON.stringify(outTwo.families["c:"]).includes("one-thread"), false);
+});
+
+test("the object is told DO families, never KV document names", async () => {
+  // The separation that keeps this sane: the worker does the translation, and the object
+  // has never needed to know what anything was called in KV. A restore is a poor moment to
+  // teach it.
+  const seen = [];
+  const ns = namespace();
+  const real = ns.get.bind(ns);
+  ns.get = (id) => {
+    const stub = real(id);
+    return { ...stub, fetch: (u, init) => {
+      if (String(u).endsWith("/state/import")) seen.push(JSON.parse(init.body).overlay);
+      return stub.fetch(u, init);
+    } };
+  };
+  const env = { COMMENTS: memKv(), BUNDLES: memR2(), TENANTS: ns };
+  await W.importState(CTX, env, {
+    format: 1,
+    families: { statuses: { "/p/": "ignore" }, "c:": { "/p/": [] }, "pins:": { "a@x.test": {} }, "pt:view": { path: "/p/" } },
+  });
+  assert.deepEqual(Object.keys(seen[0]).sort(), ["comments", "pins", "piti", "statuses"]);
+  assert.deepEqual(Object.keys(seen[0].pins), ["a@x.test"], "the person's address is the scope, not part of a key");
+  assert.deepEqual(Object.keys(seen[0].piti[""]), ["view"]);
+  assert.equal(JSON.stringify(seen[0]).includes("basset"), false);
 });

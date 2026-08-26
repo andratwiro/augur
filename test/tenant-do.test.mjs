@@ -184,7 +184,8 @@ test("the store exposes no read or write verb it does not yet need", () => {
   // exists — see test/tenant-provisioning.test.mjs.
   const names = Object.getOwnPropertyNames(TenantStore.prototype).filter((n) => n !== "constructor");
   assert.deepEqual(names.sort(), [
-    "bumpCounter", "fetch", "init", "isProvisioned", "members", "nextPublishVersion",
+    "bumpCounter", "fetch", "importOverlay", "init", "isProvisioned", "members",
+    "nextPublishVersion",
     "overlayCas", "overlayInsert", "overlayRead", "overlayReadRev", "overlayReplace",
     "overlaySet", "provision",
     "quotas", "readCounter", "schemaVersion", "sessionKey", "sql", "usersActive", "workspaceId",

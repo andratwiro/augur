@@ -5321,9 +5321,74 @@ async function importState(tctx, env, doc) {
   const kv = kvFor(env);
   if (!store && !kv) return { ok: false, reason: "no-store" };
 
+  // ── ONE TRANSACTION, when there is an object to have one in ────────────────
+  //
+  // `MIG-do-import-endpoint`. Family by family is survivable for an edit and wrong for a
+  // restore: a failure halfway leaves a workspace with some families from the copy and
+  // some from whatever was there before — a state matching no backup and no moment in
+  // time, which nobody can tell apart from a successful restore by looking.
+  //
+  // The worker does the translation (inventory ids → DO families and scopes) and the
+  // object does the write. It has never needed to know what anything was called in KV,
+  // and a restore is a poor moment to teach it.
+  const stub = tenantStub(env, tctx && tctx.tenantId);
+  if (stub) {
+    const bundle = {};
+    const written = [];
+    const skipped = [];
+    for (const [id, value] of Object.entries(doc.families)) {
+      const entry = STATE_INVENTORY.find((e) => e.id === id);
+      if (!entry || entry.to !== "workspace") { skipped.push(id); continue; }
+      const family = Object.keys(OVERLAY_KV_KEYS).find((f) => {
+        const spec = OVERLAY_KV_KEYS[f];
+        return spec.doc === id || spec.doc + ":" === id || id.startsWith(spec.doc + ":");
+      });
+      if (!family) { skipped.push(id); continue; } // an identity family; see below
+      if (id === "pins:") {
+        for (const [scope, map] of Object.entries(value || {})) {
+          bundle.pins = bundle.pins || {};
+          bundle.pins[scope] = map || {};
+        }
+      } else if (id.startsWith("pt:")) {
+        bundle.piti = bundle.piti || { "": {} };
+        bundle.piti[""][id.slice("pt:".length)] = value;
+      } else {
+        bundle[family] = bundle[family] || {};
+        bundle[family][""] = value || {};
+      }
+      written.push(id);
+    }
+    const res = await stub.fetch("https://workspace/state/import", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ overlay: bundle, workspaceId: tctx.tenantId }),
+    });
+    if (!res.ok) return { ok: false, reason: "workspace-refused", status: res.status };
+    const { atomic } = await res.json();
+    // The families the workspace object has no table for yet — the roster, the invites,
+    // the publish tokens. They still go to KV, per family, and saying so is the honest
+    // report: B-kv-to-do-migration-tool is what gives them tables.
+    const rest = await replayFamilies(store, kv, doc, skipped);
+    return { ok: true, atomic, written: [...written, ...rest.written], skipped: rest.skipped };
+  }
+
+  const out = await replayFamilies(store, kv, doc, Object.keys(doc.families));
+  return { ok: true, atomic: false, ...out };
+}
+
+/**
+ * Family by family, which is what an instance with no workspace object can do — and, on
+ * one that has an object, what the families it has no table for yet still need.
+ *
+ * Overlay families go through the accessor, because it is the thing that knows a family's
+ * KV layout: `statuses` is one document holding a map and `c:` is one document per page,
+ * and writing either the other way is a workspace that comes back missing everything.
+ */
+async function replayFamilies(store, kv, doc, ids) {
   const written = [];
   const skipped = [];
-  for (const [id, value] of Object.entries(doc.families)) {
+  for (const id of ids) {
+    const value = doc.families[id];
     const entry = STATE_INVENTORY.find((e) => e.id === id);
     // An id the inventory does not know is not replayed. A restore is the worst possible
     // moment to start trusting a document about where things go.
@@ -5332,18 +5397,14 @@ async function importState(tctx, env, doc) {
       const spec = OVERLAY_KV_KEYS[f];
       return spec.doc === id || spec.doc + ":" === id || id.startsWith(spec.doc + ":");
     });
-    if (family && store && id !== "pins:" && !id.startsWith("pt:")) {
-      await store.replace(family, "", value || {});
-      written.push(id);
-      continue;
-    }
-    if (id === "pins:" && store) {
-      for (const [scope, map] of Object.entries(value || {})) await store.replace("pins", scope, map || {});
-      written.push(id);
-      continue;
-    }
-    if (id.startsWith("pt:") && store) {
-      await store.set("piti", "", id.slice("pt:".length), value);
+    if (family && store) {
+      if (id === "pins:") {
+        for (const [scope, map] of Object.entries(value || {})) await store.replace("pins", scope, map || {});
+      } else if (id.startsWith("pt:")) {
+        await store.set("piti", "", id.slice("pt:".length), value);
+      } else {
+        await store.replace(family, "", value || {});
+      }
       written.push(id);
       continue;
     }
@@ -5357,7 +5418,7 @@ async function importState(tctx, env, doc) {
     }
     written.push(id);
   }
-  return { ok: true, written, skipped };
+  return { written, skipped };
 }
 
 // ---- Quotas -----------------------------------------------------------------
