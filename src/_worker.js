@@ -5743,6 +5743,11 @@ async function importState(tctx, env, doc) {
     const rest = await replayFamilies(store, kv, doc, skipped);
     return {
       ok: true, atomic, ...cleared,
+      // Said out loud rather than inferred. A caller copying KV into the object needs to
+      // know the object was there to receive it: with no TENANTS binding this whole path is
+      // skipped, KV is written exactly as before, and every other field below looks the
+      // same — a successful no-op that reads as a successful copy.
+      workspaceObject: true,
       written: [...written, ...rest.written],
       skipped: [...rest.skipped, ...identitySkipped.map((s) => s.id)],
       // Named rather than dropped: a copy that quietly omits a family is indistinguishable
@@ -5753,7 +5758,7 @@ async function importState(tctx, env, doc) {
   }
 
   const out = await replayFamilies(store, kv, doc, Object.keys(doc.families));
-  return { ok: true, atomic: false, ...cleared, ...out };
+  return { ok: true, atomic: false, workspaceObject: false, ...cleared, ...out };
 }
 
 /**

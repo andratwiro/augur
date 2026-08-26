@@ -41,13 +41,16 @@ const map = {
   freeze: "freeze.mjs",
   thaw: "freeze.mjs",
   migrate: "migrate.mjs",
+  // NOT a synonym for migrate, and the names are kept apart on purpose: migrate MOVES a
+  // workspace to another instance, adopt copies THIS instance's KV into its own object.
+  adopt: "adopt.mjs",
   // Same script: `pull` is `clone` with a three-way merge instead of an overwrite, and one
   // file is what keeps the URL→source mapping from being written twice.
   pull: "clone.mjs",
   build: path.join("..", "build.js"),
 };
 if (!map[sub]) {
-  console.error("usage: augur <init|ship|dev|offline|build|deploy|publish|status|clone|pull|export|restore|migrate|freeze|thaw|connect|login> [options]");
+  console.error("usage: augur <init|ship|dev|offline|build|deploy|publish|status|clone|pull|export|restore|migrate|adopt|freeze|thaw|connect|login> [options]");
   process.exit(sub ? 1 : 0);
 }
 const child = spawn(process.execPath, [path.join(SCRIPTS, map[sub]), ...rest], {
