@@ -246,7 +246,16 @@ build input — the shell mounts no space submodules. Optional keys: `realtimeOr
 login form — how a demo instance surfaces its test credentials), `loginPrefill`
 (`{email, password}` baked into the login form's `value=` attributes — how a demo
 instance turns its throwaway account into a one-click login instead of a
-copy-paste; leave unset and the form renders empty, as before), `userImages`
+copy-paste; leave unset and the form renders empty, as before), `devicePairing`
+(boolean, default **`false`** — set it to `true` and this instance grows
+`augur connect`: a terminal asks for a code, somebody types that code into a browser
+already signed in here, and the token approval mints comes back to the terminal. No
+password is typed into a shell, a history file or an agent transcript. It is off by
+default because it adds an endpoint reachable WITHOUT credentials that ends in a
+publish token, and only an explicit `true` enables it. The residual risk is
+phishing — somebody talked into approving a code that is not theirs — so the code
+lives five minutes, is typed rather than carried in a link, and the approval page
+names who the terminal would publish as), `userImages`
 (boolean, default `true` — set it to `false` and this instance stops accepting
 user-supplied image BYTES at all: profile photos and canvas images are both refused
 with a visible reason, while images already stored still render and a photo already
