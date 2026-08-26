@@ -50,7 +50,7 @@ test("every statement executes against a real SQLite engine", () => {
   const db = new DatabaseSync(":memory:");
   for (const stmt of TENANT_SCHEMA) db.exec(stmt); // throws on invalid SQL
   const tables = db.prepare("SELECT name FROM sqlite_master WHERE type='table' ORDER BY name").all().map((r) => r.name);
-  assert.deepEqual(tables, ["blobs", "invites", "lastseen", "members", "meta", "publish_tokens", "quotas", "settings"]);
+  assert.deepEqual(tables, ["blobs", "invites", "lastseen", "members", "meta", "publish_tokens", "quotas", "settings", "signing_keys"]);
 });
 
 test("applying it twice changes nothing — a migration is idempotent or it is a hazard", () => {
@@ -179,7 +179,12 @@ test("the store exposes no read or write verb it does not yet need", () => {
   // The schema is what this item is for; the verbs arrive with the families that move onto
   // them. Speculative methods would be guesses at call sites that do not exist. `quotas`
   // is here because B-quota-schema put ceilings in this object and every enforcement point
-  // to come reads them from one place — see test/tenant-quotas.test.mjs.
+  // to come reads them from one place — see test/tenant-quotas.test.mjs. The rest arrived
+  // with B-provisioning-atomic, which needs to create a workspace and to answer whether it
+  // exists — see test/tenant-provisioning.test.mjs.
   const names = Object.getOwnPropertyNames(TenantStore.prototype).filter((n) => n !== "constructor");
-  assert.deepEqual(names.sort(), ["init", "quotas", "schemaVersion", "sql", "workspaceId"]);
+  assert.deepEqual(names.sort(), [
+    "init", "isProvisioned", "members", "provision", "quotas", "schemaVersion",
+    "sessionKey", "sql", "usersActive", "workspaceId",
+  ]);
 });

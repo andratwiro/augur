@@ -21,9 +21,23 @@
 // The reason is not tidiness. A workspace that could reset a credential could reach every
 // other workspace that address opens: a workspace admin would silently become an admin of
 // their colleague's unrelated workspace, by resetting a password they share. The schema
-// below therefore contains no password, no hash of one, and no reusable secret of any kind
-// — `test/tenant-do.test.mjs` asserts that by reading the schema, so the claim is checked
-// rather than promised.
+// below therefore contains no password and no hash of one —
+// `test/tenant-do.test.mjs` asserts that by reading the tables SQLite actually built, so
+// the claim is checked rather than promised.
+//
+// THE ONE SECRET THAT IS HERE, NAMED RATHER THAN SMUGGLED: `signing_keys`. A workspace's
+// session cookies are HMACs, and the key they sign with has to live SOMEWHERE. Today it is
+// `env.SESSION_SECRET`, one value for the whole Worker — which is fine while a Worker
+// serves one workspace and forgeable across every workspace the moment it serves several:
+// anyone holding it could mint a valid cookie for a neighbour. Per-workspace is the fix,
+// and a per-workspace key can only live in the per-workspace store.
+//
+// The rule this does not break: NOTHING HERE AUTHENTICATES A PERSON. A password is a
+// person's, reused across workspaces, and reachable by whoever administers any one of
+// them — that is what must never be here. A signing key is the workspace's own, used
+// nowhere else, and the blast radius of reading it is exactly the workspace whose storage
+// it was read from. `test/tenant-provisioning.test.mjs` pins that distinction rather than
+// leaving it to a reader's judgement.
 //
 // WHAT IS HERE AND WHY IT LOOKS SIMPLER THAN THE KV IT REPLACES. `users:spaces` mapped an
 // address to a role PER SPACE, because one deployment used to mount several. A workspace is
@@ -125,6 +139,19 @@ export const TENANT_SCHEMA = Object.freeze([
      n REAL NOT NULL
    )`,
 
+  // The workspace's own signing keys — today exactly one, `session`, the HMAC key its
+  // session cookies are signed with. See the header for why this is here and why it is not
+  // the credential the rest of the file refuses to hold.
+  //
+  // `rotated_at` rather than an UPDATE in place: rotating a session key signs everybody
+  // out, so it is an event somebody should be able to see having happened.
+  `CREATE TABLE IF NOT EXISTS signing_keys (
+     purpose    TEXT PRIMARY KEY CHECK (purpose IN ('session')),
+     key        TEXT NOT NULL,
+     created_at TEXT NOT NULL,
+     rotated_at TEXT
+   )`,
+
   // Schema version and the workspace's own id, so a stored object can say what it is
   // without being told. `meta` is deliberately separate from `settings`: one is about the
   // database, the other about the workspace, and a migration reads the first before it is
@@ -205,6 +232,70 @@ export function setWorkspacePlan(sql, plan, plans = PLANS) {
 }
 
 /**
+ * A fresh session-signing key: 32 bytes of CSPRNG, hex.
+ *
+ * NEVER an env var, and that is the whole point of generating it here. `env.SESSION_SECRET`
+ * is ONE value for the whole Worker: fine while a Worker serves one workspace, and
+ * forgeable across every workspace the moment it serves several — anyone holding it could
+ * mint a valid session cookie for a neighbour. A key that is generated per workspace, into
+ * that workspace's own storage, cannot be that.
+ */
+export function newSigningKey(random = (b) => crypto.getRandomValues(b)) {
+  const bytes = new Uint8Array(32);
+  random(bytes);
+  return [...bytes].map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+/**
+ * Everything provisioning writes, as ONE synchronous body a transaction can wrap.
+ *
+ * ORDER IS PART OF THE CONTRACT. `provisioned_at` is written LAST, and it is the only row
+ * anything else reads to decide whether this workspace exists. So even without a
+ * transaction there is no observable half-state: a crash anywhere above leaves the flag
+ * unset and the workspace unresolvable. The transaction is the belt on top of that brace,
+ * and `TenantStore.provision` supplies it.
+ *
+ * WHAT IT DOES NOT DO, both deliberate:
+ *   · It does not mint a password. The credential is account-level, so this BINDS an
+ *     already-verified account as the first admin. Nothing here takes a secret from a
+ *     caller, which is why the signature has nowhere to put one.
+ *   · It does not seed a default space. The workspace IS the space; there is no inner
+ *     tier to create, and no `no-default-space` failure left to design around.
+ *
+ * Re-running it on a provisioned workspace is a NO-OP that returns the existing state.
+ * That is not politeness — two concurrent provisions of one slug reach the same object,
+ * and the second must not mint a second signing key (which would sign the first one's
+ * sessions out) or overwrite the first admin.
+ */
+export function applyProvisioning(sql, {
+  workspaceId, adminEmail, adminName = "", plan = DEFAULT_PLAN, now, sessionKey,
+} = {}) {
+  if (!workspaceId) throw new Error("provisioning needs a workspace id");
+  if (!adminEmail) throw new Error("provisioning needs an admin address");
+  const at = now || new Date().toISOString();
+
+  const existing = [...sql.exec(`SELECT v FROM meta WHERE k = 'provisioned_at'`)];
+  if (existing.length) return { provisionedAt: existing[0].v, created: false };
+
+  sql.exec(`INSERT INTO meta (k, v) VALUES ('workspace', ?) ON CONFLICT(k) DO NOTHING`, String(workspaceId));
+  sql.exec(
+    `INSERT INTO signing_keys (purpose, key, created_at) VALUES ('session', ?, ?)
+       ON CONFLICT(purpose) DO NOTHING`,
+    sessionKey || newSigningKey(), at,
+  );
+  sql.exec(
+    `INSERT INTO members (email, role, name, added_at) VALUES (?, 'admin', ?, ?)
+       ON CONFLICT(email) DO NOTHING`,
+    String(adminEmail).trim().toLowerCase(), adminName || "", at,
+  );
+  seedQuotas(sql, plan);
+  sql.exec(`INSERT INTO meta (k, v) VALUES ('created_at', ?) ON CONFLICT(k) DO NOTHING`, at);
+  // LAST. Everything above is invisible until this row exists.
+  sql.exec(`INSERT INTO meta (k, v) VALUES ('provisioned_at', ?) ON CONFLICT(k) DO NOTHING`, at);
+  return { provisionedAt: at, created: true };
+}
+
+/**
  * One workspace's mutable state.
  *
  * Deliberately thin at this stage: the schema and its migration are what `B-do-schema-core`
@@ -253,6 +344,59 @@ export class TenantStore {
   schemaVersion() {
     const rows = [...this.sql.exec(`SELECT v FROM meta WHERE k = 'schema_version'`)];
     return rows.length ? Number(rows[0].v) : 0;
+  }
+
+  /**
+   * Provision this workspace: first admin, signing key, quotas, in ONE transaction.
+   *
+   * `transactionSync` is what makes the crash case all-or-nothing rather than
+   * nearly-always-fine; `blockConcurrencyWhile` is what stops a second request arriving
+   * mid-provision and reading a workspace that is halfway there. A Durable Object is
+   * single-threaded, so the two together are the whole concurrency story.
+   *
+   * A runtime without `transactionSync` still gets the right ANSWER, because
+   * `provisioned_at` is written last — it just gets it by ordering rather than by
+   * rollback.
+   */
+  async provision(opts = {}) {
+    await this.init(opts.workspaceId, { plan: opts.plan });
+    const body = () => applyProvisioning(this.sql, opts);
+    const run = () => (this.ctx.storage.transactionSync
+      ? this.ctx.storage.transactionSync(body)
+      : body());
+    if (this.ctx.blockConcurrencyWhile) return this.ctx.blockConcurrencyWhile(async () => run());
+    return run();
+  }
+
+  /** Whether this workspace exists as far as anything else is concerned. */
+  isProvisioned() {
+    return [...this.sql.exec(`SELECT v FROM meta WHERE k = 'provisioned_at'`)].length > 0;
+  }
+
+  /**
+   * This workspace's session-signing key, or null before it is provisioned.
+   *
+   * Nothing in the request path reads this yet — `userToken()` still uses the Worker-wide
+   * `env.SESSION_SECRET`, and moving it over belongs with putting the object in the
+   * request path at all. What provisioning buys today is that the key EXISTS per
+   * workspace from the first moment, so that move is a read swap and not a migration of
+   * every live session.
+   */
+  sessionKey() {
+    const rows = [...this.sql.exec(`SELECT key FROM signing_keys WHERE purpose = 'session'`)];
+    return rows.length ? rows[0].key : null;
+  }
+
+  /** The admins and editors and viewers who have not been removed. */
+  members() {
+    return [...this.sql.exec(
+      `SELECT email, role, name FROM members WHERE removed_at IS NULL ORDER BY added_at`,
+    )];
+  }
+
+  /** Whether this workspace has anybody in it — the gate's "is the roster on" question. */
+  usersActive() {
+    return this.members().length > 0;
   }
 
   /** The plan this workspace is on, and every ceiling it carries, as one flat object. */
