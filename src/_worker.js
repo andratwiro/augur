@@ -4795,7 +4795,15 @@ async function adminUsersApi(tctx, request, url, env, me, users = tctx.USERS, co
           expiresHours: Math.round(INVITE_TTL_MS / 3600000),
           ...extra,
         },
-      }, { kv });
+      }, {
+        kv,
+        // The per-actor ceiling only exists if somebody tells it who the actor is. Here
+        // that is the signed-in admin: this whole handler is behind an admin check, so
+        // there is a name to attribute the sends to, and it is more useful than an IP.
+        // The unauthenticated paths (signup, self-service reset) live in the control
+        // plane and key on the client address instead.
+        actor: (me && me.email) || "admin",
+      });
       return { ...result, note: mailNotice(result, to) };
     };
 

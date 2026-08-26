@@ -191,14 +191,19 @@ test("the reset template is capped per address — the cap is on the mail, not t
     template: "credential-reset",
     vars: { workspace: "example.org", link: "https://example.org/__invite?t=x", expiresHours: 24 },
   };
-  const max = MAIL_RATE["credential-reset"].max;
+  const rule = MAIL_RATE["credential-reset"];
+  const max = rule.max;
+  // Spaced past the FLOOR, which is a different guard with its own test below. Without
+  // the spacing this measures the floor and calls it the ceiling.
+  const t = (i) => 1_700_000_000_000 + i * (rule.minGapMs + 1);
   for (let i = 0; i < max; i++) {
-    const r = await sendMail(SCW_ENV, msg, { fetchImpl: f, kv });
+    const r = await sendMail(SCW_ENV, msg, { fetchImpl: f, kv, now: t(i) });
     assert.equal(r.ok, true, `send ${i + 1} of ${max} should go out`);
   }
-  const blocked = await sendMail(SCW_ENV, msg, { fetchImpl: f, kv });
+  const blocked = await sendMail(SCW_ENV, msg, { fetchImpl: f, kv, now: t(max) });
   assert.equal(blocked.ok, false);
   assert.equal(blocked.reason, "rate-limited");
+  assert.equal(blocked.layer, "recipient", "the ceiling must name itself, not the floor");
   assert.ok(blocked.retryAfterMs > 0);
   assert.equal(f.calls.length, max, "the capped attempt never reaches the provider");
   assert.match(mailNotice(blocked, msg.to), /Send the link yourself/);
@@ -219,11 +224,13 @@ test("the cap counts attempts, so a failing provider is not a way around it", as
   const kv = memKV();
   const f = stubFetch(() => new Response("nope", { status: 500 }));
   const msg = { to: "target@example.test", template: "credential-reset", vars: { workspace: "w", link: "https://x.test/l" } };
-  for (let i = 0; i < MAIL_RATE["credential-reset"].max; i++) {
-    const r = await sendMail(SCW_ENV, msg, { fetchImpl: f, kv });
+  const rule = MAIL_RATE["credential-reset"];
+  const t = (i) => 1_700_000_000_000 + i * (rule.minGapMs + 1);
+  for (let i = 0; i < rule.max; i++) {
+    const r = await sendMail(SCW_ENV, msg, { fetchImpl: f, kv, now: t(i) });
     assert.equal(r.reason, "failed");
   }
-  const blocked = await sendMail(SCW_ENV, msg, { fetchImpl: f, kv });
+  const blocked = await sendMail(SCW_ENV, msg, { fetchImpl: f, kv, now: t(rule.max) });
   assert.equal(blocked.reason, "rate-limited");
 });
 
@@ -232,21 +239,32 @@ test("the window expires — the same address is sendable again after it passes"
   const f = stubFetch();
   const msg = { to: "target@example.test", template: "credential-reset", vars: { workspace: "w", link: "https://x.test/l" } };
   const t0 = 1_700_000_000_000;
+  const gap = MAIL_RATE["credential-reset"].minGapMs + 1;
   for (let i = 0; i < MAIL_RATE["credential-reset"].max; i++) {
-    await sendMail(SCW_ENV, msg, { fetchImpl: f, kv, now: t0 });
+    await sendMail(SCW_ENV, msg, { fetchImpl: f, kv, now: t0 + i * gap });
   }
-  assert.equal((await sendMail(SCW_ENV, msg, { fetchImpl: f, kv, now: t0 })).reason, "rate-limited");
+  assert.equal((await sendMail(SCW_ENV, msg, { fetchImpl: f, kv, now: t0 + MAIL_RATE["credential-reset"].max * gap })).reason, "rate-limited");
   const later = t0 + MAIL_RATE["credential-reset"].windowMs + 1;
   assert.equal((await sendMail(SCW_ENV, msg, { fetchImpl: f, kv, now: later })).ok, true);
 });
 
-test("an admin's roster invite is not capped — only what a stranger can trigger is", async () => {
+test("an admin's roster invite IS capped now, but generously enough to re-send a lost one", async () => {
+  // This test used to assert the opposite, and the reasoning was: only an authenticated
+  // admin can reach this path, naming an address they are also putting on their own
+  // roster. That holds right up until the admin credential is the thing that was stolen —
+  // an uncapped authenticated path is still a mail cannon, it just needs a login first.
+  //
+  // The cap has to stay out of the way of the real workflow it protects, which is
+  // re-sending an invite somebody lost.
   const kv = memKV();
   const f = stubFetch();
-  assert.equal(MAIL_RATE["roster-invite"], undefined);
+  const rule = MAIL_RATE["roster-invite"];
+  assert.ok(rule, "roster-invite must be governed");
+  assert.ok(rule.max >= 10, "a cap that blocks ordinary onboarding will be removed by the next person");
+  const t = (i) => 1_700_000_000_000 + i * (rule.minGapMs + 1);
   for (let i = 0; i < 12; i++) {
-    const r = await sendMail(SCW_ENV, INVITE, { fetchImpl: f, kv });
-    assert.equal(r.ok, true);
+    const r = await sendMail(SCW_ENV, INVITE, { fetchImpl: f, kv, now: t(i) });
+    assert.equal(r.ok, true, `invite ${i + 1} should still go out`);
   }
   assert.equal(f.calls.length, 12);
 });

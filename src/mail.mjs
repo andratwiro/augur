@@ -268,60 +268,165 @@ export function renderMail(template, vars = {}) {
   return fn(v);
 }
 
-// ---- Per-address rate limit ---------------------------------------------------------
-// A template that a STRANGER can trigger is a mail cannon pointed at whoever's address
-// they type: a reset form or a signup form will happily send the tenth message to the
-// same person, and the address owner is the one who suffers. So the two templates an
-// unauthenticated caller can reach are capped per recipient, per window.
+// ---- The abuse guards ----------------------------------------------------------------
 //
-// The cap is on the MAIL, never on the action. A rate-limited send still returns a link
-// to its caller, so an admin resetting the same person four times in an hour gets four
-// working links and three emails — the panel says so, and nothing they were trying to do
-// was refused.
+// FOUR RATE LAYERS AND TWO THINGS THAT ARE NOT RATE LIMITS. They stop different attacks,
+// and any one of them alone stops none of the others.
 //
-// `roster-invite` is deliberately uncapped: it can only be reached by an authenticated
-// admin naming an address they are also putting on their own roster, so a cap there
-// protects nobody and blocks a real workflow (re-sending an invite that got lost).
+// THE ATTACK THE ORIGINAL GUARD COULD NOT SEE. Every limit here used to be keyed on the
+// RECIPIENT. So one actor triggers three resets each at ten thousand DIFFERENT addresses,
+// stays inside every cap, and sends thirty thousand messages. That is the shape that
+// destroys a sending domain's reputation, and it is also the cost shape: the sending plan
+// is 300 messages a MONTH, so a modest burst exhausts the quota and signup then fails
+// silently for everyone. The per-actor ceiling is the one that was missing; without it the
+// other layers are decoration.
 //
-// KV has no atomic increment, so this is a soft counter — the same shape and the same
-// honest limits as the login throttle. With no KV at all it does not apply.
+//   1. CEILING, per recipient per window. Stops one person's inbox being bombed.
+//   2. FLOOR, a minimum gap between two sends to one address. NOT the same guard: 3/hour
+//      permits three instantly, so a double-clicked resend button sends three. The floor
+//      is what makes a resend button honest, and it is the cheapest fix here.
+//   3. CEILING, per ACTOR — the admin for an invite, the client IP for anything a stranger
+//      can reach. This is the one that sees the attack above.
+//   4. CEILING, per INSTANCE. Hard-stops and logs loudly rather than queueing, because the
+//      failure it prevents is silent quota exhaustion that breaks signup for everybody.
+//
+// `roster-invite` IS capped now, generously. The old reasoning — an authenticated admin
+// naming an address they are also putting on their own roster — holds right up until the
+// admin credential is the thing that was stolen, and an uncapped authenticated path is
+// still a mail cannon, just one that needs a login first.
+//
+// EVERY LIMIT DEGRADES THE WAY THE TRANSPORT ALREADY DOES: refusing to send still returns
+// a copy-pasteable link and a visible reason, never a silent swallow. Nothing a person was
+// trying to DO is refused; only the email is.
+//
+// The numbers are named constants a self-hoster can raise. They protect a 300-a-month
+// plan, not a large one.
+//
+// KV has no atomic increment, so these are soft counters — the same shape and the same
+// honest limits as the login throttle. With no KV at all none of them apply, which is the
+// local-development case.
+
 export const MAIL_RATE = Object.freeze({
-  "credential-reset": { max: 3, windowMs: 60 * 60 * 1000 },
-  "signup-verify": { max: 5, windowMs: 60 * 60 * 1000 },
+  "credential-reset": { max: 3, windowMs: 60 * 60 * 1000, minGapMs: 60 * 1000 },
+  "signup-verify": { max: 5, windowMs: 60 * 60 * 1000, minGapMs: 60 * 1000 },
+  // Generous: re-sending a lost invite is a real workflow and must not be blocked. It is
+  // capped at all because "only an admin can reach it" stops being a guarantee the moment
+  // an admin credential leaks.
+  "roster-invite": { max: 30, windowMs: 60 * 60 * 1000, minGapMs: 20 * 1000 },
 });
+
+// Per ACTOR: who triggered the send, across every recipient and every template.
+export const MAIL_ACTOR_RATE = Object.freeze({ max: 20, windowMs: 60 * 60 * 1000 });
+
+// Per INSTANCE. 50 a day against a 300-a-month plan: an instance sending its real volume
+// never comes near it, and a runaway is stopped having spent a sixth of the month rather
+// than all of it. Raise it if you send more; it exists to bound an accident, not to ration.
+export const MAIL_GLOBAL_RATE = Object.freeze({ max: 50, windowMs: 24 * 60 * 60 * 1000 });
+
 export const MAIL_RL_PREFIX = "rl:mail:";
+export const MAIL_SUPPRESS_KEY = "mail:suppressed";
 
 const lc = (e) => String(e || "").trim().toLowerCase();
 export const mailRateKey = (template, to) => `${MAIL_RL_PREFIX}${template}:${lc(to)}`;
+export const mailActorKey = (actor) => `${MAIL_RL_PREFIX}actor:${lc(actor)}`;
+export const MAIL_GLOBAL_KEY = `${MAIL_RL_PREFIX}instance`;
 
-// {allowed, retryAfterMs} — read-only, so a caller can report the wait without spending
-// a write.
-export async function mailRateCheck(kv, template, to, now = Date.now()) {
-  const rule = MAIL_RATE[template];
-  if (!kv || !rule) return { allowed: true, retryAfterMs: 0 };
+// ---- Suppression: never send to an address that has hard-bounced ----------------------
+//
+// LEARNED THE EXPENSIVE WAY. Bounces to two addresses on the sending domain got both
+// blocklisted at the provider for a MONTH, and the provider caps blocklist deletions at
+// five per rolling 24 hours — so the cleanup is structurally slower than the damage. A
+// local refusal costs nothing and is the only part of this that is faster than the harm.
+//
+// It is a local list and it is deliberately not clever: an address goes on when something
+// tells us it hard-bounced, and it comes off when a human takes it off. Guessing that a
+// bounce was temporary is how an address gets bounced a second time.
+export async function mailSuppressed(kv, to) {
+  if (!kv) return false;
   try {
-    const rec = JSON.parse((await kv.get(mailRateKey(template, to))) || "null");
-    if (rec && rec.until > now && rec.n >= rule.max) {
-      return { allowed: false, retryAfterMs: rec.until - now };
-    }
+    const list = JSON.parse((await kv.get(MAIL_SUPPRESS_KEY)) || "null");
+    return !!(list && typeof list === "object" && !Array.isArray(list) && list[lc(to)]);
+  } catch (e) { return false; }
+}
+
+export async function mailSuppress(kv, to, reason = "hard-bounce", now = Date.now()) {
+  if (!kv) return false;
+  try {
+    const raw = JSON.parse((await kv.get(MAIL_SUPPRESS_KEY)) || "null");
+    const list = raw && typeof raw === "object" && !Array.isArray(raw) ? raw : {};
+    list[lc(to)] = { reason: String(reason).slice(0, 120), at: new Date(now).toISOString() };
+    await kv.put(MAIL_SUPPRESS_KEY, JSON.stringify(list));
+    return true;
+  } catch (e) { return false; }
+}
+
+// ---- The counters --------------------------------------------------------------------
+// Read-only, so a caller can report the wait without spending a write.
+
+async function readCounter(kv, key, now) {
+  try {
+    const rec = JSON.parse((await kv.get(key)) || "null");
+    return rec && rec.until > now ? rec : null;
+  } catch (e) { return null; }
+}
+
+async function noteCounter(kv, key, rule, now) {
+  try {
+    const rec = await readCounter(kv, key, now);
+    const n = (rec ? rec.n : 0) + 1;
+    const until = rec ? rec.until : now + rule.windowMs;
+    await kv.put(key, JSON.stringify({ n, until, last: now }), {
+      expirationTtl: Math.ceil(rule.windowMs / 1000) + 60,
+    });
   } catch (e) {}
+}
+
+/**
+ * {allowed, retryAfterMs, layer} — `layer` names WHICH guard refused, because "try again
+ * later" without saying which limit was hit is the message that makes an operator think
+ * the mail is broken.
+ */
+export async function mailRateCheck(kv, template, to, now = Date.now(), opts = {}) {
+  const rule = MAIL_RATE[template];
+  if (!kv) return { allowed: true, retryAfterMs: 0 };
+
+  if (rule) {
+    const rec = await readCounter(kv, mailRateKey(template, to), now);
+    if (rec) {
+      // FLOOR first: it is the one a person actually trips, and naming the ceiling when
+      // they double-clicked would be a wrong answer.
+      if (rule.minGapMs && rec.last && now - rec.last < rule.minGapMs) {
+        return { allowed: false, retryAfterMs: rule.minGapMs - (now - rec.last), layer: "floor" };
+      }
+      if (rec.n >= rule.max) {
+        return { allowed: false, retryAfterMs: rec.until - now, layer: "recipient" };
+      }
+    }
+  }
+
+  if (opts.actor) {
+    const rec = await readCounter(kv, mailActorKey(opts.actor), now);
+    if (rec && rec.n >= MAIL_ACTOR_RATE.max) {
+      return { allowed: false, retryAfterMs: rec.until - now, layer: "actor" };
+    }
+  }
+
+  const g = await readCounter(kv, MAIL_GLOBAL_KEY, now);
+  if (g && g.n >= MAIL_GLOBAL_RATE.max) {
+    return { allowed: false, retryAfterMs: g.until - now, layer: "instance" };
+  }
+
   return { allowed: true, retryAfterMs: 0 };
 }
 
 // Count the ATTEMPT, not the success: a provider that times out on every call still costs
 // the recipient nothing, but it must not become a way around the cap.
-export async function mailRateNote(kv, template, to, now = Date.now()) {
+export async function mailRateNote(kv, template, to, now = Date.now(), opts = {}) {
+  if (!kv) return;
   const rule = MAIL_RATE[template];
-  if (!kv || !rule) return;
-  const key = mailRateKey(template, to);
-  try {
-    const rec = JSON.parse((await kv.get(key)) || "null");
-    const n = (rec && rec.until > now ? rec.n : 0) + 1;
-    const until = rec && rec.until > now ? rec.until : now + rule.windowMs;
-    await kv.put(key, JSON.stringify({ n, until }), {
-      expirationTtl: Math.ceil(rule.windowMs / 1000) + 60,
-    });
-  } catch (e) {}
+  if (rule) await noteCounter(kv, mailRateKey(template, to), rule, now);
+  if (opts.actor) await noteCounter(kv, mailActorKey(opts.actor), MAIL_ACTOR_RATE, now);
+  await noteCounter(kv, MAIL_GLOBAL_KEY, MAIL_GLOBAL_RATE, now);
 }
 
 // ---- Send ---------------------------------------------------------------------------
@@ -332,7 +437,10 @@ export async function mailRateNote(kv, template, to, now = Date.now()) {
 //   { ok: false, reason: "misconfigured", detail }           provider named, settings missing
 //   { ok: false, reason: "unknown-template", detail }        a caller bug
 //   { ok: false, reason: "bad-recipient", detail }           not an address
-//   { ok: false, reason: "rate-limited", retryAfterMs }      capped for this address
+//   { ok: false, reason: "rate-limited", retryAfterMs, layer } capped — layer names which
+//                                                            guard: floor | recipient |
+//                                                            actor | instance
+//   { ok: false, reason: "suppressed", detail }              this address hard-bounced before
 //   { ok: false, reason: "failed", detail }                  the provider said no
 //
 // `fetchImpl` and `kv` are injectable so the suite can drive every one of those without
@@ -369,9 +477,31 @@ export async function sendMail(env, message = {}, opts = {}) {
   const rendered = renderMail(template, vars);
   if (!rendered) return { ok: false, reason: "unknown-template", detail: String(template) };
 
-  const gate = await mailRateCheck(kv, template, to, now);
-  if (!gate.allowed) return { ok: false, reason: "rate-limited", retryAfterMs: gate.retryAfterMs };
-  await mailRateNote(kv, template, to, now);
+  // Suppression is checked BEFORE any counter, so an address we already know hard-bounced
+  // costs nobody their budget — and so a suppressed address cannot be used to burn an
+  // actor's allowance.
+  if (await mailSuppressed(kv, to)) {
+    return { ok: false, reason: "suppressed",
+      detail: "this address hard-bounced before; sending to it again risks the whole domain's reputation" };
+  }
+
+  const gate = await mailRateCheck(kv, template, to, now, { actor: opts.actor });
+  if (!gate.allowed) {
+    // The instance ceiling is the one worth waking someone for: everything still works,
+    // links are still handed out, and nobody would otherwise notice until signup mail
+    // stopped arriving for everyone.
+    if (gate.layer === "instance") {
+      try {
+        console.log(JSON.stringify({
+          level: "alarm",
+          event: "mail-instance-ceiling",
+          detail: `This instance has attempted ${MAIL_GLOBAL_RATE.max} sends in ${Math.round(MAIL_GLOBAL_RATE.windowMs / 3600000)}h and is now refusing. Links are still being handed out. Check for a loop or an abusive caller before raising MAIL_GLOBAL_RATE.`,
+        }));
+      } catch (e) { /* an alarm may never break the refusal it announces */ }
+    }
+    return { ok: false, reason: "rate-limited", retryAfterMs: gate.retryAfterMs, layer: gate.layer };
+  }
+  await mailRateNote(kv, template, to, now, { actor: opts.actor });
 
   if (!fetchImpl) return { ok: false, reason: "failed", detail: "no fetch available" };
 
@@ -405,9 +535,23 @@ export function mailNotice(result, to) {
   if (result.ok) return `Emailed to ${to}.`;
   switch (result.reason) {
     case "unconfigured": return "";
+    case "suppressed":
+      return "Not emailed. That address bounced before, so we no longer send to it. Send the link yourself.";
     case "rate-limited": {
-      const mins = Math.max(1, Math.ceil((result.retryAfterMs || 0) / 60000));
-      return `Not emailed — too many messages to this address already. Try again in ${mins} min. Send the link yourself.`;
+      const ms = result.retryAfterMs || 0;
+      const wait = ms < 60000 ? `${Math.max(1, Math.ceil(ms / 1000))} s` : `${Math.ceil(ms / 60000)} min`;
+      // Name WHICH limit. "Try again later" without saying which one is the message that
+      // makes an operator conclude the mail is broken and stop trusting the panel.
+      switch (result.layer) {
+        case "floor":
+          return `Not emailed yet. That was moments ago, so try again in ${wait}. Send the link yourself.`;
+        case "actor":
+          return `Not emailed. You have sent a lot of mail in the last hour, so try again in ${wait}. Send the link yourself.`;
+        case "instance":
+          return `Not emailed. This whole instance has hit its sending limit for the day. Nothing is lost. Send the link yourself, and check the logs for a loop.`;
+        default:
+          return `Not emailed. Too many messages to this address already, so try again in ${wait}. Send the link yourself.`;
+      }
     }
     case "misconfigured": return `Email is switched on but not finished: ${result.detail}. Send the link yourself.`;
     case "bad-recipient": return "Not emailed — that address isn't valid. Send the link yourself.";

@@ -284,7 +284,9 @@ const ALLOWLIST = {
     frozen: [
       "DRIVERS",    // the shape of HTTP request each provider takes; every deployment value arrives in env
       "TEMPLATES",  // the three message bodies, as render functions
-      "MAIL_RATE",  // the per-recipient send caps; the counters they govern live in KV
+      "MAIL_RATE",        // the per-recipient send caps; the counters they govern live in KV
+      "MAIL_ACTOR_RATE",  // the per-actor cap — one number, same for every workspace
+      "MAIL_GLOBAL_RATE", // the per-instance cap; the counter it governs lives in KV
     ],
   },
 
