@@ -50,10 +50,12 @@ const map = {
   // Same script: `pull` is `clone` with a three-way merge instead of an overwrite, and one
   // file is what keeps the URL→source mapping from being written twice.
   pull: "clone.mjs",
+  // The canon: resolve a canonical name to files, and promote a working screen into it.
+  canon: "canon.mjs",
   build: path.join("..", "build.js"),
 };
 if (!map[sub]) {
-  console.error("usage: augur <init|ship|dev|offline|build|deploy|publish|status|refine|clone|pull|export|restore|migrate|adopt|freeze|thaw|connect|login> [options]");
+  console.error("usage: augur <init|ship|dev|offline|build|deploy|publish|status|canon|refine|clone|pull|export|restore|migrate|adopt|freeze|thaw|connect|login> [options]");
   process.exit(sub ? 1 : 0);
 }
 const child = spawn(process.execPath, [path.join(SCRIPTS, map[sub]), ...rest], {

@@ -13,6 +13,7 @@ changed, and a comment they have already replied to.
 ```
 seed/
 ├── space.json                the workspace's contract with the build
+├── CANON.md                  how a canonical screen is named, for the agent that arrives cold
 ├── registry.json             the design system's overlay catalog
 ├── prototype-status.json     the dev-status chips
 ├── threads.json              the comment threads that ship with the content
@@ -69,6 +70,18 @@ give them all the same time, or write Start Here last.
   fallback when the network is not there.
 - **Copy is instruction, not decoration.** Every step says what you should see
   when it worked, and every step that can fail carries its own way out.
+- **`CANON.md` is written by the tool, not by hand.** It is byte-for-byte what
+  `augur canon save` writes into a workspace that has none, and
+  `test/canon-naming.test.mjs` fails when the two drift. Edit the string in
+  `scripts/canon.mjs` and regenerate; the rules it summarises live in
+  `agents/canon.md`.
+- **The four canon tiers are ABSENT here, not empty.** There is no `base/`,
+  `components/`, `patterns/` or `pages/` in this tree, and adding one would be
+  wrong: a workspace's canon is what its own work promoted into it, so a seeded
+  canon would be six screens nobody chose claiming to be the ones worth copying.
+  `augur canon save` creates the tier directory on the first promotion. What the
+  seed ships instead is the SCHEME — `CANON.md` — so the canon a workspace grows
+  is named the same way as every other workspace's.
 
 ## Working on it locally
 

@@ -21,6 +21,7 @@ Read them by trigger, not up front:
 | shipping / going live | [publishing.md](./publishing.md) |
 | acting on review comments | [review-feedback.md](./review-feedback.md) |
 | building a prototype folder | [prototype-contract.md](./prototype-contract.md) |
+| naming a canonical screen, or asked to "pull screens X, Y, Z" | [canon.md](./canon.md) |
 | editing `space.json` | [space-json.md](./space-json.md) |
 | building or forking a design system (`skills/<x>-ui/`) | [ui-skill.md](./ui-skill.md) |
 | adding users / avatars / login questions | [identity.md](./identity.md) |

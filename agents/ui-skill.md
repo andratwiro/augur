@@ -88,3 +88,8 @@ The tokens/primitives gallery tiers derive from the conventional file split
 without those files still builds, ships and serves fine — it just gets no
 derived primitives gallery. The `base/ components/ patterns/ pages/` tiers at
 the workspace root are independent of this and work with any skill.
+
+Those four tiers are **the canon** — the entries meant to be pulled by name, and
+the reason "build it the way `invoice-detail` is built" resolves for an agent
+that has never seen the workspace. What a name in them may be, and how a screen
+built during ordinary work gets promoted into one, is [canon.md](./canon.md).
