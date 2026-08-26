@@ -1,6 +1,6 @@
 // The list of what an instance stores, and the thing that keeps it true.
 //
-// `MIG-state-inventory`. `scripts/lib/state-inventory.mjs` is the migration's only complete
+// `MIG-state-inventory`. `src/state-inventory.mjs` is the migration's only complete
 // account of what exists and where each family goes. The list itself is not the deliverable
 // — a list can be written once and be wrong a week later, and this one already was: five
 // families appeared between its first draft and its second reading and nothing caught them.
@@ -17,7 +17,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { execFile } from "node:child_process";
 import { fileURLToPath } from "node:url";
-import { STATE_INVENTORY, accountsFor, inventoryEntry } from "../scripts/lib/state-inventory.mjs";
+import { STATE_INVENTORY, accountsFor, inventoryEntry } from "../src/state-inventory.mjs";
 import { keysInSource } from "../scripts/state-inventory.mjs";
 
 const ROOT = fileURLToPath(new URL("..", import.meta.url));

@@ -10,6 +10,10 @@
 // reading of it, and nothing caught them. The checker is not a nicety on top of the list;
 // it is the only thing that keeps the list true.
 //
+// IT LIVES IN src/ RATHER THAN scripts/ because the worker itself reads it: the export
+// endpoint walks this list, so the account of what a backup covers and the account of what
+// exists are ONE account rather than two that agree until they do not.
+//
 // EVERY key-shaped constant in the engine is classified, including the ones that are not
 // store keys at all. A list that quietly omitted `pbkdf2$` because "obviously that is not a
 // KV key" is a list whose omissions cannot be told apart from oversights.

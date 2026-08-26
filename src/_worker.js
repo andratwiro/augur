@@ -65,6 +65,11 @@ import { sendMail, mailNotice } from "./mail.mjs";
 // reading it as text destroys every value that is not UTF-8.
 import { KV_BACKUP_FORMAT, encodeKvValue } from "./kv-codec.mjs";
 
+// The account of what an instance stores and where each family goes. Imported rather than
+// restated: the export below walks it, so the list of what a backup covers and the list of
+// what exists cannot be two lists. build.js copies it next to the worker.
+import { STATE_INVENTORY } from "./state-inventory.mjs";
+
 const COOKIE = "gv_auth";
 const MAX_AGE = 60 * 60 * 24 * 7; // 7 days
 
@@ -3282,6 +3287,53 @@ async function publishApi(tctx, request, url, env) {
 
   // Instance config push (star-scope tokens only): the deploy shell's identity +
   // knobs become config/instance.json — the bundle-mode source loadConfig reads.
+  // ── every state family, for export and for a restore ───────────────────────
+  //
+  // `MIG-export-endpoints`. The publish routes above cover the BUNDLE STORE — the manifests,
+  // the versions, the blobs — and `augur export` walks them. Nothing covered the rest: the
+  // roster, the invites, the publish tokens, the statuses, the card names, the boards, the
+  // comment threads, the pins. A backup of a workspace was a backup of what it had
+  // published and nothing about who could publish it or what anybody had said about it.
+  //
+  // IT IS DRIVEN BY THE INVENTORY, not by a list written here. `scripts/lib/state-inventory.mjs`
+  // is the checked-and-gated account of what exists; walking it means a family added there
+  // is exported without anybody remembering to add it twice, and a family NOT there fails
+  // the build rather than quietly missing a backup.
+  //
+  // ⛔ THE CREDENTIAL IS EXCLUDED BY CONSTRUCTION, not by a filter. This walks entries whose
+  // destination is the WORKSPACE; `users:secrets` is destined for the account store, so it
+  // is not reachable from here at all. That is worth more than a denylist: a denylist has to
+  // be remembered, and the thing it would protect is every password on the instance.
+  if (spaceId === "_state") {
+    // Star scope only. This answers with the roster, the invites and the publish-token
+    // hashes — everything a space-scoped token holder has no business reading.
+    if (who.space !== "*") return jsonResponse({ error: "forbidden" }, 403);
+
+    if (op === "export" && request.method === "GET") {
+      const out = await exportState(tctx, env);
+      return jsonResponse({ workspace: tctx.tenantId, generatedAt: new Date().toISOString(), ...out });
+    }
+    if (op === "asset" && request.method === "GET") {
+      // The bytes the `assets` rows point at. Mirrors `/__publish/<space>/blob/<hash>`,
+      // which walks `blobs/` and would never see these.
+      if (!/^[0-9a-f]{40}$/.test(arg || "")) return jsonResponse({ error: "bad-input" }, 400);
+      const obj = env.BUNDLES ? await env.BUNDLES.get(ASSET_R2_PREFIX + arg) : null;
+      if (!obj) return jsonResponse({ error: "not-found" }, 404);
+      return new Response(obj.body, {
+        headers: {
+          "content-type": (obj.httpMetadata && obj.httpMetadata.contentType) || "application/octet-stream",
+          "cache-control": "no-store",
+        },
+      });
+    }
+    if (op === "import" && request.method === "POST") {
+      let body;
+      try { body = await request.json(); } catch (e) { return jsonResponse({ error: "bad-json" }, 400); }
+      return jsonResponse(await importState(tctx, env, body));
+    }
+    return jsonResponse({ error: "unknown-op" }, 400);
+  }
+
   if (spaceId === "_instance" && op === "config" && request.method === "POST") {
     if (who.space !== "*") return jsonResponse({ error: "forbidden" }, 403);
     const body = await request.text();
@@ -5028,6 +5080,16 @@ function kvOverlay(kv) {
       return { inserted: true, map };
     },
     async replace(family, scope, map) {
+      if (overlayLayout(family) === "keyed") {
+        // One document per key, so a whole-family replace is one write per key. The keys
+        // it does not name are LEFT — a restore replays a family it read in full, and
+        // deleting what the document does not mention would make an incomplete backup
+        // destructive rather than merely incomplete.
+        for (const [k, v] of Object.entries(map || {})) {
+          await kv.put(overlayKvKey(family, scope, k), JSON.stringify(v));
+        }
+        return map || {};
+      }
       await kv.put(overlayKvKey(family, scope), JSON.stringify(map));
       return map;
     },
@@ -5090,6 +5152,161 @@ function overlayFor(env, tctx) {
   if (stub) return doOverlay(stub, tctx.tenantId);
   const kv = kvFor(env);
   return kv ? kvOverlay(kv) : null;
+}
+
+// ---- Export and restore of everything that is NOT published content ---------
+//
+// Driven by the inventory (`scripts/lib/state-inventory.mjs`), so the list of what a
+// backup covers and the list of what exists are ONE list. See the `_state` routes for why
+// that matters and for what is excluded by construction.
+//
+// The two layouts the accessor already knows about map straight onto two export shapes:
+// a `map` family is one object, a `keyed` family is an object of objects. Everything else
+// — the identity documents the accessor does not own — is read from KV as it is written,
+// which is what makes this a faithful copy rather than an interpretation.
+const STATE_KV_PREFIXED = Object.freeze(["users:lastseen:", "avatar:", "spaceicon:"]);
+
+/** Read one inventory entry out of whatever store holds it. */
+async function readStateFamily(tctx, env, entry, store, kv) {
+  const family = Object.keys(OVERLAY_KV_KEYS).find((f) => {
+    const spec = OVERLAY_KV_KEYS[f];
+    return spec.doc === entry.id || spec.doc + ":" === entry.id || entry.id.startsWith(spec.doc + ":");
+  });
+  if (family && store) {
+    if (entry.id === "pins:") {
+      // The one scoped family. Every person's pins, keyed by the address they belong to —
+      // read through the same listing the accessor uses for a keyed family, because a
+      // scope is a suffix on the document name.
+      if (store.backing === "kv") {
+        const out = {};
+        let cursor;
+        do {
+          const page = await kv.list({ prefix: "pins:", cursor });
+          for (const k of page.keys) {
+            const raw = await kv.get(k.name);
+            if (raw != null) { try { out[k.name.slice("pins:".length)] = JSON.parse(raw); } catch (e) {} }
+          }
+          cursor = page.list_complete ? null : page.cursor;
+        } while (cursor);
+        return out;
+      }
+      return null; // on the workspace store, pins ride in the `pins` family below
+    }
+    if (entry.id === "pt:view" || entry.id === "pt:remarks") {
+      return await store.readKey("piti", "", entry.id.slice("pt:".length));
+    }
+    return await store.read(family, "");
+  }
+  if (!kv) return null;
+  if (STATE_KV_PREFIXED.includes(entry.id)) {
+    const out = {};
+    let cursor;
+    do {
+      const page = await kv.list({ prefix: entry.id, cursor });
+      for (const k of page.keys) {
+        const raw = await kv.get(k.name);
+        if (raw == null) continue;
+        try { out[k.name.slice(entry.id.length)] = JSON.parse(raw); }
+        catch (e) { out[k.name.slice(entry.id.length)] = raw; } // an avatar is a data URI, not JSON
+      }
+      cursor = page.list_complete ? null : page.cursor;
+    } while (cursor);
+    return out;
+  }
+  const raw = await kv.get(entry.id);
+  if (raw == null) return null;
+  try { return JSON.parse(raw); } catch (e) { return raw; }
+}
+
+/**
+ * Every family destined for the workspace, as one document.
+ *
+ * `absent` is reported rather than omitted: a family that is empty and a family that could
+ * not be read look identical in a JSON blob, and a restore that cannot tell them apart is a
+ * restore that silently deletes.
+ *
+ * ONLY A `key` FAMILY CAN BE ABSENT. A whole-document family either has a document or does
+ * not; a PREFIX family is a set of keys, and a set with nothing in it is empty rather than
+ * missing — there is no third state to report and inventing one would be a distinction the
+ * store cannot make.
+ */
+async function exportState(tctx, env) {
+  const store = overlayFor(env, tctx);
+  const kv = kvFor(env);
+  const families = {};
+  const absent = [];
+  const failed = [];
+  for (const entry of STATE_INVENTORY) {
+    if (entry.to !== "workspace") continue;
+    try {
+      const value = await readStateFamily(tctx, env, entry, store, kv);
+      if (value === null || value === undefined) { absent.push(entry.id); continue; }
+      families[entry.id] = value;
+    } catch (err) {
+      failed.push({ id: entry.id, error: String((err && err.message) || err).slice(0, 200) });
+    }
+  }
+  // The hashes a restore has to fetch the bytes for, separately, at `_state/asset/<hash>`.
+  const assets = families["basset-meta:"] ? Object.keys(families["basset-meta:"]) : [];
+  return { families, absent, failed, assets, format: 1 };
+}
+
+/**
+ * Put an exported document back.
+ *
+ * Family by family, and it REFUSES a document that reports failures rather than replaying
+ * a partial copy — "restore what we managed to read" is how a restore turns a bad backup
+ * into a bad live instance.
+ */
+async function importState(tctx, env, doc) {
+  if (!doc || doc.format !== 1 || !doc.families
+      || typeof doc.families !== "object" || Array.isArray(doc.families)) {
+    return { ok: false, reason: "bad-document" };
+  }
+  if (Array.isArray(doc.failed) && doc.failed.length) {
+    return { ok: false, reason: "incomplete-export", failed: doc.failed.map((f) => f && f.id) };
+  }
+  const store = overlayFor(env, tctx);
+  const kv = kvFor(env);
+  if (!store && !kv) return { ok: false, reason: "no-store" };
+
+  const written = [];
+  const skipped = [];
+  for (const [id, value] of Object.entries(doc.families)) {
+    const entry = STATE_INVENTORY.find((e) => e.id === id);
+    // An id the inventory does not know is not replayed. A restore is the worst possible
+    // moment to start trusting a document about where things go.
+    if (!entry || entry.to !== "workspace") { skipped.push(id); continue; }
+    const family = Object.keys(OVERLAY_KV_KEYS).find((f) => {
+      const spec = OVERLAY_KV_KEYS[f];
+      return spec.doc === id || spec.doc + ":" === id || id.startsWith(spec.doc + ":");
+    });
+    if (family && store && id !== "pins:" && !id.startsWith("pt:")) {
+      await store.replace(family, "", value || {});
+      written.push(id);
+      continue;
+    }
+    if (id === "pins:" && store) {
+      for (const [scope, map] of Object.entries(value || {})) await store.replace("pins", scope, map || {});
+      written.push(id);
+      continue;
+    }
+    if (id.startsWith("pt:") && store) {
+      await store.set("piti", "", id.slice("pt:".length), value);
+      written.push(id);
+      continue;
+    }
+    if (!kv) { skipped.push(id); continue; }
+    if (STATE_KV_PREFIXED.includes(id)) {
+      for (const [suffix, v] of Object.entries(value || {})) {
+        await kv.put(id + suffix, typeof v === "string" ? v : JSON.stringify(v));
+      }
+    } else {
+      await kv.put(id, typeof value === "string" ? value : JSON.stringify(value));
+    }
+    written.push(id);
+  }
+  return { ok: true, written, skipped };
 }
 
 // ---- Quotas -----------------------------------------------------------------
@@ -6880,6 +7097,7 @@ export const __testables = Object.freeze({
   pathOwnedBySpace, isPublishablePublicPrefix, removedPublicPrefixes, publishApi, loadManifests, LOGIN_MAX_FAILS,
   tokenActorRefusal, publishTokenTtlMs, mintPublishToken, adminTokensApi,
   nextPublishVersion, overlayFor, overlayKvKey, statusApi, nameApi, pinsApi,
+  exportState, importState,
   quotaBump, quotaMinute, quotaDay,
   PITI_VIEW_KEY, PITI_REMARKS_KEY,
   publishAuthDetailed, publishRefusalBody,

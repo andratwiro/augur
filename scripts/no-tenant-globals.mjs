@@ -239,6 +239,7 @@ const ALLOWLIST = {
       "VALID_STATUS",         // the prototype status vocabulary
       "IMAGES_OFF",           // the refusal body when an instance has user images switched off
       "OVERLAY_KV_KEYS",      // family -> the KV document name it lives under; the same for every workspace
+      "STATE_KV_PREFIXED",    // which inventory entries are one document per key when exported
       "__testables",          // the table of helpers the suite imports; the request path reads none of it
     ],
 
@@ -287,6 +288,16 @@ const ALLOWLIST = {
   "src/board-room.mjs": {
     frozen: [
       "COLORS",  // the presence-chip palette, read by index
+    ],
+  },
+
+  // The account of what an instance stores and where each family goes. A fact about the
+  // ENGINE, identical for every workspace — the per-workspace part is the data it names,
+  // which lives in each workspace's own store.
+  "src/state-inventory.mjs": {
+    frozen: [
+      "STATE_INVENTORY",  // the list itself; the export endpoint walks it
+      "INVENTORY_IDS",    // the ids, derived from the list at load
     ],
   },
 

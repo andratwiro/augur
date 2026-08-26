@@ -591,6 +591,10 @@ export class TenantStore {
   overlayReplace(family, scope, map, at) {
     const body = () => {
       this.sql.exec(`DELETE FROM overlay WHERE family = ? AND scope = ?`, String(family), String(scope));
+      // Note the asymmetry with the KV backing, which cannot delete what a document does
+      // not mention without a listing: here the family IS the rows, so a replace really
+      // replaces. Both are right for their store, and a restore that means to remove
+      // something has to say so rather than relying on either.
       const stamp = at || new Date().toISOString();
       for (const [k, v] of Object.entries(map || {})) {
         this.sql.exec(`INSERT INTO overlay (family, scope, k, v, at) VALUES (?,?,?,?,?)`,

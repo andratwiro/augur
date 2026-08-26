@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // state-inventory — the inventory stays true, or the build stops.
 //
-// WHY. `scripts/lib/state-inventory.mjs` is the authoritative map from every stored key to
+// WHY. `src/state-inventory.mjs` is the authoritative map from every stored key to
 // where it goes in the migration off shared KV. A list like that rots by default: five
 // families appeared between its first draft and its second reading, and nothing caught
 // them. A family nobody remembers is a family nobody exports, and the first anyone hears
@@ -32,7 +32,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { STATE_INVENTORY, accountsFor, inventoryEntry } from "./lib/state-inventory.mjs";
+import { STATE_INVENTORY, accountsFor, inventoryEntry } from "../src/state-inventory.mjs";
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const SOURCES = ["src/_worker.js", "src/mail.mjs"];
@@ -153,7 +153,7 @@ if (live) {
     for (const [lit, line] of keysInSource(fs.readFileSync(abs, "utf8"))) {
       const ids = accountedBy(lit);
       if (!ids.length) {
-        problems.push(`${rel}:${line}: "${lit}" is not in the inventory. Add it to scripts/lib/state-inventory.mjs with a destination and a reason — including "not a store key", if that is what it is.`);
+        problems.push(`${rel}:${line}: "${lit}" is not in the inventory. Add it to src/state-inventory.mjs with a destination and a reason — including "not a store key", if that is what it is.`);
         continue;
       }
       for (const id of ids) seen.add(id);
