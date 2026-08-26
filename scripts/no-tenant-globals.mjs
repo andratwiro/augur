@@ -240,6 +240,7 @@ const ALLOWLIST = {
       "IMAGES_OFF",           // the refusal body when an instance has user images switched off
       "OVERLAY_KV_KEYS",      // family -> the KV document name it lives under; the same for every workspace
       "STATE_KV_PREFIXED",    // which inventory entries are one document per key when exported
+      "NEVER_CLEARED",        // families a reset may never empty; a fact about credentials, not a workspace
       "__testables",          // the table of helpers the suite imports; the request path reads none of it
     ],
 

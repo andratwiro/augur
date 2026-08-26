@@ -5362,11 +5362,73 @@ async function exportState(tctx, env) {
 }
 
 /**
+ * Families a reset may NEVER clear, whatever it asks for.
+ *
+ * Clearing the credential store would put every seeded password back into service at once
+ * and strand anybody who had changed theirs; clearing invites would kill outstanding
+ * links; clearing publish tokens would break the publish path for whatever holds one.
+ * A nightly reset is exactly the kind of job that grows a family in its list by accident,
+ * so the refusal lives here rather than in whichever script is doing the resetting.
+ */
+const NEVER_CLEARED = Object.freeze(["users:secrets", "users:invites", "publish:tokens"]);
+
+/**
+ * Empty named families. The verb a reset needs and a restore does not.
+ *
+ * Distinct from importing an empty family for two reasons: a family the inventory marks
+ * droppable (`users:spaces`) is one an import correctly skips and a reset correctly
+ * clears, and "empty this" said out loud is auditable in a way that "import nothing into
+ * this" is not.
+ */
+async function clearFamilies(tctx, env, ids) {
+  const store = overlayFor(env, tctx);
+  const kv = kvFor(env);
+  const cleared = [];
+  const refused = [];
+  for (const id of ids || []) {
+    if (NEVER_CLEARED.includes(id)) { refused.push(id); continue; }
+    const entry = STATE_INVENTORY.find((e) => e.id === id);
+    if (!entry || entry.store !== "kv") { refused.push(id); continue; }
+    const family = Object.keys(OVERLAY_KV_KEYS).find((f) => {
+      const spec = OVERLAY_KV_KEYS[f];
+      return spec.doc === id || spec.doc + ":" === id || id.startsWith(spec.doc + ":");
+    });
+    if (family && store) {
+      const existing = await store.read(family, "");
+      for (const k of Object.keys(existing)) await store.set(family, "", k, null);
+      cleared.push(id);
+      continue;
+    }
+    if (!kv) { refused.push(id); continue; }
+    if (STATE_KV_PREFIXED.includes(id) || entry.kind === "prefix") {
+      let cursor;
+      do {
+        const page = await kv.list({ prefix: id, cursor });
+        for (const k of page.keys) await kv.delete(k.name);
+        cursor = page.list_complete ? null : page.cursor;
+      } while (cursor);
+    } else {
+      await kv.delete(id);
+    }
+    cleared.push(id);
+  }
+  return { cleared, refused };
+}
+
+/**
  * Put an exported document back.
  *
  * Family by family, and it REFUSES a document that reports failures rather than replaying
  * a partial copy — "restore what we managed to read" is how a restore turns a bad backup
  * into a bad live instance.
+ *
+ * `clear` empties the families it names first — a reset says "this family is exactly this
+ * and nothing else", where a restore says "at least this". `prune` says the same thing for
+ * the families the document DOES carry: keys it does not name are removed.
+ *
+ * Both are opt-in and both default off, because a restore must not be destructive on the
+ * strength of an incomplete copy: a family missing from a truncated backup would otherwise
+ * empty the live one.
  */
 async function importState(tctx, env, doc) {
   if (!doc || doc.format !== 1 || !doc.families
@@ -5379,6 +5441,25 @@ async function importState(tctx, env, doc) {
   const store = overlayFor(env, tctx);
   const kv = kvFor(env);
   if (!store && !kv) return { ok: false, reason: "no-store" };
+
+  const cleared = doc.clear ? await clearFamilies(tctx, env, doc.clear) : { cleared: [], refused: [] };
+  if (doc.prune && store && store.backing === "kv") {
+    // Keys the document does not name, in the families it does. The workspace object does
+    // this inside its own transaction (see importOverlay); KV has no such thing, so it is a
+    // listing and a delete per key — correct, and part of why `prune` is opt-in rather than
+    // something a restore pays for by default.
+    for (const [id, value] of Object.entries(doc.families)) {
+      const family = Object.keys(OVERLAY_KV_KEYS).find((f) => {
+        const spec = OVERLAY_KV_KEYS[f];
+        return spec.doc === id || spec.doc + ":" === id || id.startsWith(spec.doc + ":");
+      });
+      if (!family || id === "pins:" || id.startsWith("pt:")) continue;
+      const existing = await store.read(family, "");
+      for (const k of Object.keys(existing)) {
+        if (!Object.prototype.hasOwnProperty.call(value || {}, k)) await store.set(family, "", k, null);
+      }
+    }
+  }
 
   // ── ONE TRANSACTION, when there is an object to have one in ────────────────
   //
@@ -5420,7 +5501,7 @@ async function importState(tctx, env, doc) {
     const res = await stub.fetch("https://workspace/state/import", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ overlay: bundle, workspaceId: tctx.tenantId }),
+      body: JSON.stringify({ overlay: bundle, prune: !!doc.prune, workspaceId: tctx.tenantId }),
     });
     if (!res.ok) return { ok: false, reason: "workspace-refused", status: res.status };
     const { atomic } = await res.json();
@@ -5428,11 +5509,11 @@ async function importState(tctx, env, doc) {
     // the publish tokens. They still go to KV, per family, and saying so is the honest
     // report: B-kv-to-do-migration-tool is what gives them tables.
     const rest = await replayFamilies(store, kv, doc, skipped);
-    return { ok: true, atomic, written: [...written, ...rest.written], skipped: rest.skipped };
+    return { ok: true, atomic, ...cleared, written: [...written, ...rest.written], skipped: rest.skipped };
   }
 
   const out = await replayFamilies(store, kv, doc, Object.keys(doc.families));
-  return { ok: true, atomic: false, ...out };
+  return { ok: true, atomic: false, ...cleared, ...out };
 }
 
 /**
@@ -7544,7 +7625,7 @@ export const __testables = Object.freeze({
   nextPublishVersion, overlayFor, overlayKvKey, statusApi, nameApi, pinsApi,
   exportState, importState,
   quotaBump, quotaMinute, quotaDay, workspaceStatus, touchWorkspaceActivity,
-  deleteWorkspace, blobGc,
+  deleteWorkspace, blobGc, clearFamilies, NEVER_CLEARED,
   PITI_VIEW_KEY, PITI_REMARKS_KEY,
   publishAuthDetailed, publishRefusalBody,
   adminStorageApi,

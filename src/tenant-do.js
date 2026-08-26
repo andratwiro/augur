@@ -771,16 +771,23 @@ export class TenantStore {
    * Translating one to the other is the worker's job: this object has never needed to know
    * what anything was called in KV, and a restore is a poor moment to teach it.
    */
-  importOverlay(bundle, at) {
+  importOverlay(bundle, at, prune = false) {
     const stamp = at || new Date().toISOString();
     const written = [];
     const body = () => {
       for (const [family, scopes] of Object.entries(bundle || {})) {
         for (const [scope, map] of Object.entries(scopes || {})) {
-          this.sql.exec(`DELETE FROM overlay WHERE family = ? AND scope = ?`, String(family), String(scope));
+          // PRUNE IS ASKED FOR, never assumed. Deleting the family first would make this
+          // backing destructive where the KV one is not, and a restore of a copy that
+          // turned out to be short a family would empty the live one. "This family is
+          // exactly this" is a reset's sentence; a restore's is "at least this".
+          if (prune) {
+            this.sql.exec(`DELETE FROM overlay WHERE family = ? AND scope = ?`, String(family), String(scope));
+          }
           for (const [k, v] of Object.entries(map || {})) {
             this.sql.exec(
-              `INSERT INTO overlay (family, scope, k, v, rev, at) VALUES (?,?,?,?,1,?)`,
+              `INSERT INTO overlay (family, scope, k, v, rev, at) VALUES (?1,?2,?3,?4,1,?5)
+                 ON CONFLICT(family, scope, k) DO UPDATE SET v = ?4, rev = overlay.rev + 1, at = ?5`,
               String(family), String(scope), String(k), JSON.stringify(v), stamp,
             );
           }
@@ -858,7 +865,7 @@ export class TenantStore {
         return Response.json({ error: "bad-input" }, { status: 400 });
       }
       await this.init(body.workspaceId);
-      return Response.json(this.importOverlay(body.overlay));
+      return Response.json(this.importOverlay(body.overlay, null, !!body.prune));
     }
     if (url.pathname === "/quota/bump" && request.method === "POST") {
       let body = null;

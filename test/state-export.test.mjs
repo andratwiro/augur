@@ -452,3 +452,61 @@ test("the object is told DO families, never KV document names", async () => {
   assert.deepEqual(Object.keys(seen[0].piti[""]), ["view"]);
   assert.equal(JSON.stringify(seen[0]).includes("basset"), false);
 });
+
+// ── clear and prune: what a RESET needs and a restore must not do by default ─
+
+test("CLEAR EMPTIES A FAMILY, and a restore does not do it by accident", async () => {
+  // "This family is exactly this" is what a nightly reset means. "At least this" is what a
+  // restore means. Conflating them makes a truncated backup destructive.
+  const env = { COMMENTS: seededKv(), BUNDLES: memR2() };
+  const before = await exportVia(env);
+  assert.ok(Object.keys(before.families.names).length > 0);
+
+  // A plain import leaves it alone.
+  await W.importState(CTX, env, { format: 1, families: { statuses: { "/new/": "ignore" } } });
+  assert.ok(Object.keys((await exportVia(env)).families.names).length > 0, "a plain import emptied a family");
+
+  // Asking clears it.
+  const r = await W.importState(CTX, env, { format: 1, families: {}, clear: ["names", "users:roles"] });
+  assert.deepEqual(r.cleared.sort(), ["names", "users:roles"]);
+  const after = await exportVia(env);
+  assert.deepEqual(after.families.names, {});
+  assert.equal("users:roles" in after.families, false, "the identity family was not cleared");
+});
+
+test("⛔ A RESET MAY NEVER CLEAR THE CREDENTIALS, THE INVITES OR THE PUBLISH TOKENS", async () => {
+  // Clearing the credential store puts every seeded password back into service at once and
+  // strands anybody who changed theirs; clearing invites kills outstanding links; clearing
+  // publish tokens breaks the publish path. A nightly reset is exactly the job that grows
+  // its list by accident, so the refusal lives in the engine rather than in the script.
+  const env = { COMMENTS: seededKv(), BUNDLES: memR2() };
+  const r = await W.importState(CTX, env, {
+    format: 1, families: {}, clear: ["users:secrets", "users:invites", "publish:tokens", "names"],
+  });
+  assert.deepEqual(r.refused.sort(), ["publish:tokens", "users:invites", "users:secrets"]);
+  assert.deepEqual(r.cleared, ["names"], "the one legitimate clear did not happen");
+  assert.ok(env.COMMENTS.store.has("users:secrets"), "the password hashes were cleared");
+  assert.ok(env.COMMENTS.store.has("users:invites"));
+  assert.ok(env.COMMENTS.store.has("publish:tokens"));
+  assert.deepEqual(W.NEVER_CLEARED, ["users:secrets", "users:invites", "publish:tokens"]);
+});
+
+test("PRUNE removes the keys a document does not name; without it they stay", async () => {
+  // The prune is what lets a reset say "these are the seeded boards and nothing else",
+  // while a restore of a possibly-incomplete copy leaves what it did not carry.
+  const ns = namespace();
+  const env = { COMMENTS: memKv(), BUNDLES: memR2(), TENANTS: ns };
+  await W.importState(CTX, env, {
+    format: 1, families: { "board:": { "/seeded/": { nodes: [] }, "/scribbled-on/": { nodes: [1] } } },
+  });
+  assert.deepEqual(Object.keys((await W.exportState(CTX, env)).families["board:"]).sort(),
+    ["/scribbled-on/", "/seeded/"]);
+
+  // Without prune, the stray survives.
+  await W.importState(CTX, env, { format: 1, families: { "board:": { "/seeded/": { nodes: [] } } } });
+  assert.ok("/scribbled-on/" in (await W.exportState(CTX, env)).families["board:"]);
+
+  // With it, the family is exactly what was named.
+  await W.importState(CTX, env, { format: 1, prune: true, families: { "board:": { "/seeded/": { nodes: [] } } } });
+  assert.deepEqual(Object.keys((await W.exportState(CTX, env)).families["board:"]), ["/seeded/"]);
+});
