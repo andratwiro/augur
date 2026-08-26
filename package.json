@@ -33,6 +33,7 @@
     "og": "node scripts/og.mjs",
     "og:stale": "node scripts/og.mjs --stale",
     "review": "node scripts/review.mjs",
+    "refine": "node scripts/refine.mjs",
     "dev": "node build.js && npx --yes serve dist",
     "offline": "node scripts/offline.mjs",
     "deploy": "node scripts/deploy.mjs",

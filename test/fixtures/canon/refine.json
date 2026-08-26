@@ -1,0 +1,80 @@
+{
+  "viewport": {
+    "width": 520,
+    "height": 280
+  },
+  "threshold": 0.02,
+  "pixelTolerance": 0.02,
+  "components": [
+    {
+      "id": "action-button",
+      "candidate": "candidate/action-button",
+      "reference": "original/action-button"
+    },
+    {
+      "id": "status-badge",
+      "candidate": "candidate/status-badge",
+      "reference": "original/status-badge"
+    },
+    {
+      "id": "summary-card",
+      "candidate": "candidate/summary-card",
+      "reference": "original/summary-card"
+    },
+    {
+      "id": "text-field",
+      "candidate": "candidate/text-field",
+      "reference": "original/text-field"
+    },
+    {
+      "id": "avatar-stack",
+      "candidate": "candidate/avatar-stack",
+      "reference": "original/avatar-stack"
+    },
+    {
+      "id": "tab-bar",
+      "candidate": "candidate/tab-bar",
+      "reference": "original/tab-bar"
+    },
+    {
+      "id": "notice-banner",
+      "candidate": "candidate/notice-banner",
+      "reference": "original/notice-banner"
+    },
+    {
+      "id": "list-row",
+      "candidate": "candidate/list-row",
+      "reference": "original/list-row"
+    },
+    {
+      "id": "progress-meter",
+      "candidate": "candidate/progress-meter",
+      "reference": "original/progress-meter"
+    },
+    {
+      "id": "tool-strip",
+      "candidate": "candidate/tool-strip",
+      "reference": "original/tool-strip"
+    },
+    {
+      "id": "stat-tile",
+      "candidate": "candidate/stat-tile",
+      "reference": "original/stat-tile"
+    },
+    {
+      "id": "choice-box",
+      "candidate": "candidate/choice-box",
+      "reference": "original/choice-box"
+    },
+    {
+      "id": "section-divider",
+      "candidate": "candidate/section-divider",
+      "reference": "original/section-divider"
+    },
+    {
+      "id": "empty-slate",
+      "candidate": "candidate/empty-slate",
+      "reference": "original/empty-slate"
+    }
+  ]
+}

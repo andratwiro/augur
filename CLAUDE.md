@@ -308,6 +308,11 @@ engine/worker verification; content goes out with `ship`/`publish` ·
 `augur publish [--space <id>|--all] [--dry-run] [--allow-unpublish]`
 (publish only; `AUGUR_TOKEN` + `AUGUR_ORIGIN`) · `augur status`
 (live vs clones vs `origin/main`; exit 1 on drift) ·
+`augur refine [--gate 0.99] [--base <origin>] [--only …] [--restart] [--audit]`
+(is a rebuilt component actually finished? render it, photograph it, measure it against
+the original, and report a pass-rate per component — resumable across nights, and with
+no way for the thing being measured to assert its own result. See
+`docs/canon-refine.md`.) ·
 `augur export --out <dir> [--full]` / `augur restore <dir> [--state]`
 (store backup; `--full`/`--state` cover everything that is not published content) ·
 `augur freeze [--reason …] [--status]` / `augur thaw` (read-only while a workspace is

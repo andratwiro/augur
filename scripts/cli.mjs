@@ -7,6 +7,8 @@
 //   augur ship      commit + publish + push — the default way a change goes out
 //   augur publish   publish only, without committing or pushing (see publish.mjs)
 //   augur status    what is live vs what your clones hold (see status.mjs)
+//   augur refine    render every component, photograph it, measure it against the
+//                   original, and report a pass-rate nobody can assert (see refine.mjs)
 //   augur export    take an off-Cloudflare copy of the store (see export.mjs)
 //   augur restore   put a copy back (see restore.mjs)
 //   augur migrate   move a workspace to another instance, and prove it arrived
@@ -31,6 +33,7 @@ const map = {
   ship: "ship.mjs",
   publish: "publish.mjs",
   status: "status.mjs",
+  refine: "refine.mjs",
   export: "export.mjs",
   restore: "restore.mjs",
   login: "login.mjs",
@@ -50,7 +53,7 @@ const map = {
   build: path.join("..", "build.js"),
 };
 if (!map[sub]) {
-  console.error("usage: augur <init|ship|dev|offline|build|deploy|publish|status|clone|pull|export|restore|migrate|adopt|freeze|thaw|connect|login> [options]");
+  console.error("usage: augur <init|ship|dev|offline|build|deploy|publish|status|refine|clone|pull|export|restore|migrate|adopt|freeze|thaw|connect|login> [options]");
   process.exit(sub ? 1 : 0);
 }
 const child = spawn(process.execPath, [path.join(SCRIPTS, map[sub]), ...rest], {
