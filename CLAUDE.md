@@ -226,7 +226,20 @@ class, closed). Generated pages (galleries, indexes) stay last-writer-wins.
 chrome, title emoji) so a contested verdict is only reached on real content.
 Server side, `baseVersion` CAS (`stale-base` 409) still guards the race between
 check and commit, and the one-round-trip fast path rides only when live is
-exactly the publisher's own last publish. `_engine` is exempt (no authored
+exactly the publisher's own last publish. **The STORE can resolve a stale base
+too** (`forkOnConflict: true` on the commit body — OPT-IN, so a publisher that
+does not ask gets today's 409 unchanged): it loads
+`spaces/<id>/versions/<baseVersion>.json` and runs the SAME `composePublish` the
+CLI runs, substituting the base manifest for git as the evidence — `editedUnits`
+is "units whose bytes differ from the base", `ffUnits` is "units live has not
+touched since the base". A contested unit forks exactly as it does client-side
+and the response carries `forks`. That exists because **a hosted workspace may
+have no repo at all**, so a repo-less publisher has nothing to recompose FROM and
+a 409 is a dead end rather than a retry. A change OUTSIDE every unit on both
+sides is still a hard 409 (`conflict-outside-prototype`) — a stylesheet is not
+safe to fork. The unit vocabulary and the composer live in `src/publish-units.mjs`
+and `src/publish-compose.mjs` precisely so there is one definition: the CLI
+re-exports both, and the worker imports them. `_engine` is exempt (no authored
 units). `ship` still fetch+merges before publishing, so the common stale case
 ships the union without composition ever holding anything back.
 

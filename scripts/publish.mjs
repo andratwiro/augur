@@ -853,6 +853,14 @@ async function publishOne(id, sourceDir) {
         log(`${id}: conflict — ${f.unit} stays ${f.theirs}'s; yours is live at ${f.fork} (tree untouched)`);
       }
     }
+    // ⚠️ THE SERVER CAN RESOLVE ONE TOO, and it says so in the same words. This CLI never
+    // asks it to — it has git, so it recomposes and retries above, which keeps the decision
+    // where the evidence is. A repo-less publisher has no evidence and asks the store
+    // instead (`forkOnConflict`), and when it does the answer comes back on this field.
+    // Printing it here means one vocabulary for one event however it was decided.
+    for (const f of res.forks || []) {
+      log(`${id}: conflict — ${f.unit} stays ${f.theirs}'s; yours is live at ${f.fork} (resolved by the store)`);
+    }
     await writePubCache(id, {
       version: res.version, files: shipFiles, source: ship.source,
       protocol: check.protocol || 0,

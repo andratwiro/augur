@@ -1,34 +1,21 @@
-// Unit helpers + build-decoration tolerance — pure, shared by the publish stack.
+// Build-decoration tolerance + the repo-dir mapping — pure, shared by the publish stack.
 //
-// The UNIT of publishing is a prototype/playground folder — the thing a URL
-// names and a person edits, never a lone file. Units are exactly the routing
-// fragment's publicPrefixes (galleries get versionMap entries but no prefix,
-// which is what keeps them out). Since protocol 5 the per-unit decisions live in
-// publish-compose.mjs; what remains here is the vocabulary (units, repo-dir
-// mapping) and the two views of what the build decorates authored HTML with:
+// ⚠️ THE UNIT VOCABULARY MOVED TO src/publish-units.mjs and is re-exported below, so no CLI
+// import had to change. It moved because the SERVER needs it: `C-fork-on-conflict` resolves
+// a stale base inside the commit handler, and two definitions of "which folder does this
+// path belong to" would disagree on exactly the paths a conflict is about.
+//
+// A unit is a prototype/playground folder — the thing a URL names and a person edits, never
+// a lone file — and units are exactly the routing fragment's publicPrefixes (galleries get
+// versionMap entries but no prefix, which is what keeps them out). Since protocol 5 the
+// per-unit decisions live in publish-compose.mjs; what remains here is the repo-dir mapping
+// and the two views of what the build decorates authored HTML with:
 // stripVolatileHead (a COMPARATOR: does this content really differ?) and
 // stripBuildDecorations (a TRANSFORMER: undo the decoration exactly — kept for
 // repo-debake tooling, e.g. peeling dist-flavored bytes out of a space repo).
 
+export { authoredUnits, unitOfPath, unitPaths } from "../../src/publish-units.mjs";
 const dec = (s) => { try { return decodeURIComponent(String(s)); } catch (e) { return String(s); } };
-const norm = (p) => String(p == null ? "" : p).replace(/\/?$/, "/");
-
-export function authoredUnits(manifest) {
-  const out = new Set();
-  for (const p of ((manifest || {}).routing || {}).publicPrefixes || []) out.add(norm(p));
-  return out;
-}
-
-export function unitOfPath(path, unitSet) {
-  const p = dec(path);
-  for (const u of unitSet) if (p.startsWith(dec(u))) return u;
-  return null;
-}
-
-export function unitPaths(manifest, unit) {
-  const prefix = dec(unit);
-  return Object.keys((manifest || {}).files || {}).filter((p) => dec(p).startsWith(prefix));
-}
 
 // A unit URL back to the repo folder(s) it could live in, best guess first:
 // prototypes elide the /prototypes/ segment on the URL side, playground does not,

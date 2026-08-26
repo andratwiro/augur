@@ -71,6 +71,9 @@ import { KV_BACKUP_FORMAT, encodeKvValue } from "./kv-codec.mjs";
 import { STATE_INVENTORY } from "./state-inventory.mjs";
 // Redaction, shared with the workspace object — see src/purge.mjs for why it is not local.
 import { PURGED_AUTHOR, purgeThreads, idCollisions } from "./purge.mjs";
+// The unit vocabulary and the composer, shared VERBATIM with the CLI — see resolveStaleBase.
+import { authoredUnits, unitOfPath, unitPaths } from "./publish-units.mjs";
+import { composePublish } from "./publish-compose.mjs";
 
 const COOKIE = "gv_auth";
 const MAX_AGE = 60 * 60 * 24 * 7; // 7 days
@@ -2957,6 +2960,108 @@ function publisherDisplayName(tctx, label) {
   return u ? u.name : String(label).split("@")[0];
 }
 
+// ---- Server-side fork-on-conflict --------------------------------------------------
+//
+// `C-fork-on-conflict`. A publish carries `baseVersion` — the live version its delta was
+// computed against — and a mismatch means somebody published in between. Today that is a
+// flat 409 and the CLI recomposes and retries, which works because the CLI has GIT: it can
+// prove which units it edited.
+//
+// ⚠️ A HOSTED WORKSPACE MAY HAVE NO REPO AT ALL. "Repo-less multi-editor at v1, not phase
+// two" is a settled decision, and a repo-less editor has no evidence to recompose FROM. For
+// that publisher a 409 is not a retry, it is a dead end — so the server has to be able to
+// answer, and this is that answer.
+//
+// ⚠️ IT IS OPT-IN (`forkOnConflict: true` on the commit body), and that is not timidity. The
+// commit handler is the live publish path of every instance; a publisher that does not ask
+// gets byte-for-byte today's behaviour, including today's 409, so nothing that works now can
+// start resolving conflicts differently because a server moved underneath it.
+//
+// ⚠️ IT RUNS THE CLIENT'S OWN COMPOSITION, not a second implementation. `composePublish` is
+// the same module `publish.mjs` calls; what the server substitutes is the EVIDENCE. Git says
+// "which units did I edit"; the BASE MANIFEST says the same thing in bytes:
+//
+//     editedUnits = units whose files differ between the incoming manifest and the base
+//     ffUnits     = units whose files are IDENTICAL between live and the base
+//                   (nobody else touched them, so mine fast-forwards)
+//
+// A unit in both sets is a genuine concurrent edit and forks. A unit in neither is untouched
+// and keeps live's bytes. Two implementations of that decision would disagree on exactly the
+// publishes a conflict is about, which is why the unit vocabulary moved to
+// src/publish-units.mjs and this calls the same composer.
+//
+// ⚠️ A CHANGE OUTSIDE EVERY UNIT ON BOTH SIDES IS STILL A HARD 409. A design-system file, a
+// shared token sheet, `space.json` — those are not safe to resolve mechanically, and the CLI
+// aborts the merge for a human for the same reason. Forking them would put two versions of a
+// stylesheet on the site and let the fork's copy win somewhere.
+
+/** Which units this manifest's file map differs on, against another manifest. */
+function unitsDiffering(a, b, units) {
+  const out = new Set();
+  const filesOf = (m, u) => {
+    const map = {};
+    for (const p of unitPaths(m, u)) map[p] = ((m.files || {})[p] || {}).h || "";
+    return JSON.stringify(Object.keys(map).sort().map((k) => [k, map[k]]));
+  };
+  for (const u of units) if (filesOf(a, u) !== filesOf(b, u)) out.add(u);
+  return out;
+}
+
+/** Paths belonging to no unit, as a path→hash map — the "not safe to resolve" surface. */
+function looseFiles(m, units) {
+  const out = {};
+  for (const [p, f] of Object.entries((m || {}).files || {})) {
+    if (!unitOfPath(p, units)) out[p] = (f || {}).h || "";
+  }
+  return out;
+}
+
+async function resolveStaleBase(env, tctx, spaceId, mine, live, baseVersion, label) {
+  // The base has to exist to diff against. Versions are never pruned, so a miss means a
+  // client claiming a version this store never had — which is not a conflict to resolve.
+  let base = null;
+  try {
+    const obj = await env.BUNDLES.get(`spaces/${spaceId}/versions/${baseVersion}.json`);
+    base = obj ? JSON.parse(await obj.text()) : null;
+  } catch (e) { base = null; }
+  if (!base) return null;
+
+  const units = new Set([
+    ...authoredUnits(base), ...authoredUnits(live), ...authoredUnits(mine),
+  ]);
+
+  // Outside every unit, changed on BOTH sides: not safe to resolve mechanically.
+  const looseBase = looseFiles(base, units);
+  const looseMine = looseFiles(mine, units);
+  const looseLive = looseFiles(live, units);
+  const contested = [];
+  for (const p of new Set([...Object.keys(looseMine), ...Object.keys(looseLive)])) {
+    const b = looseBase[p], a = looseMine[p], l = looseLive[p];
+    if (a !== b && l !== b && a !== l) contested.push(p);
+  }
+  if (contested.length) {
+    return { error: "conflict-outside-prototype", paths: contested.slice(0, 50), count: contested.length };
+  }
+
+  const editedUnits = unitsDiffering(mine, base, units);
+  const ffUnits = new Set([...units].filter((u) => !unitsDiffering(live, base, new Set([u])).size));
+
+  const composed = await composePublish({
+    mine, live, who: publisherDisplayName(tctx, label) || "someone",
+    evidence: { editedUnits, dirtyUnits: new Set(), deletedUnits: new Set(), editedPaths: new Set() },
+    ffUnits,
+    // The blobs of a forked unit are already stored — the fork is new manifest KEYS pointing
+    // at hashes this store already has, so nothing is re-uploaded.
+    sha256: async (bytes) => toHex(await crypto.subtle.digest("SHA-256", bytes)),
+  });
+
+  return {
+    manifest: composed.manifest,
+    forks: composed.summary.forked,
+    extraBlobs: composed.extraBlobs,
+  };
+}
+
 function synthBuildStamp(tctx, manifests) {
   const spaces = {}, engine = { sha: null };
   if (tctx.INSTANCE_ENGINE_VERSION) engine.version = tctx.INSTANCE_ENGINE_VERSION;
@@ -3741,13 +3846,29 @@ async function publishApi(tctx, request, url, env) {
     }
     const baseVersion = m.baseVersion;
     delete m.baseVersion; // transport-only — never persisted in the manifest
+    // ⚠️ OPT-IN. A publisher that did not ask for it gets today's 409 exactly as before, so
+    // every existing client keeps its own composition and its own retry. See resolveStaleBase.
+    const forkOnConflict = m.forkOnConflict === true;
+    delete m.forkOnConflict; // transport-only
+    let serverForks = null;
     if (typeof baseVersion === "number" && baseVersion !== ((cur && cur.version) || 0)) {
-      return jsonResponse({
-        error: "stale-base",
-        liveVersion: (cur && cur.version) || 0,
-        liveSource: cur && cur.source
-          ? { sha: cur.source.sha || null, dirty: !!cur.source.dirty } : null,
-      }, 409);
+      const resolved = forkOnConflict
+        ? await resolveStaleBase(env, tctx, spaceId, m, cur, baseVersion, who.label || "")
+        : null;
+      if (!resolved) {
+        return jsonResponse({
+          error: "stale-base",
+          liveVersion: (cur && cur.version) || 0,
+          liveSource: cur && cur.source
+            ? { sha: cur.source.sha || null, dirty: !!cur.source.dirty } : null,
+        }, 409);
+      }
+      if (resolved.error) return jsonResponse(resolved, 409);
+      m = resolved.manifest;
+      serverForks = resolved.forks;
+      for (const [h, bytes] of Object.entries(resolved.extraBlobs || {})) {
+        await env.BUNDLES.put(`blobs/${h}`, bytes);
+      }
     }
     // ── Unpublish guard — a publish may not take live pages off the site unasked.
     // A publish ships ONE working tree as the WHOLE space, routing included, so a
@@ -3895,7 +4016,15 @@ async function publishApi(tctx, request, url, env) {
         }
       } catch (e) {} // healing is best-effort — it must never break a persisted publish
     }
-    return jsonResponse({ ok: true, version, ...(rebake ? { rebake } : {}) });
+    // `forks` rides back so the publisher can print the same line `augur ship` prints when
+    // IT composes — one sentence per contested unit, naming who kept the URL and where yours
+    // went. Absent on an ordinary publish rather than an empty array: nothing was contested
+    // is a different fact from nothing was resolved.
+    return jsonResponse({
+      ok: true, version,
+      ...(rebake ? { rebake } : {}),
+      ...(serverForks && serverForks.length ? { forks: serverForks } : {}),
+    });
   }
 
   if (op === "rollback" && request.method === "POST") {

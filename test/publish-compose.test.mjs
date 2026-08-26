@@ -132,8 +132,13 @@ test("a real contested edit forks in the manifest: theirs at the URL, mine at -c
     "fork bytes are read from the real unit's dist path");
   const note = manifest.files["/toolkit/map-conflict-tester/CONFLICT.md"];
   assert.ok(note && extraBlobs[note.h], "CONFLICT.md is synthesized, not read from any tree");
-  assert.match(extraBlobs[note.h].toString(), /them@example\.com/);
-  assert.match(extraBlobs[note.h].toString(), /working tree was NOT touched/);
+  // ⚠️ BYTES, NOT A Buffer. The module is runtime-agnostic now — the worker runs the same
+  // composition and has no Buffer — so a synthesized blob is a Uint8Array and reading it as
+  // text is the caller's decode. `String(bytes)` silently yields a comma-separated list of
+  // byte values that matches no assertion and looks like a content bug.
+  const noteText = new TextDecoder().decode(extraBlobs[note.h]);
+  assert.match(noteText, /them@example\.com/);
+  assert.match(noteText, /working tree was NOT touched/);
   assert.equal(summary.forked[0].fork, "/toolkit/map-conflict-tester/");
   assert.ok(manifest.routing.publicPrefixes.includes("/toolkit/map-conflict-tester/"));
 });
