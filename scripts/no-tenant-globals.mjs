@@ -281,6 +281,14 @@ const ALLOWLIST = {
     ],
   },
 
+  // The canvas room. Its per-board state lives in the Durable Object instance, never at
+  // module scope — one DO per board is the isolation, and it is structural.
+  "src/board-room.mjs": {
+    frozen: [
+      "COLORS",  // the presence-chip palette, read by index
+    ],
+  },
+
   "src/mail.mjs": {
     frozen: [
       "DRIVERS",    // the shape of HTTP request each provider takes; every deployment value arrives in env

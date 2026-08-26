@@ -79,13 +79,16 @@ test("the deploy entry bundles into one script with every binding resolved", { s
   } finally { fs.rmSync(dir, { recursive: true, force: true }); }
 });
 
-test("a Durable Object binding with no matching export in the entry HARD-FAILS", () => {
-  // The negative ratchet, and the reason it is worth a test: A-boardroom-port moves the
-  // canvas room class into this worker, and the half-landed version of that change is a
-  // wrangler.toml naming a class the entry does not export. This asserts wrangler refuses
-  // it and names the file, so the failure is loud rather than a runtime 1101 in
-  // production. When entry.js really does export the class, this test flips to asserting
-  // success — and its presence is what makes anyone notice that it should.
+test("the entry EXPORTS the canvas room, so a DO binding resolves", () => {
+  // This test used to assert the OPPOSITE — that a [[durable_objects.bindings]] naming
+  // BoardRoom hard-failed, because the class lived in the standalone realtime worker and
+  // the entry did not export it. That assertion existed so half of A-boardroom-port could
+  // not land quietly: the dangerous state is a config naming a class the deployed graph
+  // does not have, which fails at RUNTIME with a 1101 rather than at deploy time.
+  //
+  // The port landed, so it flips. What it guards now is the same boundary from the other
+  // side: the deploy entry must keep exporting the class for as long as any wrangler.toml
+  // declares the binding.
   if (!available) return;
   const dir = scratch(`
 [[durable_objects.bindings]]
@@ -97,10 +100,29 @@ tag = "v1"
 new_sqlite_classes = ["BoardRoom"]
 `);
   try {
+    const out = wrangler(["deploy", "--dry-run"], dir);
+    assert.match(out, /env\.ROOMS/, `wrangler did not report the ROOMS binding:\n${out}`);
+  } finally { fs.rmSync(dir, { recursive: true, force: true }); }
+});
+
+test("a binding naming a class NOBODY exports still hard-fails", () => {
+  // The general property the flipped test above no longer covers: a config naming a class
+  // the graph does not have must fail at DEPLOY, not at runtime with a 1101.
+  if (!available) return;
+  const dir = scratch(`
+[[durable_objects.bindings]]
+name = "GHOSTS"
+class_name = "NoSuchRoom"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["NoSuchRoom"]
+`);
+  try {
     let failed = false, out = "";
     try { out = wrangler(["deploy", "--dry-run"], dir); }
     catch (e) { failed = true; out = (e.stdout || "") + (e.stderr || ""); }
     assert.equal(failed, true, `wrangler accepted a DO binding with no export:\n${out}`);
-    assert.match(out, /BoardRoom/, `the error does not name the missing class:\n${out}`);
+    assert.match(out, /NoSuchRoom/, `the error does not name the missing class:\n${out}`);
   } finally { fs.rmSync(dir, { recursive: true, force: true }); }
 });

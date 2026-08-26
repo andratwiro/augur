@@ -37,10 +37,13 @@
  */
 import worker from "./_worker.js";
 
-// Durable Object classes are re-exported from here when they arrive; `wrangler deploy`
-// resolves a [[durable_objects.bindings]] class_name against this file's exports and
-// hard-fails naming this file when it cannot. test/worker-bundles.test.mjs asserts that
-// failure today, so half of A-boardroom-port cannot land quietly.
-//   export { BoardRoom } from "../realtime/src/index.js";
+// The canvas rooms. `wrangler deploy` resolves a [[durable_objects.bindings]] class_name
+// against THIS file's exports, so a Durable Object the engine worker is to hold has to be
+// named here — which is the reason this file exists at all.
+//
+// Exporting it costs a Pages instance nothing: Pages reads src/_worker.js, never this
+// file. And it costs a Worker instance nothing either until its wrangler.toml declares
+// the binding and the migration, so this can land ahead of any instance being ready for it.
+export { BoardRoom } from "./board-room.mjs";
 
 export default worker;
