@@ -4,6 +4,9 @@
 //   … --space <id>                      one space
 //   … --dry-run                         report what would ship, send nothing
 //   … --force                           overwrite live content that is NEWER than the copy
+//   … --state                           ALSO replay the workspace state a `--full` export
+//                                       carries: roster, invites, publish tokens, statuses,
+//                                       card names, boards, comment threads, pins, images
 //
 // A restore is an ordinary publish: blobs first, then one manifest commit per
 // space, so it lands atomically and gets its own version number. It does NOT
@@ -41,6 +44,11 @@ for (let i = 0; i < args.length; i++) {
 const ONE = opt("--space");
 const DRY = flag("--dry-run");
 const FORCE = flag("--force");
+// Opt-in, and deliberately not implied by the copy having state in it. Replaying the
+// roster and the publish tokens changes WHO CAN GET IN — a different and larger act than
+// putting content back, and the case where somebody wants only the content is real (a
+// content restore onto a workspace whose membership has moved on since).
+const STATE = flag("--state");
 if (!DIR) die("name the export directory: augur restore <dir>");
 if (!existsSync(path.join(DIR, "export.json"))) die(`${DIR} has no export.json — not an augur export.`);
 
@@ -124,5 +132,49 @@ for (const id of ids) {
   restored++;
 }
 
+// ── the workspace state ────────────────────────────────────────────────────
+// After the content, because the content is the thing a half-finished restore most needs
+// to have landed: a workspace with its pages back and its comments missing is recoverable
+// by re-running this, and the other way round is a site serving nothing.
+let stateReport = null;
+if (STATE) {
+  if (!meta.full) {
+    die("--state needs a copy taken with `augur export --full`; this one carries content only.");
+  }
+  const file = path.join(DIR, "state.json");
+  if (!existsSync(file)) die(`${DIR} says it is a full copy but has no state.json — do not trust it.`);
+  const doc = JSON.parse(await readFile(file, "utf8"));
+
+  // The canvas images first. A board that references an image the store does not have
+  // renders a hole, and the board doc is what arrives in the same breath.
+  const hashes = doc.assets || [];
+  let sent = 0, missing = 0;
+  for (const h of hashes) {
+    const blob = path.join(DIR, "assets", h);
+    if (!existsSync(blob)) { missing++; log(`image ${h.slice(0, 12)} is not in this export`); continue; }
+    if (DRY) { sent++; continue; }
+    try { await req(`_state/asset/${h}`, { method: "PUT", body: await readFile(blob) }); sent++; }
+    catch (e) { missing++; log(`image ${h.slice(0, 12)} failed: ${e.message}`); }
+  }
+  if (missing) die(`${missing} canvas image(s) missing or failed — nothing replayed, live state untouched.`);
+
+  const families = Object.keys(doc.families || {});
+  log(`workspace state: ${families.length} famil(y/ies), ${hashes.length} image(s)`);
+  if (!DRY) {
+    const res = await (await req("_state/import", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(doc),
+    })).json();
+    if (!res.ok) die(`the instance refused the state: ${res.reason}${res.failed ? ` (${res.failed.join(", ")})` : ""}`);
+    if (res.skipped && res.skipped.length) log(`\x1b[33mskipped (not in the instance's inventory): ${res.skipped.join(", ")}\x1b[0m`);
+    stateReport = res;
+  }
+}
+
 if (DRY) { console.log("(dry run, nothing shipped)"); process.exit(0); }
-console.log(`${origin}  ${restored} space(s) restored`);
+console.log(`${origin}  ${restored} space(s) restored`
+  + (stateReport ? `, ${stateReport.written.length} state famil(y/ies) replayed` : ""));
+if (!STATE && meta.full) {
+  log("\x1b[33mthis copy also carries the roster, comments, boards and pins — pass --state to replay them\x1b[0m");
+}

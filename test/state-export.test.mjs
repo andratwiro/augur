@@ -246,8 +246,13 @@ test("a document of the wrong shape is refused rather than guessed at", async ()
 
 // ── the routes ───────────────────────────────────────────────────────────────
 
-const call = (env, path, init) => W.publishApi(CTX,
-  new Request(`https://x.test${path}`, { headers: { Authorization: "Bearer star" }, ...init }),
+// The headers are MERGED rather than spread over: a caller passing a content-type would
+// otherwise drop the Authorization header and get a 403 that looks like a scope problem.
+const call = (env, path, init = {}) => W.publishApi(CTX,
+  new Request(`https://x.test${path}`, {
+    ...init,
+    headers: { Authorization: "Bearer star", ...(init.headers || {}) },
+  }),
   new URL(`https://x.test${path}`), env);
 
 test("the export route needs a STAR-SCOPE token, because it answers with the roster", async () => {
@@ -296,4 +301,33 @@ test("an unknown op under _state is a 400, not a silent 200", async () => {
   const res = await call({ COMMENTS: kv, BUNDLES: memR2() }, "/__publish/_state/whatever");
   assert.equal(res.status, 400);
   assert.equal((await res.json()).error, "unknown-op");
+});
+
+test("THE ASSET WRITE ROUTE CHECKS THE HASH AGAINST THE BYTES", async () => {
+  // A restore is a write path that takes a key from the caller. Content addressing is a
+  // guarantee only while the content matches the address — a copy corrupted on its way to
+  // disk would otherwise be written back under a name that says it is fine, which is the
+  // exact failure the canvas-image backup work was about.
+  const kv = seededKv();
+  await kv.put("publish:tokens", JSON.stringify({ [await W.tokenFor("pub:star")]: { space: "*", label: "ci" } }));
+  const env = { COMMENTS: kv, BUNDLES: memR2() };
+  const bytes = new Uint8Array([1, 2, 3, 4, 5]);
+  const digest = await crypto.subtle.digest("SHA-256", bytes);
+  const hash = [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, "0")).join("").slice(0, 40);
+
+  const wrong = await call(env, `/__publish/_state/asset/${"d".repeat(40)}`, { method: "PUT", body: bytes });
+  assert.equal(wrong.status, 409);
+  assert.equal((await wrong.json()).error, "hash-mismatch");
+  assert.equal(env.BUNDLES.store.size, 0, "bytes were stored under a name that does not describe them");
+
+  const right = await call(env, `/__publish/_state/asset/${hash}`, {
+    method: "PUT", headers: { "content-type": "image/png" }, body: bytes,
+  });
+  assert.equal(right.status, 200);
+  assert.equal(env.BUNDLES.store.get(W.ASSET_R2_PREFIX + hash).httpMetadata.contentType, "image/png");
+
+  // And it comes straight back out.
+  const back = await call(env, `/__publish/_state/asset/${hash}`);
+  assert.equal(back.status, 200);
+  assert.deepEqual(new Uint8Array(await back.arrayBuffer()), bytes);
 });

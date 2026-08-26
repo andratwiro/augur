@@ -196,6 +196,18 @@ token (no account credentials) into an incremental, content-addressed directory;
 provenance and refusing to bury newer live content without `--force`. Walkthrough:
 `docs/store-recovery.md`.
 
+**⚠️ Without `--full` that is a copy of PUBLISHED CONTENT AND NOTHING ELSE** — not
+who could publish it, who had been invited, what anybody had said about it, or what
+had been pasted onto a board. `augur export --full` adds all of it, from
+`/__publish/_state/export`, which walks `src/state-inventory.mjs` so the account of
+what exists and the account of what a backup covers are one account. It needs a
+STAR-SCOPE token, because the answer carries the roster and the publish-token hashes,
+and it can never carry the password hashes: a credential is account-level, so the
+route cannot reach one. `augur restore <dir> --state` replays it — opt-in, because
+putting the roster back changes who can get in, which is a larger act than putting
+content back. A copy records `full: true|false` so a restore can never mistake one
+for the other, and each command nudges when the copy and the flags disagree.
+
 **Shipping a change** — `augur ship` is the default and what agents should run:
 commit (everything, untracked included) → publish (the live URL, in seconds) →
 push (retried). That order is deliberate: the commit makes losing work
@@ -219,8 +231,9 @@ engine/worker verification; content goes out with `ship`/`publish` ·
 `augur ship [-m msg] [--no-push]` (the default path) ·
 `augur publish [--space <id>|--all] [--dry-run] [--allow-unpublish]`
 (publish only; `AUGUR_TOKEN` + `AUGUR_ORIGIN`) · `augur status`
-(live vs clones vs `origin/main`; exit 1 on drift) · `augur export --out <dir>` /
-`augur restore <dir>` (store backup).
+(live vs clones vs `origin/main`; exit 1 on drift) ·
+`augur export --out <dir> [--full]` / `augur restore <dir> [--state]`
+(store backup; `--full`/`--state` cover everything that is not published content).
 
 Env reference: `GV_SPACES_ROOT` (spaces location) · `GV_ENGINE_ONLY` (=1: chrome
 only, no space discovery — what a shell's CI runs) · `GV_ONLY_SPACE` (build one

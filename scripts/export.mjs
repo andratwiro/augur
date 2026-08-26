@@ -3,6 +3,10 @@
 //   augur export --out <dir>            the live state of every space + engine chrome
 //   … --history                         every retained version's manifest and blobs too
 //   … --space <id>                      one space only
+//   … --full                            AND everything that is not published content:
+//                                       the roster, invites, publish tokens, statuses,
+//                                       card names, boards, comment threads, pins, and
+//                                       the images pasted onto a canvas
 //
 // Why this exists: the store is the only copy of what the site serves. Most of it
 // is reproducible (clone the space at its recorded sha, publish again) — but a
@@ -19,9 +23,17 @@
 // never rewritten, so re-running over an existing directory downloads only what is
 // new. Point it at a path your normal backups already cover.
 //
-// NOT included: config/instance.json (the user roster — reproducible from the
-// deploy shell, and not something to scatter extra copies of). See
-// `docs/2026-08-09-bundle-store-recovery.md`.
+// ⚠️ WITHOUT `--full` THIS IS A COPY OF WHAT WAS PUBLISHED AND NOTHING ELSE. Not who
+// could publish it, not who had been invited, not what anybody had said about it, not what
+// had been pasted onto a board. That was the whole shape of a backup until
+// `/__publish/_state/export` existed, and it is worth saying plainly rather than leaving
+// somebody to discover it during a restore. `--full` needs a STAR-SCOPE token, because the
+// answer carries the roster and the publish-token hashes.
+//
+// NOT included even with `--full`: config/instance.json (reproducible from the deploy
+// shell, and not something to scatter extra copies of) and the password hashes, which the
+// export endpoint cannot reach — a credential is account-level and belongs to the account
+// store. See `docs/2026-08-09-bundle-store-recovery.md`.
 
 import { mkdir, writeFile, readdir } from "node:fs/promises";
 import path from "node:path";
@@ -35,6 +47,7 @@ const flag = (f) => args.includes(f);
 const opt = (f) => { const i = args.indexOf(f); return i >= 0 ? args[i + 1] : null; };
 const OUT = opt("--out");
 const HISTORY = flag("--history");
+const FULL = flag("--full");
 const ONE = opt("--space");
 if (!OUT) die("name a destination: --out <dir>");
 
@@ -43,7 +56,7 @@ try { ({ origin, token } = target()); } catch (e) { die(e.message); }
 const req = apiClient(origin, token);
 
 const started = Date.now();
-log(`${origin} → ${OUT}${HISTORY ? " (with history)" : ""}`);
+log(`${origin} → ${OUT}${HISTORY ? " (with history)" : ""}${FULL ? " (with workspace state)" : ""}`);
 
 const stamp = await buildStamp(origin);
 const ids = (ONE ? [ONE] : idsFromStamp(stamp));
@@ -126,11 +139,57 @@ await Promise.all(Array.from({ length: 8 }, async () => {
 // discover is short a few thousand blobs on the day you need it.
 if (failed) die(`${failed} blob(s) failed — this copy is INCOMPLETE, do not trust it for restore.`);
 
+// ── everything that is not published content ────────────────────────────────
+// One document plus one file per canvas image. Written LAST, so a copy that has it has
+// everything before it too — and recorded in export.json so a restore never has to guess
+// whether it is looking at a full copy or a content-only one.
+let state = null;
+if (FULL) {
+  let doc;
+  try {
+    doc = await (await req("_state/export")).json();
+  } catch (e) {
+    die(/→ 403/.test(e.message)
+      ? "--full needs a STAR-SCOPE token: it reads the roster, the invites and the publish-token hashes."
+      : `could not read the workspace state — ${e.message}`);
+  }
+  if (doc.failed && doc.failed.length) {
+    die(`the instance could not read ${doc.failed.length} state famil(y/ies): `
+      + `${doc.failed.map((f) => f.id).join(", ")}. This copy would be INCOMPLETE — fix that first.`);
+  }
+  await writeFile(path.join(OUT, "state.json"), JSON.stringify(doc), "utf8");
+
+  // The canvas images the rows point at. Their bytes are in R2 under a different prefix
+  // from the published blobs, so the blob walk above never sees them.
+  await mkdir(path.join(OUT, "assets"), { recursive: true });
+  const already = new Set();
+  try { for (const f of await readdir(path.join(OUT, "assets"))) already.add(f); } catch (e) {}
+  const hashes = (doc.assets || []).filter((h) => !already.has(h));
+  let assetFail = 0;
+  for (const h of hashes) {
+    try {
+      const buf = Buffer.from(await (await req(`_state/asset/${h}`)).arrayBuffer());
+      await writeFile(path.join(OUT, "assets", h), buf);
+    } catch (e) { assetFail++; log(`asset ${h.slice(0, 12)} failed: ${e.message}`); }
+  }
+  if (assetFail) die(`${assetFail} canvas image(s) failed — this copy is INCOMPLETE, do not trust it for restore.`);
+  state = {
+    families: Object.keys(doc.families || {}).length,
+    absent: (doc.absent || []).length,
+    assets: (doc.assets || []).length,
+  };
+  log(`workspace state: ${state.families} famil(y/ies), ${state.assets} canvas image(s)`);
+}
+
 await writeFile(path.join(OUT, "export.json"), JSON.stringify({
   format: 1,
   origin,
   exportedAt: new Date().toISOString(),
   history: HISTORY,
+  // `full: false` is written, not omitted: a restore that could not tell a content-only
+  // copy from a full one would report "no state to replay" for both.
+  full: FULL,
+  state,
   spaces,
   // What this copy does NOT contain, recorded so a restore from it is never a
   // surprise. Engine chrome landing here is benign — it rebuilds from the engine
@@ -141,4 +200,7 @@ await writeFile(path.join(OUT, "export.json"), JSON.stringify({
 
 log(`done in ${((Date.now() - started) / 1000).toFixed(1)}s`);
 if (skipped.length) log(`\x1b[33m${skipped.length} target(s) skipped: ${skipped.map((s) => s.id).join(", ")}\x1b[0m`);
-console.log(`${OUT}  ${spaces.length} space(s), ${wanted.size} blobs${skipped.length ? `, ${skipped.length} skipped` : ""}`);
+console.log(`${OUT}  ${spaces.length} space(s), ${wanted.size} blobs`
+  + (state ? `, ${state.families} state famil(y/ies), ${state.assets} image(s)` : "")
+  + (skipped.length ? `, ${skipped.length} skipped` : ""));
+if (!FULL) log("\x1b[33mcontent only — pass --full to include the roster, comments, boards and pins\x1b[0m");

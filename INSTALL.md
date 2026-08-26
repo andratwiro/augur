@@ -542,6 +542,13 @@ held in no repository. `store-backup.yml` takes weekly and monthly copies; on de
 `augur export --out <dir>`, and `augur restore <dir>` puts one back. Walkthrough:
 `docs/store-recovery.md`.
 
+⚠️ **That is published content and nothing else.** Not the roster, the invites, the
+publish tokens, the prototype statuses, the card names, the comment threads, the boards,
+the pins or the images pasted onto a canvas. `augur export --out <dir> --full` adds all of
+it and `augur restore <dir> --state` replays it; `--full` needs a star-scope token because
+the answer carries the roster and the publish-token hashes. Password hashes are never in
+it — a credential is account-level and the export route cannot reach one.
+
 **Drift.** `health.yml` compares each space repo's `main` HEAD against the live stamp
 every six hours and opens a single issue when work is pushed but never published, or when
 a dirty publish outlives its grace window. It closes the issue itself when things go

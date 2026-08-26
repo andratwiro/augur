@@ -3326,6 +3326,25 @@ async function publishApi(tctx, request, url, env) {
         },
       });
     }
+    if (op === "asset" && request.method === "PUT") {
+      if (!/^[0-9a-f]{40}$/.test(arg || "")) return jsonResponse({ error: "bad-input" }, 400);
+      if (!env.BUNDLES) return jsonResponse({ error: "bundle-store-not-configured" }, 501);
+      const buf = await request.arrayBuffer();
+      if (!buf.byteLength || buf.byteLength > ASSET_MAX_BYTES) return jsonResponse({ error: "too-large" }, 413);
+      // ⛔ THE HASH IS CHECKED AGAINST THE BYTES. A restore is a write path that takes a
+      // key from the caller, and content addressing is only a guarantee while the content
+      // matches the address — a copy that was corrupted on its way to disk would otherwise
+      // be written back under a name that says it is fine, which is the exact failure the
+      // canvas-image backup work was about.
+      const digest = await crypto.subtle.digest("SHA-256", buf);
+      const hash = [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, "0")).join("").slice(0, 40);
+      if (hash !== arg) return jsonResponse({ error: "hash-mismatch", expected: arg, got: hash }, 409);
+      const ct = (request.headers.get("content-type") || "").toLowerCase().split(";")[0].trim();
+      await env.BUNDLES.put(ASSET_R2_PREFIX + hash, buf, {
+        httpMetadata: { contentType: /^image\//.test(ct) ? ct : "image/jpeg" },
+      });
+      return jsonResponse({ ok: true, hash });
+    }
     if (op === "import" && request.method === "POST") {
       let body;
       try { body = await request.json(); } catch (e) { return jsonResponse({ error: "bad-json" }, 400); }
