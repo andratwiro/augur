@@ -69,6 +69,8 @@ import { KV_BACKUP_FORMAT, encodeKvValue } from "./kv-codec.mjs";
 // restated: the export below walks it, so the list of what a backup covers and the list of
 // what exists cannot be two lists. build.js copies it next to the worker.
 import { STATE_INVENTORY } from "./state-inventory.mjs";
+// Redaction, shared with the workspace object — see src/purge.mjs for why it is not local.
+import { PURGED_AUTHOR, purgeThreads, idCollisions } from "./purge.mjs";
 
 const COOKIE = "gv_auth";
 const MAX_AGE = 60 * 60 * 24 * 7; // 7 days
@@ -4844,25 +4846,10 @@ async function redactProvenance(env, spaceId, email) {
 // them, so this does not try: before sweeping, it checks the workspace roster for any
 // OTHER member sharing the id and REFUSES, naming both. That converts a silent
 // over-redaction into a question for a person, which is the only honest answer available.
-const PURGED_AUTHOR = "Deleted user";
-
-/** Redact one person from one thread array. Pure — the sweep below does the I/O. */
-function purgeThreads(threads, id) {
-  let redacted = 0;
-  const out = (Array.isArray(threads) ? threads : []).map((t) => {
-    if (!t || !Array.isArray(t.messages)) return t;
-    let touched = false;
-    const messages = t.messages.map((m) => {
-      if (!m || m.by !== id) return m;
-      touched = true; redacted++;
-      // Spread first so any field a future version adds survives an erasure written
-      // before it existed; the three that identify are then overwritten by name.
-      return { ...m, author: PURGED_AUTHOR, by: null, verified: false };
-    });
-    return touched ? { ...t, messages } : t;
-  });
-  return { threads: out, redacted };
-}
+// PURGED_AUTHOR, purgeThreads and the collision check live in src/purge.mjs, imported at
+// the top of this file, because the WORKSPACE OBJECT runs the same sweep — an erasure has to
+// happen in every workspace an account belongs to, and only the control plane knows which
+// those are. Two copies would be two answers to "was this person erased".
 
 /**
  * Sweep every stored thread in this workspace, plus the lastseen stamp.
@@ -4881,9 +4868,7 @@ async function purgeUser(store, kv, users, email) {
   const id = personId(addr);
 
   // The collision check, before anything is written.
-  const clashes = (users || [])
-    .map((u) => lcEmail(u && u.email))
-    .filter((e) => e && e !== addr && personId(e) === id);
+  const clashes = idCollisions(users, addr);
   if (clashes.length) {
     return { ok: false, reason: "id-collision", id, collidesWith: clashes.length };
   }

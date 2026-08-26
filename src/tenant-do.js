@@ -46,6 +46,7 @@
 // rather than resurrect the map.
 
 import { PLANS, DEFAULT_PLAN, QUOTA_FIELDS, quotasForPlan } from "./tenant-quotas.mjs";
+import { purgeThreads, personIdFor, idCollisions } from "./purge.mjs";
 
 export const TENANT_SCHEMA_VERSION = 1;
 
@@ -343,7 +344,7 @@ export const DELETE_GRACE_MS = 30 * 24 * 60 * 60 * 1000;
  * else, so every control-plane call was a 404 that nothing was watching for.
  */
 export const CONTROL_VERBS = Object.freeze([
-  "provision", "status", "suspend", "resume", "rotate", "delete",
+  "provision", "status", "suspend", "resume", "rotate", "delete", "purge",
 ]);
 
 export function newSigningKey(random = (b) => crypto.getRandomValues(b)) {
@@ -728,6 +729,71 @@ export class TenantStore {
   }
 
   /**
+   * Erase one person from this workspace's record of itself.
+   *
+   * `E-gdpr-purge-user`. The same sweep the worker's admin route runs, reachable as a
+   * workspace verb — because under Decision 2 an erasure has to happen in EVERY workspace
+   * the account belongs to, and only the control plane knows which those are. An erasure
+   * that could only be run by somebody who happens to administer each workspace is an
+   * erasure that does not happen.
+   *
+   * ⚠️ IT REFUSES ON AN ID COLLISION RATHER THAN OVER-REDACTING. Messages carry a 32-bit
+   * one-way hash of the address, so two addresses can share one, and a sweep keyed on it
+   * would redact an innocent third party. A machine cannot choose between them; this names
+   * the count and stops, which turns a silent over-redaction into a question for a person.
+   * The roster it checks is THIS workspace's members, including removed ones — a person
+   * removed last year still has messages, and their id still collides.
+   *
+   * ⚠️ IT DOES NOT TOUCH MEMBERSHIP. Erasure and removal are different acts and conflating
+   * them is wrong in both directions: `remove` revokes access and leaves the record, this
+   * de-identifies the record and says nothing about access. A caller wanting both does both.
+   */
+  purgeAuthor(email, at = new Date().toISOString()) {
+    if (!this.hasMeta()) return { ok: false, reason: "not-provisioned" };
+    const addr = String(email || "").trim().toLowerCase();
+    if (!addr) return { ok: false, reason: "bad-address" };
+    const id = personIdFor(addr);
+
+    // Every member ever, not just the active ones: a person removed last year still has
+    // messages in these threads, and their id still collides.
+    const everyone = [...this.sql.exec(`SELECT email FROM members`)];
+    const clashes = idCollisions(everyone, addr);
+    if (clashes.length) return { ok: false, reason: "id-collision", id, collidesWith: clashes.length };
+
+    // ONE TRANSACTION over the whole sweep. A half-finished erasure is the worst outcome
+    // here: some pages redacted, some not, and a caller that reports success either way. The
+    // handler is single-threaded so nothing interleaves, and the transaction is what makes a
+    // throw mid-sweep leave the record as it was rather than partly rewritten.
+    const body = () => {
+      let redacted = 0, scanned = 0;
+      const pathsTouched = [];
+      const rows = [...this.sql.exec(
+        `SELECT scope, k, v, rev FROM overlay WHERE family = 'comments'`,
+      )];
+      for (const row of rows) {
+        scanned++;
+        let threads = null;
+        try { threads = JSON.parse(row.v); } catch (e) { continue; }
+        const res = purgeThreads(threads, id);
+        if (!res.redacted) continue;
+        // `rev` is bumped so anything holding an older revision of this page loses its
+        // compare-and-swap and re-reads, rather than writing the un-redacted copy back.
+        this.sql.exec(
+          `UPDATE overlay SET v = ?3, at = ?4, rev = rev + 1
+            WHERE family = 'comments' AND scope = ?1 AND k = ?2`,
+          row.scope, row.k, JSON.stringify(res.threads), at,
+        );
+        redacted += res.redacted;
+        pathsTouched.push(row.k);
+      }
+      // The lastseen stamp is an address in a KEY, so it is erased rather than redacted.
+      this.sql.exec(`DELETE FROM lastseen WHERE email = ?`, addr);
+      return { ok: true, id, redacted, scanned, pathsTouched };
+    };
+    return this.ctx.storage.transactionSync ? this.ctx.storage.transactionSync(body) : body();
+  }
+
+  /**
    * Is this workspace paused, and why — three rows and nothing else.
    *
    * ⚠️ SEPARATE FROM `status()` ON PURPOSE. This one is on the REQUEST PATH: the front door
@@ -1107,6 +1173,15 @@ export class TenantStore {
         case "resume": return this.controlResult(this.resume(at));
         case "rotate": return this.controlResult(this.rotate(at));
         case "delete": return this.controlResult(this.deleteWorkspace(at));
+        case "purge": {
+          if (!body || !body.email) return Response.json({ error: "bad-input" }, { status: 400 });
+          const out = this.purgeAuthor(body.email, at);
+          // A refusal here is not "the workspace is in the wrong state" — it is "this cannot
+          // be done safely", which is what an id collision is. 409, and the reason travels.
+          return out.ok ? Response.json(out) : Response.json(out, {
+            status: out.reason === "not-provisioned" ? 404 : 409,
+          });
+        }
       }
     }
 

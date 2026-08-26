@@ -69,8 +69,13 @@ customers) and erases nothing; `destroy()` is the separate primitive that does. 
 really revokes publish tokens and ⏳ does NOT yet end sessions, because `userToken()` still
 HMACs on the Worker-wide `SESSION_SECRET` rather than the workspace's own signing key —
 `test/tenant-verbs.test.mjs` pins that gap so the day the read swaps over, a failing test
-says so. The list is written twice, here and as `TENANT_RPC` in the control plane, because
-the repos cannot import each other; both suites assert the other's copy.
+says so. `purge` erases ONE PERSON from a workspace's record of itself — the same sweep
+`src/purge.mjs` gives the admin route, reachable as a verb because an erasure has to happen
+in every workspace an account belongs to and only the control plane knows which those are;
+it REFUSES on an author-id collision rather than over-redacting, checking every member ever
+and not only the active ones. The list is written twice, here and as `TENANT_RPC` in the
+control plane, because the repos cannot import each other; both suites assert the other's
+copy.
 
 **A suspension is enforced at the front door, once, before the config load** —
 `readSuspension` + `SUSPENDED_ALLOWED` in `src/_worker.js`, checked right after the resolve

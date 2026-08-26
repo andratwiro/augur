@@ -45,6 +45,7 @@ import assert from "node:assert/strict";
 import { DatabaseSync } from "node:sqlite";
 import fs from "node:fs";
 import { TenantStore, CONTROL_VERBS, DELETE_GRACE_MS } from "../src/tenant-do.js";
+import { personIdFor, PURGED_AUTHOR } from "../src/purge.mjs";
 
 const readSource = (rel) => fs.readFileSync(new URL(rel, import.meta.url), "utf8");
 
@@ -369,3 +370,138 @@ test("a verb sent with the wrong method is refused, not silently treated as a PO
   const res = await control(store, "suspend", null, "GET");
   assert.equal(res.status, 405);
 });
+
+// ── purge: erasing one person from this workspace's record of itself ─────────────────
+//
+// `E-gdpr-purge-user`. The same sweep the worker's admin route runs, reachable as a verb —
+// because under Decision 2 an erasure happens in EVERY workspace an account belongs to, and
+// only the control plane knows which those are. An erasure that could only be run by
+// somebody who happens to administer each workspace is an erasure that does not happen.
+
+const SUBJECT = "erase-me@example.test";
+const threads = (page, id, otherId) => [{
+  id: `t-${page}`,
+  messages: [
+    { id: "m1", author: "Erase Me", by: id, verified: true, body: "mine", at: "2026-01-01T00:00:00Z" },
+    { id: "m2", author: "Keeper", by: otherId, verified: true, body: "theirs", at: "2026-01-02T00:00:00Z" },
+  ],
+}];
+
+async function withComments(subject = SUBJECT) {
+  const w = await provisioned();
+  const id = personIdFor(subject);
+  const other = personIdFor(ADMIN);
+  w.store.sql.exec(`INSERT INTO members (email, role, name, added_at) VALUES (?,?,?,?)`,
+    subject, "editor", "Erase Me", "2026-01-01T00:00:00Z");
+  for (const p of ["/a/", "/b/"]) w.store.overlaySet("comments", "", p, threads(p, id, other), "2026-01-01T00:00:00Z");
+  w.store.sql.exec(`INSERT INTO lastseen (email, at) VALUES (?,?)`, subject, "2026-02-01T00:00:00Z");
+  w.store.sql.exec(`INSERT INTO lastseen (email, at) VALUES (?,?)`, ADMIN, "2026-02-01T00:00:00Z");
+  return { ...w, id, other };
+}
+
+test("PURGE REDACTS EVERY MESSAGE OF ONE PERSON AND LEAVES THE CONVERSATION READABLE", async () => {
+  const { store, id, other } = await withComments();
+  const out = await (await control(store, "purge", { email: SUBJECT, at: "2026-08-26T10:00:00.000Z" })).json();
+  assert.equal(out.ok, true);
+  assert.equal(out.redacted, 2);
+  assert.equal(out.scanned, 2);
+  assert.deepEqual(out.pathsTouched.sort(), ["/a/", "/b/"]);
+
+  const pages = store.overlayRead("comments", "");
+  for (const page of ["/a/", "/b/"]) {
+    const [mine, theirs] = pages[page][0].messages;
+    assert.equal(mine.by, null);
+    assert.equal(mine.author, PURGED_AUTHOR);
+    assert.equal(mine.verified, false);
+    assert.equal(mine.body, "mine", "the body was rewritten");
+    assert.equal(mine.at, "2026-01-01T00:00:00Z");
+    assert.equal(theirs.by, other, "somebody else was redacted");
+    assert.equal(theirs.author, "Keeper");
+  }
+});
+
+test("the lastseen stamp goes, because an address in a KEY cannot be redacted", async () => {
+  const { db, store } = await withComments();
+  await control(store, "purge", { email: SUBJECT });
+  assert.deepEqual(db.prepare(`SELECT email FROM lastseen ORDER BY email`).all().map((r) => r.email),
+    [ADMIN]);
+});
+
+test("⚠️ IT DOES NOT TOUCH MEMBERSHIP — erasure and removal are different acts", async () => {
+  // Conflating them is wrong in both directions: `remove` revokes access and leaves the
+  // record, this de-identifies the record and says nothing about access.
+  const { store } = await withComments();
+  await control(store, "purge", { email: SUBJECT });
+  assert.deepEqual(store.members().map((m) => m.email).sort(), [SUBJECT, ADMIN].sort());
+});
+
+test("⚠️ AN ID COLLISION REFUSES RATHER THAN OVER-REDACTING, and names the count", async () => {
+  // Two addresses can share a 32-bit author id, and a sweep keyed on it would redact an
+  // innocent third party. A machine cannot choose between them, so it stops.
+  const [subject, twin] = collidingPair();
+  const { store } = await withComments(subject);
+  store.sql.exec(`INSERT INTO members (email, role, name, added_at) VALUES (?,?,?,?)`,
+    twin, "viewer", "Twin", "2026-01-01T00:00:00Z");
+
+  const res = await control(store, "purge", { email: subject });
+  assert.equal(res.status, 409);
+  const out = await res.json();
+  assert.equal(out.reason, "id-collision");
+  assert.equal(out.collidesWith, 1);
+  // And NOTHING was written.
+  assert.equal(store.overlayRead("comments", "")["/a/"][0].messages[0].by, personIdFor(subject));
+});
+
+test("the collision check reads EVERY member, including removed ones", async () => {
+  // A person removed last year still has messages in these threads, and their id still
+  // collides. Checking only active members would redact them silently.
+  const [subject, twin] = collidingPair();
+  const { store } = await withComments(subject);
+  store.sql.exec(
+    `INSERT INTO members (email, role, name, added_at, removed_at) VALUES (?,?,?,?,?)`,
+    twin, "viewer", "Twin", "2026-01-01T00:00:00Z", "2026-02-01T00:00:00Z");
+  assert.equal((await control(store, "purge", { email: subject })).status, 409);
+});
+
+test("purge on a workspace nobody provisioned refuses without creating one", async () => {
+  const { db, store } = workspace();
+  const res = await control(store, "purge", { email: SUBJECT });
+  assert.equal(res.status, 404);
+  assert.deepEqual(db.prepare(
+    `SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'`).all(), []);
+});
+
+test("purge with no address is a 400, not a sweep of everybody whose id is empty", async () => {
+  const { store } = await withComments();
+  assert.equal((await control(store, "purge", {})).status, 400);
+  assert.equal((await control(store, "purge", { email: "   " })).status, 409);
+});
+
+/**
+ * TWO ADDRESSES THAT REALLY SHARE AN AUTHOR ID.
+ *
+ * ⚠️ IT PICKS A PAIR RATHER THAN MATCHING A FIXED ADDRESS. Finding a second address that
+ * collides with a GIVEN one is a second-preimage — 2^32 work on a 32-bit hash, and forty
+ * million tries took thirteen seconds and found nothing. Finding ANY colliding pair is a
+ * birthday problem and takes about 160k.
+ *
+ * ⚠️ AND THE CANDIDATES ARE SPREAD, NOT CONSECUTIVE. djb2 is affine over the character vector
+ * with odd coefficients, so `c0@…`, `c1@…`, `c2@…` map INJECTIVELY however many you try —
+ * three million produce zero collisions, which reads as "the hash is fine" and is really
+ * "the sample was a straight line through the space".
+ */
+function collidingPair() {
+  let x = 12345;
+  const rnd = () => { x ^= x << 13; x >>>= 0; x ^= x >> 17; x ^= x << 5; x >>>= 0; return x; };
+  const A = "abcdefghijklmnopqrstuvwxyz0123456789";
+  const seen = new Map();
+  for (let i = 0; i < 3_000_000; i++) {
+    let local = "";
+    for (let k = 0; k < 8; k++) local += A[rnd() % 36];
+    const addr = `${local}@example.test`;
+    const id = personIdFor(addr);
+    if (seen.has(id) && seen.get(id) !== addr) return [seen.get(id), addr];
+    seen.set(id, addr);
+  }
+  throw new Error("no colliding pair found in the search window");
+}

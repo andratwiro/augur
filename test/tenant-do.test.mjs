@@ -194,7 +194,8 @@ test("the store exposes no read or write verb it does not yet need", () => {
     "nextPublishVersion",
     "overlayCas", "overlayInsert", "overlayOwner", "overlayRead", "overlayReadRev",
     "overlayReplace", "overlaySet", "provision",
-    "quotas", "readCounter", "readMeta", "resume", "rotate", "schemaVersion", "sessionKey",
+    "purgeAuthor", "quotas", "readCounter", "readMeta", "resume", "rotate", "schemaVersion",
+    "sessionKey",
     "sql", "status", "suspend", "suspension", "touchActivity",
     "usersActive", "workspaceId", "writeMeta",
   ]);
