@@ -334,6 +334,8 @@ const ALLOWLIST = {
       "FORBIDDEN_COLUMNS",   // column names the schema may not have; a fact about credentials
       "CONTROL_VERBS",       // the whole of what the control plane may ask; the same list for every workspace
       "SEEDABLE_FAMILIES",   // which overlay families a seed pack may write; a fact about the schema
+      "IDENTITY_FAMILIES",   // which identity families a copy may write; a fact about the schema, and the list that keeps a credential out
+      "MEMBER_ROLES",        // the three roles the members CHECK constraint allows; the same three everywhere
     ],
   },
 

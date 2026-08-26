@@ -385,6 +385,23 @@ export function newSigningKey(random = (b) => crypto.getRandomValues(b)) {
  */
 export const SEEDABLE_FAMILIES = Object.freeze(["comments", "boards", "statuses", "names", "canvases", "pins"]);
 
+/**
+ * The identity families a copy may carry, and the roles a member row may hold.
+ *
+ * `B-kv-to-do-migration-tool`. These have had tables since `B-do-schema-core` and no write
+ * path, so a copy of a workspace's state landed the content and left the roster, the
+ * invites and the publish tokens in KV. This is that write path — and it is a COPY:
+ * nothing reads what it writes until `B-kv-read-cutover` moves the reads over.
+ *
+ * ⚠️ THERE IS NO CREDENTIAL FAMILY HERE AND THERE MUST NEVER BE ONE. A password is
+ * account-level — one address, one credential, several workspaces — so a workspace that
+ * held a hash could reach every other workspace that address opens. The object writes only
+ * what this list names, so a caller that sends a `secrets` key is ignored rather than
+ * trusted to have meant something else.
+ */
+export const IDENTITY_FAMILIES = Object.freeze(["members", "invites", "publishTokens", "lastseen", "blobs"]);
+const MEMBER_ROLES = Object.freeze(["admin", "editor", "viewer"]);
+
 /** How many rows a seed pack would write. Used to report, and to tell "none" from "empty". */
 function seedCount(seed) {
   if (!seed || typeof seed !== "object") return 0;
@@ -398,6 +415,96 @@ function seedCount(seed) {
     }
   }
   return n;
+}
+
+/**
+ * Write the identity families. Rows arrive translated and hashed; see `IDENTITY_FAMILIES`.
+ *
+ * Every insert is an UPSERT rather than a plain insert, because the copy has to be safe to
+ * re-run: a run killed halfway is fixed by running it again, and that is only true if the
+ * second run lands on top of the first instead of colliding with it.
+ *
+ * A REMOVED MEMBER IS A TOMBSTONE, never an absent row. KV records a removal in
+ * `users:roster`'s `remove` list, and dropping the person here instead would let a
+ * re-invite inherit the role the last holder of that address had.
+ */
+function writeIdentity(sql, identity, at, written = [], refused = []) {
+  if (!identity || typeof identity !== "object") return { written, refused };
+  const list = (k) => (Array.isArray(identity[k]) ? identity[k] : []);
+  const touched = (family, n) => { if (n) written.push(family); };
+
+  let n = 0;
+  for (const m of list("members")) {
+    if (!m || !m.email) continue;
+    // A role the schema does not allow is the source's shape, not the caller's bug.
+    if (!MEMBER_ROLES.includes(m.role)) {
+      refused.push({ family: "members", key: String(m.email), why: `role '${m.role}' is not admin, editor or viewer` });
+      continue;
+    }
+    sql.exec(
+      `INSERT INTO members (email, role, name, avatar_key, avatar_mime, avatar_at, added_at, removed_at)
+         VALUES (?1,?2,?3,?4,?5,?6,?7,?8)
+         ON CONFLICT(email) DO UPDATE SET
+           role = ?2, name = ?3, avatar_key = ?4, avatar_mime = ?5,
+           avatar_at = ?6, added_at = ?7, removed_at = ?8`,
+      String(m.email), m.role, m.name ?? null, m.avatarKey ?? null, m.avatarMime ?? null,
+      m.avatarAt ?? null, m.addedAt || at, m.removedAt ?? null,
+    );
+    n++;
+  }
+  touched("members", n);
+
+  n = 0;
+  for (const i of list("invites")) {
+    if (!i || !i.tokenHash) continue;
+    sql.exec(
+      `INSERT INTO invites (token_hash, email, created_at, expires_at, created_by)
+         VALUES (?1,?2,?3,?4,?5)
+         ON CONFLICT(token_hash) DO UPDATE SET email = ?2, created_at = ?3, expires_at = ?4, created_by = ?5`,
+      String(i.tokenHash), String(i.email || ""), i.createdAt || at, i.expiresAt || at, i.createdBy ?? null,
+    );
+    n++;
+  }
+  touched("invites", n);
+
+  n = 0;
+  for (const t of list("publishTokens")) {
+    if (!t || !t.tokenHash) continue;
+    sql.exec(
+      `INSERT INTO publish_tokens (token_hash, label, created_at, expires_at)
+         VALUES (?1,?2,?3,?4)
+         ON CONFLICT(token_hash) DO UPDATE SET label = ?2, created_at = ?3, expires_at = ?4`,
+      String(t.tokenHash), t.label ?? null, t.createdAt || at, t.expiresAt ?? null,
+    );
+    n++;
+  }
+  touched("publishTokens", n);
+
+  n = 0;
+  for (const s of list("lastseen")) {
+    if (!s || !s.email) continue;
+    sql.exec(
+      `INSERT INTO lastseen (email, at) VALUES (?1,?2)
+         ON CONFLICT(email) DO UPDATE SET at = ?2`,
+      String(s.email), s.at || at,
+    );
+    n++;
+  }
+  touched("lastseen", n);
+
+  n = 0;
+  for (const b of list("blobs")) {
+    if (!b || !b.key) continue;
+    sql.exec(
+      `INSERT INTO blobs (key, mime, body, at) VALUES (?1,?2,?3,?4)
+         ON CONFLICT(key) DO UPDATE SET mime = ?2, body = ?3, at = ?4`,
+      String(b.key), b.mime ?? null, b.body, b.at || at,
+    );
+    n++;
+  }
+  touched("blobs", n);
+
+  return { written, refused };
 }
 
 /**
@@ -1149,8 +1256,33 @@ export class TenantStore {
    * what anything was called in KV, and a restore is a poor moment to teach it.
    */
   importOverlay(bundle, at, prune = false) {
+    return this.importAll({ overlay: bundle, at, prune });
+  }
+
+  /**
+   * The overlay AND the identity families, in ONE transaction.
+   *
+   * `B-kv-to-do-migration-tool`. Splitting these into two calls would put the exact seam
+   * back that `importOverlay` exists to remove: a workspace holding its content from the
+   * copy and its roster from before it is a state matching no moment in time, and the
+   * roster is the half that decides who can get in.
+   *
+   * ⚠️ TWO KINDS OF BAD ROW, TREATED DIFFERENTLY ON PURPOSE. A role KV does not recognise
+   * is a value the SOURCE can legitimately hold — `users:roles` is a free-text map and
+   * `members.role` has a CHECK constraint — so it is refused by name and the copy carries
+   * on, because one odd role must not abort a copy of somebody's whole workspace. A row
+   * that violates the schema any other way is a defect in the CALLER, and it throws: the
+   * transaction rolls back and nobody is left with a half-copy that looks finished.
+   *
+   * Everything here arrives already translated and already hashed. The object never learns
+   * how a token is spelled — hashing is `crypto.subtle`, which is async, and this body runs
+   * inside `transactionSync`, which is not.
+   */
+  importAll({ overlay, identity, at, prune = false } = {}) {
     const stamp = at || new Date().toISOString();
     const written = [];
+    const refused = [];
+    const bundle = overlay;
     const body = () => {
       for (const [family, scopes] of Object.entries(bundle || {})) {
         for (const [scope, map] of Object.entries(scopes || {})) {
@@ -1171,10 +1303,11 @@ export class TenantStore {
           written.push(scope ? `${family}/${scope}` : family);
         }
       }
+      writeIdentity(this.sql, identity, stamp, written, refused);
     };
     const atomic = typeof this.ctx.storage.transactionSync === "function";
     if (atomic) this.ctx.storage.transactionSync(body); else body();
-    return { written, atomic };
+    return { written, refused, atomic };
   }
 
   /**
@@ -1297,7 +1430,12 @@ export class TenantStore {
         return Response.json({ error: "bad-input" }, { status: 400 });
       }
       await this.init(body.workspaceId);
-      return Response.json(this.importOverlay(body.overlay, null, !!body.prune));
+      // `identity` is optional and rides in the SAME call, so the roster and the content
+      // land in one transaction. A second request for it would put back the seam this
+      // route exists to remove — and the roster is the half that decides who gets in.
+      return Response.json(this.importAll({
+        overlay: body.overlay, identity: body.identity, at: null, prune: !!body.prune,
+      }));
     }
     if (url.pathname === "/quota/bump" && request.method === "POST") {
       let body = null;

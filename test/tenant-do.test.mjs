@@ -186,11 +186,13 @@ test("the store exposes no read or write verb it does not yet need", () => {
   // test/tenant-verbs.test.mjs, and note that `deleteWorkspace` is a TOMBSTONE while
   // `destroy` is the erasure primitive it does not call. `suspension` is separate from
   // `status` because it is the one method on the REQUEST PATH — three indexed reads, not
-  // five counts and a page total — see B-suspend-check-in-resolver.
+  // five counts and a page total — see B-suspend-check-in-resolver. `importAll` is
+  // `importOverlay` plus the identity families, in one transaction, and `importOverlay` is
+  // kept as the name its existing callers use — see test/kv-adopt-identity.test.mjs.
   const names = Object.getOwnPropertyNames(TenantStore.prototype).filter((n) => n !== "constructor");
   assert.deepEqual(names.sort(), [
     "bumpCounter", "clearMeta", "controlResult", "deleteWorkspace", "destroy", "fetch",
-    "hasMeta", "importOverlay", "init", "isProvisioned", "members",
+    "hasMeta", "importAll", "importOverlay", "init", "isProvisioned", "members",
     "nextPublishVersion",
     "overlayCas", "overlayInsert", "overlayOwner", "overlayRead", "overlayReadRev",
     "overlayReplace", "overlaySet", "provision",
