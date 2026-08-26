@@ -236,7 +236,9 @@ above. Total config-global occurrences ≈ 200,
 i.e. ~110–120 read sites once decls/assigns are removed — matching the plan's "~110".
 
 **The enumeration of record is `scripts/no-tenant-globals.mjs`, not this table.** Line
-numbers here drift; the lint reads the worker and counts what is actually declared —
+numbers here drift; the lint walks the module graph the worker pulls into the isolate —
+every module it reaches by a relative import, because module scope is per ISOLATE and a
+`let` one import away is shared exactly as widely — and counts what is actually declared —
 today 20 module-scope bindings: NO config global at all, 14 per-isolate caches, and 6
 mutable-container constants that never vary by workspace. It fails CI, and therefore the
 deploy, on a binding it has never been told about, on an allowlist entry whose binding is
@@ -525,11 +527,13 @@ cache needs to keep separate — the caller must be able to decide that a failed
 worth swapping the cached context for. `buildTenantContext` therefore takes documents that
 already parsed and never performs I/O.
 
-The completeness guard lives in `test/tenant-context.test.mjs`: it reads the worker's own
-source, and any module-scope `let` that is neither a declared context field nor a declared
-per-isolate runtime cache fails the suite. That is the check for the one failure mode the
-snapshots cannot see — threading 27 of 28 globals and leaving the 28th shared, with
-everything green because a single-tenant era cannot observe the difference.
+The completeness guard lives in `test/tenant-context.test.mjs`: it walks the module graph
+the worker pulls into the isolate, and any module-scope `let` in any of those files that is
+not a declared per-isolate runtime cache or tenant-invariant constant fails the suite. That
+is the check for the one failure mode the snapshots cannot see — threading 27 of 28 globals
+and leaving the 28th shared, with everything green because a single-tenant era cannot
+observe the difference. Reading only the entry file would have made "move it one import
+away" the way past it.
 
 **Q4 — Snapshot corpus authority. PARTLY SETTLED.** The harness ships a fixed 14-request
 corpus (§3b): the signed-out and signed-in index, a public prototype, a gated internal

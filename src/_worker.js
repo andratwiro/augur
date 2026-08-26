@@ -30,7 +30,7 @@
 // side-effect-free at import — keeps this file importable by test/worker.test.mjs.
 import { renderAppChrome, renderSpaceContextScript } from "./chrome/appchrome.mjs";
 
-// The per-request config VALUE that is replacing the module-scope globals below. Same
+// The per-request config VALUE that replaced this file's module-scope config globals. Same
 // deal as the chrome renderer: build.js copies this module next to the worker
 // (dist/tenant-context.mjs) so the relative import resolves at the edge. Pure and
 // side-effect-free at import; it performs no I/O and owns no state.

@@ -13,13 +13,19 @@ jobs:
       - name: Doc drift (doc-lint)
         run: node scripts/doc-lint.mjs
       - name: No new module-scope tenant state (no-tenant-globals)
-        # The worker's config globals are being replaced by a per-request tenant context.
-        # That sweep spans many commits, and the way it gets undone is one convenient new
-        # global added while it is half done — invisible to every other test, because a
-        # single-tenant deployment cannot observe it. This lint holds the line, and it
-        # lives HERE rather than only in the suite because a live deploy is gated on this
-        # workflow: a guard in `test` reports the problem, a guard in `check` stops it
-        # shipping.
+        # The worker's config globals have been replaced by a per-request tenant context.
+        # The way that gets undone is one convenient new global — invisible to every other
+        # test, because a single-tenant deployment cannot observe the difference between
+        # state shared between workspaces and state belonging to the only workspace there
+        # is. This lint holds the line, and it lives HERE rather than only in the suite
+        # because a live deploy is gated on this workflow: a guard in `test` reports the
+        # problem, a guard in `check` stops it shipping.
+        #
+        # It takes no arguments ON PURPOSE. It discovers the modules it checks by following
+        # the worker's relative imports, so a new module holding tenant state is scanned
+        # the moment the worker can reach it. Naming the files here instead would have put
+        # the list in the one file nobody edits when adding a module — the same silent
+        # escape by omission the lint exists to catch, moved into its own configuration.
         run: node scripts/no-tenant-globals.mjs
       - name: One tenant resolver, one call site (one-tenant-resolver)
         # Which workspace a request belongs to is decided in exactly one place, at the
