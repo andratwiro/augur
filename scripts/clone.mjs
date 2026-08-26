@@ -37,6 +37,7 @@ import { existsSync, readFileSync, statSync } from "node:fs";
 import { createHash } from "node:crypto";
 import { target, apiClient } from "./lib/store.mjs";
 import { materializePlan, synthesizeSpaceJson } from "./lib/materialize.mjs";
+import { stripBuildDecorations } from "./lib/publish-conflict.mjs";
 
 const C = { dim: "\x1b[2m", warn: "\x1b[33m", bad: "\x1b[31m", ok: "\x1b[32m", off: "\x1b[0m" };
 const log = (m) => console.log(`\x1b[35m[clone]\x1b[0m ${m}`);
@@ -117,15 +118,43 @@ async function main() {
     process.exit(plan.conflict.length ? 2 : 0);
   }
 
-  let wrote = 0, bytes = 0;
+  let wrote = 0, bytes = 0, peeled = 0;
   for (const f of plan.write) {
     const body = Buffer.from(await (await req(`${spaceId}/blob/${f.h}`)).arrayBuffer());
+    // Hash the bytes the store returned, BEFORE peeling: the manifest names the published
+    // content, and a store that answered with something else is the failure worth stopping
+    // on. Peeling afterwards is a local transform, not a trust decision.
     const got = sha256(body);
     if (got !== f.h) die(`${f.url}: the store returned bytes whose hash is ${got.slice(0, 12)}, not ${String(f.h).slice(0, 12)}. Refusing to write content that is not what the manifest names.`);
+
+    // A PUBLISHED PAGE IS NOT ITS SOURCE, and writing it as though it were is how a clone
+    // stops being republishable. The build decorates authored HTML on the way out: og and
+    // twitter meta, the linked-assets stamp, an emoji on the <title>, marker-wrapped
+    // review and companion scripts, and a rewritten depth on every skills/ path. The
+    // marker regions would survive a republish idempotently; the meta would not, so a
+    // clone-publish-clone cycle would accumulate it. `stripBuildDecorations` is the peel
+    // the publish adopt path already uses for exactly this, including putting the skills/
+    // depth back to what the file's REPO location needs.
+    let outBody = body;
+    if (f.path.endsWith(".html")) {
+      const text = body.toString("utf8");
+      const relDir = path.dirname(f.path) === "." ? "" : path.dirname(f.path);
+      // The peel leaves the blank line the removed block sat on. Harmless — the adopt
+      // path compares through a whitespace-collapsing comparator — but a clone is read by
+      // a person and diffed against a repo, so close the gap it leaves rather than
+      // shipping 18 files that differ from their source by an empty line. Only immediately
+      // before the two closing tags the build writes at; authored blank lines are not ours.
+      const peeledText = stripBuildDecorations(text, relDir)
+        .replace(/\n[ \t]*\n(\s*<\/head>)/g, "\n$1")
+        .replace(/\n[ \t]*\n(\s*<\/body>)/g, "\n$1");
+      if (peeledText !== text) peeled++;
+      outBody = Buffer.from(peeledText, "utf8");
+    }
+
     const abs = path.join(out, f.path);
     await mkdir(path.dirname(abs), { recursive: true });
-    await writeFile(abs, body);
-    wrote++; bytes += body.length;
+    await writeFile(abs, outBody);
+    wrote++; bytes += outBody.length;
   }
 
   // space.json is not a served asset and is in no manifest, so a clone synthesizes it —
@@ -138,6 +167,7 @@ async function main() {
   }
 
   log(`${C.ok}${MODE === "pull" ? "pulled" : "cloned"} ${wrote} file(s), ${(bytes / 1e6).toFixed(2)} MB → ${out}${C.off}`);
+  if (peeled) log(`${C.dim}${peeled} page(s) peeled back to source: the build meta, the marker chrome and the depth rewrites removed${C.off}`);
   if (plan.skip.length) log(`${C.dim}${plan.skip.length} already identical${C.off}`);
   if (plan.conflict.length) {
     log(`${C.warn}${plan.conflict.length} file(s) left untouched because they changed on both sides. Yours are still on disk; the live copy is one \`augur clone --out <elsewhere>\` away.${C.off}`);
