@@ -27,14 +27,18 @@ jobs:
         # the list in the one file nobody edits when adding a module — the same silent
         # escape by omission the lint exists to catch, moved into its own configuration.
         #
-        # It also decides, rather than only enumerating. Three reproduced cross-tenant
-        # leaks were all ON its allowlist under written reasons asserting the safety they
-        # did not have — the last of them the roster overlay, whose reason said "overlay
-        # only, never the auth boundary" while it was handing one workspace's ROLES to the
-        # next. So the kinds it accepts are checked against the code: a cache it calls
-        # keyed must be a Map touched with a tenantId at every access, a table it calls
-        # invariant must never be written after module load, and the bare per-isolate slot
-        # every one of those leaks was is a budgeted quarantine. No reason is read.
+        # And it names the SAFE thing rather than enumerating unsafe ones. Two earlier
+        # rebuilds each caught the shape in front of them and were answered by the next —
+        # a factory call the binding scanner did not count as a binding, a literal key
+        # inside a cache the list called keyed, a `??=` write into a table the list called
+        # invariant. So there is now exactly one way to hold a cache across requests
+        # (`tenantCache()` in src/tenant-cache.mjs, whose handle cannot be enumerated and
+        # cannot be reached without naming a workspace) and one way to hold a fixed table
+        # (`Object.freeze`, which the engine itself enforces at every write site). What
+        # counts as state is an allowlist of provably-harmless initializers, so a call is
+        # state until somebody accounts for it. Reasons are gone: `cache` and `frozen` are
+        # arrays of names, because a written reason is what every closed leak shipped
+        # under. Only the budgeted quarantine still carries prose.
         run: node scripts/no-tenant-globals.mjs
       - name: One tenant resolver, one call site (one-tenant-resolver)
         # Which workspace a request belongs to is decided in exactly one place, at the

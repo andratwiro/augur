@@ -20,82 +20,78 @@
 // the state one import away. Bare specifiers are not followed: a dependency's internals
 // are not ours to allowlist, and this repo's worker has none.
 //
-// WHAT COUNTS AS A BINDING. Anything at column 0 of a scanned module that can hold state:
-// a `let` or `var`, and a `const` whose initializer is a mutable container (array literal,
-// object literal, `new Set/Map/WeakSet/WeakMap`) — with or without an `export` in front,
-// since exporting state shares it no less. A `const` holding a number, a string, a regex
-// or a function is not state and is not checked.
+// ---- WHY IT IS BUILT THIS WAY, AND NOT THE OTHER WAY --------------------------------
 //
-// ---- WHY THE LIST HAS THE SHAPE IT HAS ----------------------------------------------
+// THE HISTORY THIS FILE IS THE THIRD ANSWER TO. Cross-tenant leaks kept being found in
+// code this lint was green on. Each rebuild caught the shape in front of it and was
+// answered by the next shape: a bare `let`; then a Map whose accesses did not carry a
+// key; then a factory call (`const SLOT = makeSlot()`) the binding scanner did not even
+// count as a binding, a literal key inside an allowlisted keyed cache, and a `??=` write
+// into a table the list called invariant. Three rounds of "enumerate the unsafe shapes"
+// lost three times, because there is always another shape and the person adding it is the
+// one choosing it.
 //
-// THE FAILURE THIS FILE WAS REBUILT AROUND. Three cross-tenant leaks — the ungated avatar
-// index; the board registry + remark queue the ungated poll routes read; and the roster
-// overlay, which decides not only who exists in a workspace but what they may do — were
-// each reproduced end to end serving one workspace another's content. None was an
-// unlisted binding. All were ON this list under written reasons that asserted the very
-// safety they did not have ("a hash is content-addressed, so it means the same thing
-// everywhere"; "a stale stamp costs a re-read"; "overlay only, never the auth boundary").
-// Every direction the lint had — unlisted, stale, unreachable, readmitted — was green
-// throughout, because all four ask whether the list AGREES WITH THE CODE and none asks
-// whether an entry is TRUE. The third one adds a lesson the first two did not: it was
-// listed as a KNOWN GAP, pinned by a test, and still shipped, because the pin drove the
-// loader directly while the only harness helper that drove the real router reset the very
-// memo the gap was in.
+// SO THE UNSAFE SHAPES ARE NO LONGER WHAT IS ENUMERATED. Two inversions:
 //
-// A LINT CANNOT READ PROSE, so this one no longer tries. It does not grade a reason, score
-// its wording, or look for the word "keyed" in a sentence. Instead the category whose
-// safety rested on a sentence has been abolished and replaced by kinds whose safety is a
-// property of the DECLARATION AND ITS USES, which a scanner can decide:
+//   1. A CONSTRUCTOR, NOT A PATTERN. There is exactly one way to keep a cache across
+//      requests: `tenantCache()` in src/tenant-cache.mjs. It hands back a frozen handle
+//      over a Map held in a closure. The Map cannot be reached, so there is no
+//      `entries()`, no `values()`, no `forEach()`, no iterator and no way to pass the
+//      container anywhere — "read every workspace's entry at once" is not expressible,
+//      whether or not this lint is looking. Every method that reaches a value takes the
+//      workspace id FIRST and refuses a call without one. An unkeyed cache is therefore
+//      not a shape to be detected; it is a thing that cannot be built.
 //
-//   KEYED      a per-workspace cache. Structurally required to be `const X = new Map()`,
-//              and every access to it must carry a workspace key: `.get/.set/.delete/.has`
-//              whose first argument is a `tenantId` expression (or a local assigned from
-//              one), plus the whole-map operations that cannot hand back one workspace's
-//              value (`.clear() .size .keys()`) and the eviction idiom
-//              `X.delete(X.keys().next().value)`. `.values() .entries() .forEach()`, or
-//              the bare name used as a value, all FAIL: they read every workspace's entry
-//              without a key. The note beside the entry is for humans; the lint's verdict
-//              does not depend on one word of it.
+//      The same move for fixed tables: an `frozen` entry is `Object.freeze(…)` at the
+//      declaration, so the JS engine refuses every write at every site — including the
+//      ones a regex scanner cannot parse. `VALID_STATUS[p] ??= x` used to slip past a
+//      write scan that only knew about `=`; against a frozen object it throws.
 //
-//   INVARIANT  a table written once at module load and never again. Structurally required
-//              to be `const`, and required to have NO write anywhere after its declaration
-//              — no reassignment, no `.push/.set/.add/.delete/.clear/…`, no `X[k] =`, no
-//              `X.k =`, no `Object.assign(X, …)`. Module load happens before any request,
-//              so a binding no one ever writes cannot have been derived from a workspace's
-//              config. "Tenant-invariant by construction" used to be a claim; it is now
-//              the thing that was checked.
+//   2. WHAT COUNTS AS STATE IS AN ALLOWLIST, NOT A DENYLIST. The old scanner asked "is
+//      this initializer one of the mutable shapes I know?" — array literal, object
+//      literal, `new Map/Set`. `const SLOT = makeSlot()` is none of them, so it was
+//      invisible, and a factory is the one thing every state-hiding trick has in common.
+//      This one asks the opposite question: "is this initializer PROVABLY not state?" A
+//      number, a string or template, a regex, a symbol, a function, or a call to a
+//      same-module arrow that returns a string — those, and nothing else. Everything
+//      else is state and must be on the list, including every call. The failure mode is
+//      now a false ALARM (a genuinely-constant call the list has to name) rather than a
+//      silent pass, which is the direction a guard is allowed to be wrong in.
 //
-//   UNKEYED    a bare per-isolate slot. THIS IS THE SHAPE EVERY LEAK HAD, and the list
-//              treats it as such. There is no "it's only a clock" kind, because each leak
-//              had one: `canvasRegAt` and `rosterReadAt` were numbers, and they are what
-//              made the stale document answer. An entry here must name a `proof` — a test file that exists and
-//              speaks the binding's name — and the TOTAL number of unkeyed entries across
-//              every module must equal `UNKEYED_BUDGET` exactly. Exact, not a ceiling:
-//              closing one forces the budget down in the same commit, and opening one
-//              forces a diff line that reads "I increased the number of per-isolate slots
-//              two workspaces share". That line is the review.
+// THE THREE KINDS, and there is no fourth:
 //
-// WHY NOT THE OTHER SHAPES. (a) Requiring an entry to NAME the expression it is keyed on
-// was the near miss: a name in a string is prose again, and a maintainer who mis-keys the
-// code will describe the key they meant. Reading the key off the ACCESS SITES gets the
-// same guarantee from the source of truth. (b) Failing when a function that reads a
-// module cache is called from a site holding a tenant context but not passing it does
-// describe every one of the leaks exactly — but it needs a call graph this regex scanner does not
-// have, and it verifies PLUMBING: it goes green the moment the parameter is threaded and
-// ignored. The keyed rule subsumes the useful half locally — a cache that may only be
-// touched with a `tenantId` in hand forces the parameter to exist, at the one place where
-// getting it wrong is visible. (c) Pointing an entry at a test is kept, but only for the
-// UNKEYED residue and with no illusions: an existing file that names the binding proves
-// the pointer resolves and the name is spoken there, never that the case asserts
-// anything. Its real work is the other direction — a proof that is deleted or renamed
-// turns this lint red, which no sentence can do.
+//   cache      `const X = tenantCache(…)`. Checked: the declaration is that call, the
+//              module really imports it from src/tenant-cache.mjs, every touch is one of
+//              the handle's own methods (read off the module, not copied here), and every
+//              method that reaches a value is given a `tenantId` expression.
+//
+//   frozen     `const X = Object.freeze(…)`. Checked: `const`, and that call at the
+//              declaration. Not a Map or a Set — freezing one leaves `.add()` and
+//              `.set()` working, so a frozen Set is a table with a lock painted on it.
+//
+//   unkeyed    a bare per-isolate slot. THE SHAPE EVERY LEAK HAD, kept as a quarantine
+//              because the engine still has four. An entry names a `proof` — a test file
+//              that exists and speaks the binding's name — and the TOTAL across every
+//              module must equal `UNKEYED_BUDGET` exactly. Exact, not a ceiling: closing
+//              one forces the number down in the same commit, and opening one forces a
+//              diff line that reads "I increased the number of per-isolate slots two
+//              workspaces share". That line is the review.
+//
+// AND THE REASONS ARE GONE. The failure that outlived every rebuild is that an entry's
+// stated reason is PROSE, and no checker can tell whether prose is true — every closed
+// leak was on the list under a sentence asserting the safety it did not have ("a hash is
+// content-addressed, so it means the same thing everywhere"). The answer is not a better
+// sentence or a scan for weasel words. It is that `cache` and `frozen` are ARRAYS OF
+// NAMES: there is no field to write a claim into, so no reader can be persuaded by one.
+// What a human needs to know sits in a `//` comment beside the name, which is visibly
+// commentary rather than data. Prose survives in exactly one place — `unkeyed`, where a
+// slot's danger genuinely cannot be checked — and that place is capped by a number.
 //
 // FOUR OLDER DIRECTIONS, ALL STILL FATAL.
 //
-//   UNLISTED   a binding the module's allowlist has never heard of — someone added a
-//              global. Fail. A module with no section at all allows nothing, so a NEW
-//              module carrying state fails on its first binding rather than on nobody
-//              remembering to name it somewhere.
+//   UNLISTED   a binding the module's allowlist has never heard of. Fail. A module with
+//              no section at all allows nothing, so a NEW module carrying state fails on
+//              its first binding rather than on nobody remembering to name it somewhere.
 //   STALE      an allowlist entry with no binding left in its module — the sweep removed
 //              it. Its line goes with it, so the list SHRINKS as threading lands instead
 //              of rotting into standing permission for whatever gets added later.
@@ -104,22 +100,34 @@
 //   READMITTED an allowlist entry that names a field of the tenant context. The sweep is
 //              done, so the route back to a shared config global is not a new name but an
 //              old one re-declared with a plausible reason attached. A per-workspace field
-//              cannot be invariant, so the reason is refused unread.
+//              cannot be fixed, so the entry is refused unread.
 //
-// THE GAPS IT DOES NOT COVER, stated so nobody mistakes green for proof.
-//   · Module-scope state with no BINDING NAME is invisible to a scan that works by names —
-//     `export default {…}`, which every worker has exactly one of, is a live object the
-//     runtime calls methods on, so a handler writing `this.something = …` would hold
-//     per-isolate state this lint never sees. Flagging every default export would flag the
-//     one legitimate handler and say nothing useful about it, so this stays a review
-//     question, in the same way `scripts/no-foreign-vocabulary.mjs` names the two shapes
-//     it cannot catch.
-//   · A KEYED cache is keyed; whether the KEY is the right workspace is `resolveTenant`'s
-//     job, guarded by `scripts/one-tenant-resolver.mjs`, not this one's.
-//   · The budget is a line in this file, and the same commit that adds a slot can raise
-//     it. That is on purpose: the point is not that it is impossible, it is that it is
-//     LOUD. What is impossible is doing it the way all three leaks were done — by adding
-//     a sentence to a list of sentences.
+// ---- THE GAPS, stated so nobody mistakes green for proof -----------------------------
+//
+//   · STATE WITH NO BINDING NAME is invisible to a scan that works by names. Two shapes
+//     have it: `export default {…}`, which every worker has one of and whose methods the
+//     runtime calls, so `this.x = …` inside a handler is per-isolate state; and a
+//     module-scope IIFE, which runs and captures without ever naming what it made.
+//     Flagging either would flag the one legitimate case and say nothing useful, so both
+//     stay review questions — the same way scripts/no-foreign-vocabulary.mjs names the
+//     two shapes it cannot catch.
+//   · `Object.freeze` IS SHALLOW. It stops every write to the table and none to an object
+//     inside it, so `TABLE.sub[k] = v` still runs. Every frozen table here is one level
+//     deep at the point of use, and a nested one would be a review question, not a lint
+//     one.
+//   · THE KEY MUST SAY `tenantId`, and that is a name, not a proof. `M.get(x.tenantId)`
+//     passes whatever `x` is, so an object built with a `tenantId` field of the wrong
+//     value would pass. Aliases are refused precisely to keep this narrow (see
+//     TENANT_KEY below), but the residue is real: WHICH workspace a request is for is
+//     `resolveTenant`'s answer, guarded by scripts/one-tenant-resolver.mjs, not this
+//     one's.
+//   · A `cache` HANDLE IS KEYED, NOT CORRECT. It guarantees the caller named a workspace,
+//     never that the value stored under that name belongs to it. A handler that writes
+//     workspace A's document under B's id is beyond anything structural here.
+//   · THE BUDGET IS A LINE IN THIS FILE, and the same commit that adds a slot can raise
+//     it. On purpose: the point is not that it is impossible, it is that it is LOUD.
+//     What IS impossible now is doing it the way every leak was done — by adding a
+//     sentence to a list of sentences.
 //
 // Usage: node scripts/no-tenant-globals.mjs [--entry <path>] [--quiet]
 // No config, no dependencies. Exit 1 on any failure.
@@ -129,51 +137,66 @@ import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
 import { TENANT_FIELD_NAMES } from "../src/tenant-context.mjs";
+import {
+  tenantCache,
+  TENANT_CACHE_KEYED_METHODS,
+  TENANT_CACHE_WHOLE_METHODS,
+} from "../src/tenant-cache.mjs";
 
 export const ENTRY = "src/_worker.js";
 
+// The module that owns the one cache constructor. A `cache` entry is only believed in a
+// module that actually imports it from here — otherwise `tenantCache` is just a name
+// somebody could declare locally to mean anything.
+export const CACHE_MODULE = "src/tenant-cache.mjs";
+
 // How many bare per-isolate slots this engine still has. EXACT, and it only goes down —
-// see UNKEYED above. Every one of them is a workspace-shared slot that a Host-resolving
+// see `unkeyed` above. Every one of them is a workspace-shared slot that a Host-resolving
 // isolate will get wrong, so this number is the phase's remaining debt, counted.
 export const UNKEYED_BUDGET = 4;
 
 // ---- the allowlist, per module -------------------------------------------------------
 //
-// THREE KINDS, and there is no fourth. `caches` is gone: it was one bucket holding both
-// "keyed by workspace, provably" and "one slot the whole isolate shares", told apart only
-// by the sentence beside them, and the sentence is what failed. Two of the kinds below are
-// now decided from the code; the third is the quarantine, budgeted.
+// `cache` and `frozen` are LISTS OF NAMES. They carry no reason, because a reason is the
+// thing that failed: every verdict below is read off the declaration and its uses, and
+// there is deliberately nowhere in this structure to assert a safety the code does not
+// have. Notes are comments — commentary, not data.
 //
-// Keyed by module because a name is only invariant in the module that declares it: an
+// Keyed by module because a name is only meaningful in the module that declares it: an
 // entry vouching for `FIELDS` in the context module must not quietly vouch for a `FIELDS`
 // somebody adds to the worker.
 const ALLOWLIST = {
   "src/_worker.js": {
-    // KEYED — one entry per workspace, and the lint checks that every touch carries the
-    // key. The notes say what the value IS and what the key is therefore holding back.
-    keyed: {
-      MANIFESTS:        "the live content manifests each workspace's store lists, bounded; the value IS one workspace's published content and its gate-deciding routing, so the key is what stops a neighbour's bytes answering at this workspace's URLs",
-      STORAGE_CACHE:    "the R2 fill gauge the admin panel shows, bounded; the number measures one workspace's own store",
-      mcpHostAllowlist: "the proxy host lists resolved from each workspace's published document, bounded; the value is derived from one workspace's config, so the key is what stops a neighbour answering from it",
-      CANVAS_REGISTRY:  "the created-board registry each workspace keeps in KV, bounded; the value names one workspace's boards and the route that reads it serves them to a signed-out stranger before the login page, so the key is what stops a neighbour's boards answering at this workspace's URLs",
-      PITI_REMARKS:     "the queued remarks each workspace's companion polls for, bounded; the poll is an ungated route and the value is text written for one workspace's pages",
-      ROSTER_OVERLAY:   "the six roster KV documents each workspace keeps beside its config — invites, removals, roles, memberships, photo hashes, icon hashes — bounded; the value decides who exists in a workspace and WHAT THEY MAY DO, so the key is an authorization boundary: a single slot was reproduced serving a neighbour's person from the ungated /__people, a neighbour's photo bytes from /__avatar/, and admin to a viewer out of a neighbour's role overlay",
-    },
+    // Per-workspace caches. Each holds one workspace's own documents — its published
+    // manifests and the routing that decides its gate; its store fill; its resolved proxy
+    // hosts; the boards and the queued remarks its two UNGATED poll routes serve; and the
+    // roster overlay, which decides who exists in a workspace and what they may do.
+    // Every one of them was a single slot once, and three of them were reproduced serving
+    // one workspace another's content.
+    cache: [
+      "MANIFESTS",
+      "STORAGE_CACHE",
+      "mcpHostAllowlist",
+      "CANVAS_REGISTRY",
+      "PITI_REMARKS",
+      "ROSTER_OVERLAY",
+    ],
 
-    // INVARIANT — never written after module load, which is what the lint checks. The note
-    // says why nobody should ever want to write it.
-    invariant: {
-      ROLES:               "the fixed role vocabulary — admin, editor, viewer",
-      AVATAR_MIMES:        "accepted avatar formats and their magic-byte tests; a file format is not a tenant property",
-      ROSTER_COLORS:       "the presence-chip palette, indexed by a hash of the address",
-      ENGINE_CHROME_PATHS: "the shared chrome paths no space may write; mirrors ENGINE_CHROME in build.js",
-      MCP_PROXY_PATHS:     "the fixed paths the MCP and OAuth flows use",
-      VALID_STATUS:        "the fixed prototype status vocabulary",
-      __testables:         "the table of pure helpers the suite imports; function references and fixed numbers, written once, and the request path reads none of it",
-    },
+    // Fixed tables, frozen at the declaration so a write throws rather than turning the
+    // table into per-isolate state under a constant's name.
+    frozen: [
+      "LEGACY_USER_COOKIES",  // ⏳ the two names the session cookie used to be issued under
+      "ROLES",                // admin, editor, viewer
+      "AVATAR_MIMES",         // accepted avatar formats and their magic-byte tests
+      "ROSTER_COLORS",        // the presence-chip palette, indexed by a hash of the address
+      "ENGINE_CHROME_PATHS",  // the shared chrome paths no space may write
+      "MCP_PROXY_PATHS",      // the three paths the MCP/OAuth protocol speaks
+      "VALID_STATUS",         // the prototype status vocabulary
+      "__testables",          // the table of helpers the suite imports; the request path reads none of it
+    ],
 
     // UNKEYED — the quarantine. Every one of these is a single slot the whole isolate
-    // shares, which is the shape both reproduced leaks had. `why` says what it holds and
+    // shares, which is the shape every reproduced leak had. `why` says what it holds and
     // what a second workspace would therefore be answered with; `proof` names where two
     // workspaces are driven against it. Count them: UNKEYED_BUDGET.
     unkeyed: {
@@ -197,36 +220,46 @@ const ALLOWLIST = {
   },
 
   "src/tenant-context.mjs": {
-    invariant: {
-      FIELDS: "the context's SHAPE — every field, its source and its default FACTORY. It is a table of factories, never of values, so nothing a workspace owns is stored in it; two contexts built from it share no reference, which is the leak this whole module exists to close",
-    },
+    frozen: [
+      "FIELDS",                 // the context's SHAPE: a table of default FACTORIES, never of values
+      "TENANT_FIELD_NAMES",     // the field names, derived from FIELDS at load
+      "TENANT_FIELD_SOURCES",   // where each field's value comes from
+      "LEGACY_MCP_PATH_FLOOR",  // ⏳ the path floor a pre-declaration manifest keeps
+    ],
+  },
+
+  "src/tenant-cache.mjs": {
+    frozen: [
+      "TENANT_CACHE_KEYED_METHODS", // the handle methods that reach a value
+      "TENANT_CACHE_WHOLE_METHODS", // the ones that cannot hand back one workspace's value
+    ],
   },
 
   "src/mail.mjs": {
-    invariant: {
-      DRIVERS:   "the shapes of HTTP request each provider takes; a provider's API is not a workspace property, and every value a deployment supplies (endpoint, key, sender, region) arrives in env at call time",
-      TEMPLATES: "the three message bodies, as render functions; the workspace's words arrive as vars per call",
-      MAIL_RATE: "the per-recipient send caps; a fixed policy, and the counters it governs live in KV",
-    },
+    frozen: [
+      "DRIVERS",    // the shape of HTTP request each provider takes; every deployment value arrives in env
+      "TEMPLATES",  // the three message bodies, as render functions
+      "MAIL_RATE",  // the per-recipient send caps; the counters they govern live in KV
+    ],
   },
 
   "src/chrome/appchrome.mjs": {
-    invariant: {
-      ACRONYMS: "words the title-caser must not sentence-case; a fact about English, not about a workspace",
-      LIB_KEYS: "the fixed gallery tiers — tokens, base, components, patterns, pages, primitives",
-    },
+    frozen: [
+      "ACRONYMS",  // words the title-caser must not sentence-case; a fact about English
+      "LIB_KEYS",  // the fixed gallery tiers
+    ],
   },
 };
 
-// Flattened for the checker and for anything that wants to read the claims: module -> name
-// -> { kind, why, proof? }.
+// Flattened for the checker and for anything that wants to read the list: module -> name
+// -> { kind, why?, proof? }. `why` exists only on the quarantine.
 export const ALLOWED = Object.freeze(
   Object.fromEntries(
     Object.entries(ALLOWLIST).map(([mod, groups]) => [
       mod,
       Object.freeze({
-        ...Object.fromEntries(Object.entries(groups.keyed || {}).map(([k, why]) => [k, { kind: "keyed", why }])),
-        ...Object.fromEntries(Object.entries(groups.invariant || {}).map(([k, why]) => [k, { kind: "invariant", why }])),
+        ...Object.fromEntries((groups.cache || []).map((k) => [k, { kind: "cache" }])),
+        ...Object.fromEntries((groups.frozen || []).map((k) => [k, { kind: "frozen" }])),
         ...Object.fromEntries(
           Object.entries(groups.unkeyed || {}).map(([k, e]) => [k, { kind: "unkeyed", why: e.why, proof: e.proof }]),
         ),
@@ -235,7 +268,7 @@ export const ALLOWED = Object.freeze(
   ),
 );
 
-export const KINDS = ["keyed", "invariant", "unkeyed"];
+export const KINDS = ["cache", "frozen", "unkeyed"];
 
 // ---- the module graph ----------------------------------------------------------------
 
@@ -282,68 +315,7 @@ export function discoverModules(entryAbs, root, read = (p) => fs.readFileSync(p,
   return [...seen.values()];
 }
 
-// ---- the scan -----------------------------------------------------------------------
-
-// A `const` initializer that can be written to after module load.
-const CONTAINER = /^(\[|\{|new\s+(?:Set|Map|WeakSet|WeakMap)\b)/;
-// `export` in front changes nothing about where the state lives, so it is optional here.
-const DECL = /^(?:export\s+)?(let|var|const)\s+([A-Za-z_$][\w$]*)\s*(?:=\s*(.*))?$/;
-const DESTRUCTURE = /^(?:export\s+)?(let|var|const)\s*[[{]/;
-
-// Is there a comma outside every bracket and string on this line? `let A = [], B = [];`
-// would otherwise hide B from the lint behind A's allowlist entry.
-function hasTopLevelComma(line) {
-  let depth = 0;
-  let quote = null;
-  for (let i = 0; i < line.length; i++) {
-    const c = line[i];
-    if (quote) {
-      if (c === "\\") i++;
-      else if (c === quote) quote = null;
-      continue;
-    }
-    if (c === '"' || c === "'" || c === "`") quote = c;
-    else if (c === "/" && line[i + 1] === "/") break;
-    else if (c === "(" || c === "[" || c === "{") depth++;
-    else if (c === ")" || c === "]" || c === "}") depth--;
-    else if (c === "," && depth === 0) return true;
-  }
-  return false;
-}
-
-// Every module-scope binding that can hold state. Column 0 is the whole test for "module
-// scope": the worker's embedded client scripts live inside template literals and are all
-// indented, so nothing nested is reachable from here.
-export function moduleScopeBindings(source) {
-  const out = [];
-  const lines = source.split("\n");
-  for (let i = 0; i < lines.length; i++) {
-    const line = lines[i];
-    if (DESTRUCTURE.test(line)) {
-      out.push({ name: null, keyword: line.trim().split(/\s+/)[0], line: i + 1, destructured: true });
-      continue;
-    }
-    const m = DECL.exec(line);
-    if (!m) continue;
-    const [, keyword, name] = m;
-    let init = m[3] || "";
-    // `const X =` with the value on the next line is the same declaration wrapped, and
-    // reading only this line would classify a container as a scalar and skip it.
-    if (!init) {
-      for (let j = i + 1; j < lines.length; j++) {
-        const t = lines[j].trim();
-        if (!t || t.startsWith("//")) continue;
-        init = t;
-        break;
-      }
-    }
-    if (keyword === "const" && !CONTAINER.test(init)) continue;
-    out.push({ name, keyword, line: i + 1, init: init.trim(), multi: hasTopLevelComma(line) });
-  }
-  return out;
-}
-
-// ---- reading the USES, which is where the claim now lives ----------------------------
+// ---- comments ------------------------------------------------------------------------
 
 // Comment LINES only, plus block comments. Deliberately not a general comment stripper: a
 // trailing `//` after code is indistinguishable from the inside of a regex literal without
@@ -371,6 +343,209 @@ export function stripComments(source) {
   }
   return out.join("\n");
 }
+
+// ---- "is this initializer provably NOT state?" ---------------------------------------
+//
+// The inversion. Everything this function cannot PROVE harmless is state and has to be on
+// the list. Being wrong here costs a false alarm and a line on the allowlist; being wrong
+// the other way is how `const SLOT = makeSlot()` was invisible.
+
+// Consume one primitive literal at `i`. Returns the index after it, or -1.
+function eatLiteral(s, i) {
+  const c = s[i];
+  if (c === '"' || c === "'") {
+    for (let j = i + 1; j < s.length; j++) {
+      if (s[j] === "\\") { j++; continue; }
+      if (s[j] === c) return j + 1;
+    }
+    return -1;
+  }
+  if (c === "`") {
+    // A template literal always EVALUATES to a string, whatever is interpolated into it,
+    // so the substitutions only have to be skipped, never understood.
+    for (let j = i + 1; j < s.length; j++) {
+      if (s[j] === "\\") { j++; continue; }
+      if (s[j] === "`") return j + 1;
+      if (s[j] === "$" && s[j + 1] === "{") {
+        let depth = 1;
+        j += 2;
+        while (j < s.length && depth) {
+          if (s[j] === "{") depth++;
+          else if (s[j] === "}") depth--;
+          j++;
+        }
+        j--;
+      }
+    }
+    return -1;
+  }
+  const num = /^-?(?:0[xX][0-9a-fA-F_]+|\d[\d_]*(?:\.[\d_]+)?(?:[eE][-+]?\d+)?|\.\d[\d_]*)/.exec(s.slice(i));
+  if (num) return i + num[0].length;
+  const word = /^(?:true|false|null|undefined)\b/.exec(s.slice(i));
+  if (word) return i + word[0].length;
+  return -1;
+}
+
+// A regex literal at position 0, and nothing after it.
+const REGEX_LITERAL = /^\/(?:\\.|\[(?:\\.|[^\]])*\]|[^/\\\n])+\/[gimsuyd]*$/;
+
+// `Symbol("x")` / `Symbol.for("x")` — a primitive, like a number. The only call form on
+// this side of the line, and it is here because a symbol cannot hold anything.
+const SYMBOL_CALL = /^Symbol(?:\.for)?\s*\(\s*(?:(["'])(?:\\.|(?!\1).)*\1\s*)?\)$/;
+
+// A chain of primitive literals joined by arithmetic/concatenation — `60 * 60 * 24 * 7`,
+// `"pbkdf2$"`, `` `a${b}c` ``, `1024 * 64`. Whatever the operands, the result of `+ - * /
+// %` over literals is a primitive.
+function isLiteralExpression(init) {
+  let i = 0;
+  const s = init.trim();
+  if (!s) return false;
+  for (;;) {
+    while (i < s.length && /\s/.test(s[i])) i++;
+    const next = eatLiteral(s, i);
+    if (next === -1) return false;
+    i = next;
+    while (i < s.length && /\s/.test(s[i])) i++;
+    if (i >= s.length) return true;
+    if (!/[+\-*/%]/.test(s[i])) return false;
+    i++;
+  }
+}
+
+// A function expression: `function (…)`, `async function`, or an arrow — recognised by a
+// `=>` at depth 0, which `foo(() => 1)` does not have and `(a, b) => …` does.
+function isFunctionExpression(init) {
+  if (/^(?:async\s+)?function\b/.test(init)) return true;
+  let depth = 0;
+  let quote = null;
+  for (let i = 0; i < init.length; i++) {
+    const c = init[i];
+    if (quote) {
+      if (c === "\\") i++;
+      else if (c === quote) quote = null;
+      continue;
+    }
+    if (c === '"' || c === "'" || c === "`") { quote = c; continue; }
+    if (c === "(" || c === "[" || c === "{") depth++;
+    else if (c === ")" || c === "]" || c === "}") depth--;
+    else if (c === "=" && init[i + 1] === ">" && depth === 0) return true;
+  }
+  return false;
+}
+
+// Module-scope arrows whose BODY is a string — `const ic = (inner) => \`<svg …\`;`. A call
+// to one of those binds a string, and a string is not state. This is the only call form
+// admitted beyond `Symbol`, and it is admitted structurally: the body has to start with a
+// quote or a backtick, so a factory with a block body (`() => { let v; … }` — exactly the
+// bypass) is not one of these.
+export function stringBuilderNames(source) {
+  const names = new Set();
+  const re = /^(?:export\s+)?const\s+([A-Za-z_$][\w$]*)\s*=\s*(?:async\s+)?\([^)]*\)\s*=>\s*[`"']/gm;
+  for (const m of source.matchAll(re)) names.add(m[1]);
+  const re1 = /^(?:export\s+)?const\s+([A-Za-z_$][\w$]*)\s*=\s*[A-Za-z_$][\w$]*\s*=>\s*[`"']/gm;
+  for (const m of source.matchAll(re1)) names.add(m[1]);
+  return names;
+}
+
+// The whole question, in one place.
+export function isProvablyNotState(init, builders = new Set()) {
+  const s = String(init || "").trim().replace(/;+$/, "").trim();
+  if (!s) return false;
+  if (isLiteralExpression(s)) return true;
+  if (REGEX_LITERAL.test(s)) return true;
+  if (SYMBOL_CALL.test(s)) return true;
+  if (isFunctionExpression(s)) return true;
+  const call = /^([A-Za-z_$][\w$]*)\s*\(/.exec(s);
+  if (call && builders.has(call[1]) && s.endsWith(")")) return true;
+  return false;
+}
+
+// ---- module-scope bindings -----------------------------------------------------------
+
+// `export` in front changes nothing about where the state lives, so it is optional here.
+const DECL = /^(?:export\s+)?(let|var|const)\s+([A-Za-z_$][\w$]*)\s*(?:=|;|$)/;
+const DESTRUCTURE = /^(?:export\s+)?(let|var|const)\s*[[{]/;
+
+// Is there a comma outside every bracket and string on this line? `let A = [], B = [];`
+// would otherwise hide B from the lint behind A's allowlist entry.
+function hasTopLevelComma(line) {
+  let depth = 0;
+  let quote = null;
+  for (let i = 0; i < line.length; i++) {
+    const c = line[i];
+    if (quote) {
+      if (c === "\\") i++;
+      else if (c === quote) quote = null;
+      continue;
+    }
+    if (c === '"' || c === "'" || c === "`") quote = c;
+    else if (c === "/" && line[i + 1] === "/") break;
+    else if (c === "(" || c === "[" || c === "{") depth++;
+    else if (c === ")" || c === "]" || c === "}") depth--;
+    else if (c === "," && depth === 0) return true;
+  }
+  return false;
+}
+
+// The initializer text, from just after the `=` to the `;` that ends the statement —
+// across as many lines as it takes, so a wrapped declaration is classified by its whole
+// value rather than by whichever fragment landed on the first line.
+function initializerAt(source, eqIndex) {
+  let depth = 0;
+  let quote = null;
+  for (let i = eqIndex + 1; i < source.length; i++) {
+    const c = source[i];
+    if (quote) {
+      if (c === "\\") { i++; continue; }
+      if (c === quote) quote = null;
+      continue;
+    }
+    if (c === '"' || c === "'" || c === "`") { quote = c; continue; }
+    if (c === "/" && source[i + 1] === "/" && depth === 0) {
+      const nl = source.indexOf("\n", i);
+      if (nl === -1) return source.slice(eqIndex + 1, i);
+      i = nl;
+      continue;
+    }
+    if (c === "(" || c === "[" || c === "{") depth++;
+    else if (c === ")" || c === "]" || c === "}") depth--;
+    else if (c === ";" && depth === 0) return source.slice(eqIndex + 1, i);
+  }
+  return source.slice(eqIndex + 1);
+}
+
+// Every module-scope binding that can hold state. Column 0 is the whole test for "module
+// scope": the worker's embedded client scripts live inside template literals and are all
+// indented, so nothing nested is reachable from here.
+export function moduleScopeBindings(source) {
+  const builders = stringBuilderNames(source);
+  const out = [];
+  const lines = source.split("\n");
+  let offset = 0;
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    const lineStart = offset;
+    offset += line.length + 1;
+    if (DESTRUCTURE.test(line)) {
+      out.push({ name: null, keyword: line.trim().split(/\s+/)[0], line: i + 1, destructured: true });
+      continue;
+    }
+    const m = DECL.exec(line);
+    if (!m) continue;
+    const [, keyword, name] = m;
+    // DECL's match ends ON the `=` when there is one. A declaration with no initializer,
+    // or one whose `=` wrapped onto the next line, gets an empty initializer — which is
+    // not provably harmless, so it counts as state. That is the safe direction.
+    const eq = m[0].endsWith("=") ? m[0].length - 1 : -1;
+    const init = eq === -1 ? "" : initializerAt(source, lineStart + eq).trim();
+    // A `let`/`var` is state whatever it holds — it can be reassigned from a request.
+    if (keyword === "const" && isProvablyNotState(init, builders)) continue;
+    out.push({ name, keyword, line: i + 1, init, multi: hasTopLevelComma(line) });
+  }
+  return out;
+}
+
+// ---- reading the USES of a cache handle ----------------------------------------------
 
 const esc = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
@@ -414,42 +589,34 @@ function firstArg(args) {
   return args.trim();
 }
 
-// Which identifiers in this module hold a workspace id. `tenantId` and anything ending
-// `.tenantId` name themselves; a local assigned from one is the same value under another
-// name (`const key = tctx.tenantId`), so it counts too. Nothing else does — an identifier
-// the scanner cannot trace back to a tenant id is not accepted as a key, which is the
-// difference between checking the code and believing a comment about it.
-const TENANT_EXPR = /(?:^|\.)tenantId$/;
-const ALIAS = /(?:^|[\s(;{])(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*=\s*([A-Za-z_$][\w$.]*\.tenantId)\s*[;,)]/g;
+// A workspace key SAYS SO: `tenantId`, or a member chain ending in `.tenantId`.
+//
+// There are deliberately NO aliases. The previous version accepted any local ever
+// assigned from a tenant id anywhere in the module — a module-wide set of trusted names —
+// so `const key = "everyone"` in one function passed because `const key = tctx.tenantId`
+// existed in another. An alias is a local name CLAIMING to be the workspace, which is a
+// sentence in identifier form, and sentences are what this file no longer reads. Code
+// that wants a key in a local writes `tctx.tenantId` at the access instead.
+const TENANT_KEY = /^(?:[A-Za-z_$][\w$]*(?:\s*\.\s*[A-Za-z_$][\w$]*)*\s*\.\s*)?tenantId$/;
 
-export function tenantKeyNames(source) {
-  const names = new Set(["tenantId"]);
-  for (const m of source.matchAll(ALIAS)) names.add(m[1]);
-  return names;
-}
+const isTenantKey = (expr) => !!expr && TENANT_KEY.test(expr.trim());
 
-const isTenantKey = (expr, aliases) =>
-  !!expr && (TENANT_EXPR.test(expr.trim()) || aliases.has(expr.trim()));
-
-// `.get/.set/.delete/.has` must carry a key. `.clear/.size/.keys` operate on the whole map
-// and cannot hand back one workspace's value. Everything else — `.values() .entries()
-// .forEach()` — reads every workspace's entry at once and has no place on a keyed cache.
-const NEEDS_KEY = new Set(["get", "set", "delete", "has"]);
-const WHOLE_MAP = new Set(["clear", "size", "keys"]);
+const KEYED_METHODS = new Set(TENANT_CACHE_KEYED_METHODS);
+const WHOLE_METHODS = new Set(TENANT_CACHE_WHOLE_METHODS);
 
 const lineOf = (source, index) => source.slice(0, index).split("\n").length;
 
-// Every problem with how a KEYED cache is declared and touched, in ONE module. This is the
-// whole of the claim "keyed by workspace": nothing here reads the note beside the entry.
-export function checkKeyedUses(source, name, declLine) {
-  const code = stripComments(source);
-  const aliases = tenantKeyNames(code);
-  const problems = [];
+// Does this module import the cache constructor from the module that owns it? A `cache`
+// entry is a claim about `tenantCache`, and a locally-declared `tenantCache` would be a
+// different function with the same name.
+const IMPORTS_CACHE =
+  /import\s*\{[^}]*\btenantCache\b[^}]*\}\s*from\s*["'][^"']*tenant-cache\.mjs["']/;
 
-  // The eviction idiom, which is keyed by the map's own least-recent key rather than by a
-  // caller's workspace: `X.delete(X.keys().next().value)`. Recognised exactly, not by
-  // shape, so `X.delete(Y.keys().next().value)` is not it.
-  const evict = `${name}.keys().next().value`;
+// Every problem with how a cache handle is declared and touched, in ONE module. Nothing
+// here reads a note, because there is no note to read.
+export function checkCacheUses(source, name, declLine) {
+  const code = stripComments(source);
+  const problems = [];
 
   const re = new RegExp(`(?<![\\w$])${esc(name)}(?![\\w$])(\\s*[.:]?)`, "g");
   for (const m of code.matchAll(re)) {
@@ -462,10 +629,11 @@ export function checkKeyedUses(source, name, declLine) {
     if (tail.trim() === ":") continue;
     if (tail.trim() !== ".") {
       problems.push({
-        kind: "keyed-escapes", name, line,
+        kind: "cache-escapes", name, line,
         message:
-          "a keyed cache used as a value rather than through a keyed access — spreading, iterating or passing the whole Map " +
-          "hands over every workspace's entry at once. Touch it only as " + name + ".get/.set/.delete/.has(<tenantId>)",
+          "a per-workspace cache used as a value rather than through one of its own methods — passing the handle " +
+          "somewhere hands over every workspace's entry to whatever that place does with it. Touch it only as " +
+          `${name}.${TENANT_CACHE_KEYED_METHODS.join("/")}(<tenantId>, …)`,
       });
       continue;
     }
@@ -473,63 +641,32 @@ export function checkKeyedUses(source, name, declLine) {
     const mem = /^\s*([A-Za-z_$][\w$]*)/.exec(rest);
     if (!mem) continue;
     const member = mem[1];
-    if (WHOLE_MAP.has(member)) continue;
-    if (!NEEDS_KEY.has(member)) {
+    if (WHOLE_METHODS.has(member)) continue;
+    if (!KEYED_METHODS.has(member)) {
       problems.push({
-        kind: "keyed-unkeyed-read", name, line,
+        kind: "cache-unknown-method", name, line,
         message:
-          `.${member}() on a keyed cache reads every workspace's entry without a key — the value belongs to one ` +
-          "workspace, so there is no correct answer to a question asked without naming which",
+          `.${member} is not one of the handle's methods (${[...TENANT_CACHE_KEYED_METHODS, ...TENANT_CACHE_WHOLE_METHODS].join(", ")}) ` +
+          "— a tenantCache handle is frozen, so this either throws at runtime or is not the cache at all",
       });
       continue;
     }
     const paren = rest.indexOf("(", mem.index + member.length);
     const key = paren === -1 ? null : firstArg(callArgs(rest, paren));
-    if (key !== null && key.replace(/\s+/g, "") === evict) continue;
-    if (isTenantKey(key, aliases)) continue;
+    if (isTenantKey(key)) continue;
     problems.push({
-      kind: "keyed-bad-key", name, line,
+      kind: "cache-bad-key", name, line,
       message:
-        `.${member}(${key === null ? "" : key}) is not keyed by workspace — the first argument must be a tenantId ` +
-        "expression (or a local assigned from one). This is the check that replaces the sentence beside the entry: " +
-        "every closed leak was a cache whose written reason claimed a safety its accesses did not have",
+        `.${member}(${key === null ? "" : key}) does not name a workspace — the first argument must be a \`tenantId\` ` +
+        "expression (`tenantId`, or something ending `.tenantId`). A literal, or a local that merely looks like a " +
+        "workspace, is one slot with extra syntax: `const key = \"everyone\"; M.get(key)` is how a keyed cache became " +
+        "a shared one while this lint was green",
     });
   }
   return problems;
 }
 
-// A write to `name` anywhere after its declaration. An INVARIANT binding has none: module
-// load runs before any request, so a table nobody writes cannot hold a workspace's data.
-const MUTATORS = "push|pop|shift|unshift|splice|sort|reverse|fill|copyWithin|set|add|delete|clear";
-
-export function checkInvariantWrites(source, name, declLine) {
-  const code = stripComments(source);
-  const n = esc(name);
-  const patterns = [
-    [new RegExp(`(?<![\\w$])${n}(?![\\w$])\\s*(?:\\|\\||\\?\\?|&&)?=(?!=)`), "reassigned"],
-    [new RegExp(`(?<![\\w$])${n}(?![\\w$])\\s*\\.\\s*(?:${MUTATORS})\\s*\\(`), "mutated"],
-    [new RegExp(`(?<![\\w$])${n}(?![\\w$])\\s*\\[[^\\]]*\\]\\s*=(?!=)`), "index-assigned"],
-    [new RegExp(`(?<![\\w$])${n}(?![\\w$])\\s*\\.\\s*[A-Za-z_$][\\w$]*\\s*=(?!=)`), "property-assigned"],
-    [new RegExp(`Object\\s*\\.\\s*assign\\s*\\(\\s*${n}(?![\\w$])`), "Object.assign target"],
-  ];
-  const problems = [];
-  const lines = code.split("\n");
-  for (let i = 0; i < lines.length; i++) {
-    if (i + 1 === declLine) continue;
-    for (const [re, how] of patterns) {
-      if (!re.test(lines[i])) continue;
-      problems.push({
-        kind: "invariant-written", name, line: i + 1,
-        message:
-          `${how} after module load — an INVARIANT entry claims the value is fixed before any request arrives, and a ` +
-          "written one can be a workspace's data under a table's name. Make it a keyed cache, or thread it onto the " +
-          "tenant context",
-      });
-      break;
-    }
-  }
-  return problems;
-}
+// ---- the per-module check ------------------------------------------------------------
 
 // Returns every problem found in ONE module, each as `{ kind, name, line, message }`. An
 // empty list is the pass condition; the caller decides how to report.
@@ -541,6 +678,7 @@ export function checkModuleGlobals(source, options = {}) {
   const bindings = moduleScopeBindings(source);
   const problems = [];
   const seen = new Set();
+  const importsCache = IMPORTS_CACHE.test(source);
 
   for (const b of bindings) {
     if (b.destructured) {
@@ -569,10 +707,11 @@ export function checkModuleGlobals(source, options = {}) {
         kind: "unlisted", name: b.name, line: b.line,
         message:
           "new module-scope state. If it is tenant config, add it to FIELDS in src/tenant-context.mjs and thread it " +
-          "rather than declaring it here. Otherwise it belongs under one of the three kinds in ALLOWLIST in " +
-          "scripts/no-tenant-globals.mjs — `keyed` (a Map this lint checks is keyed by workspace at every access), " +
-          "`invariant` (a const this lint checks is never written after load), or `unkeyed` (a slot the whole isolate " +
-          "shares — the shape every cross-tenant leak had, so it costs a proof and a line off UNKEYED_BUDGET)",
+          "rather than declaring it here. If it is a cache, build it with `tenantCache()` from src/tenant-cache.mjs " +
+          "and list it under `cache`. If it is a fixed table, wrap it in `Object.freeze(…)` and list it under " +
+          "`frozen`. Anything else is a slot the whole isolate shares: `unkeyed`, which costs a proof and a line off " +
+          "UNKEYED_BUDGET. NOTE that a call initializer counts as state — `const X = makeSomething()` can return a " +
+          "closure over a module-scope slot, and that is exactly how one got past this lint",
       });
       continue;
     }
@@ -584,33 +723,55 @@ export function checkModuleGlobals(source, options = {}) {
       continue;
     }
 
-    // The structural half. `keyed` and `invariant` are decided here, from the declaration
-    // and every use of the name; `unkeyed` has nothing to check because being a bare slot
-    // IS what it declares — it is charged for at the graph level instead.
-    if (entry.kind === "keyed") {
-      if (!/^new\s+Map\s*\(\s*\)/.test(b.init || "")) {
+    // The structural half. `cache` and `frozen` are decided from the declaration — and
+    // for a cache, from every use of the name too. `unkeyed` has nothing to check because
+    // being a bare slot IS what it declares; it is charged for at the graph level instead.
+    if (entry.kind === "cache") {
+      if (!/^tenantCache\s*\(/.test(b.init || "")) {
         problems.push({
-          kind: "keyed-not-a-map", name: b.name, line: b.line,
+          kind: "cache-not-constructed", name: b.name, line: b.line,
           message:
-            "listed as keyed by workspace, but declared as a bare value rather than `const " + b.name + " = new Map()`. " +
-            "A slot that holds one answer cannot hold one answer PER WORKSPACE, whatever the entry says — this is " +
-            "exactly what the avatar index, the board registry and the roster overlay were when they leaked. Key it by " +
-            "tenantId, or move " +
-            "the entry to `unkeyed` and pay its budget",
+            "listed as a per-workspace cache but not built by `tenantCache(…)`. That constructor is the whole claim: " +
+            "its handle has no way to reach a value without naming a workspace and no way to enumerate what it holds, " +
+            "so a cache made any other way is a shape somebody has to be trusted about. Build it with tenantCache, or " +
+            "move the entry to `unkeyed` and pay its budget",
+        });
+      } else if (!importsCache) {
+        problems.push({
+          kind: "cache-not-imported", name: b.name, line: b.line,
+          message:
+            `built by a local \`tenantCache\` — this module does not import it from ${CACHE_MODULE}, so the name ` +
+            "vouches for nothing",
         });
       } else {
-        problems.push(...checkKeyedUses(source, b.name, b.line));
+        problems.push(...checkCacheUses(source, b.name, b.line));
       }
-    } else if (entry.kind === "invariant") {
+    } else if (entry.kind === "frozen") {
       if (b.keyword !== "const") {
         problems.push({
-          kind: "invariant-not-const", name: b.name, line: b.line,
+          kind: "frozen-not-const", name: b.name, line: b.line,
           message:
-            `listed as tenant-invariant but declared \`${b.keyword}\` — a rebindable name is not a table written once ` +
-            "at module load",
+            `listed as a fixed table but declared \`${b.keyword}\` — a rebindable name is not a table, whatever its ` +
+            "current value is frozen",
         });
       }
-      problems.push(...checkInvariantWrites(source, b.name, b.line));
+      if (!/^Object\s*\.\s*freeze\s*\(/.test(b.init || "")) {
+        problems.push({
+          kind: "frozen-not-frozen", name: b.name, line: b.line,
+          message:
+            "listed as a fixed table but not wrapped in `Object.freeze(…)`. The freeze is what makes this checkable: " +
+            "the engine then refuses every write at every site, including the ones a scanner cannot parse — a `??=` " +
+            "into an unfrozen table is how a per-request write into an \"invariant\" table went unseen",
+        });
+      } else if (/^Object\s*\.\s*freeze\s*\(\s*new\s+(?:Map|Set|WeakMap|WeakSet)\b/.test(b.init || "")) {
+        problems.push({
+          kind: "frozen-collection", name: b.name, line: b.line,
+          message:
+            "a frozen Map or Set is not a fixed table — `Object.freeze` does not touch their contents, so `.set()`, " +
+            "`.add()`, `.delete()` and `.clear()` all still work. Use a frozen array or object literal, or make it a " +
+            "`tenantCache` if it is really a cache",
+        });
+      }
     }
   }
 
@@ -622,11 +783,11 @@ export function checkModuleGlobals(source, options = {}) {
     });
   }
 
-  // The allowlist may not re-admit a threaded field. With the in-flight kind gone, the
-  // way back to a shared config global is not a new name — it is an OLD one, put back at
-  // module scope with a plausible cache or constant reason attached. A field of the
-  // tenant context is per workspace BY DEFINITION, so no reason can make it invariant,
-  // and this refuses the claim rather than reading it.
+  // The allowlist may not re-admit a threaded field. The way back to a shared config
+  // global is not a new name — it is an OLD one, put back at module scope with a
+  // plausible cache or constant reason attached. A field of the tenant context is per
+  // workspace BY DEFINITION, so no reason can make it fixed, and this refuses the claim
+  // rather than reading it.
   for (const name of Object.keys(allowed)) {
     if (!TENANT_FIELD_NAMES.includes(name)) continue;
     problems.push({
@@ -636,6 +797,25 @@ export function checkModuleGlobals(source, options = {}) {
   }
 
   return { bindings, problems };
+}
+
+// ---- the graph -----------------------------------------------------------------------
+
+// Does the constructor still answer to exactly the methods this file checks against? If
+// somebody adds a `values()` to the handle, every `cache` verdict silently widens — so
+// the handle is built and asked, rather than described here.
+export function checkCacheApi() {
+  const handle = tenantCache("lint-probe");
+  const actual = Object.keys(handle).sort();
+  const declared = [...TENANT_CACHE_KEYED_METHODS, ...TENANT_CACHE_WHOLE_METHODS].sort();
+  if (actual.join(",") === declared.join(",")) return [];
+  return [{
+    kind: "cache-api-drift", module: CACHE_MODULE, name: "tenantCache", line: 0,
+    message:
+      `the handle answers to [${actual.join(", ")}] but ${CACHE_MODULE} declares [${declared.join(", ")}]. ` +
+      "Every `cache` verdict is read off those two lists, so a method that is on neither is a way to touch a cache " +
+      "this lint has no opinion about — put it on the keyed list or the whole-cache list",
+  }];
 }
 
 // The whole graph: discover, then check each module against ITS section, then check that
@@ -653,7 +833,7 @@ export function checkGraph(root, options = {}) {
     : (allowed === ALLOWED ? UNKEYED_BUDGET : null);
   const modules = discoverModules(path.join(root, entryRel), root, read);
 
-  const problems = [];
+  const problems = [...checkCacheApi()];
   const bindings = [];
   for (const rel of modules) {
     const r = checkModuleGlobals(read(path.join(root, rel)), { allowed: allowed[rel] || {} });
@@ -726,7 +906,7 @@ function main(argv) {
     return i > -1 && argv[i + 1] ? argv[i + 1] : fallback;
   };
   const quiet = argv.includes("--quiet");
-  const root = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
+  const root = opt("--root", path.dirname(path.dirname(fileURLToPath(import.meta.url))));
   const entry = opt("--entry", ENTRY);
 
   const { modules, bindings, problems, unkeyed } = checkGraph(root, { entry });
@@ -740,12 +920,12 @@ function main(argv) {
   }
 
   if (!quiet) {
-    const counts = { keyed: 0, invariant: 0, unkeyed: 0 };
+    const counts = { cache: 0, frozen: 0, unkeyed: 0 };
     for (const b of bindings) counts[ALLOWED[b.module][b.name].kind]++;
     console.log(
       `${modules.length} modules reachable from ${entry}: ${bindings.length} module-scope bindings, all accounted ` +
-        `for — ${counts.keyed} caches keyed by workspace at every access, ${counts.invariant} tables never written ` +
-        `after load, ${counts.unkeyed} shared slots (budget ${UNKEYED_BUDGET}), no tenant config`,
+        `for — ${counts.cache} caches built by tenantCache and keyed at every access, ${counts.frozen} frozen ` +
+        `tables, ${counts.unkeyed} shared slots (budget ${UNKEYED_BUDGET}), no tenant config`,
     );
   }
   return 0;

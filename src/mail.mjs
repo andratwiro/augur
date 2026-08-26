@@ -77,7 +77,7 @@ export function mailConfigured(env) {
 // `missing(cfg)` returns the names of the settings this driver cannot work without, so a
 // half-configured deployment gets told which env var to set instead of a 400 from a
 // vendor.
-export const DRIVERS = {
+export const DRIVERS = Object.freeze({
   // Transactional Email over Scaleway's HTTP API (v1alpha1). Per-region endpoint, so
   // MAIL_REGION is required unless MAIL_API_URL spells the whole thing out. Auth is a
   // secret key in X-Auth-Token; the project the send is billed to goes in the body.
@@ -144,7 +144,7 @@ export const DRIVERS = {
     },
     id(json) { return json && typeof json.id === "string" ? json.id : ""; },
   },
-};
+});
 
 // ---- Templates ----------------------------------------------------------------------
 // Three messages, because three are what the product actually sends: someone confirming
@@ -201,7 +201,7 @@ const expiryLine = (hours) => {
   return `The link can be used once, and stops working in ${h} hour${h === 1 ? "" : "s"}.`;
 };
 
-export const TEMPLATES = {
+export const TEMPLATES = Object.freeze({
   // Someone typed an address into a signup form. Nothing exists yet — this proves the
   // address is theirs before anything is provisioned against it.
   "signup-verify": (v) => {
@@ -259,7 +259,7 @@ export const TEMPLATES = {
       }),
     };
   },
-};
+});
 
 export function renderMail(template, vars = {}) {
   const fn = TEMPLATES[template];
@@ -285,10 +285,10 @@ export function renderMail(template, vars = {}) {
 //
 // KV has no atomic increment, so this is a soft counter — the same shape and the same
 // honest limits as the login throttle. With no KV at all it does not apply.
-export const MAIL_RATE = {
+export const MAIL_RATE = Object.freeze({
   "credential-reset": { max: 3, windowMs: 60 * 60 * 1000 },
   "signup-verify": { max: 5, windowMs: 60 * 60 * 1000 },
-};
+});
 export const MAIL_RL_PREFIX = "rl:mail:";
 
 const lc = (e) => String(e || "").trim().toLowerCase();

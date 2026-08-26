@@ -31,7 +31,10 @@ const envWith = (kv) => ({
 });
 // The workspace these boards belong to. virtualCanvas renders the loader page for a
 // workspace now, so the fixture names one rather than leaving it to module scope.
-const CTX = W.applyDerivedRouting({});
+// A named workspace, because the registry cache is per workspace: a context whose
+// tenantId is still null is an UNRESOLVED request, which by construction participates
+// in no cache at all — so the cadence these cases pin would never be reached.
+const CTX = { ...W.applyDerivedRouting({}), tenantId: "alpha" };
 const ME = { email: "a@example.test", name: "Ada", role: "admin" };
 const canvasesUrl = new URL("https://example.test/__canvases");
 const create = (kv, body) => W.canvasesApi(CTX.tenantId, new Request(canvasesUrl, {

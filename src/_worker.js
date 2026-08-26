@@ -39,6 +39,13 @@ import {
   LEGACY_MCP_PATH_FLOOR,
 } from "./tenant-context.mjs";
 
+// The one constructor this file may use to keep anything across requests. Its handle has
+// no way to reach a value without naming a workspace and no way to enumerate the
+// container at all, so "a cache the whole isolate shares" — the shape of every leak this
+// engine has closed — is not something the code below can express. Same deal as the two
+// modules above: build.js copies it next to the worker (dist/tenant-cache.mjs).
+import { tenantCache } from "./tenant-cache.mjs";
+
 // The mail transport. Same deal again: build.js copies it next to the worker
 // (dist/mail.mjs) so the relative import resolves at the edge. It reads its provider,
 // endpoint, key and sending address from the runtime env and holds no state, so a
@@ -207,7 +214,9 @@ const SPACE_ICON_BLOB_PREFIX = "spaceicon:";
 // Read-through, never a flag day: a stored `user` IS an editor, and so is an absent
 // role. Anything unrecognised also lands on editor, because the alternative is an
 // account that silently loses or gains privileges on a typo.
-const ROLES = ["admin", "editor", "viewer"];
+// Frozen, like every fixed table in this file: a write throws in the module's strict
+// mode instead of quietly becoming per-isolate state under a table's name.
+const ROLES = Object.freeze(["admin", "editor", "viewer"]);
 const roleOf = (u) => {
   const r = u && u.role;
   return r === "admin" || r === "viewer" ? r : "editor";
@@ -216,12 +225,12 @@ const NAME_MAX_CHARS = 60;
 // Raster formats only, and each one is checked against its magic bytes before storage:
 // /__avatar/ is ungated and echoes this mime back, so "trust the label" would let a
 // signed-in user park arbitrary bytes behind an image content-type.
-const AVATAR_MIMES = {
+const AVATAR_MIMES = Object.freeze({
   "image/jpeg": (b) => b[0] === 0xff && b[1] === 0xd8 && b[2] === 0xff,
   "image/png": (b) => b[0] === 0x89 && b[1] === 0x50 && b[2] === 0x4e && b[3] === 0x47,
   "image/webp": (b) => b[0] === 0x52 && b[1] === 0x49 && b[2] === 0x46 && b[3] === 0x46 &&
     b[8] === 0x57 && b[9] === 0x45 && b[10] === 0x42 && b[11] === 0x50,
-};
+});
 const INVITE_TTL_MS = 7 * 24 * 60 * 60 * 1000; // links get pasted into chat — expire them
 
 // Serve-time chrome composition (runtime-chrome) is per workspace, on the context:
@@ -776,23 +785,15 @@ function mergeRoster(configUsers, roster) {
 // or reset still bites immediately — the tombstone, not this overlay, is the boundary.
 const ROSTER_TTL_MS = 60_000;
 const ROSTER_CACHE_MAX = 256;
-const ROSTER_OVERLAY = new Map(); // tenantId -> { at, docs }
-
-// Delete-then-set so insertion order is recency order and the first key is the eviction
-// victim — the same idiom the manifest cache and the board registry use.
-function touchRosterOverlay(tenantId, entry) {
-  ROSTER_OVERLAY.delete(tenantId);
-  ROSTER_OVERLAY.set(tenantId, entry);
-  while (ROSTER_OVERLAY.size > ROSTER_CACHE_MAX) ROSTER_OVERLAY.delete(ROSTER_OVERLAY.keys().next().value);
-  return entry;
-}
+// tenantId -> { at, docs }. Bounded and recency-ordered by the constructor; there is no
+// access to it that does not name a workspace.
+const ROSTER_OVERLAY = tenantCache("roster-overlay", { max: ROSTER_CACHE_MAX });
 
 // A roster write making itself visible on the very next request, for ITS workspace only.
 // The last-read documents are KEPT: this asks for a re-read, it does not blank what the
 // workspace is serving in the meantime.
 function bustRosterOverlay(tenantId) {
-  const e = ROSTER_OVERLAY.get(tenantId);
-  if (e) e.at = 0;
+  ROSTER_OVERLAY.bust(tenantId);
 }
 // Test hooks: the cadence above is timing state a test can't reach otherwise.
 function __setConfigTestState({ cfgAt: c, cfgGoodAt: g, roster, mcpHostAllowlist: m, manifests, storage, canvasRegistry, pitiRemarks } = {}) {
@@ -841,7 +842,7 @@ async function rosterFields(ctx, env) {
     // entry rather than racing two into the map. The stamp goes up before the read for
     // the same reason loadConfig stamps first: a store refusing every read must not get
     // six gets per request just because the answers are useless.
-    const cur = touchRosterOverlay(ctx.tenantId, ROSTER_OVERLAY.get(ctx.tenantId) || { at: 0, docs: null });
+    const cur = ROSTER_OVERLAY.entry(ctx.tenantId, () => ({ at: 0, docs: null }));
     if (!cur.docs || Date.now() - cur.at >= ROSTER_TTL_MS) {
       cur.at = Date.now();
       cur.docs = await Promise.all([
@@ -1350,7 +1351,7 @@ function initialsFor(name) {
   return (parts.length === 1 ? parts[0].slice(0, 2) : parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
 }
 // Stable per address, so an invitee's chip colour never changes under them.
-const ROSTER_COLORS = ["#4f46e5", "#0e7490", "#b45309", "#be123c", "#15803d", "#7c3aed", "#0369a1", "#a21caf"];
+const ROSTER_COLORS = Object.freeze(["#4f46e5", "#0e7490", "#b45309", "#be123c", "#15803d", "#7c3aed", "#0369a1", "#a21caf"]);
 function colorFor(email) {
   let h = 0;
   const s = lcEmail(email);
@@ -2135,23 +2136,15 @@ const PUBLISH_PROTOCOL = 5;
 // every manifest it ever parsed, and an evicted workspace re-lists and re-parses its own
 // store. Eviction costs a read; it can never answer with someone else's content.
 const MANIFEST_CACHE_MAX = 256;
-const MANIFESTS = new Map(); // tenantId -> { at, spaces, etags }
-
-// Delete-then-set so insertion order is recency order and the first key is the eviction
-// victim — the same idiom the proxy allowlist uses.
-function touchManifests(tenantId, entry) {
-  MANIFESTS.delete(tenantId);
-  MANIFESTS.set(tenantId, entry);
-  while (MANIFESTS.size > MANIFEST_CACHE_MAX) MANIFESTS.delete(MANIFESTS.keys().next().value);
-  return entry;
-}
+// tenantId -> { at, spaces, etags }. Bounded and recency-ordered by the constructor;
+// there is no access to it that does not name a workspace.
+const MANIFESTS = tenantCache("manifests", { max: MANIFEST_CACHE_MAX });
 
 // A write handler making its own publish visible on the very next request, for ITS
 // workspace. The parsed view is KEPT: busting asks for a re-read, it does not blank what
 // this workspace is serving in the meantime.
 function bustManifests(tenantId) {
-  const e = MANIFESTS.get(tenantId);
-  if (e) e.at = 0;
+  MANIFESTS.bust(tenantId);
 }
 
 async function loadManifests(tenantId, env, force) {
@@ -2160,7 +2153,7 @@ async function loadManifests(tenantId, env, force) {
   // Stamp FIRST, and carry the last good view forward on the new entry: a failing read
   // retries on the next tick rather than stampeding the store, and a concurrent request
   // reading mid-load still gets this workspace's previous manifests.
-  const entry = touchManifests(tenantId, { at: Date.now(), spaces: cur.spaces, etags: cur.etags });
+  const entry = MANIFESTS.put(tenantId, { at: Date.now(), spaces: cur.spaces, etags: cur.etags });
   try {
     const list = await env.BUNDLES.list({ prefix: "spaces/", delimiter: "/" });
     const ids = (list.delimitedPrefixes || []).map((p) => p.slice("spaces/".length, -1));
@@ -2302,11 +2295,11 @@ function applyDerivedRouting(manifests) {
 // absolute URL from pages in EVERY space, so a space able to write one could run
 // code in another space's prototypes — which is what this guard is for.
 // Mirrors ENGINE_CHROME in build.js; keep the two in step.
-const ENGINE_CHROME_PATHS = [
+const ENGINE_CHROME_PATHS = Object.freeze([
   "/fonts/", "/pitis/", "/__review/", "/__canvas/", "/admin", "/changelog",
   "/piti.js", "/404.html", "/manifest.webmanifest", "/sw.js",
   "/augur-eye.svg", "/augur-icon-192.png", "/augur-icon-512.png", "/augur-mark.png",
-];
+]);
 const isEngineChrome = (key) =>
   // The content-hashed shared chrome bundle: /_chrome.<ver>.<hash>.{js,css}.
   key.startsWith("/_chrome.") ||
@@ -3351,7 +3344,8 @@ const STORE_LIMIT_BYTES = 10 * 1024 * 1024 * 1024; // R2 free tier: 10 GB
 // leaves a workspace approaching the wall being told it has room. Bounded like the
 // manifest cache above, and evicting an entry only costs the next admin one list.
 const STORAGE_CACHE_MAX = 256;
-const STORAGE_CACHE = new Map(); // tenantId -> { at, data }
+// tenantId -> { at, data }
+const STORAGE_CACHE = tenantCache("storage", { max: STORAGE_CACHE_MAX });
 async function adminStorageApi(tenantId, env, me) {
   if (!me || me.role !== "admin") return jsonResponse({ error: "forbidden" }, 403);
   if (!env.BUNDLES) return jsonResponse({ enabled: false });
@@ -3373,10 +3367,7 @@ async function adminStorageApi(tenantId, env, me) {
     pct: Math.round((bytes / STORE_LIMIT_BYTES) * 1000) / 10,
     at: new Date().toISOString(),
   };
-  // Delete-then-set: insertion order is recency order, so the first key is the victim.
-  STORAGE_CACHE.delete(tenantId);
-  STORAGE_CACHE.set(tenantId, { at: Date.now(), data });
-  while (STORAGE_CACHE.size > STORAGE_CACHE_MAX) STORAGE_CACHE.delete(STORAGE_CACHE.keys().next().value);
+  STORAGE_CACHE.put(tenantId, { at: Date.now(), data });
   return jsonResponse(data);
 }
 
@@ -3825,7 +3816,10 @@ function __setChromeTestState(pointer, spaces, on) {
 // all) is still handed the floor that engine had, so moving its pin does not take an
 // endpoint away that it cannot re-declare from here. See LEGACY_MCP_PATH_FLOOR in
 // src/tenant-context.mjs for what ends that.
-const MCP_PROXY_PATHS = new Set([
+// A frozen ARRAY rather than a Set: Object.freeze does not stop `.add()` on a Set, so a
+// Set is a table this engine has no way to make un-writable. Three entries, membership
+// tested with `.includes` — the same test MCP_PATH_ALLOWLIST beside it already uses.
+const MCP_PROXY_PATHS = Object.freeze([
   "/mcp",
   "/oauth/registrations",
   "/oauth/token",
@@ -3854,13 +3848,13 @@ const MCP_PROXY_PATHS = new Set([
 // otherwise hold every list it ever resolved. Eviction costs one re-fetch and can only
 // narrow what is allowed in the meantime, never widen it.
 const MCP_ALLOWLIST_CACHE_MAX = 256;
-const mcpHostAllowlist = new Map(); // tenantId -> { url, hosts: Promise<Set|null> }
+// tenantId -> { url, hosts: Promise<Set|null> }
+const mcpHostAllowlist = tenantCache("mcp-host-allowlist", { max: MCP_ALLOWLIST_CACHE_MAX });
 
 function mcpAllowlist(tctx) {
   const url = tctx.MCP_HOST_ALLOWLIST_URL;
   if (!url) return Promise.resolve(null);
-  const key = tctx.tenantId;
-  const hit = mcpHostAllowlist.get(key);
+  const hit = mcpHostAllowlist.get(tctx.tenantId);
   if (hit && hit.url === url) return hit.hosts;
   const entry = { url, hosts: null };
   entry.hosts = fetch(url, { cf: { cacheTtl: 3600, cacheEverything: true } })
@@ -3868,17 +3862,12 @@ function mcpAllowlist(tctx) {
     .then((doc) => new Set(Array.isArray(doc && doc.hosts) ? doc.hosts : []))
     .catch(() => {
       // Retry on the next request — but drop only THIS attempt, never whatever a later
-      // config load or another workspace has already put in its place.
-      if (mcpHostAllowlist.get(key) === entry) mcpHostAllowlist.delete(key);
+      // config load or another workspace has already put in its place. That is what the
+      // second argument means: delete only if the stored value is still this one.
+      mcpHostAllowlist.drop(tctx.tenantId, entry);
       return null;
     });
-  // Delete-then-set so the insertion order is a recency order, and the first key is the
-  // least recently resolved — the one eviction takes.
-  mcpHostAllowlist.delete(key);
-  mcpHostAllowlist.set(key, entry);
-  while (mcpHostAllowlist.size > MCP_ALLOWLIST_CACHE_MAX) {
-    mcpHostAllowlist.delete(mcpHostAllowlist.keys().next().value);
-  }
+  mcpHostAllowlist.put(tctx.tenantId, entry);
   return entry.hosts;
 }
 
@@ -3912,7 +3901,7 @@ async function mcpProxy(tctx, request, url) {
   // Exact match, against the protocol floor and then the workspace's own declarations.
   // `path` is url.pathname: already normalised (no "..", no "." segments) and carrying
   // no query string, so this compares a whole endpoint, never a prefix.
-  if (!MCP_PROXY_PATHS.has(path) && !tctx.MCP_PATH_ALLOWLIST.includes(path))
+  if (!MCP_PROXY_PATHS.includes(path) && !tctx.MCP_PATH_ALLOWLIST.includes(path))
     return jsonResponse({ error: "path not allowed" }, 403);
   if (request.method !== "POST" && request.method !== "GET")
     return jsonResponse({ error: "method not allowed" }, 405);
@@ -4133,7 +4122,7 @@ async function reviewApi(tctx, request, url, env, authed) {
 // baseline comes from the committed prototype-status.json, and this overlays live
 // edits on top. Values: in-progress | dev-ready | ignore | reviewed (components).
 const STATUS_KEY = "statuses";
-const VALID_STATUS = { "in-progress": 1, "dev-ready": 1, ignore: 1, reviewed: 1 };
+const VALID_STATUS = Object.freeze({ "in-progress": 1, "dev-ready": 1, ignore: 1, reviewed: 1 });
 
 async function statusApi(request, url, env) {
   const kv = kvFor(env);
@@ -4467,23 +4456,15 @@ function canvasLoaderPage(tctx, name) {
 // neighbour's.
 const CANVAS_REG_TTL_MS = 15_000;
 const CANVAS_REG_CACHE_MAX = 256;
-const CANVAS_REGISTRY = new Map(); // tenantId -> { at, raw }
-
-// Delete-then-set so insertion order is recency order and the first key is the eviction
-// victim — the same idiom the manifest cache uses.
-function touchCanvasRegistry(tenantId, entry) {
-  CANVAS_REGISTRY.delete(tenantId);
-  CANVAS_REGISTRY.set(tenantId, entry);
-  while (CANVAS_REGISTRY.size > CANVAS_REG_CACHE_MAX) CANVAS_REGISTRY.delete(CANVAS_REGISTRY.keys().next().value);
-  return entry;
-}
+// tenantId -> { at, raw }
+const CANVAS_REGISTRY = tenantCache("canvas-registry", { max: CANVAS_REG_CACHE_MAX });
 
 // Takes the workspace, not only the binding: the caller (virtualCanvas) has one in hand,
 // and a read that knows only which KV to talk to cannot tell whose entry it is filling.
 async function readCanvasRegistry(tenantId, kv) {
   // Insert BEFORE the await, so two concurrent requests for one workspace fill one entry
   // rather than racing two into the map.
-  const cur = touchCanvasRegistry(tenantId, CANVAS_REGISTRY.get(tenantId) || { at: 0, raw: null });
+  const cur = CANVAS_REGISTRY.entry(tenantId, () => ({ at: 0, raw: null }));
   if (!cur.at || Date.now() - cur.at >= CANVAS_REG_TTL_MS) {
     try {
       cur.raw = await kv.get(CANVASES_KEY);
@@ -4498,8 +4479,7 @@ async function readCanvasRegistry(tenantId, kv) {
 // was never theirs. The last-read document is KEPT: this asks for a re-read, it does not
 // blank what the workspace is serving in the meantime.
 function bustCanvasRegistry(tenantId) {
-  const e = CANVAS_REGISTRY.get(tenantId);
-  if (e) e.at = 0;
+  CANVAS_REGISTRY.bust(tenantId);
 }
 
 // Serve a registered created-canvas path (null when the path isn't one). Called only
@@ -5007,19 +4987,12 @@ const PITI_REMARKS_KEY = "pt:remarks";
 // same way: an evicted workspace re-reads its own document.
 const PITI_REMARKS_TTL_MS = 15_000;
 const PITI_REMARKS_CACHE_MAX = 256;
-const PITI_REMARKS = new Map(); // tenantId -> { at, raw }
-
-function touchPitiRemarks(tenantId, entry) {
-  PITI_REMARKS.delete(tenantId);
-  PITI_REMARKS.set(tenantId, entry);
-  while (PITI_REMARKS.size > PITI_REMARKS_CACHE_MAX) PITI_REMARKS.delete(PITI_REMARKS.keys().next().value);
-  return entry;
-}
+// tenantId -> { at, raw }
+const PITI_REMARKS = tenantCache("piti-remarks", { max: PITI_REMARKS_CACHE_MAX });
 
 // A remark or a clear making itself visible on the next poll, for ITS workspace only.
 function bustPitiRemarks(tenantId) {
-  const e = PITI_REMARKS.get(tenantId);
-  if (e) e.at = 0;
+  PITI_REMARKS.bust(tenantId);
 }
 
 // `tenantId` is carried for the cache above and nothing else: the KV keys are the
@@ -5048,7 +5021,7 @@ async function pitiApi(tenantId, request, url, env) {
     // next poll), or empty — never a 500 at the cat.
     const path = clamp(url.searchParams.get("path") || "/", 600);
     const since = Number(url.searchParams.get("since")) || 0;
-    const cur = touchPitiRemarks(tenantId, PITI_REMARKS.get(tenantId) || { at: 0, raw: null });
+    const cur = PITI_REMARKS.entry(tenantId, () => ({ at: 0, raw: null }));
     if (!cur.at || Date.now() - cur.at >= PITI_REMARKS_TTL_MS) {
       try {
         cur.raw = await kv.get(PITI_REMARKS_KEY);
@@ -5587,7 +5560,7 @@ export default {
 
 // Pure helpers exposed for unit tests. Nothing in the request path references
 // __testables — it exists only so test/worker.test.mjs can import them.
-export const __testables = {
+export const __testables = Object.freeze({
   applyInstance,
   hashPassword, verifyPassword, isPassHash, safeEqual, userByEmail,
   personId, avatarKey, publicUser, stampAuthor, sanitizeMsg, applyOp, reviewApi,
@@ -5625,4 +5598,4 @@ export const __testables = {
   loadConfig, loadTenantContext, __setConfigTestState, __usersNow, pitiApi,
   CONFIG_STALE_CEILING_MS,
   resolveTenant, DEFAULT_TENANT_ID, TENANT_MEMO_TTL_MS, __setTenantTestState,
-};
+});

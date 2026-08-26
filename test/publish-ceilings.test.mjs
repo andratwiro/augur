@@ -12,7 +12,9 @@ import { __testables as W } from "../src/_worker.js";
 // The workspace this publish is for. publishApi reads its protocol floor, sentinels and
 // workspace list off the context now, so the fixture names one rather than leaving the
 // answer to whatever module scope was last written.
-const CTX = W.applyInstance({ users: [] });
+// Named, because the manifest cache is per workspace and an unresolved request keeps
+// nothing — see the etag case below, which is about what the cache did NOT re-fetch.
+const CTX = { ...W.applyInstance({ users: [] }), tenantId: "alpha" };
 
 function memR2(initial = {}) {
   const store = new Map(Object.entries(initial));

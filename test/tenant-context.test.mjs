@@ -33,10 +33,17 @@ import {
   ENTRY,
   KINDS,
   UNKEYED_BUDGET,
+  checkCacheApi,
   checkGraph,
   checkModuleGlobals,
   discoverModules,
 } from "../scripts/no-tenant-globals.mjs";
+import {
+  tenantCache,
+  TENANT_CACHE_KEYED_METHODS,
+  TENANT_CACHE_WHOLE_METHODS,
+} from "../src/tenant-cache.mjs";
+import { __testables as W } from "../src/_worker.js";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(HERE, "..");
@@ -47,7 +54,7 @@ const report = (problems) => problems.map((p) => `${p.kind}:${p.name}`);
 const inWorker = (source, allowed = WORKER_ALLOWED) =>
   report(checkModuleGlobals(source, { allowed }).problems);
 
-test("every module-scope binding the worker pulls in is allowlisted, with a reason", () => {
+test("every module-scope binding the worker pulls in is accounted for", () => {
   const { modules, bindings, problems } = checkGraph(ROOT);
   assert.deepEqual(
     problems.map((p) => `${p.module}:${p.kind}:${p.name}`),
@@ -64,15 +71,34 @@ test("every module-scope binding the worker pulls in is allowlisted, with a reas
   for (const [mod, entries] of Object.entries(ALLOWED)) {
     for (const [name, entry] of Object.entries(entries)) {
       assert.ok(KINDS.includes(entry.kind), `${mod}: ${name} has kind "${entry.kind}", not one of ${KINDS}`);
-      assert.ok(entry.why && entry.why.length > 10, `${mod}: ${name} is allowlisted without a reason`);
+    }
+  }
+});
+
+test("there is nowhere on the list to write a reason, except the quarantine", () => {
+  // THE FAILURE THAT OUTLIVED TWO REBUILDS. Every closed leak was ON the list, under a
+  // sentence asserting the safety it did not have, and no checker can tell whether a
+  // sentence is true. The answer is structural rather than editorial: `cache` and
+  // `frozen` are ARRAYS OF NAMES, so the field a false claim would live in does not
+  // exist. Prose survives only where a slot's danger genuinely cannot be checked — and
+  // that place is capped by a number.
+  for (const [mod, entries] of Object.entries(ALLOWED)) {
+    for (const [name, entry] of Object.entries(entries)) {
+      if (entry.kind === "unkeyed") {
+        assert.ok(entry.why && entry.why.length > 10, `${mod}: ${name} is quarantined without saying what it holds`);
+        assert.ok(entry.proof, `${mod}: ${name} is quarantined without a proof`);
+        continue;
+      }
+      assert.equal(entry.why, undefined, `${mod}: ${name} carries a reason — a ${entry.kind} entry is decided by the code`);
+      assert.equal(entry.proof, undefined, `${mod}: ${name} carries a proof — only the quarantine is charged one`);
     }
   }
 });
 
 test("the unkeyed quarantine is exactly the size the budget says", () => {
   // The one number in the lint that is EXACT rather than a floor. Every entry under
-  // `unkeyed` is a slot the whole isolate shares — the shape both reproduced cross-tenant
-  // leaks had — so closing one has to lower this line and opening one has to raise it. A
+  // `unkeyed` is a slot the whole isolate shares — the shape every reproduced cross-tenant
+  // leak had — so closing one has to lower this line and opening one has to raise it. A
   // floor would let the category quietly refill as threading emptied it.
   const { unkeyed } = checkGraph(ROOT);
   assert.equal(
@@ -98,16 +124,62 @@ test("the guard can actually fire — a new global is reported, not shrugged off
   );
 });
 
+// ---- what counts as state is an ALLOWLIST of harmless shapes ------------------------
+//
+// The bypass that made this necessary: `const REGISTRY_SLOT = makeSlot()` — a factory
+// returning a get/put pair over a `let` inside the factory. The old scanner asked "is
+// this initializer one of the mutable shapes I know?" (array, object, `new Map`), a call
+// is none of them, and the binding was not merely allowed — it was never counted. A
+// factory is the one thing every state-hiding trick has in common, so the question is now
+// the other way round: what is PROVABLY not state?
+
+test("a const whose value comes from a CALL is state — the bypass that was invisible", () => {
+  const slot = [
+    "function makeSlot() {",
+    "  let v = null;",
+    "  return { get: () => v, put: (x) => { v = x; return x; } };",
+    "}",
+    "const REGISTRY_SLOT = makeSlot();",
+    "",
+  ].join("\n");
+  assert.deepEqual(inWorker(slot + WORKER), ["unlisted:REGISTRY_SLOT"]);
+  // The same, one import away, and through every plausible dressing-up.
+  for (const init of ["makeSlot()", "build().slot", "await load()", "cache || makeSlot()", "new Holder()"]) {
+    assert.deepEqual(
+      check(`const X = ${init};\n`, {}), ["unlisted:X"],
+      `${init} was not counted as state`,
+    );
+  }
+  // And listing it does not help: neither structural kind will have it.
+  assert.deepEqual(check("const X = makeSlot();\n", { X: { kind: "cache" } }), ["cache-not-constructed:X"]);
+  assert.deepEqual(check("const X = makeSlot();\n", { X: { kind: "frozen" } }), ["frozen-not-frozen:X"]);
+});
+
 test("a const that holds no state is not flagged — the lint stays usable", () => {
-  const noise = 'const A_NUMBER = 42;\nconst A_STRING = "x";\nconst A_FN = (x) => ({ x });\n';
+  const noise = [
+    'const A_NUMBER = 42;',
+    'const SOME_MATH = 60 * 60 * 24 * 7;',
+    'const A_STRING = "x";',
+    'const A_TEMPLATE = `a${1 + 1}b`;',
+    'const A_REGEX = /^\\/tracks\\/[^?]+$/i;',
+    'const A_SYMBOL = Symbol("unresolved");',
+    'const A_FN = (x) => ({ x });',
+    'const A_FUNCTION = function (x) { return x; };',
+    // A call to a same-module arrow whose body is a string returns a string, and a string
+    // is not state. The body has to START with a quote, so a block-bodied factory — which
+    // is what a slot hides in — is not one of these.
+    'const ic = (inner) => `<svg>${inner}</svg>`;',
+    'const IC_HOME = ic(`<rect/>`);',
+    '',
+  ].join("\n");
   assert.deepEqual(inWorker(noise + WORKER), []);
 });
 
 test("the allowlist shrinks with the sweep — a threaded-away global cannot linger on it", () => {
-  // Each thread-* commit deletes a `let` from the worker AND its line here. Without this
+  // Each thread-* commit deletes a binding from the worker AND its line here. Without this
   // direction the list would rot into standing permission for whatever gets added later.
   assert.deepEqual(
-    inWorker(WORKER.replace("const PITI_REMARKS = new Map();", "")),
+    inWorker(WORKER.replace('const PITI_REMARKS = tenantCache("piti-remarks", { max: PITI_REMARKS_CACHE_MAX });', "")),
     ["stale:PITI_REMARKS"],
   );
 });
@@ -115,7 +187,7 @@ test("the allowlist shrinks with the sweep — a threaded-away global cannot lin
 test("no allowlist entry names a field of the tenant context", () => {
   // The sweep is done, so this is the way back in: not a new name, but a threaded field
   // re-declared at module scope with a plausible cache reason attached. A per-workspace
-  // field cannot be tenant-invariant, so the entry is refused whatever it claims.
+  // field cannot be a fixed table, so the entry is refused whatever it claims.
   for (const [mod, entries] of Object.entries(ALLOWED)) {
     for (const name of Object.keys(entries)) {
       assert.ok(
@@ -135,99 +207,139 @@ test("re-admitting a threaded field is reported, however good the reason reads",
   );
 });
 
-// ---- the direction that was missing: is the entry TRUE? -----------------------------
+// ---- the safe thing is the only expressible thing -----------------------------------
 //
-// Both leaks were ON the list, under reasons that asserted the safety they did not have.
-// The lint cannot read a reason, so the two big kinds no longer rest on one: `keyed` and
-// `invariant` are decided from the declaration and every use of the name. These cases are
-// that decision, in both directions — it fires on the leak shapes, and it does not fire on
-// the code that is actually right.
+// `cache` is not "a Map I have inspected the accesses of". It is "built by tenantCache",
+// whose handle holds its Map in a closure: there is no iterator, no `values()`, no way to
+// pass the container anywhere, and every method that reaches a value takes the workspace
+// first and refuses a call without one. The lint's job shrinks to checking that the
+// declaration IS that call and that the keys are workspace ids.
 
-const KEYED = (why = "a per-workspace cache, bounded") => ({ kind: "keyed", why });
-const INVARIANT = (why = "a table fixed before any request arrives") => ({ kind: "invariant", why });
+const CACHED = { kind: "cache" };
+const FROZEN = { kind: "frozen" };
 const check = (source, allowed) => report(checkModuleGlobals(source, { allowed }).problems);
+const IMPORT = 'import { tenantCache } from "./tenant-cache.mjs";\n';
 
-test("a listed cache that is a bare value, not a keyed container, is refused", () => {
-  // THE AVATAR LEAK, in miniature. `AVATAR_KEYS` was a module `let` holding the hash set
-  // the UNGATED /__avatar/ route would serve, rebuilt by whichever workspace loaded config
-  // last — and it sat on the list under the sentence quoted here. One slot cannot hold one
-  // answer per workspace, and that is decidable from the declaration alone.
-  //
-  // `readmitted` fires alongside because the fix made AVATAR_KEYS a field of the tenant
-  // context, so putting the name back on the list is now caught twice over — but the FIRST
-  // verdict is the one that would have been available before anyone knew it was a leak,
-  // and it is the one this case is about.
-  const source = "let AVATAR_KEYS = new Set();\nfunction load(u, i) { AVATAR_KEYS = keysFrom(u, i); }\n";
+test("a listed cache that is not built by the constructor is refused", () => {
+  // THE AVATAR LEAK, in miniature: one slot holding the hash set the UNGATED /__avatar/
+  // route would serve, rebuilt by whichever workspace loaded config last — on the list
+  // under the sentence quoted here. `readmitted` fires alongside because the fix made
+  // AVATAR_KEYS a context field, but the FIRST verdict is the one that would have been
+  // available before anyone knew it was a leak.
+  const source = IMPORT + "let AVATAR_KEYS = new Set();\nfunction load(u, i) { AVATAR_KEYS = keysFrom(u, i); }\n";
+  assert.deepEqual(check(source, { AVATAR_KEYS: CACHED }), ["cache-not-constructed:AVATAR_KEYS", "readmitted:AVATAR_KEYS"]);
+  // A raw Map is refused too: it was the previous generation's "safe" shape, and it is
+  // safe only for as long as someone reads every access.
+  assert.deepEqual(check(IMPORT + "const M = new Map();\n", { M: CACHED }), ["cache-not-constructed:M"]);
+  // A clock and the document behind it, the board/remark leak's shape. There is
+  // deliberately no "it's only a clock" kind — canvasRegAt was only a clock, and it is
+  // what made the stale document answer.
   assert.deepEqual(
-    check(source, {
-      AVATAR_KEYS: KEYED("hashes the avatar index vouches for; a hash is content-addressed, so it means the same thing everywhere"),
-    }),
-    ["keyed-not-a-map:AVATAR_KEYS", "readmitted:AVATAR_KEYS"],
+    check(IMPORT + "let canvasRegAt = 0;\nlet canvasRegRaw = null;\n", { canvasRegAt: CACHED, canvasRegRaw: CACHED }),
+    ["cache-not-constructed:canvasRegAt", "cache-not-constructed:canvasRegRaw"],
   );
 });
 
-test("a clock and a document behind it are refused as keyed, together", () => {
-  // THE BOARD/REMARK LEAK, in miniature: a raw/at pair behind a tick keyed on nothing.
-  // There is deliberately no "it's only a clock" kind — `canvasRegAt` was only a clock, and
-  // it is what made the stale document answer.
-  const source = "let canvasRegAt = 0;\nlet canvasRegRaw = null;\n";
+test("a local function called tenantCache does not make a cache", () => {
+  // The name is only a claim in a module that imports the real one.
   assert.deepEqual(
-    check(source, {
-      canvasRegAt: KEYED("canvas registry clock; a stale stamp costs a re-read"),
-      canvasRegRaw: KEYED("the last canvas registry document read from KV"),
-    }),
-    ["keyed-not-a-map:canvasRegAt", "keyed-not-a-map:canvasRegRaw"],
+    check('const M = tenantCache("m");\nfunction tenantCache() { return {}; }\n', { M: CACHED }),
+    ["cache-not-imported:M"],
   );
+  assert.deepEqual(check(IMPORT + 'const M = tenantCache("m");\n', { M: CACHED }), []);
 });
 
-test("a Map touched without a workspace key is refused, however it is touched", () => {
-  const decl = "const M = new Map();\n";
-  // A literal key: a Map with one hard-coded key is a slot with extra syntax.
-  assert.deepEqual(check(decl + 'function a() { return M.get("alpha"); }\n', { M: KEYED() }), ["keyed-bad-key:M"]);
-  // A key the scanner cannot trace to a tenant id. Refusing it is the point: an identifier
-  // that merely LOOKS like a workspace is the same kind of evidence as a sentence.
-  assert.deepEqual(check(decl + "function a(o) { return M.get(o.spaceId); }\n", { M: KEYED() }), ["keyed-bad-key:M"]);
-  // Enumeration: reads every workspace's entry, so there is no key to be wrong about.
-  assert.deepEqual(check(decl + "function a() { return [...M.values()]; }\n", { M: KEYED() }), ["keyed-unkeyed-read:M"]);
-  assert.deepEqual(check(decl + "function a(f) { M.forEach(f); }\n", { M: KEYED() }), ["keyed-unkeyed-read:M"]);
-  // Handing the whole Map somewhere hands over every workspace's entry at once.
-  assert.deepEqual(check(decl + "function a() { return dump(M); }\n", { M: KEYED() }), ["keyed-escapes:M"]);
-  assert.deepEqual(check(decl + "function a() { return [...M]; }\n", { M: KEYED() }), ["keyed-escapes:M"]);
+test("a cache touched without a workspace key is refused, and an alias is not a key", () => {
+  const decl = IMPORT + 'const M = tenantCache("m");\n';
+  // A literal key: a cache with one hard-coded key is a slot with extra syntax.
+  assert.deepEqual(check(decl + 'function a() { return M.get("alpha"); }\n', { M: CACHED }), ["cache-bad-key:M"]);
+  // THE BYPASS. A local assigned from a tenant id SOMEWHERE in the module used to make
+  // that NAME trusted EVERYWHERE in it — so a second `const key = "everyone"` in another
+  // function passed. Aliases are gone: the key has to say `tenantId` at the access.
+  const aliased = decl +
+    "function fill(tctx, v) { const key = tctx.tenantId; M.put(key, v); }\n" +
+    'function leak() { const key = "everyone"; return M.get(key); }\n';
+  assert.deepEqual(check(aliased, { M: CACHED }), ["cache-bad-key:M", "cache-bad-key:M"]);
+  // A key the scanner cannot trace to a workspace. Refusing it is the point: an
+  // identifier that merely LOOKS like a workspace is the same kind of evidence as a
+  // sentence.
+  assert.deepEqual(check(decl + "function a(o) { return M.get(o.spaceId); }\n", { M: CACHED }), ["cache-bad-key:M"]);
+  // A method the handle does not have. It would throw at runtime (the handle is frozen),
+  // and this lint has no opinion about what it does — so it says so rather than passing.
+  assert.deepEqual(check(decl + "function a() { return [...M.values()]; }\n", { M: CACHED }), ["cache-unknown-method:M"]);
+  assert.deepEqual(check(decl + "function a(f) { M.forEach(f); }\n", { M: CACHED }), ["cache-unknown-method:M"]);
+  // Handing the handle somewhere hands over every workspace's entry to whatever that
+  // place does with it.
+  assert.deepEqual(check(decl + "function a() { return dump(M); }\n", { M: CACHED }), ["cache-escapes:M"]);
+  assert.deepEqual(check(decl + "function a() { return [...M]; }\n", { M: CACHED }), ["cache-escapes:M"]);
 });
 
-test("the keyed rule passes the idioms the worker actually uses", () => {
-  // The other direction, so the rule is a check and not a ban. Direct `tenantId`, a local
-  // assigned from one (`mcpAllowlist` does exactly this), the whole-map operations that
-  // cannot hand back one workspace's value, and the eviction idiom.
+test("the cache rule passes the idioms the worker actually uses", () => {
+  // The other direction, so the rule is a check and not a ban.
   const source = [
-    "const M = new Map();",
+    IMPORT.trim(),
+    'const M = tenantCache("m", { max: 256 });',
     "function read(tenantId) { return M.get(tenantId); }",
-    "function fill(tctx, v) { const key = tctx.tenantId; M.delete(key); M.set(key, v); }",
-    "function evict() { while (M.size > 256) M.delete(M.keys().next().value); }",
+    "function fill(tctx, v) { M.put(tctx.tenantId, v); }",
+    "function start(ctx) { return M.entry(ctx.tenantId, () => ({ at: 0, docs: null })); }",
+    "function forget(tctx, e) { M.drop(tctx.tenantId, e); }",
+    "function bust(tenantId) { M.bust(tenantId); }",
     "function reset() { M.clear(); }",
     "function hook({ M: m }) { if (!m) M.clear(); }",
   ].join("\n");
-  assert.deepEqual(check(source + "\n", { M: KEYED() }), []);
+  assert.deepEqual(check(source + "\n", { M: CACHED }), []);
 });
 
-test("an invariant table that is written after module load is refused", () => {
-  const written = {
-    reassigned: "const T = {};\nfunction f(v) { T = v; }\n",
-    mutated: "const T = [];\nfunction f(v) { T.push(v); }\n",
-    "index-assigned": "const T = {};\nfunction f(k) { T[k] = 1; }\n",
-    "property-assigned": "const T = {};\nfunction f() { T.ready = true; }\n",
-    assigned: "const T = {};\nfunction f(v) { Object.assign(T, v); }\n",
-  };
-  for (const [how, source] of Object.entries(written)) {
+test("the handle's methods are the ones the lint checks against, or the lint says so", () => {
+  // Every `cache` verdict is read off the two lists src/tenant-cache.mjs exports. A
+  // method that is on neither would be a way to touch a cache this lint has no opinion
+  // about, so the handle is BUILT and asked rather than described here.
+  assert.deepEqual(checkCacheApi(), []);
+  const handle = tenantCache("probe");
+  assert.deepEqual(
+    Object.keys(handle).sort(),
+    [...TENANT_CACHE_KEYED_METHODS, ...TENANT_CACHE_WHOLE_METHODS].sort(),
+  );
+});
+
+test("a fixed table has to be frozen, and a frozen Set is not one", () => {
+  // THE THIRD BYPASS: `VALID_STATUS[url.pathname] ??= await …`, a per-request write into
+  // a table the list called invariant. The old check scanned for write SHAPES and knew
+  // about `=` but not `??=`. Freezing moves the check to the declaration — one site — and
+  // hands enforcement to the engine, which knows about every write form there is.
+  assert.deepEqual(check("const T = {};\n", { T: FROZEN }), ["frozen-not-frozen:T"]);
+  assert.deepEqual(check("const T = [];\n", { T: FROZEN }), ["frozen-not-frozen:T"]);
+  assert.deepEqual(check("const T = Object.freeze({ a: 1 });\n", { T: FROZEN }), []);
+  assert.deepEqual(check("const T = Object.freeze([1, 2]);\n", { T: FROZEN }), []);
+  // A rebindable name is not a table, whatever its current value is frozen.
+  assert.deepEqual(check("let T = Object.freeze({});\n", { T: FROZEN }), ["frozen-not-const:T"]);
+  // And a frozen collection is a table with a lock painted on it — Object.freeze does not
+  // reach a Map's or a Set's contents.
+  for (const c of ["Map", "Set", "WeakMap", "WeakSet"]) {
     assert.deepEqual(
-      check(source, { T: INVARIANT("a fixed vocabulary, honestly") }), ["invariant-written:T"],
-      `${how} was not caught — an INVARIANT entry means nobody writes it after module load`,
+      check(`const T = Object.freeze(new ${c}());\n`, { T: FROZEN }), ["frozen-collection:T"],
+      `a frozen ${c} was accepted as a fixed table`,
     );
   }
-  // A rebindable name is not a table written once, whatever it currently holds.
-  assert.deepEqual(check("let T = {};\n", { T: INVARIANT() }), ["invariant-not-const:T"]);
-  // Reads are not writes: the real tables are all read by index.
-  assert.deepEqual(check("const T = { a: 1 };\nfunction f(k) { return T[k] || T.a; }\n", { T: INVARIANT() }), []);
+});
+
+test("the freeze is what stops the write, not the lint", () => {
+  // The point of moving to a constructor: the guarantee survives a lint that is not
+  // looking. Every write form at once, against a real frozen table.
+  const T = Object.freeze({ "in-progress": 1 });
+  const writes = [
+    () => { T["/x"] ??= 1; },
+    () => { T["/x"] = 1; },
+    () => { T.ready = true; },
+    () => { T["in-progress"] += 1; },
+    () => { Object.assign(T, { x: 1 }); },
+  ];
+  for (const w of writes) assert.throws(w, TypeError);
+  assert.deepEqual(Object.keys(T), ["in-progress"]);
+  // And the shipped tables really are frozen, not merely listed as such.
+  for (const name of ["ROLES", "MCP_PROXY_PATHS", "AVATAR_MIMES"]) {
+    assert.ok(Object.isFrozen(W[name]), `${name} is on the frozen list but is not frozen`);
+  }
 });
 
 test("each direction fires against the REAL worker, not only against a fixture", () => {
@@ -237,15 +349,29 @@ test("each direction fires against the REAL worker, not only against a fixture",
   // worker's own idioms would otherwise report an empty problem list — which is what green
   // looks like.
   const sabotage = {
-    "keyed-bad-key:MANIFESTS": ["const e = MANIFESTS.get(tenantId);", 'const e = MANIFESTS.get("one");'],
-    "keyed-unkeyed-read:STORAGE_CACHE": [
+    "cache-bad-key:MANIFESTS": [
+      "const cur = MANIFESTS.get(tenantId) || { at: 0, spaces: {}, etags: {} };",
+      'const cur = MANIFESTS.get("one") || { at: 0, spaces: {}, etags: {} };',
+    ],
+    "cache-unknown-method:STORAGE_CACHE": [
       "const hit = STORAGE_CACHE.get(tenantId);", "const hit = [...STORAGE_CACHE.values()][0];",
     ],
-    "keyed-escapes:MANIFESTS": ["const e = MANIFESTS.get(tenantId);", "const e = pick(MANIFESTS, tenantId);"],
-    "keyed-not-a-map:CANVAS_REGISTRY": ["const CANVAS_REGISTRY = new Map();", "let CANVAS_REGISTRY = null;"],
-    "invariant-written:ROLES": [
+    "cache-escapes:MANIFESTS": [
+      "const cur = MANIFESTS.get(tenantId) || { at: 0, spaces: {}, etags: {} };",
+      "const cur = pick(MANIFESTS, tenantId) || { at: 0, spaces: {}, etags: {} };",
+    ],
+    "cache-not-constructed:CANVAS_REGISTRY": [
+      'const CANVAS_REGISTRY = tenantCache("canvas-registry", { max: CANVAS_REG_CACHE_MAX });',
+      "let CANVAS_REGISTRY = null;",
+    ],
+    "frozen-not-frozen:ROLES": [
+      'const ROLES = Object.freeze(["admin", "editor", "viewer"]);',
       'const ROLES = ["admin", "editor", "viewer"];',
-      'const ROLES = ["admin", "editor", "viewer"];\nfunction addRole(r) { ROLES.push(r); }',
+    ],
+    // The factory bypass, against the real file: invisible to the previous scanner.
+    "unlisted:REGISTRY_SLOT": [
+      'const CANVAS_REGISTRY = tenantCache("canvas-registry", { max: CANVAS_REG_CACHE_MAX });',
+      'const REGISTRY_SLOT = makeSlot();\nconst CANVAS_REGISTRY = tenantCache("canvas-registry", { max: CANVAS_REG_CACHE_MAX });',
     ],
   };
   assert.deepEqual(inWorker(WORKER), [], "the real worker must be clean before anything is sabotaged");
@@ -256,21 +382,6 @@ test("each direction fires against the REAL worker, not only against a fixture",
       `sabotaging "${from}" did not produce ${expected}`,
     );
   }
-});
-
-test("the verdict does not depend on one word of the reason", () => {
-  // The thesis, asserted. Both leaks shipped because a reason was believed; nothing below
-  // reads one. The same code gets the same answer under the truest reason available and
-  // under the false reason that actually shipped, in both directions.
-  const leak = "let INDEX = new Set();\n";
-  const honest = "hashes the ungated route will serve, rebuilt by whichever workspace loaded config last — a leak";
-  const shipped = "a hash is content-addressed, so it means the same thing everywhere";
-  assert.deepEqual(check(leak, { INDEX: KEYED(honest) }), check(leak, { INDEX: KEYED(shipped) }));
-  assert.deepEqual(check(leak, { INDEX: KEYED(honest) }), ["keyed-not-a-map:INDEX"]);
-
-  const fixed = "const M = new Map();\nfunction r(tenantId) { return M.get(tenantId); }\n";
-  assert.deepEqual(check(fixed, { M: KEYED("") }), []);
-  assert.deepEqual(check(fixed, { M: KEYED("this is shared between every workspace and always wrong") }), []);
 });
 
 // ---- the graph: state one import away is state all the same -------------------------
@@ -316,12 +427,12 @@ test("a brand-new module allows nothing until somebody writes the claim down", (
   // No section means an EMPTY allowlist, never a skipped file. A lint that had to be told
   // about a module before it would check it would be answered by not telling it.
   const { read } = fakeRepo({
-    "src/_worker.js": 'import { s } from "./new.mjs";\nconst TABLE = [];\n',
+    "src/_worker.js": 'import { s } from "./new.mjs";\nconst TABLE = Object.freeze([]);\n',
     "src/new.mjs": "let anything = null;\n",
   });
   const { problems } = checkGraph("/root", {
     read,
-    allowed: { "src/_worker.js": { TABLE: { kind: "invariant", why: "a fixed table" } } },
+    allowed: { "src/_worker.js": { TABLE: { kind: "frozen" } } },
   });
   assert.deepEqual(
     problems.map((p) => `${p.module}:${p.kind}:${p.name}`),
@@ -330,12 +441,12 @@ test("a brand-new module allows nothing until somebody writes the claim down", (
 });
 
 test("a section outliving its module is reported, like a stale entry one level up", () => {
-  const { read } = fakeRepo({ "src/_worker.js": "const TABLE = [];\n" });
+  const { read } = fakeRepo({ "src/_worker.js": "const TABLE = Object.freeze([]);\n" });
   const { problems } = checkGraph("/root", {
     read,
     allowed: {
-      "src/_worker.js": { TABLE: { kind: "invariant", why: "a fixed table" } },
-      "src/gone.mjs": { OLD: { kind: "invariant", why: "a module the worker no longer imports" } },
+      "src/_worker.js": { TABLE: { kind: "frozen" } },
+      "src/gone.mjs": { OLD: { kind: "frozen" } },
     },
   });
   assert.deepEqual(

@@ -307,56 +307,83 @@ i.e. ~110–120 read sites once decls/assigns are removed — matching the plan'
 numbers here drift; the lint walks the module graph the worker pulls into the isolate —
 every module it reaches by a relative import, because module scope is per ISOLATE and a
 `let` one import away is shared exactly as widely — and counts what is actually declared —
-today 23 module-scope bindings across four modules: NO config global at all, 6 caches
-keyed by workspace, 13 tables never written after module load, and 4 slots the whole
-isolate still shares. It fails CI, and therefore the deploy, on a binding it has never
-been told about, on an allowlist entry whose binding is gone, and on an allowlist entry
-that names a field of the tenant context — so the list shrank as the threading landed
-rather than turning into standing permission, and a threaded field cannot be re-admitted
-to it under a plausible-sounding reason. A config global is now simply an unlisted
-binding, which is a failed build.
+today 29 module-scope bindings across five modules: NO config global at all, 6 caches
+built by `tenantCache()`, 19 frozen tables, and 4 slots the whole isolate still shares. It
+fails CI, and therefore the deploy, on a binding it has never been told about, on an
+allowlist entry whose binding is gone, and on an allowlist entry that names a field of the
+tenant context — so the list shrank as the threading landed rather than turning into
+standing permission, and a threaded field cannot be re-admitted to it under a
+plausible-sounding reason. A config global is now simply an unlisted binding, which is a
+failed build.
 
-**And it adjudicates, because enumerating was not enough.** Every direction above asks
-whether the list AGREES WITH THE CODE. None asked whether an entry was TRUE — which is how
-all of them stayed green through both cross-tenant leaks above, since neither was an
-unlisted binding: both were ON the list, in one category called CACHES, under written
-reasons that asserted the safety they did not have ("a hash is content-addressed, so it
-means the same thing everywhere"; "a stale stamp costs a re-read"). A lint cannot read
-prose, so it no longer tries, and the category whose safety rested on a sentence is gone.
-Three kinds replace it, two of them decided from the code:
+**And it names the SAFE thing, because enumerating unsafe ones lost three times.** Every
+older direction asks whether the list AGREES WITH THE CODE, and none asked whether an entry
+was TRUE — which is how all of them stayed green through the cross-tenant leaks above,
+since none was an unlisted binding: each was ON the list under a written reason asserting
+the safety it did not have ("a hash is content-addressed, so it means the same thing
+everywhere"). Two rebuilds then each caught the shape in front of them and were answered by
+the next one: a factory call (`const SLOT = makeSlot()`) the binding scanner did not count
+as a binding at all; a literal key (`const key = "everyone"`) inside a cache the list
+called keyed, accepted because any local ever assigned from a tenant id made that NAME
+trusted module-wide; and `TABLE[url.pathname] ??= …`, a per-request write into a table the
+list called invariant, past a write scan that knew `=` and not `??=`. Three rounds of
+enumerating unsafe shapes lost three times, because there is always another shape and the
+person adding it is the one choosing it.
 
-- **`keyed`** — required to be declared `const X = new Map()`, and required to carry a
-  workspace key at every access: `.get/.set/.delete/.has` whose first argument is a
-  `tenantId` expression or a local assigned from one, plus the whole-map operations that
-  cannot hand back one workspace's value and the `X.delete(X.keys().next().value)`
-  eviction idiom. `.values()`, `.forEach()`, or the bare name used as a value all fail.
-- **`invariant`** — required to be `const` and to have no write anywhere after its
-  declaration: no reassignment, no mutator call, no `X[k] =`, no `X.k =`, no
-  `Object.assign(X, …)`. Module load runs before any request, so a table nobody writes
-  cannot hold a workspace's data. "Tenant-invariant by construction" stopped being a claim
-  and became the thing that was checked.
-- **`unkeyed`** — the bare per-isolate slot, which is the shape both leaks had. There is
+So the unsafe shapes are no longer what is enumerated. Two inversions, then three kinds:
+
+- **A CONSTRUCTOR, NOT A PATTERN.** There is exactly one way to keep a cache across
+  requests: `tenantCache()` in `src/tenant-cache.mjs`. It returns a frozen handle over a
+  Map held in a closure — no iterator, no `values()`, no `entries()`, no way to pass the
+  container anywhere, so "hand me every workspace's entry" is not expressible whether or
+  not a lint is looking; and every method that reaches a value takes the workspace id
+  first and throws without one. The same move for fixed tables: `Object.freeze` at the
+  declaration hands enforcement to the engine, which refuses every write form at every
+  site, including the ones a regex scanner cannot parse.
+- **WHAT COUNTS AS STATE IS AN ALLOWLIST.** The old scanner asked "is this initializer one
+  of the mutable shapes I know?" — array, object, `new Map` — so a call was invisible, and
+  a factory is what every state-hiding trick has in common. It now asks the opposite: is
+  this initializer PROVABLY not state? A number, a string or template, a regex, a symbol,
+  a function, or a call to a same-module arrow that returns a string. Everything else is
+  state and must be accounted for. The failure mode is a false ALARM rather than a silent
+  pass.
+
+- **`cache`** — required to be declared `const X = tenantCache(…)` in a module that really
+  imports it, and required to be touched only through the handle's own methods, each with
+  a `tenantId` expression as its first argument. There are deliberately NO aliases: a
+  local name claiming to be the workspace is a sentence in identifier form, and that is
+  precisely the bypass that worked.
+- **`frozen`** — required to be `const` and wrapped in `Object.freeze(…)`, and not a Map or
+  a Set, since freezing one leaves `.set()` and `.add()` working. "Tenant-invariant by
+  construction" is no longer checked by scanning for writes; the write throws.
+- **`unkeyed`** — the bare per-isolate slot, which is the shape every leak had. There is
   deliberately no "it is only a clock" kind: `canvasRegAt` was only a clock, and it is what
   made the stale document answer. An entry must name a `proof` test file that exists and
   speaks the binding's name, and the TOTAL count must equal `UNKEYED_BUDGET` exactly —
   exact, not a ceiling, so closing one forces the number down in the same commit and
   opening one forces a diff line that says the isolate now shares one more slot.
 
+**And the reasons are gone.** The failure that outlived every rebuild is that an entry's
+stated reason is prose, and no checker can tell whether prose is true. The answer is not a
+better sentence or a scan for weasel words: `cache` and `frozen` are ARRAYS OF NAMES, so
+the field a false claim would live in does not exist. What a human needs to know sits in a
+`//` comment beside the name, which is visibly commentary rather than data. Prose survives
+in exactly one place — `unkeyed`, where a slot's danger genuinely cannot be checked — and
+that place is capped by a number.
+
 Today's four are `cfgAt`, `cfgGoodAt`, `TENANT_CTX` and `tenantMemo` — the config slot
 with its two clocks, and the resolver's memo. That is this phase's remaining debt, counted
-rather than described,
-and the budget is what makes it a debt rather than a category. Checked against the pre-fix
-tree: with `AVATAR_KEYS` and the `canvasReg*`/`pitiRemarks*` pairs restored, all four ways
-a maintainer could list them fail — unlisted if left off, `keyed-not-a-map` under `keyed`,
-`invariant-not-const` + `invariant-written` under `invariant`, and `proof-silent` plus a
-budget of 11 against 6 under `unkeyed`.
+rather than described, and the budget is what makes it a debt rather than a category.
 
-What it still does not cover is stated in its own header: state with no binding name (`this`
-on the default export), and whether the KEY names the right workspace, which is
-`resolveTenant`'s job and `scripts/one-tenant-resolver.mjs`'s guard. The budget line can be
-raised by the commit that needs it — the point is not that it is impossible but that it is
-loud, and that the way both leaks actually shipped, by adding a sentence to a list of
-sentences, no longer works.
+What it still does not cover is stated in its own header, and the header is the list to
+read before trusting a green: state with no binding name (`this` on the default export, a
+module-scope IIFE); `Object.freeze` being shallow, so `TABLE.sub[k] = v` still runs; the
+key having to SAY `tenantId`, which is a name and not a proof, so an object carrying a
+`tenantId` field of the wrong value passes; and whether the key names the right workspace
+at all, which is `resolveTenant`'s job and `scripts/one-tenant-resolver.mjs`'s guard. The
+budget line can be raised by the commit that needs it — the point is not that it is
+impossible but that it is loud, and that the way every leak actually shipped, by adding a
+sentence to a list of sentences, no longer works.
 
 ### 2a. The config cache — stale within a floor — `loadTenantContext()` / `loadConfig()`
 
@@ -643,9 +670,9 @@ worth swapping the cached context for. `buildTenantContext` therefore takes docu
 already parsed and never performs I/O.
 
 The completeness guard lives in `test/tenant-context.test.mjs`: it walks the module graph
-the worker pulls into the isolate, and any module-scope `let` in any of those files that is
-not a declared per-isolate runtime cache or tenant-invariant constant fails the suite. That
-is the check for the one failure mode the snapshots cannot see — threading 27 of 28 globals
+the worker pulls into the isolate, and any module-scope binding in any of those files that
+is not a `tenantCache()` handle, a frozen table, or a budgeted per-isolate slot fails the
+suite. That is the check for the one failure mode the snapshots cannot see — threading 27 of 28 globals
 and leaving the 28th shared, with everything green because a single-tenant era cannot
 observe the difference. Reading only the entry file would have made "move it one import
 away" the way past it.

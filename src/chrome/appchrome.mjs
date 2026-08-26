@@ -24,12 +24,14 @@ export const escAttr = (s) =>
 // acronyms that are general web vocabulary belong. A workspace's own slug prefixes do
 // not — they read as ordinary words everywhere else, and the engine has no business
 // knowing which two letters one team puts in front of half its folders.
-const ACRONYMS = new Set(["sms", "ui", "ux", "uxui", "api", "url", "faq", "sso", "cta", "pdf", "csv"]);
+// A frozen ARRAY, not a Set: Object.freeze leaves `.add()` working on a Set, so a Set is
+// a table this engine cannot make un-writable. Eleven entries, tested with `.includes`.
+const ACRONYMS = Object.freeze(["sms", "ui", "ux", "uxui", "api", "url", "faq", "sso", "cta", "pdf", "csv"]);
 export function titleCase(slug) {
   return slug
     .replace(/[-_]/g, " ")
     .replace(/\S+/g, (w) =>
-      ACRONYMS.has(w.toLowerCase()) ? w.toUpperCase() : w.charAt(0).toUpperCase() + w.slice(1)
+      ACRONYMS.includes(w.toLowerCase()) ? w.toUpperCase() : w.charAt(0).toUpperCase() + w.slice(1)
     );
 }
 
@@ -89,7 +91,7 @@ const IC_PIN = ic(`<path d="M12 17v5"/><path d="M9 10.76a2 2 0 0 1-1.11 1.79l-1.
 
 // The library's own sections — used both to build its rail and to know when the rail
 // should BE the library's (see renderAppChrome).
-const LIB_KEYS = ["tokens", "base", "components", "patterns", "pages", "primitives"];
+const LIB_KEYS = Object.freeze(["tokens", "base", "components", "patterns", "pages", "primitives"]);
 
 // ── Per-page state derivation ────────────────────────────────────────────────
 // The active space object out of the space list, and the two ambient values the rail

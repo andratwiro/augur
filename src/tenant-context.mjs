@@ -42,7 +42,7 @@
 // `routing`   filled from routing.json, or derived from live manifests in bundle mode
 // `derived`   computed from another field rather than read from a document
 // `runtime`   set by the worker as it serves, not by a config document
-const FIELDS = {
+const FIELDS = Object.freeze({
   // ---- identity ----------------------------------------------------------------
   CONFIG_USERS:            { source: "instance", make: () => [] },
   USERS:                   { source: "derived",  make: () => [] }, // CONFIG_USERS + KV roster overlay
@@ -91,7 +91,7 @@ const FIELDS = {
   LOGIN_PREFILL_PASSWORD:  { source: "instance", make: () => "" },
   INSTANCE_ENGINE_VERSION: { source: "instance", make: () => "" },
   UPDATE_FEED:             { source: "instance", make: () => "" },
-};
+});
 
 export const TENANT_FIELD_NAMES = Object.freeze(Object.keys(FIELDS));
 export const TENANT_FIELD_SOURCES = Object.freeze(
