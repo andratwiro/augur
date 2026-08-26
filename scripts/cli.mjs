@@ -12,6 +12,7 @@
 //   augur migrate   move a workspace to another instance, and prove it arrived
 //   augur freeze    make a workspace read-only while it is being moved
 //   augur thaw      accept writes again, and print how long the freeze lasted
+//   augur canon     copy the design system out of a product you have a login for
 //
 // Each subcommand is its own script with its own --help-worthy header; this
 // router only dispatches, so `node scripts/<name>.mjs` keeps working too.
@@ -47,10 +48,11 @@ const map = {
   // Same script: `pull` is `clone` with a three-way merge instead of an overwrite, and one
   // file is what keeps the URL→source mapping from being written twice.
   pull: "clone.mjs",
+  canon: "canon.mjs",
   build: path.join("..", "build.js"),
 };
 if (!map[sub]) {
-  console.error("usage: augur <init|ship|dev|offline|build|deploy|publish|status|clone|pull|export|restore|migrate|adopt|freeze|thaw|connect|login> [options]");
+  console.error("usage: augur <init|ship|dev|offline|build|deploy|publish|status|clone|pull|export|restore|migrate|adopt|freeze|thaw|connect|login|canon> [options]");
   process.exit(sub ? 1 : 0);
 }
 const child = spawn(process.execPath, [path.join(SCRIPTS, map[sub]), ...rest], {
