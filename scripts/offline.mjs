@@ -27,6 +27,7 @@
 import { spawn } from "node:child_process";
 import { watch, existsSync, readFileSync, readdirSync } from "node:fs";
 import path from "node:path";
+import { parseEnvFile, derivePosture, postureBindings, postureBanner } from "./lib/offline-posture.mjs";
 import { fileURLToPath } from "node:url";
 import { findShellDir } from "./lib/instance.mjs";
 import { respawnDelay } from "./lib/offline-respawn.mjs";
@@ -41,33 +42,23 @@ const log = (msg) => console.log(`\x1b[35m[offline]\x1b[0m ${msg}`);
 // comments/pins/status/renames are the shared live layer while prototypes stay local.
 // No creds → today's local KV, unchanged. Passed to the worker as
 // --binding GV_KV_* (read by kvFor). Prototypes/assets are always local regardless.
-function readEnvFile(p) {
-  const out = {};
-  try {
-    for (const line of readFileSync(p, "utf8").split("\n")) {
-      const m = line.match(/^\s*([A-Z0-9_]+)\s*=\s*(.*)\s*$/);
-      if (m) out[m[1]] = m[2].trim();
-    }
-  } catch (e) {}
-  return out;
-}
-const DEPLOY_ENV = readEnvFile(path.join(ROOT, ".env.deploy"));
-const LIVE_KV = !!(DEPLOY_ENV.CLOUDFLARE_API_TOKEN && DEPLOY_ENV.CLOUDFLARE_ACCOUNT_ID && DEPLOY_ENV.GV_KV_NS);
-const LIVE_KV_BINDINGS = LIVE_KV ? [
-  "--binding", `GV_KV_TOKEN=${DEPLOY_ENV.CLOUDFLARE_API_TOKEN}`,
-  "--binding", `GV_KV_ACCOUNT=${DEPLOY_ENV.CLOUDFLARE_ACCOUNT_ID}`,
-  "--binding", `GV_KV_NS=${DEPLOY_ENV.GV_KV_NS}`,
-] : [];
-// Realtime posture must MATCH the KV posture, or the two halves of a board's
-// persistence diverge silently. Live KV + the instance's shared secret → the canvas
-// joins the real rooms through /__rt (the secret gates the realtime worker; without
-// it every join is a 403 and the canvas quietly degrades to solo). Local-sandbox KV →
-// realtime is DISABLED outright (GV_RT_DISABLE, honoured by rtProxy), because a
-// "sandbox" whose boards still broadcast into the shared prod rooms is not a sandbox.
-const RT_SECRET = LIVE_KV && DEPLOY_ENV.RT_SHARED_SECRET;
-const RT_BINDINGS = RT_SECRET
-  ? ["--binding", `RT_SHARED_SECRET=${DEPLOY_ENV.RT_SHARED_SECRET}`]
-  : LIVE_KV ? [] : ["--binding", "GV_RT_DISABLE=1"];
+// The live-vs-sandbox decision, and the bindings it implies, now live in
+// scripts/lib/offline-posture.mjs — a pure function with a table of cases under it in
+// test/offline-posture.test.mjs. It moved because it had NO coverage and it decides the
+// one thing about local development that can hurt somebody else: whether this process
+// reads and writes the LIVE KV namespace or a local sandbox. Getting it backwards is
+// silent in both directions, so a refactor of exactly this code is how a live-vs-sandbox
+// inversion ships green.
+//
+// `--sandbox` forces the safe posture whatever .env.deploy holds. There is deliberately
+// no inverse flag: nothing may turn a sandbox into a live run except the credentials
+// themselves being present.
+const POSTURE = derivePosture(
+  parseEnvFile((() => { try { return readFileSync(path.join(ROOT, ".env.deploy"), "utf8"); } catch (e) { return ""; } })()),
+  { forceSandbox: process.argv.includes("--sandbox") },
+);
+const POSTURE_BINDINGS = postureBindings(POSTURE);
+
 // Build from the canonical EDIT-HERE clones, not the pinned nested submodules.
 // One repo per space: a maintainer workspace puts each space repo — a self-contained
 // bundle with that space's design system AND prototypes at its root — as a sibling of
@@ -159,14 +150,17 @@ await new Promise((resolve) => {
 });
 
 log(`serving on http://localhost:${PORT}  (Ctrl-C to stop)`);
-log(LIVE_KV
-  ? "KV: \x1b[1mLIVE\x1b[0m\x1b[35m — comments/pins/status/renames read & write PRODUCTION KV (prototypes stay local)"
-  : "KV: local (.env.deploy with Cloudflare creds absent → safe local sandbox)");
-log(RT_SECRET
-  ? "realtime: LIVE — canvas boards join the instance's real rooms through /__rt"
-  : LIVE_KV
-    ? "realtime: \x1b[1mUNAVAILABLE\x1b[0m\x1b[35m — no RT_SHARED_SECRET in .env.deploy; canvas boards run SOLO (saves still land in prod KV)"
-    : "realtime: disabled (sandbox) — canvas boards run solo against local KV");
+// The posture prints on EVERY run, because a posture nobody prints is a posture nobody
+// checks. It carries no credential, which is the reason the banner takes the derived
+// posture rather than the env file.
+log(POSTURE.live
+  ? `KV: \x1b[1mLIVE\x1b[0m\x1b[35m — ${POSTURE.reason} (prototypes stay local)`
+  : `KV: local — ${POSTURE.reason}`);
+log({
+  joined: "realtime: LIVE — canvas boards join the instance's real rooms through /__rt",
+  solo: "realtime: \x1b[1mUNAVAILABLE\x1b[0m\x1b[35m — no RT_SHARED_SECRET in .env.deploy; canvas boards run SOLO (saves still land in prod KV)",
+  disabled: "realtime: disabled (sandbox) — canvas boards run solo against local KV",
+}[POSTURE.realtime]);
 let wrangler = null;
 let stopping = false;
 const crashTimes = [];
@@ -175,8 +169,7 @@ function spawnWrangler() {
     "npx",
     ["--yes", "wrangler", "pages", "dev", "dist",
       "--kv", "COMMENTS",
-      ...LIVE_KV_BINDINGS,
-      ...RT_BINDINGS,
+      ...POSTURE_BINDINGS,
       "--port", PORT,
       "--compatibility-date", "2024-09-01",
       "--persist-to", ".wrangler/state"],
