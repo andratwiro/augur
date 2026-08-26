@@ -4115,6 +4115,95 @@ function sanitizeMsg(users, m, me) {
   };
 }
 
+// ---- Erasure: purge one person from a workspace's stored comments -------------------
+//
+// `E-gdpr-purge-user`. The existing `remove` op revokes the credential, the invites and
+// the lastseen stamp, and never touches comment AUTHORSHIP anywhere. So a person removed
+// from a roster is still named on every message they wrote, which is exactly the state an
+// erasure request is about.
+//
+// WHAT IT KEEPS. `body` and `at` survive, and so does thread structure. Deleting the
+// messages would erase other people's conversation — a reply that answers a question is
+// unreadable once the question is gone — and the request is to stop identifying somebody,
+// not to rewrite a record other people are part of. So the message stays and stops
+// carrying a person: `author` becomes a fixed sentinel, `by` is cleared, `verified` goes
+// false so nothing renders it as a confirmed identity.
+//
+// ⚠️ IDENTIFICATION IS BY A 32-BIT HASH, AND THAT IS THE SHARP EDGE. Messages store
+// `by: personId(email)`, a one-way djb2 hash — deliberately, because an address in every
+// stored message would be reversible PII and `/__people` is ungated on public prototypes
+// precisely because ids cannot be reversed. Do NOT "fix" that by storing the address.
+//
+// The consequence is that two addresses can share an id, and a purge keyed on it would
+// then redact an innocent third party's messages as well. A machine cannot choose between
+// them, so this does not try: before sweeping, it checks the workspace roster for any
+// OTHER member sharing the id and REFUSES, naming both. That converts a silent
+// over-redaction into a question for a person, which is the only honest answer available.
+const PURGED_AUTHOR = "Deleted user";
+
+/** Redact one person from one thread array. Pure — the sweep below does the I/O. */
+function purgeThreads(threads, id) {
+  let redacted = 0;
+  const out = (Array.isArray(threads) ? threads : []).map((t) => {
+    if (!t || !Array.isArray(t.messages)) return t;
+    let touched = false;
+    const messages = t.messages.map((m) => {
+      if (!m || m.by !== id) return m;
+      touched = true; redacted++;
+      // Spread first so any field a future version adds survives an erasure written
+      // before it existed; the three that identify are then overwritten by name.
+      return { ...m, author: PURGED_AUTHOR, by: null, verified: false };
+    });
+    return touched ? { ...t, messages } : t;
+  });
+  return { threads: out, redacted };
+}
+
+/**
+ * Sweep every stored thread in this workspace, plus the lastseen stamp.
+ * Returns {ok, redacted, pathsTouched, scanned} or {ok:false, reason, …}.
+ */
+async function purgeUser(kv, users, email) {
+  if (!kv || typeof kv.list !== "function") return { ok: false, reason: "kv-list-unsupported" };
+  const addr = lcEmail(email);
+  if (!addr) return { ok: false, reason: "bad-address" };
+  const id = personId(addr);
+
+  // The collision check, before anything is written.
+  const clashes = (users || [])
+    .map((u) => lcEmail(u && u.email))
+    .filter((e) => e && e !== addr && personId(e) === id);
+  if (clashes.length) {
+    return { ok: false, reason: "id-collision", id, collidesWith: clashes.length };
+  }
+
+  let redacted = 0, scanned = 0;
+  const pathsTouched = [];
+  let cursor;
+  do {
+    const list = await kv.list({ prefix: "c:", cursor });
+    for (const k of list.keys) {
+      scanned++;
+      const raw = await kv.get(k.name);
+      if (!raw) continue;
+      let threads;
+      try { threads = JSON.parse(raw); } catch (e) { continue; }
+      const res = purgeThreads(threads, id);
+      if (res.redacted) {
+        await kv.put(k.name, JSON.stringify(res.threads));
+        redacted += res.redacted;
+        pathsTouched.push(k.name.slice(2));
+      }
+    }
+    cursor = list.list_complete ? null : list.cursor;
+  } while (cursor);
+
+  // The lastseen stamp is an address in a KEY, so it is erased rather than redacted.
+  try { await kv.delete(LASTSEEN_PREFIX + addr); } catch (e) {}
+
+  return { ok: true, id, redacted, pathsTouched, scanned };
+}
+
 // Apply a single review op to a thread array; returns the new array. `me` is the
 // server-resolved signed-in user (or null) — passed to sanitizeMsg so authorship of
 // every added/replied message is stamped from the session, not the request body.
@@ -5051,7 +5140,22 @@ async function adminUsersApi(tctx, request, url, env, me, users = tctx.USERS, co
       // tombstone above is the security boundary either way — this only keeps the
       // durable record honest.
       const fileSync = await shellDispatch(env, "roster-update", { action: "remove", email, by: me.email });
-      return jsonResponse({ ok: true, email, fileSync });
+
+      // REMOVAL IS NOT ERASURE, and conflating them would be wrong in both directions.
+      // Everything above revokes access; none of it touches what this person's name is
+      // still attached to. A removed colleague normally SHOULD stay named on the comments
+      // they wrote, because the thread is a record other people are part of.
+      //
+      // `purge: true` is the erasure request, asked for explicitly, and it is a distinct
+      // decision because it edits a shared record. The result rides back on the same
+      // response rather than throwing: the removal itself already succeeded, and an
+      // erasure that could not complete must be visible rather than swallowed.
+      let purge;
+      if (op && op.purge === true) {
+        try { purge = await purgeUser(kv, users, email); }
+        catch (e) { purge = { ok: false, reason: "failed", detail: String((e && e.message) || e).slice(0, 200) }; }
+      }
+      return jsonResponse({ ok: true, email, fileSync, ...(purge ? { purge } : {}) });
     }
 
     return jsonResponse({ error: "unknown-op" }, 400);
@@ -5765,6 +5869,7 @@ export const __testables = Object.freeze({
   applyInstance,
   hashPassword, verifyPassword, isPassHash, safeEqual, userByEmail,
   personId, avatarKey, publicUser, stampAuthor, sanitizeMsg, applyOp, reviewApi,
+  purgeThreads, purgeUser, PURGED_AUTHOR,
   peopleApi,
   tokenFor, hmacToken, userToken, identify, effectiveSecret,
   mintInvite, readInvite, consumeInvite,
