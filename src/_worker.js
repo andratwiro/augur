@@ -3356,6 +3356,47 @@ const versionUnavailable = () => jsonResponse({
   message: "This workspace's store could not issue a publish version. Nothing was published. Run the same command again.",
 }, 503);
 
+/**
+ * A CAPABILITY-RESTRICTED TOKEN, and the reason one has to exist.
+ *
+ * The purge job has to reach `/__publish/_state/delete`, which needs star scope — and star
+ * scope can publish over every workspace's content, which is the boundary
+ * `test/isolation.test.mjs` exists to keep. A control plane holding one would be a control
+ * plane that could overwrite every tenant's site. "Hold it carefully" is not an answer.
+ *
+ * So a token record may carry `caps`, and the rule is deny-by-default:
+ *
+ *   · NO `caps` field        → unrestricted. Every token that exists today, unchanged.
+ *   · `caps: ["purge"]`      → may do ONLY what `purge` names below, and nothing else.
+ *   · `caps: []`             → may do nothing. An empty list is not "no restriction".
+ *   · `caps: ["anything"]`   → may do nothing, because an unknown name grants nothing.
+ *
+ * That last one is the shape that matters: a capability added later, or a typo, must fail
+ * shut. A denylist would have to be updated in step with every new route, and the step
+ * somebody forgets is the one that opens something.
+ */
+const CAP_ROUTES = Object.freeze({
+  // Erase a workspace whose own object agrees it is past its purge date, and sweep the
+  // blobs nothing references any more. Not "delete anything" — `deleteWorkspace` asks the
+  // workspace object for a second opinion, so this capability alone erases nothing live.
+  purge: Object.freeze([["_state", "delete"], ["_state", "blob-gc"]]),
+});
+
+function capabilityRefusal(entry, spaceId, op) {
+  const caps = entry && entry.caps;
+  // Absent, or not a list at all — unrestricted, exactly as before this existed. A
+  // malformed value is treated as absent rather than as empty on purpose: a corrupt record
+  // must not silently disable a working credential, and it cannot GRANT anything either,
+  // because grants come only from names that match below.
+  if (!Array.isArray(caps)) return null;
+  for (const c of caps) {
+    for (const [s, o] of (CAP_ROUTES[c] || [])) {
+      if (s === spaceId && o === op) return null;
+    }
+  }
+  return "capability-not-granted";
+}
+
 async function publishApi(tctx, request, url, env) {
   if (!env.BUNDLES) return jsonResponse({ error: "bundle-store-not-configured" }, 501);
   const [spaceId, op, arg] = url.pathname.slice("/__publish/".length).split("/");
@@ -3420,6 +3461,12 @@ async function publishApi(tctx, request, url, env) {
   if (spaceId === "_instance" && op === "profiles" && request.method === "GET") {
     const anyAuth = await publishAuthDetailed(tctx, request, env, spaceId, true);
     if (!anyAuth.entry) return jsonResponse(publishRefusalBody(anyAuth.refusal), 403);
+    // This route resolves auth on its own, ahead of the shared check below, so it needs
+    // its own capability gate — and it needs one badly: it answers with every roster
+    // member's address and aliases, which a purge credential has no business reading.
+    if (capabilityRefusal(anyAuth.entry, spaceId, op)) {
+      return jsonResponse({ error: "forbidden", reason: "capability-not-granted" }, 403);
+    }
     // No `role` here: any valid publish token (including a non-admin default-space one)
     // can read this, and it only needs the fields that render editor faces — leaking
     // who the admins are is gratuitous.
@@ -3435,6 +3482,13 @@ async function publishApi(tctx, request, url, env) {
   const auth = await publishAuthDetailed(tctx, request, env, spaceId);
   if (!auth.entry) return jsonResponse(publishRefusalBody(auth.refusal), 403);
   const who = auth.entry;
+  // ONE PLACE, BEFORE EVERY BRANCH. A restricted token is refused here rather than at each
+  // route it must not reach, so a route added later is closed to it by default instead of
+  // by somebody remembering. This is the check that makes a purge credential safe to hand
+  // to the control plane: it is the reason it cannot publish.
+  if (capabilityRefusal(who, spaceId, op)) {
+    return jsonResponse({ error: "forbidden", reason: "capability-not-granted" }, 403);
+  }
 
   // Instance config push (star-scope tokens only): the deploy shell's identity +
   // knobs become config/instance.json — the bundle-mode source loadConfig reads.
@@ -8395,6 +8449,7 @@ export const __testables = Object.freeze({
   exportState, importState,
   quotaBump, quotaMinute, quotaDay, workspaceStatus, touchWorkspaceActivity,
   deleteWorkspace, purgeDue, blobGc, clearFamilies, NEVER_CLEARED,
+  capabilityRefusal, CAP_ROUTES,
   runScheduledHealth, adminHealthApi, HEALTH_REPORT_KEY,
   readFreeze, setFreeze, isFrozenWrite, FROZEN_WRITES, FREEZE_KEY,
   readSuspension, isAllowedWhileSuspended, SUSPENDED_ALLOWED, SUSPENDED_ALLOWED_READS,

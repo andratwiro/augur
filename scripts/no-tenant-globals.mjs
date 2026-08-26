@@ -243,6 +243,7 @@ const ALLOWLIST = {
       "OVERLAY_KV_KEYS",      // family -> the KV document name it lives under; the same for every workspace
       "STATE_KV_PREFIXED",    // which inventory entries are one document per key when exported
       "NEVER_CLEARED",        // families a reset may never empty; a fact about credentials, not a workspace
+      "CAP_ROUTES",           // capability -> the routes it grants; deny-by-default, identical for every workspace
       "FROZEN_WRITES",        // the paths a migration freeze closes; the same list for every workspace
       "SUSPENDED_ALLOWED",       // what a paused workspace still answers — the published promise, as a list
       "SUSPENDED_ALLOWED_READS", // and the read verbs of the bundle store an export walks
