@@ -28,6 +28,24 @@ grepping for routes.
 
 ## The procedure
 
+One command does the middle of it:
+
+```bash
+augur migrate --from https://old --to https://new --freeze
+# … look at the new home, then point the hostname at it …
+augur thaw                                     # prints how long the freeze lasted
+```
+
+`migrate` freezes, exports everything, restores it, and then READS THE TARGET BACK and
+compares it family by family — which is the step that makes a run worth anything, because
+a migration that reports success without reading the far side has reported that it sent
+some requests. It is safe to run again after a failure: nothing accumulates and nothing
+double-writes, so the fix for a run that died is to run it.
+
+It deliberately does not thaw and does not touch DNS. Both need a person.
+
+By hand, the same thing is:
+
 ```bash
 augur freeze --reason "moving to <new home>"   # writes start being refused within ~10s
 augur export --out <dir> --full                # content + roster + comments + boards

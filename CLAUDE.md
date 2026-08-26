@@ -236,7 +236,10 @@ engine/worker verification; content goes out with `ship`/`publish` ·
 (store backup; `--full`/`--state` cover everything that is not published content) ·
 `augur freeze [--reason …] [--status]` / `augur thaw` (read-only while a workspace is
 being moved — writes refused with a 503 that says why, reads and sign-in unaffected;
-`thaw` prints the duration a migration has to publish. See `docs/migration-freeze.md`).
+`thaw` prints the duration a migration has to publish) ·
+`augur migrate --from <origin> --to <origin> [--freeze]` (freeze → export → restore →
+VERIFY the far side family by family; safe to re-run after any failure, and it touches
+neither DNS nor the thaw, which both need a person). See `docs/migration-freeze.md`.
 
 Env reference: `GV_SPACES_ROOT` (spaces location) · `GV_ENGINE_ONLY` (=1: chrome
 only, no space discovery — what a shell's CI runs) · `GV_ONLY_SPACE` (build one
