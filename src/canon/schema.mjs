@@ -260,6 +260,11 @@ export function validateCanon(canon, { strict = false } = {}) {
 
   const prefix = String(canon.prefix || "").trim();
   if (!IDENT.test(prefix)) err(`prefix: "${canon.prefix}" is not a css-safe name (lowercase, digits, single hyphens)`);
+  // Tokens and classes may use different prefixes — `skill.json` `cssPrefixes` is a list
+  // for exactly that reason, and a workspace whose tokens are `--acme-` and whose classes
+  // are `.a-` is not doing anything wrong. Default them to the same word.
+  const classPrefix = String(canon.classPrefix || canon.prefix || "").trim();
+  if (!IDENT.test(classPrefix)) err(`classPrefix: "${canon.classPrefix}" is not a css-safe name`);
 
   const given = canon.tokens && typeof canon.tokens === "object" ? canon.tokens : {};
   // A skeleton ships every role as null; naming them is the whole job, so say which.
@@ -326,7 +331,7 @@ export function validateCanon(canon, { strict = false } = {}) {
     if (!c.label || !c.description) err(`${at}: needs a label and a one-line description — the overlay and the gallery print them`);
     const classes = Array.isArray(c.classes) ? c.classes : [];
     if (!classes.length) err(`${at}: no classes`);
-    for (const cl of classes) if (!String(cl).startsWith(`${prefix}-`)) err(`${at}: class "${cl}" does not start with "${prefix}-" — the overlay finds a family by its prefix`);
+    for (const cl of classes) if (!String(cl).startsWith(`${classPrefix}-`)) err(`${at}: class "${cl}" does not start with "${classPrefix}-" — the overlay finds a family by its prefix`);
     const css = typeof c.css === "string" ? c.css : "";
     if (!css.trim()) { err(`${at}: no css`); continue; }
     for (const cl of classes) if (!css.includes(`.${cl}`)) err(`${at}: css never defines .${cl}`);
@@ -336,7 +341,7 @@ export function validateCanon(canon, { strict = false } = {}) {
       if (!known.has(m[1])) err(`${at}: css reads ${m[1]}, which this canon does not define`);
     }
     for (const m of css.matchAll(/\.([a-zA-Z][\w-]*)/g)) {
-      if (!m[1].startsWith(`${prefix}-`) && !classes.includes(m[1])) warn(`${at}: css styles .${m[1]}, outside its own family`);
+      if (!m[1].startsWith(`${classPrefix}-`) && !classes.includes(m[1])) warn(`${at}: css styles .${m[1]}, outside its own family`);
     }
   }
   if (!comps.length) warn("components: none — the canon is tokens only. A prototype can wear it, but nothing is named yet.");
@@ -344,7 +349,7 @@ export function validateCanon(canon, { strict = false } = {}) {
   const src = canon.source && typeof canon.source === "object" ? canon.source : {};
   if (!src.url) warn("source.url: not recorded — a canon should say what it was taken from");
 
-  return { ok: errors.length === 0, errors, warnings, tokens, derived, prefix, componentCount: comps.length };
+  return { ok: errors.length === 0, errors, warnings, tokens, derived, prefix, classPrefix, componentCount: comps.length };
 }
 
 /** `rgba(…)` inside a var() fallback is the one honest place a literal colour appears. */
@@ -383,12 +388,13 @@ export function parseTokensCss(text, prefixHint = "") {
 }
 
 /** The skeleton `augur canon start` writes: every observed role, unanswered. */
-export function blankCanon({ url = "", prefix = "canon" } = {}) {
+export function blankCanon({ url = "", prefix = "canon", classPrefix = "" } = {}) {
   const tokens = {};
   for (const r of OBSERVED_ROLES) tokens[r] = null;
   return {
     canonVersion: CANON_VERSION,
     prefix,
+    classPrefix: classPrefix || prefix,
     source: { url, collectedAt: null, how: "" },
     tokens,
     components: [],
