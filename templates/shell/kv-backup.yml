@@ -54,6 +54,45 @@ jobs:
   backup:
     runs-on: ubuntu-latest
     steps:
+      # ⛔ REFUSE TO RUN ON A PUBLIC REPOSITORY. First step, on purpose.
+      #
+      # A COMMENT IS NOT A GUARD, AND THIS HAS ALREADY HAPPENED. A public fork of the
+      # engine ran a workflow of this shape and published a full production KV export of
+      # a live instance — 58 keys, 26 internal comment threads, five real names and
+      # personal addresses — reachable with no authentication. GitHub shares git objects
+      # across a fork network, so the commit resolved through the PARENT repository's own
+      # raw URL: deleting the branch, deleting the fork and rewriting the parent's history
+      # all leave it fetchable, and only a GitHub Support object purge closes it. The
+      # header above this job said "the shell repo must be private" the whole time.
+      #
+      # IT FAILS, IT DOES NOT SKIP. A skip is worse than having no backup workflow at all,
+      # because the operator goes on believing a backup exists.
+      #
+      # AND IT FAILS WHEN IT CANNOT TELL. `github.event.repository.private` is absent on
+      # some event types, and an absent value is not a private repository — it is an
+      # unanswered question, and this is the one question that must not have a default.
+      - name: Refuse to run on a public repository
+        env:
+          GH_TOKEN: ${{ github.token }}
+          CTX_PRIVATE: ${{ github.event.repository.private }}
+        run: |
+          set -uo pipefail
+          PRIVATE="$(gh api "repos/${GITHUB_REPOSITORY}" --jq .private 2>/dev/null || true)"
+          if [ -z "$PRIVATE" ]; then PRIVATE="${CTX_PRIVATE:-}"; fi
+          case "$PRIVATE" in
+            true)
+              echo "OK: ${GITHUB_REPOSITORY} is private"
+              ;;
+            false)
+              echo "::error::REFUSING TO RUN: ${GITHUB_REPOSITORY} is a PUBLIC repository. This job exports the instance's whole state and writes it into this repo. On a public repo that publishes it to anyone, permanently — a fork network keeps the objects fetchable through the parent's URL after the branch, the fork and the history are all gone. Make the repository private, or delete this workflow."
+              exit 1
+              ;;
+            *)
+              echo "::error::REFUSING TO RUN: could not determine whether ${GITHUB_REPOSITORY} is private (got '${PRIVATE}'). An unanswered question is not a private repository."
+              exit 1
+              ;;
+          esac
+
       - uses: actions/checkout@v4 # main — the kv-backups branch is fetched/created below
 
       # Export the whole namespace to one JSON object. The namespace is small
