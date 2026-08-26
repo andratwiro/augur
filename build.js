@@ -5692,15 +5692,21 @@ function preview(href, hasPoster) {
 }
 
 // ── Empty states ─────────────────────────────────────────────────────────────
-// Six surfaces have one (the landing page, Base, Components, Patterns, Pages, Tokens)
-// and a blank workspace shows all six, so they are one thing rendered six times rather
-// than six renderers each inventing a treatment. The shape, everywhere: first what this
-// surface is worth having, in behaviour someone can picture; then the one sentence to
-// say to an agent to get it, styled to be lifted and pasted; then the folder path and
-// the contract doc last — reachable, because somebody has to type them eventually, but
-// nobody has to understand them to take the first step. Asking an agent IS the way in:
-// there is no import button on any of these pages, and pretending otherwise by leading
-// with a file path is what the old one-liners did.
+// Eight surfaces have one (the landing page, Base, Components, Patterns, Pages, Tokens,
+// Playground, Changelog) and a blank workspace shows all eight, so they are one thing
+// rendered eight times rather than eight renderers each inventing a treatment. The
+// shape, everywhere: first what this surface is worth having, in behaviour someone can
+// picture; then the one sentence to say to an agent to get it, styled to be lifted and
+// pasted; then the folder path and the contract doc last — reachable, because somebody
+// has to type them eventually, but nobody has to understand them to take the first step.
+// Asking an agent IS the way in: there is no import button on any of these pages, and
+// pretending otherwise by leading with a file path is what the old one-liners did.
+// Changelog is the one exception and says why at its own renderer — the file it reads
+// belongs to the engine, so there is nothing there a workspace can ask an agent for.
+//
+// Length is part of the treatment, not a side effect: at the width these render, each
+// surface is 8–10 lines of prose. One that runs half again as long stops reading as the
+// same thing, and the way it gets there is always one more mechanism nobody asked for.
 const emptyState = (...paras) => paras.map((p) => `<p class="empty">${p}</p>`).join("");
 
 // An empty surface still gets its title bar. Without one the page is a floating
@@ -5716,12 +5722,18 @@ function renderRootIndex(opportunities) {
     // pictures of pages" is the difference from every design tool the reader has used,
     // and dropping a comment onto the running thing is the reason to send the link.
     // wrap--wide + the title bar match this page's own populated branch.
+    //
+    // It also has to describe THIS page, and this page is one card per folder, not one
+    // per prototype: the map above is over `opportunities`, each card's cover is that
+    // folder's most recent prototype, and the folderbar counts folders. The prototypes
+    // themselves are one card-open away. `PROJECTS_LABEL` because a workspace that calls
+    // these Clients gets a header saying Clients, and the sentence under it has to agree.
     return shell({
       title: "Augur",
       wrapClass: "wrap--wide",
       body: emptyHead(PROJECTS_LABEL) + emptyState(
-        `The design-system tabs are the parts; this page is the work. Every clickable prototype in the workspace lands here, grouped by the project it belongs to and newest first — real pages, not pictures of pages, so anyone you send the link to can click through it and drop a comment straight onto the thing they are commenting on.`,
-        `Nothing published yet. A prototype is plain self-contained HTML with no build step, which is why the way in is your agent: <em>&ldquo;Build me a clickable prototype of &lt;the screen you have in mind&gt; in this workspace, following the engine's <code>agents/prototype-contract.md</code>, and publish it.&rdquo;</em> It lands under <code>&lt;project&gt;/prototypes/&lt;name&gt;/</code> and shows up here as a card seconds later.`
+        `The design-system tabs are the parts; this page is the work. Your ${PROJECTS_LABEL.toLowerCase()} sit here as cards, most recently worked on first, each wearing its newest prototype; open one and the rest are inside — real pages, not pictures of pages, so anyone you send the link to can click through it and drop a comment straight onto the thing they are commenting on.`,
+        `Nothing published yet. A prototype is plain self-contained HTML with no build step, which is why the way in is your agent: <em>&ldquo;Build me a clickable prototype of &lt;the screen you have in mind&gt; in this workspace, following the engine's <code>agents/prototype-contract.md</code>, and publish it.&rdquo;</em> It lands under <code>&lt;project&gt;/prototypes/&lt;name&gt;/</code>, and that folder becomes your first card here seconds later.`
       ),
     });
   }
@@ -5815,12 +5827,19 @@ function renderOpportunityIndex(opp) {
 
 function renderPlaygroundIndex(projects) {
   if (!projects.length) {
+    // The only tab whose point is what it does NOT ask of you: a playground folder has
+    // no project around it and no `prototypes/` nesting, which is the whole reason to
+    // put something here rather than in a project. The public-URL clause is not trivia —
+    // `playground/` ships verbatim (agents/prototype-contract.md), so "throwaway" is
+    // about how much it owes you, never about who can see it.
     return shell({
       title: "Playground",
       activeTab: "playground",
-      body: `<p class="section-eyebrow">Playground 🛝</p>
-        <p class="empty">No projects yet. Add one under
-        <code>playground/&lt;project&gt;/</code> and rebuild.</p>`,
+      wrapClass: "wrap--wide",
+      body: emptyHead("Playground") + emptyState(
+        `Not everything you build belongs under one of your ${PROJECTS_LABEL.toLowerCase()}. A tryout of one interaction, a spike to settle an argument, a screen you want a link to before it has a home — this is where those live, carrying the same comments, stars and boards as anything else on the site.`,
+        `Nothing here yet. A playground piece is a single self-contained folder with no project around it, so ask your agent: <em>&ldquo;Build me a quick throwaway of &lt;the idea&gt; in this workspace's playground, following the engine's <code>agents/prototype-contract.md</code>.&rdquo;</em> It lands under <code>playground/&lt;name&gt;/</code> and publishes to the public <code>/playground/</code> URL exactly as written, so nothing private belongs in one.`
+      ),
     });
   }
 
@@ -6294,7 +6313,7 @@ function renderTokensIndex(graph) {
 
   // The hint names the vocabulary this workspace's own skill declares. With nothing
   // parsed there is nothing to name, so the empty branch is an empty STATE rather than a
-  // caption — emptyState(), the same element and rhythm the other five surfaces use.
+  // caption — emptyState(), the same element and rhythm the other seven surfaces use.
   //
   // Three workspaces land on that branch and it has to read true for all three: one with
   // no skill at all; one whose skill declares `cssPrefixes` but whose tokens file is still
@@ -6310,22 +6329,29 @@ function renderTokensIndex(graph) {
   // clause that does not travel with it.
   //
   // `agents/ui-skill.md` is a path in the ENGINE repo, which sits beside the workspace
-  // clone for the agent but may not be on the reader's disk at all — and it is the one
-  // instruction carrying the `registry.json` requirement, which is a HARD build failure
-  // (loadCatalog throws; there is no fallback). Making it a link would mean shipping the
-  // agents/ docs as chrome, which is a routing change, not an empty-state one. So the
-  // doc stays named for the agent and the consequence is stated here in words, which is
-  // what a reader who cannot open it actually needs.
+  // clone for the agent but may not be on the reader's disk at all. Making it a link
+  // would mean shipping the agents/ docs as chrome, which is a routing change, not an
+  // empty-state one — so it is named for the agent, and the reason to name it is given
+  // rather than asserted: it is where the requirements live, and the one that decides
+  // whether THIS page has anything on it is `cssPrefixes`.
+  //
+  // It carries the `registry.json` requirement too — a HARD build failure (loadCatalog
+  // throws; there is no fallback) — and that used to be spelled out here. It is out:
+  // this surface was half again as long as the ones it is meant to match, the build
+  // failure is not a fact about Tokens, and the doc the sentence already names is where
+  // an agent meets it anyway. Length is part of the treatment — see emptyState.
   const hint = names.length
     ? `<p class="tier-hint">The design-system variables (${cssPrefixes.map((p) => `<code>--${p}-*</code>`).join(", ")}), parsed live from <code>${DS.prefix}-tokens.css</code> — each with its alias chain down to a raw value and how much of the system drinks from it. This is the bottom of every import chain Base · Components · Patterns · Pages resolve to. <strong>Click any token name or value to copy it</strong>; expand a consumer count to see exactly what uses it.</p>`
     : emptyState(
-        `Change one colour in one file and every screen changes with it. That is what a design system buys you, and this page is the list of what you can change: your workspace's colours, type, sizes and shadows, each traced down to its raw value and to everything that uses it — the styles panel from Figma, except this one is generated from your own stylesheet on every build, so it is never a stale copy of it. A hex typed straight into a screen never appears here, which is the other thing this page is good for.`,
-        `Nothing is reaching it yet, and there is no import button — the way in is your agent. Hand it what you already have (brand colours, an existing stylesheet), or ask it to propose a starting set, then ask: <em>&ldquo;Set this workspace up with a design system — colours, type, sizes, shadows — following the engine's <code>agents/ui-skill.md</code>.&rdquo;</em> Naming that doc matters more than it looks. The system lands in <code>skills/&lt;name&gt;-ui/</code> and needs a <code>registry.json</code> at the top of the workspace — without one the next build fails outright — plus a <code>skill.json</code> naming the variable prefixes your stylesheets use (<code>"cssPrefixes"</code>), which is the line that points this page at your CSS, and the first thing to check if a design system is already sitting there.`
+        `Change one colour in one file and every screen changes with it. This page is the list of what you can change: your workspace's colours, type, sizes and shadows, each traced down to its raw value and to everything that uses it — the styles panel from Figma, except generated from your own stylesheet on every build, so it is never a stale copy of it. A hex typed straight into a screen never appears here.`,
+        `Nothing is reaching it yet, and there is no import button — the way in is your agent. Hand it your brand colours or an existing stylesheet, or ask it to propose a set: <em>&ldquo;Set this workspace up with a design system — colours, type, sizes, shadows — following the engine's <code>agents/ui-skill.md</code>.&rdquo;</em> Name that doc: it holds the <code>"cssPrefixes"</code> line that points this page at your CSS, the first thing to check if a design system is already sitting there.`
       );
 
   return shell({
     title: "Tokens", activeTab: "tokens", wrapClass: "wrap--wide",
-    body: `<header class="folderbar"><h1 class="folderbar__title">Tokens</h1><span class="folderbar__count">${names.length}</span><span class="folderbar__rule"></span></header>` +
+    body: (names.length
+      ? `<header class="folderbar"><h1 class="folderbar__title">Tokens</h1><span class="folderbar__count">${names.length}</span><span class="folderbar__rule"></span></header>`
+      : emptyHead("Tokens")) +
       hint +
       `${sections}${filterEmpty()}` +
       `<script>${TOKENS_JS}</script>`,
@@ -6444,12 +6470,22 @@ function renderChangelogPage(entries) {
       </article>`;
     })
     .join("");
+  const head = (n) =>
+    `<header class="folderbar"><h1 class="folderbar__title">Changelog</h1><span class="folderbar__count">${n}</span><span class="folderbar__rule"></span><button type="button" class="aubtn" data-help-open>${IC_HELP}Help</button></header>`;
+  // The shared empty-state treatment, with the one difference this page actually has: it
+  // gets no "ask your agent" sentence, because there is nothing here a workspace can
+  // ask for. CHANGELOG_SRC is `changelog.md` at the ENGINE root and `changelog/` is in
+  // ENGINE_CHROME, so an entry arrives with an engine update and never with a publish —
+  // promising the agent route would send a workspace owner to edit a file that is not
+  // in their repo.
   const body = entries.length
-    ? `<header class="folderbar"><h1 class="folderbar__title">Changelog</h1><span class="folderbar__count">${entries.length}</span><span class="folderbar__rule"></span><button type="button" class="aubtn" data-help-open>${IC_HELP}Help</button></header>` +
+    ? head(entries.length) +
       `<div data-fgroup><div class="cl-list">${cards}</div></div>${filterEmpty()}` +
       `<style>${CHANGELOG_CSS}${CHANGELOG_HELP_CSS}</style><script>${CHANGELOG_JS}</script>`
-    : `<header class="folderbar"><h1 class="folderbar__title">Changelog</h1><span class="folderbar__rule"></span><button type="button" class="aubtn" data-help-open>${IC_HELP}Help</button></header>` +
-      `<p class="empty">No updates yet. Add one to <code>changelog.md</code> and rebuild.</p><style>${CHANGELOG_HELP_CSS}</style>`;
+    : head(0) + emptyState(
+        `The rest of the site is what your team is building; this page is what the tool underneath it did. One dated entry per update worth telling anyone about, newest on top, each date re-reading itself as &ldquo;Yesterday&rdquo; or &ldquo;2 weeks ago&rdquo; every time the page loads, so nobody ever goes back to touch an old one.`,
+        `Nothing here yet. Entries are plain markdown in the engine's own <code>changelog.md</code> — one <code>## YYYY-MM-DD &mdash; Title</code> heading each, then a sentence or two anyone could read — and they reach a live site the way the rest of the chrome does, with an engine update rather than a publish.`
+      ) + `<style>${CHANGELOG_HELP_CSS}</style>`;
   return shell({ title: "Changelog", activeTab: "changelog", body });
 }
 
