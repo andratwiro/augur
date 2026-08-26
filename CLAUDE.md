@@ -41,6 +41,18 @@ before any config is read. Today it answers the `tenantId` the build stamped int
 site appears or the one call drifts below the config load — a second caller returns the
 same answer while there is one workspace, so nothing else would notice.
 
+**Nothing an isolate keeps may be shared between workspaces, and the proof of that is a
+TEST, not a lint.** `test/tenant-route-sweep.test.mjs` drives the real worker in BUNDLE
+mode — what every live instance serves — with two workspaces over a table of routes,
+ungated ones first, sequentially inside every TTL and concurrently with several requests
+in flight. Each route asserts its workspace's OWN answer (never merely that the two
+differ) and that its own store was read, so a green result cannot be vacuous; adding a
+route is one line. `scripts/no-tenant-globals.mjs` still runs in `check` and is worth
+keeping, but it is a cheap first filter over module-scope BINDINGS: its own header lists
+the shapes it provably misses (a memo on a function object, a field on the default
+export, a write into a value nested inside a frozen table). Three cross-tenant leaks
+shipped past it green. Extend the sweep, not the lint.
+
 `space.json` contract: **single source = [agents/space-json.md](agents/space-json.md)**
 (all fields incl. `siteOrigin` + `mcpAllowlists`, with semantics). Load-bearing
 highlights: `id` is the only required field (mount name + URL prefix; repo name is a

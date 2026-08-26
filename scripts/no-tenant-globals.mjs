@@ -1,5 +1,21 @@
 #!/usr/bin/env node
-// no-tenant-globals — the ratchet that keeps per-tenant state out of module scope.
+// no-tenant-globals — a CHEAP FIRST FILTER against per-tenant state in module scope.
+//
+// ⚠️ READ THIS BEFORE READING ITS GREEN AS COVER. This lint is not the guarantee that two
+// workspaces do not share anything, and it never was. It checks one thing: that every
+// module-scope BINDING in the worker's graph is either a keyed cache, a frozen table, or a
+// counted slot. State that has no binding — a memo hung off a function object, a field on
+// the default export, a write into an object nested inside a frozen table — is invisible
+// to it, and one of those was the shape that most recently mattered. The measured list is
+// under "WHAT IT DOES NOT CATCH" below; every claim there was produced by injecting the
+// shape into a copy of src/ and running this file, not by reasoning about it.
+//
+// THE GUARANTEE IS A TEST, NOT A SCAN: `test/tenant-route-sweep.test.mjs` drives the real
+// worker in BUNDLE mode with two workspaces over every route, sequentially inside each
+// TTL and concurrently, and requires each workspace's own answer AND evidence that its own
+// store was read. That is what found the leaks this lint was green on, and that is what to
+// extend when a new route or a new cache appears. This file's job is to make the CHEAP
+// mistake — a new shared slot with a name — impossible to make quietly. Nothing more.
 //
 // WHY. `src/_worker.js` was written for one workspace per deployment, so it kept its
 // config in module-scope `let`s filled once per isolate. An isolate that serves two
@@ -102,19 +118,42 @@
 //              old one re-declared with a plausible reason attached. A per-workspace field
 //              cannot be fixed, so the entry is refused unread.
 //
-// ---- THE GAPS, stated so nobody mistakes green for proof -----------------------------
+// ---- WHAT IT DOES NOT CATCH ----------------------------------------------------------
 //
-//   · STATE WITH NO BINDING NAME is invisible to a scan that works by names. Two shapes
-//     have it: `export default {…}`, which every worker has one of and whose methods the
-//     runtime calls, so `this.x = …` inside a handler is per-isolate state; and a
-//     module-scope IIFE, which runs and captures without ever naming what it made.
-//     Flagging either would flag the one legitimate case and say nothing useful, so both
-//     stay review questions — the same way scripts/no-foreign-vocabulary.mjs names the
-//     two shapes it cannot catch.
-//   · `Object.freeze` IS SHALLOW. It stops every write to the table and none to an object
-//     inside it, so `TABLE.sub[k] = v` still runs. Every frozen table here is one level
-//     deep at the point of use, and a nested one would be a review question, not a lint
-//     one.
+// MEASURED, not assumed: each shape below was injected into a copy of `src/` and this file
+// was run against it. A guard that overstates itself is how three leaks shipped, so the
+// verdicts are written down rather than described.
+//
+// MISSED — real per-isolate state, and this lint passes green on all four:
+//
+//   · MEMOISATION HUNG OFF A FUNCTION OBJECT. `statusApi.__memo = {at, map}` in a GET
+//     path, read back on the next request. No new declaration, no allowlist edit, nothing
+//     for a binding scanner to see — and it is a cache every workspace in the isolate
+//     shares. This is the shape that beat the last two rebuilds of this file.
+//   · THE SAME TRICK ON AN ARROW THE MODULE ALREADY DECLARES.
+//     `readCanvasRegistry.__shared ||= {…}`, handed to a keyed cache as its per-workspace
+//     factory value, so the container is keyed and every entry points at one object.
+//   · A FIELD ON THE DEFAULT EXPORT. `this.x = …` inside `fetch()`. Every worker has one
+//     `export default {…}` and the runtime calls its methods, so flagging the shape would
+//     flag the one legitimate case and say nothing.
+//   · A PER-REQUEST WRITE INTO A TABLE THIS FILE CALLS INVARIANT. `Object.freeze` IS
+//     SHALLOW: it refuses every write to the table and none to an object inside it, so
+//     `AVATAR_MIMES["image/png"].lastSeenAt = Date.now()` runs, on a name the `frozen`
+//     list vouches for. Today every frozen table here is one level deep at the point of
+//     use; nothing checks that it stays so.
+//
+// CAUGHT TODAY — and worth naming anyway, because each was MISSED by an earlier generation
+// of this same file, which is the reason not to read today's green as a guarantee:
+//
+//   · `const SLOT = makeSlot()` — a const initialised by a call. The binding scanner did
+//     not count it as a binding at all; the allowlist inversion is what closed it.
+//   · A CONSTANT KEY INSIDE A KEYED CONTAINER — `MANIFESTS.get("one")`,
+//     `PITI_REMARKS.entry("all", …)`. The container looked keyed on the allowlist while
+//     every access named the same slot.
+//   · A NEW MODULE-SCOPE BINDING used as the shared default inside a keyed cache's
+//     factory. Caught as an unlisted binding, not as the leak it is.
+//
+// ---- THE OTHER LIMITS, stated for the same reason -------------------------------------
 //   · THE KEY MUST SAY `tenantId`, and that is a name, not a proof. `M.get(x.tenantId)`
 //     passes whatever `x` is, so an object built with a `tenantId` field of the wrong
 //     value would pass. Aliases are refused precisely to keep this narrow (see
