@@ -289,6 +289,15 @@ const ALLOWLIST = {
     ],
   },
 
+  // The workspace store. Same shape as the room above and for the same reason: one DO per
+  // workspace is the isolation, so nothing per-workspace is at module scope here either.
+  "src/tenant-do.js": {
+    frozen: [
+      "TENANT_SCHEMA",       // the DDL, identical for every workspace — what differs is where it is applied
+      "FORBIDDEN_COLUMNS",   // column names the schema may not have; a fact about credentials
+    ],
+  },
+
   "src/mail.mjs": {
     frozen: [
       "DRIVERS",    // the shape of HTTP request each provider takes; every deployment value arrives in env

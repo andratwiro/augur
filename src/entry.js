@@ -46,4 +46,9 @@ import worker from "./_worker.js";
 // the binding and the migration, so this can land ahead of any instance being ready for it.
 export { BoardRoom } from "./board-room.mjs";
 
+// One workspace's mutable state, in storage that belongs to that workspace and to no
+// other. Same deal as above: named here so wrangler can resolve the class, inert on every
+// instance until one declares the binding and the migration.
+export { TenantStore } from "./tenant-do.js";
+
 export default worker;

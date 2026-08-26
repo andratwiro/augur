@@ -94,6 +94,34 @@ bucket_name = "<your-r2-bucket>"
 # tag = "v1"
 # new_sqlite_classes = ["BoardRoom"]
 
+# ── The workspace store, once membership moves off KV ───────────────────────────────────
+#
+# One Durable Object per workspace, holding the roster, roles, invites, publish tokens and
+# profile photos this instance's KV holds under `users:*` and `publish:tokens` today.
+# Schema and reasoning: engine/src/tenant-do.js.
+#
+# The point of it is that the isolation stops being a rule about key naming: a DO's storage
+# belongs to that object, so there is no key you can construct in one workspace that reads
+# another. Which is why it only pays for itself once a deployment serves more than one —
+# a single-workspace instance gains nothing here and should leave this commented.
+#
+# ⚠️ NOT A CUTOVER ON ITS OWN. Uncommenting creates the namespace and applies the schema;
+# it moves no data and no read. The families move over in their own steps, and until then
+# every read still comes from KV. Do not delete anything from KV on the strength of this
+# block existing.
+#
+# ⚠️ THE MIGRATION TAG IS SHARED. If ROOMS above is already live on `v1`, this needs its
+# own `tag = "v2"` with only the new class in it — tags are applied in order and are never
+# re-run, so amending a tag that has already shipped does nothing at all, silently.
+#
+# [[durable_objects.bindings]]
+# name = "WORKSPACE"
+# class_name = "TenantStore"
+#
+# [[migrations]]
+# tag = "v1"
+# new_sqlite_classes = ["TenantStore"]
+
 [vars]
 # Bundle mode. Without this the worker falls back to assets mode and every published page
 # answers 404 while the site itself looks healthy.
