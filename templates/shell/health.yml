@@ -21,6 +21,15 @@ name: Health canary
 #      never reaches the shells that already had a copy is invisible exactly the way
 #      publish drift is. Compared against the engine submodule, i.e. this shell's own
 #      pinned engine.
+#   g. is a gated path actually GATED? Nothing checked this until now, and (d) is why it
+#      needed its own check: /_build.json is a STATIC FILE, so a bare host with no worker
+#      running at all answers it correctly and this canary reports healthy. The probe asks
+#      for files that exist in the asset directory and must never be served — the roster
+#      at __config/instance.json, the worker, the modules it imports — and requires the
+#      answer not to BE those files. It matters most on a plain-Worker deploy, where the
+#      platform serves a matching asset before invoking the worker unless the config says
+#      otherwise, so this failure is one config line away and invisible to every other
+#      check here.
 #   f. is each space's BAKED chrome current with the serving engine? Page-level chrome
 #      (rail, overlays, layout) is baked at publish time (spaces.<id>.builtWithEngine),
 #      so an engine bump can leave a space serving older chrome than the deployed engine
@@ -142,6 +151,22 @@ jobs:
               echo "chrome drift: $ID serves baked chrome ${BW:0:12} but the engine is ${ENG:0:12} (deployed ${ENG_AGE}s ago) — the re-bake was missed; the shell's space-rebake should have converged this (check the 'Space re-bake' and 'Deploy site' runs), or run: gh workflow run space-rebake.yml" >> "$FAILS"
             fi
           done
+
+      # (g) Front-door integrity. The one check here that would notice the site serving
+      # its own roster to strangers. Skips gracefully on an engine pinned before the probe
+      # existed, same as (e), so bumping the engine is what turns it on.
+      - name: Check a gated path is gated (front-door parity)
+        run: |
+          set -uo pipefail
+          if [ ! -f engine/scripts/frontdoor-parity.mjs ]; then
+            echo "pinned engine predates frontdoor-parity — skipping (bump the engine to enable)"; exit 0
+          fi
+          if ! OUT="$(node engine/scripts/frontdoor-parity.mjs "$SITE" 2>&1)"; then
+            echo "$OUT"
+            echo "front door: a path that must be decided by the worker was answered by the platform instead — see the run log for which. If this instance is on a plain Worker, check run_worker_first = true in wrangler.toml" >> "$FAILS"
+          else
+            echo "$OUT"
+          fi
 
       # (c) AUGUR_PIN_TOKEN — only shells that wired roster write-back (or another
       # push-must-retrigger-CI workflow) have one. Unset = nothing to monitor.
