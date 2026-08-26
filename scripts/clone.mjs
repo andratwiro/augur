@@ -10,6 +10,24 @@
  *   augur clone --space <id> [--out <dir>] [--dry-run]
  *   augur pull  [--space <id>] [--dry-run]        (from inside a cloned tree)
  *
+ * ── ONE PROTOTYPE, STANDALONE (the graduation form) ──────────────────────────────────
+ *
+ *   augur clone --prototype <project>/<name> [--space <id>] [--out <dir>] [--dry-run]
+ *   augur clone --prototype <name> --from <space-dir> [--out <dir>]      (no credentials)
+ *
+ * `F-graduate-path`. The whole-workspace clone above serves "leaving is free" at workspace
+ * granularity; this serves it at ARTIFACT granularity, which is the one observed usage
+ * actually asks for. A single tool inside a research workspace acquires a stable audience
+ * that is not the team — and then it should leave, on its own, before the research
+ * workspace becomes its production host by default. It is a doorway, not a policy: see
+ * docs/graduation.md for WHEN, which is the harder half.
+ *
+ * What comes out is a folder any static host can serve at a domain root: the prototype's
+ * files re-rooted (its index.html at `/`), the design-system folders it references beside
+ * them, and NOTHING of this engine. That last clause is verified rather than asserted —
+ * every written file is scanned, and an injected marker, an engine route or a page global
+ * fails the command. See scripts/lib/graduate.mjs.
+ *
  * ⚠️ A CLONE IS NOT A BACKUP, and the difference matters enough that it is printed on
  * every run. A publish carries what a visitor can fetch, so a clone recovers exactly that.
  * It cannot recover what was never published: `context.md` and other research notes (which
@@ -38,6 +56,10 @@ import { createHash } from "node:crypto";
 import { target, apiClient } from "./lib/store.mjs";
 import { materializePlan, synthesizeSpaceJson } from "./lib/materialize.mjs";
 import { stripBuildDecorations } from "./lib/publish-conflict.mjs";
+import {
+  resolveUnit, unitFilesFromManifest, skillDirsReferenced, skillFilesFromManifest,
+  rerootHtml, residualFindings, isText, isSkillInternal,
+} from "./lib/graduate.mjs";
 
 const C = { dim: "\x1b[2m", warn: "\x1b[33m", bad: "\x1b[31m", ok: "\x1b[32m", off: "\x1b[0m" };
 const log = (m) => console.log(`\x1b[35m[clone]\x1b[0m ${m}`);
@@ -64,7 +86,156 @@ async function walk(dir, base = dir, acc = []) {
   return acc;
 }
 
+// ── one prototype, standalone ────────────────────────────────────────────────
+
+/**
+ * The prototype folders a space TREE holds, written as publicPrefixes.
+ *
+ * Not a second vocabulary: expressing the tree in the same terms the manifest uses is what
+ * lets ONE resolver, one set of error messages and one plan serve both sources. A
+ * repo-backed workspace and a hosted one that never had a repo are the two shapes that
+ * exist, and a doorway only one of them fits is not a doorway.
+ */
+async function treePrefixes(root) {
+  const out = [];
+  let top = [];
+  try { top = await readdir(root, { withFileTypes: true }); } catch (e) { return out; }
+  for (const e of top) {
+    if (!e.isDirectory() || e.name.startsWith(".") || e.name === "node_modules" || e.name === "skills") continue;
+    let protos = [];
+    try { protos = await readdir(path.join(root, e.name, "prototypes"), { withFileTypes: true }); } catch (err) { continue; }
+    for (const p of protos) if (p.isDirectory()) out.push(`/${e.name}/${p.name}/`);
+  }
+  return out.sort();
+}
+
+async function graduate() {
+  if (MODE === "pull") {
+    die("`augur pull` syncs a whole tree. To take one prototype out of it, run `augur clone --prototype <name>`.");
+  }
+  const from = opt("--from");
+  const unitArg = opt("--prototype");
+
+  // Where the bytes come from. A repo-backed workspace can graduate with no credentials
+  // and no network at all; a hosted one reads the same prototype out of the live store.
+  let prefixes, sourceHost = "", read, manifest = null, origin = "", spaceId = opt("--space"), root = "";
+  if (from) {
+    root = path.resolve(from);
+    if (!existsSync(path.join(root, "space.json"))) die(`${root} is not a workspace folder — no space.json in it.`);
+    try { sourceHost = new URL(JSON.parse(readFileSync(path.join(root, "space.json"), "utf8")).siteOrigin || "http://x.invalid").host; } catch (e) {}
+    if (sourceHost === "x.invalid") sourceHost = "";
+    prefixes = await treePrefixes(root);
+    read = async (f) => readFileSync(path.join(root, f.src));
+  } else {
+    const t = target({ needToken: true });
+    origin = t.origin;
+    const req = apiClient(origin, t.token);
+    sourceHost = new URL(origin).host;
+    if (!spaceId) die("name the workspace: augur clone --prototype <name> --space <id>   (or --from <space-dir> to graduate straight out of a repo)");
+    try { manifest = await (await req(`${spaceId}/manifest`)).json(); }
+    catch (e) { die(`could not read ${spaceId}'s manifest — ${e.message}`); }
+    prefixes = (manifest.routing && manifest.routing.publicPrefixes) || [];
+    read = async (f) => {
+      const body = Buffer.from(await (await req(`${spaceId}/blob/${f.h}`)).arrayBuffer());
+      const got = sha256(body);
+      if (got !== f.h) die(`${f.url}: the store returned bytes whose hash is ${got.slice(0, 12)}, not ${String(f.h).slice(0, 12)}. Refusing to write content that is not what the manifest names.`);
+      return body;
+    };
+  }
+
+  let unit;
+  try { unit = resolveUnit(unitArg, prefixes); } catch (e) { die(e.message); }
+  const segs = unit.prefix.replace(/^\/+|\/+$/g, "").split("/");
+  const out = path.resolve(opt("--out") || path.join(process.cwd(), unit.name));
+
+  // The prototype's own files, re-rooted: what lived at /<project>/<name>/ now lives at /.
+  let plan;
+  if (from) {
+    const dir = path.join(root, segs[0], "prototypes", segs[1]);
+    plan = (await walk(dir)).sort().map((rel) => ({ out: rel, src: path.join(segs[0], "prototypes", segs[1], rel) }));
+  } else {
+    plan = unitFilesFromManifest(manifest, unit.prefix);
+  }
+  if (!plan.length) die(`${unit.prefix} has no files. Nothing to graduate.`);
+
+  const files = [];
+  for (const f of plan) {
+    let body = await read(f);
+    if (f.out.endsWith(".html")) body = Buffer.from(rerootHtml(body.toString("utf8"), f.out), "utf8");
+    files.push({ out: f.out, body });
+  }
+
+  // The design system comes too. A prototype is self-contained HTML except for the one
+  // thing it deliberately shares, and left behind it is an unstyled page on somebody's
+  // domain. Whole folders, not the files a scan saw: a stylesheet reaches its own fonts by
+  // paths no reference scan finds.
+  const dirs = skillDirsReferenced(files.filter((f) => isText(f.out)).map((f) => f.body.toString("utf8")));
+  let skillPlan = [];
+  if (dirs.length) {
+    if (from) {
+      for (const d of dirs) {
+        for (const rel of (await walk(path.join(root, "skills", d))).sort()) {
+          if (isSkillInternal(rel)) continue;
+          skillPlan.push({ out: `skills/${d}/${rel}`, src: path.join("skills", d, rel) });
+        }
+      }
+    } else {
+      skillPlan = skillFilesFromManifest(manifest, dirs);
+    }
+  }
+  for (const f of skillPlan) {
+    let body = await read(f);
+    if (f.out.endsWith(".html")) body = Buffer.from(rerootHtml(body.toString("utf8"), f.out), "utf8");
+    files.push({ out: f.out, body });
+  }
+
+  // THE PROOF, and it runs before anything is written so --dry-run gives the whole verdict.
+  const present = new Set(files.map((f) => f.out));
+  const texts = files.filter((f) => isText(f.out)).map((f) => ({ path: f.out, text: f.body.toString("utf8") }));
+  const findings = residualFindings(texts, present, { sourceHost });
+  const fatal = findings.filter((f) => f.level === "fatal");
+  const dangling = findings.filter((f) => f.level === "dangling");
+  const external = findings.filter((f) => f.level === "external");
+
+  const bytes = files.reduce((n, f) => n + f.body.length, 0);
+  log(`${unit.prefix} → ${files.length} file(s), ${(bytes / 1e6).toFixed(2)} MB${dirs.length ? `, design system: ${dirs.join(" ")}` : ", no design system referenced"}`);
+
+  for (const f of fatal) console.log(`  ${C.bad}engine${C.off}    ${f.path}:${f.line}  ${f.why}\n            ${C.dim}${f.ref}${C.off}`);
+  for (const f of dangling) console.log(`  ${C.warn}dangling${C.off}  ${f.path}:${f.line}  ${f.ref}  ${C.dim}${f.why}${C.off}`);
+  for (const f of external) console.log(`  ${C.dim}external  ${f.path}:${f.line}  ${f.ref}${C.off}`);
+
+  if (DRY) {
+    log(`${C.dim}dry run — would write ${files.length} file(s) to ${out}${C.off}`);
+  } else {
+    if (existsSync(out) && (await readdir(out).catch(() => [])).length) {
+      die(`${out} already has something in it. Graduating writes a whole site; name an empty --out.`);
+    }
+    for (const f of files) {
+      const abs = path.join(out, f.out);
+      await mkdir(path.dirname(abs), { recursive: true });
+      await writeFile(abs, f.body);
+    }
+    log(`${C.ok}graduated ${files.length} file(s) → ${out}${C.off}`);
+  }
+
+  if (fatal.length) {
+    log(`${C.bad}${fatal.length} reference(s) still reach this engine — that copy is not standalone yet.${C.off}`);
+    console.log(`${C.dim}Each one is listed above with its file and line. They are the whole difference between a copy that serves anywhere and one that quietly needs this instance to stay up.${C.off}`);
+    process.exit(1);
+  }
+  if (dangling.length) {
+    log(`${C.warn}${dangling.length} reference(s) resolve to nothing in the folder.${C.off} ${C.dim}The old site answered them; a domain serving only this folder will 404 them. Links to sibling prototypes are the usual cause — they did not come along.${C.off}`);
+  }
+  console.log(
+    `\n${C.dim}Nothing in this folder references Augur. Serve it with any static file server:\n` +
+    `  cd ${out} && python3 -m http.server 8080\n` +
+    `Putting it on a domain, and when a tool is ready to leave at all: docs/graduation.md${C.off}`
+  );
+  process.exit(dangling.length ? 3 : 0);
+}
+
 async function main() {
+  if (flag("--prototype")) return graduate();
   const { origin, token } = target({ needToken: true });
   const req = apiClient(origin, token);
 
