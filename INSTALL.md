@@ -246,7 +246,15 @@ build input — the shell mounts no space submodules. Optional keys: `realtimeOr
 login form — how a demo instance surfaces its test credentials), `loginPrefill`
 (`{email, password}` baked into the login form's `value=` attributes — how a demo
 instance turns its throwaway account into a one-click login instead of a
-copy-paste; leave unset and the form renders empty, as before), `runtimeChrome`
+copy-paste; leave unset and the form renders empty, as before), `userImages`
+(boolean, default `true` — set it to `false` and this instance stops accepting
+user-supplied image BYTES at all: profile photos and canvas images are both refused
+with a visible reason, while images already stored still render and a photo already
+set can still be removed. Set it on any instance whose password is published or
+shared with people who have agreed to nothing: the exposure is not abuse of your
+data, it is your domain hosting somebody else's illegal image at a stable URL under
+your name. Only an explicit `false` turns it off, so a typo cannot disable it),
+`runtimeChrome`
 (boolean — compose current page chrome at serve time instead of trusting what
 publishes baked in, so an engine deploy updates every page instantly; pages baked
 by pre-marker engines still converge via the shell's space-rebake),

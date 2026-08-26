@@ -237,6 +237,7 @@ const ALLOWLIST = {
       "ENGINE_CHROME_PATHS",  // the shared chrome paths no space may write
       "MCP_PROXY_PATHS",      // the three paths the MCP/OAuth protocol speaks
       "VALID_STATUS",         // the prototype status vocabulary
+      "IMAGES_OFF",           // the refusal body when an instance has user images switched off
       "__testables",          // the table of helpers the suite imports; the request path reads none of it
     ],
 

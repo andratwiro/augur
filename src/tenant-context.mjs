@@ -91,6 +91,10 @@ const FIELDS = Object.freeze({
   LOGIN_PREFILL_PASSWORD:  { source: "instance", make: () => "" },
   INSTANCE_ENGINE_VERSION: { source: "instance", make: () => "" },
   UPDATE_FEED:             { source: "instance", make: () => "" },
+  // Whether this instance accepts user-supplied IMAGE BYTES at all (profile photos and
+  // canvas images). Defaults to true: every existing instance keeps working, and the one
+  // that turns it off is the one whose password is printed on its own login page.
+  USER_IMAGES:             { source: "instance", make: () => true },
 });
 
 export const TENANT_FIELD_NAMES = Object.freeze(Object.keys(FIELDS));
@@ -174,6 +178,11 @@ export function instanceFields(inst) {
     MIN_CLIENT_PROTOCOL:
       Number.isInteger(doc.minClientProtocol) && doc.minClientProtocol > 0 ? doc.minClientProtocol : 0,
     LOGIN_HINT: typeof doc.loginHint === "string" ? doc.loginHint : "",
+    // Explicit `false` turns it off. Anything else — absent, null, a typo — leaves it ON,
+    // because a config typo must not silently disable a feature every other instance
+    // depends on. Turning it off is the deliberate act, so it is the one that must be
+    // spelled correctly.
+    USER_IMAGES: doc.userImages !== false,
     LOGIN_PREFILL_EMAIL: typeof prefill.email === "string" ? prefill.email : "",
     LOGIN_PREFILL_PASSWORD: typeof prefill.password === "string" ? prefill.password : "",
     // An instance document was actually applied — the gate may now trust "no users" to

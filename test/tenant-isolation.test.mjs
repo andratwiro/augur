@@ -98,6 +98,10 @@ function instanceDoc(n) {
     minClientProtocol: n.length, // an integer that differs per workspace
     loginHint: `the ${n} hint`,
     loginPrefill: { email: `demo@${n}.invalid`, password: `${n}-pw` },
+    // A boolean, so it varies the same way runtimeChrome does below: neighbouring names
+    // land on opposite values. This one matters per workspace because it is the switch a
+    // shared-password demo turns off while a private instance leaves on.
+    userImages: n.charCodeAt(0) % 2 === 0,
   };
 }
 

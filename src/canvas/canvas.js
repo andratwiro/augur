@@ -2400,9 +2400,22 @@
       try {
         c.toBlob(function (blob) {
           if (!blob) return dataUrlFallback();
+          // A REFUSAL IS NOT A FAILURE, and the difference is load-bearing. The data-URL
+          // fallback exists for "the upload did not work" (offline, a sandbox, a flaky
+          // network) and it inlines the pixels into the board doc. On an instance that has
+          // switched user images OFF, falling back would store the same bytes by another
+          // route and serve them from the same domain — the switch would be decoration.
+          // So a 403 saying images-disabled stops here and says so.
           fetch("/__asset", { method: "POST", headers: { "content-type": blob.type || fmt }, body: blob })
-            .then(function (r) { return r.ok ? r.json() : null; })
-            .then(function (d) { if (d && d.url) cb(d.url, { w: dw, h: dh, alpha: alpha }); else dataUrlFallback(); })
+            .then(function (r) {
+              return r.json().catch(function () { return null; }).then(function (d) {
+                if (r.ok && d && d.url) return cb(d.url, { w: dw, h: dh, alpha: alpha });
+                if (r.status === 403 && d && d.error === "images-disabled") {
+                  return toast((d && d.reason) || "This workspace does not accept uploaded images.");
+                }
+                return dataUrlFallback();
+              });
+            })
             .catch(dataUrlFallback);
         }, fmt, quality);
       } catch (err) { dataUrlFallback(); }

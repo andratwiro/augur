@@ -4524,6 +4524,13 @@ const SETTINGS_JS = `(function(){
       headers: {'Content-Type':'application/json'},
       body: JSON.stringify({avatar: uri})
     }).then(function(r){ return r.json().catch(function(){ return {}; }).then(function(d){
+      // An instance can switch user-supplied images off entirely. Say WHY: 'Could not
+      // save photo' on a workspace that will never accept one sends the person back to
+      // try again with a smaller file, forever.
+      if(r.status === 403 && d && d.error === 'images-disabled'){
+        msg(d.reason || 'This workspace does not accept uploaded images.');
+        return;
+      }
       if(!r.ok || !d.ok) throw new Error(d.error || 'failed');
       // The worker mints a content-hashed URL, so it never collides with the cached
       // previous photo. PROFILE_JS owns every face on the page — hand it over.
@@ -7251,6 +7258,9 @@ async function main() {
     // Oldest publish protocol this instance accepts a commit from. Absent = no floor.
     minClientProtocol: DEPLOY.minClientProtocol || 0,
     loginHint: DEPLOY.loginHint || "",
+    // Explicit false only — see USER_IMAGES in src/tenant-context.mjs for why a typo
+    // must leave it on rather than off.
+    userImages: DEPLOY.userImages !== false,
     loginPrefill: DEPLOY.loginPrefill || {},
   }), "utf8");
   await fs.writeFile(path.join(DIST, "__config", "routing.json"), JSON.stringify({

@@ -1318,8 +1318,44 @@ async function clearAvatar(env, email) {
 // on purpose (a later UI, or a script, still needs it); it is not dead code.
 //
 // `tenantId` is carried for the roster overlay's cache — see spaceIconApi.
-async function meAvatarApi(tenantId, request, env, me) {
+// ---- The instance-wide image switch -----------------------------------------------
+//
+// `userImages: false` in deploy.config.json turns OFF every route that accepts user
+// supplied image BYTES: profile photos (/__me/avatar) and canvas images (/__asset).
+//
+// WHY IT IS AN INSTANCE SWITCH AND NOT A ROLE RULE. The exposure it exists for is one
+// workspace: the public demo, whose password is printed on its own login page and shared
+// by strangers who have agreed to nothing. The risk there is not abuse of our data, it is
+// our domain hosting somebody else's illegal image at a stable URL under our name. But
+// "viewers cannot have a face" would be plainly wrong on a private instance, where a
+// viewer is an invited stakeholder looking at their own project. So the axis is the
+// INSTANCE, not the role.
+//
+// It also closes an asymmetry that had nothing to do with roles. /__asset already refused
+// viewers; /__me/avatar checked only that you were signed in, so anyone who could read the
+// password off the demo's login page could store a raster and get a stable, ungated
+// /__avatar/<hash> back. Keying the switch on the instance means a future role change
+// cannot silently reopen either path.
+//
+// IT REFUSES OUT LOUD. A silent no-op on an upload is the worst version of this: the
+// person sees their photo, reloads, and it is gone, with nothing saying why. 403 plus a
+// reason the UI can render.
+const IMAGES_OFF = Object.freeze({
+  error: "images-disabled",
+  reason: "This workspace does not accept uploaded images.",
+});
+function imagesDisabledRefusal(tctx) {
+  return tctx && tctx.USER_IMAGES === false ? jsonResponse(IMAGES_OFF, 403) : null;
+}
+
+async function meAvatarApi(tenantId, request, env, me, tctx) {
   if (!me) return jsonResponse({ error: "unauthorized" }, 401);
+  // POST only: clearing a photo must keep working on an instance that has switched
+  // uploads off, or somebody who set one before the switch can never take it down.
+  if (request.method === "POST") {
+    const off = imagesDisabledRefusal(tctx);
+    if (off) return off;
+  }
   const kv = kvFor(env);
   if (!kv) return jsonResponse({ error: "no-kv-binding" }, 500);
 
@@ -5407,7 +5443,7 @@ async function handleRequest(request, env, ctx, url, trace) {
     // My own profile photo — set or clear. Ahead of the gate for the same reason
     // /__me is: the profile chip is chrome, and it must work on every page a signed-in
     // person can already see. meAvatarApi re-checks the session (401 without one).
-    if (url.pathname === "/__me/avatar") return meAvatarApi(tctx.tenantId, request, env, me);
+    if (url.pathname === "/__me/avatar") return meAvatarApi(tctx.tenantId, request, env, me, tctx);
 
     // My own display name — same placement and the same reasoning as the photo route
     // above: chrome, ahead of the gate, re-checks the session itself (401 without one).
@@ -5619,6 +5655,12 @@ async function handleRequest(request, env, ctx, url, trace) {
       // anonymous visitor cannot upload (the check above). So neither can a viewer.
       const denied = viewerWriteRefusal(request, url, me, "asset", tctx.SPACES);
       if (denied) return denied;
+      // Reads stay open on an instance with uploads off: images stored before the switch
+      // still render, and a board that half-renders is worse than one that cannot grow.
+      if (request.method === "POST") {
+        const off = imagesDisabledRefusal(tctx);
+        if (off) return off;
+      }
       return assetApi(request, url, env);
     }
     // Canvas multiplayer: same-origin WebSocket proxied to the augur-realtime worker (one
