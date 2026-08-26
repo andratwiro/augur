@@ -12,11 +12,22 @@ name: KV backup (review archive)
 # A shell needs both. Neither covers the other.
 #
 # The export lists every key (paginated), GETs each raw value, assembles one JSON
-# object {key: value} (values stored as raw strings — most are JSON, but we never
-# re-parse them), and commits it to the orphan `kv-backups` branch as
+# object {key: value}, and commits it to the orphan `kv-backups` branch as
 # backup-YYYY-MM-DD.json plus latest.json, pruning dated files older than 30 days.
 # The branch is created by this workflow on first run. Restore = read the JSON,
 # PUT each pair back via the same API.
+#
+# ⚠️ A KV VALUE IS BYTES, NOT TEXT, and that distinction cost this job every canvas
+# board image it ever copied. `jq --rawfile` carries a value as a JSON string, and a
+# JSON string carries TEXT: every byte sequence that is not valid UTF-8 became U+FFFD
+# on the way in and no restore could bring it back. Board images are stored raw under
+# `basset:<sha256-prefix>`, so the copy came back LONGER than the original, different,
+# and no longer matching the checksum in its own key name — confidently wrong rather
+# than visibly missing. So each value is round-tripped through jq and COMPARED with the
+# bytes that came off the wire; anything that does not survive is carried as
+# {"b64": "…"} instead. A value that is text is still a plain string, so a copy taken
+# before this existed and one taken after are read by the same restore. Do not
+# "simplify" the comparison away.
 #
 # ⚠️ THE SHELL REPO MUST BE PRIVATE. This export is the whole namespace, and the
 # namespace holds `users:secrets` (PBKDF2 password hashes, and the tombstones that
@@ -83,16 +94,36 @@ jobs:
 
           # 2) GET each raw value, wrap it as a single-pair object, then merge all pairs.
           I=0
+          BIN=0
           while IFS= read -r KEY; do
             ENC="$(jq -rn --arg k "$KEY" '$k|@uri')"
             if ! curl -fsS --max-time 60 "${AUTH[@]}" -o "$WORK/value" "${BASE}/values/${ENC}"; then
               echo "::warning::key vanished/failed mid-export, skipped: $KEY"; continue
             fi
-            jq -n --arg k "$KEY" --rawfile v "$WORK/value" '{($k): $v}' > "$WORK/objs/$(printf '%08d' "$I").json"
+            OUT="$WORK/objs/$(printf '%08d' "$I").json"
+            # >>> value-encode (the engine's test/kv-backup-workflow.test.mjs extracts and
+            # runs exactly these lines against a real PNG — keep them self-contained, and
+            # keep them using only $KEY, $WORK and $OUT.)
+            #
+            # Ask the bytes, do not assume: write the string form, read it back out with
+            # `jq -j` (raw, no trailing newline) and compare with cmp. Equal means the
+            # value is text and rides as a string, exactly as it always has. Anything else
+            # — a JPEG, a PNG, a lone invalid byte — rides as {"b64": "…"} and comes back
+            # byte for byte. `tr -d '\n'` rather than `base64 -w0`: -w is GNU-only.
+            if jq -n --arg k "$KEY" --rawfile v "$WORK/value" '{($k): $v}' > "$WORK/one.json" 2>/dev/null \
+               && jq -j --arg k "$KEY" '.[$k]' "$WORK/one.json" > "$WORK/back" 2>/dev/null \
+               && cmp -s "$WORK/value" "$WORK/back"; then
+              mv "$WORK/one.json" "$OUT"
+            else
+              base64 < "$WORK/value" | tr -d '\n' > "$WORK/b64"
+              jq -n --arg k "$KEY" --rawfile b "$WORK/b64" '{($k): {b64: ($b|rtrimstr("\n"))}}' > "$OUT"
+              BIN=$((BIN+1))
+            fi
+            # <<< value-encode
             I=$((I+1))
           done < "$WORK/keys.txt"
           jq -s 'add' "$WORK"/objs/*.json > "$WORK/backup.json"
-          echo "Exported $(jq 'length' "$WORK/backup.json") key/value pairs."
+          echo "Exported $(jq 'length' "$WORK/backup.json") key/value pairs ($BIN carried as base64 — values that are not UTF-8 text)."
 
       # Commit to the orphan kv-backups branch (created here on first run), pruning
       # dated backups older than 30 days. latest.json always mirrors today's file.

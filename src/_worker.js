@@ -46,6 +46,12 @@ import {
 // a link, and a verdict saying no mail was sent. See src/mail.mjs.
 import { sendMail, mailNotice } from "./mail.mjs";
 
+// How a KV value is written into a backup document. Same deal again: build.js copies it
+// next to the worker (dist/kv-codec.mjs) so the relative import resolves at the edge.
+// Pure, side-effect-free, holds no state. See src/kv-codec.mjs — a KV value is BYTES, and
+// reading it as text destroys every value that is not UTF-8.
+import { KV_BACKUP_FORMAT, encodeKvValue } from "./kv-codec.mjs";
+
 const COOKIE = "gv_auth";
 const MAX_AGE = 60 * 60 * 24 * 7; // 7 days
 
@@ -3332,9 +3338,16 @@ async function adminStorageApi(tenantId, env, me) {
 // backup silently stops covering the class someone adds next; `list()` with no prefix
 // cannot go stale that way.
 //
-// Values are copied as RAW STRINGS and never re-parsed. Most are JSON, but a backup
-// that parses is a backup that can fail on something it did not expect, and re-encoding
-// would not round-trip byte-for-byte.
+// Values are copied VERBATIM and never re-parsed. Most are JSON, but a backup that parses
+// is a backup that can fail on something it did not expect, and re-encoding would not
+// round-trip byte-for-byte.
+//
+// ⚠️ VERBATIM MEANS BYTES, NOT TEXT. This read used to be `kv.get(name, "text")`, which
+// answers a JPEG with U+FFFD wherever the bytes are not valid UTF-8 — silently, and
+// irreversibly. Canvas board images live in this namespace (`basset:`), so the copy came
+// back longer than the original, different, and no longer matching the content-addressed
+// key it was filed under. Read the arrayBuffer and let src/kv-codec.mjs decide: text
+// stays a JSON string, anything else rides as a base64 marker. Never reintroduce "text".
 async function adminBackupApi(env, me) {
   if (!me || me.role !== "admin") return jsonResponse({ error: "forbidden" }, 403);
   const kv = kvFor(env);
@@ -3348,38 +3361,45 @@ async function adminBackupApi(env, me) {
       // A namespace can be far larger than an isolate's memory, so the document is
       // written out as it is read rather than assembled and then serialized.
       try {
-        push(`{"format":1,"at":${JSON.stringify(new Date().toISOString())},"data":{`);
+        push(`{"format":${KV_BACKUP_FORMAT},"at":${JSON.stringify(new Date().toISOString())},"data":{`);
         const expirations = {};
         const vanished = [];
-        let count = 0, bytes = 0, first = true, cursor;
+        let count = 0, bytes = 0, binary = 0, first = true, cursor;
         do {
           const page = await kv.list({ cursor, limit: 1000 });
           for (const k of page.keys || []) {
             // A throw here is a genuine read failure — permissions, transport, a broken
             // namespace. It must NOT become a quietly shorter file: rethrow, and the
             // catch below tears the stream down so the document never closes.
-            const v = await kv.get(k.name, "text");
-            if (v === null) {
+            const buf = await kv.get(k.name, "arrayBuffer");
+            if (buf === null) {
               // Listed, then gone before it could be read. Real and expected — rate-limit
               // keys carry TTLs — but recorded by name rather than dropped, so a restore
               // can tell "this key was not in the namespace" from "this backup lost it".
               vanished.push(k.name);
               continue;
             }
+            const raw = buf instanceof Uint8Array ? buf : new Uint8Array(buf);
+            const v = encodeKvValue(raw);
+            if (typeof v !== "string") binary++;
             if (k.expiration) expirations[k.name] = k.expiration;
             push(`${first ? "" : ","}${JSON.stringify(k.name)}:${JSON.stringify(v)}`);
             first = false;
             count++;
-            bytes += v.length;
+            bytes += raw.byteLength; // BYTES, not string length: the two differ on every
+                                     // non-ASCII value and are unrelated on a binary one.
           }
           cursor = page.list_complete ? undefined : page.cursor;
         } while (cursor);
         // Trailers last, so they can report on the walk that produced them. `complete`
         // is the flag a consumer should check — though it barely needs to, because the
-        // failure path below never writes this object at all.
+        // failure path below never writes this object at all. `binary` says how many
+        // values could not be carried as text, so an operator can tell at a glance
+        // whether a copy predates the codec (0 on a namespace holding board images) or
+        // genuinely holds none.
         push(`},"expirations":${JSON.stringify(expirations)}`);
         push(`,"vanished":${JSON.stringify(vanished)}`);
-        push(`,"count":${count},"bytes":${bytes},"complete":true}`);
+        push(`,"count":${count},"bytes":${bytes},"binary":${binary},"complete":true}`);
         controller.close();
       } catch (e) {
         // The status line is long gone by now — a 200 is already on the wire — so the
@@ -5538,6 +5558,7 @@ export const __testables = {
   isPrefixBacked, backedPublicPrefixes,
   isPublicPath, isTrackPath, isRestrictedPath, versionFor, brandMark,
   boardApi, canvasesApi, virtualCanvas, rtProxy, CANVASES_KEY, BOARD_PREFIX, BOARD_MAX_BYTES,
+  assetApi, ASSET_PREFIX,
   composeChrome, renderAppChrome, renderSpaceContextScript, __setChromeTestState,
   loadConfig, loadTenantContext, __setConfigTestState, __usersNow, pitiApi,
   CONFIG_STALE_CEILING_MS,

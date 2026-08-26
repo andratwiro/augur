@@ -44,8 +44,8 @@ curl -fsS https://<origin>/__admin/backup -b "<your session cookie>" -o kv-backu
 ```
 
 `GET /__admin/backup` is admin-gated and streams the whole namespace as
-`{format, at, data:{key:value}, expirations, vanished, count, bytes, complete}`.
-Values are raw strings, never re-parsed, so a restore is a `PUT` of each pair back.
+`{format, at, data:{key:value}, expirations, vanished, count, bytes, binary, complete}`.
+Values are never re-parsed, so a restore is a `PUT` of each pair back.
 It needs a **login**, not account credentials — which is the difference that matters
 when you are away from the machine that holds the Cloudflare token.
 
@@ -53,6 +53,47 @@ Check `complete: true`. A read failure mid-export tears the stream down rather t
 closing the document, so a failed backup does not parse at all — but `vanished` is
 the softer case worth reading: keys that were listed and then expired before they
 could be read (rate-limit keys carry TTLs), named rather than dropped.
+
+### A KV value is bytes, and `data` says which ones are not text (`format: 2`)
+
+A value in `data` is **either** a JSON string — its bytes, which are valid UTF-8 —
+**or** `{"b64": "…"}`, its bytes in base64. The marker is written whenever the bytes
+do not round-trip as text, which for this namespace means the canvas board images
+stored raw under `basset:<sha256-prefix>`. Detection is per value, so a `format: 1`
+copy and a `format: 2` copy are read by the same code; `binary` counts how many
+values needed the marker.
+
+This is not cosmetic tidying. Every export path used to read values as text, and a
+JPEG is not text: each invalid byte sequence became U+FFFD and no re-encoding brought
+it back. A 75,963-byte board image came out of a copy as 137,439 bytes of different
+data. The copy was confidently **wrong** rather than visibly short, and restoring it
+wrote that ruin under the key whose name is the image's own checksum — after which
+the canvas client skips re-uploading the real image, because the key exists. Lost
+twice, by the repair. The rule for anything that reads a namespace: ask for
+`arrayBuffer`, never `"text"`.
+
+### A restore must check the content-addressed keys, and refuse
+
+**A copy already taken cannot be repaired**, so the thing that turns silent
+corruption into a visible failure is the restore. `basset:<hash>` keys carry their
+own SHA-256 prefix, so a restore can prove a value intact with nothing to compare it
+against. Check before writing, and refuse the key rather than write garbage under it
+— a missing asset is a broken image, a corrupt one is a broken image that also lies
+about its hash and can never be replaced by a re-paste:
+
+```
+node -e 'const fs=require("fs"),c=require("crypto");
+const r=JSON.parse(fs.readFileSync(process.argv[1],"utf8")), j=r.data||r;
+for (const k of Object.keys(j).filter(k=>k.startsWith("basset:"))) {
+  const v=j[k], b = typeof v==="string" ? Buffer.from(v,"utf8") : Buffer.from(v.b64,"base64");
+  console.log(k, c.createHash("sha256").update(b).digest("hex").slice(0,40)===k.slice(7)
+    ? "intact" : "CORRUPT — do not restore this key");
+}' kv-backup.json
+```
+
+**KV metadata is not in the copy at all.** Today the only meaningful metadatum is the
+`ct` on those same keys, which the worker defaults to `image/jpeg` when absent — so a
+restored PNG is served as a JPEG.
 
 **Check that your own shell runs it before relying on that sentence.** It is
 per-instance, and it was hand-authored per shell long before it was templated, so
