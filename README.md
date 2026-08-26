@@ -114,4 +114,8 @@ by a person or an agent. About an hour, most of it waiting on DNS and CI.
 
 ## License
 
-MIT. See [LICENSE](./LICENSE).
+MIT for the code. See [LICENSE](./LICENSE).
+
+The name, the marks in `brand/` and the typefaces bundled with them are not part of
+that grant — [TRADEMARKS.md](./TRADEMARKS.md) says what you can do without asking
+(fork it, rename it, say what it is) and what needs a word first.
