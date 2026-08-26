@@ -31,7 +31,7 @@ import { fileURLToPath } from "node:url";
 const ROOT = process.argv[2] || path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const BUILD = path.join(ROOT, "build.js");
 
-const MAX_WORDS = 20;      // Rob's own median sentence is 11 words; 20 is the ceiling, not the target.
+const MAX_WORDS = 20;      // A house sentence runs ~11 words; 20 is the ceiling, not the target.
 const MAX_PARAS = 1;       // The ghost does the explaining. A second paragraph is the novel growing back.
 const MAX_HINT_WORDS = 34; // A populated tab's caption may say a little more; it is read beside content.
 
@@ -88,8 +88,8 @@ const words = (s) => stripTags(s).split(/\s+/).filter(Boolean).length;
 
 // The tics, each one quoted from the copy this replaced.
 const TICS = [
-  [/[—–]/, "an em or en dash. Rob has banned these three times; use a comma or a full stop."],
-  [/;/, "a semicolon. It is the pivot the agent voice leans on and it appears once per 3,000 words in Rob's own writing."],
+  [/[—–]/, "an em or en dash. Standing instruction, given three times: use a comma or a full stop."],
+  [/;/, "a semicolon. It is the pivot the generated voice leans on, and it is close to absent from the writing this copy is meant to sound like."],
   [/\bthe honest way\b/i, '"the honest way" — an epistemic flourish, not information.'],
   [/\bwhich is the point\b/i, '"which is the point" — a closing clause that re-states the opening.'],
   [/\bworth having\b/i, '"worth having".'],

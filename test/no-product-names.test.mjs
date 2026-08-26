@@ -117,7 +117,7 @@ test("ordinary English that merely contains a product-shaped word is not caught"
 
 test("the real engine tree names no other company's product", () => {
   // This is the ratchet. It goes red the moment anyone reintroduces a name anywhere in
-  // the repo, which is what Rob asked for after the same class of thing came back twice.
+  // the repo, which is what was asked for after the same class of thing came back twice.
   const out = execFileSync(process.execPath, [SCRIPT, ENGINE], { encoding: "utf8" });
   assert.match(out, /OK/);
 });
