@@ -33,6 +33,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { STATE_INVENTORY, accountsFor, inventoryEntry } from "../src/state-inventory.mjs";
+import { IDENTITY_KV_FAMILIES, UNMAPPED_WORKSPACE_FAMILIES } from "../src/kv-identity.mjs";
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const SOURCES = ["src/_worker.js", "src/mail.mjs"];
@@ -165,6 +166,43 @@ if (live) {
     if (!seen.has(e.id)) {
       problems.push(`the inventory lists "${e.id}" but nothing in the engine names it. Delete the entry, or find out what stopped writing it.`);
     }
+  }
+
+  // ── A THIRD DIRECTION: does what the inventory PROMISES actually have somewhere to go? ──
+  //
+  // The two checks above keep the list and the code agreeing about what EXISTS. Neither
+  // asks whether a family the inventory sends to the workspace object can actually be
+  // stored there. `mail:suppressed` was `to: "workspace"` for weeks with no table to land
+  // in, and its own entry says dropping it "breaks that promise silently" — a copy would
+  // have run, reported success, and left an instance ready to resume mailing addresses a
+  // provider had already told it to stop mailing.
+  //
+  // A family is landable when the overlay accessor knows it (content), when the identity
+  // translation reads it, or when it is declared unmapped WITH A REASON. The third is not
+  // a loophole: it is the difference between a decision somebody made and a gap nobody saw.
+  const overlayDocs = new Set();
+  {
+    const src = fs.readFileSync(path.join(ROOT, "src/_worker.js"), "utf8");
+    const block = /const OVERLAY_KV_KEYS = Object\.freeze\(\{([\s\S]*?)\n\}\);/.exec(src);
+    if (!block) {
+      problems.push("could not find OVERLAY_KV_KEYS in src/_worker.js — this check reads it to know which families the overlay accessor handles, so its shape moving is a problem in itself.");
+    } else {
+      for (const m of block[1].matchAll(/doc:\s*"([^"]+)"/g)) overlayDocs.add(m[1]);
+    }
+  }
+  const landsInOverlay = (id) =>
+    [...overlayDocs].some((d) => d === id || `${d}:` === id || id.startsWith(`${d}:`));
+
+  for (const e of STATE_INVENTORY) {
+    if (e.to !== "workspace") continue;
+    if (landsInOverlay(e.id)) continue;
+    if (IDENTITY_KV_FAMILIES.includes(e.id)) continue;
+    if (Object.prototype.hasOwnProperty.call(UNMAPPED_WORKSPACE_FAMILIES, e.id)) continue;
+    problems.push(
+      `"${e.id}" is to: "workspace" and has nowhere to land. It is not an overlay family, ` +
+      `src/kv-identity.mjs does not read it, and it is not declared in UNMAPPED_WORKSPACE_FAMILIES. ` +
+      `A copy would run, report success, and silently omit it. Give it a home or declare it unmapped with a reason.`,
+    );
   }
   if (!problems.length && !quiet) {
     console.log(`state-inventory: OK — ${STATE_INVENTORY.length} entries, every one named by the engine and every named key accounted for`);

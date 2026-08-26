@@ -29,10 +29,20 @@ const FALLBACK_ROLE = "viewer";
  * Named rather than dropped: a copy that quietly skips a family is indistinguishable from a
  * complete one, which is the failure this whole item exists to avoid.
  */
-const UNMAPPED = Object.freeze({
+export const UNMAPPED_WORKSPACE_FAMILIES = Object.freeze({
   "spaces:icons": "the workspace icon pointer belongs in the object's `settings` table, which `importAll` does not write yet",
   "mail:suppressed": "the object has NO TABLE for a suppression list, and the inventory entry says dropping it breaks a promise not to mail somebody again — see B-do-schema-core",
 });
+
+/**
+ * The KV documents this translation reads. Named so `scripts/state-inventory.mjs` can ask
+ * the question that would have caught `mail:suppressed`: does every family the inventory
+ * sends to the workspace object actually have somewhere to land?
+ */
+export const IDENTITY_KV_FAMILIES = Object.freeze([
+  "users:roster", "users:roles", "users:names", "users:avatars",
+  "users:invites", "users:lastseen:", "publish:tokens", "avatar:", "spaceicon:",
+]);
 
 /**
  * @param {object} families  the export document's `families` map, keyed by inventory id
@@ -164,7 +174,7 @@ export async function identityFromKv(families = {}, opts = {}) {
     }
   }
 
-  for (const [id, why] of Object.entries(UNMAPPED)) {
+  for (const [id, why] of Object.entries(UNMAPPED_WORKSPACE_FAMILIES)) {
     if (has(id)) skipped.push({ id, why });
   }
 

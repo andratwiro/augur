@@ -341,7 +341,8 @@ const ALLOWLIST = {
 
   "src/kv-identity.mjs": {
     frozen: [
-      "UNMAPPED",  // which workspace-destined families this translation does NOT carry, and why; a fact about the schema
+      "UNMAPPED_WORKSPACE_FAMILIES", // which workspace-destined families this translation does NOT carry, and why; a fact about the schema
+      "IDENTITY_KV_FAMILIES",        // which KV documents it DOES read; the other half of the same fact, read by the inventory guard
     ],
   },
 
