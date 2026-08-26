@@ -256,10 +256,13 @@ export function withTenantFields(ctx, patch) {
 //   fail-open-stale half of the old cache, preserved by leaving a reference alone rather
 //   than by half-applying an object a concurrent request could observe mid-write.
 //
-//   FORCED. A write handler busts the cache (`cfgAt = 0` in twelve places today) so its
-//   own write is visible on the very next request. `bust()` is that, per tenant, and
-//   `due()` reports `forced` for it — which the roster read uses to skip its own longer
-//   clock. A cold tenant reports forced too, exactly as `!cfgAt` does today.
+//   FORCED. A write handler busts the cache (`cfgAt = 0` in ten places today) so its own
+//   write is visible on the very next request. `bust()` is that, per tenant, and `due()`
+//   reports `forced` for it. A cold tenant reports forced too, exactly as `!cfgAt` does
+//   today. Note what forced is NOT for: a cache with its own longer clock does not ride
+//   this flag, because a bust that reaches every workspace's cache is the coarse shape
+//   the roster overlay was moved off (`ROSTER_OVERLAY` in src/_worker.js is keyed by
+//   workspace and busted per workspace by the handler that wrote it).
 //
 // What is NEW, because one global stamp could not have the problem: the cache is BOUNDED.
 // A worker serving many workspaces would otherwise hold every context it ever built for
@@ -285,8 +288,7 @@ export function createTenantContextCache(options = {}) {
 
   return {
     // Should this tenant load its config now? `forced` means the cache was busted by a
-    // write (or this tenant has never loaded), so dependent reads must not ride their
-    // own longer clocks.
+    // write, or this tenant has never loaded — this tenant, never the isolate.
     due(tenantId) {
       const e = entries.get(tenantId);
       if (!e || !e.at) return { due: true, forced: true };

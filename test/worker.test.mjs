@@ -1367,7 +1367,7 @@ test("POST /__me/avatar stores the photo, indexes it, and answers with its conte
   const kv = memKV();
   const env = envWith(kv);
   const uri = jpegUri();
-  const res = await W.meAvatarApi(meAvatarPost(uri), env, PLAIN);
+  const res = await W.meAvatarApi(W.DEFAULT_TENANT_ID, meAvatarPost(uri), env, PLAIN);
   const body = await res.json();
   assert.equal(body.ok, true);
   const k = await W.avatarHash(uri);
@@ -1383,9 +1383,9 @@ test("POST /__me/avatar stores the photo, indexes it, and answers with its conte
 test("/__me/avatar refuses a signed-out caller and a bad image, and touches nothing", async () => {
   const kv = memKV();
   const env = envWith(kv);
-  assert.equal((await W.meAvatarApi(meAvatarPost(jpegUri()), env, null)).status, 401);
-  assert.equal((await W.meAvatarApi(meAvatarPost("data:text/html;base64,AAAA"), env, PLAIN)).status, 400);
-  assert.equal((await W.meAvatarApi(new Request("https://example.test/__me/avatar"), env, PLAIN)).status, 405);
+  assert.equal((await W.meAvatarApi(W.DEFAULT_TENANT_ID, meAvatarPost(jpegUri()), env, null)).status, 401);
+  assert.equal((await W.meAvatarApi(W.DEFAULT_TENANT_ID, meAvatarPost("data:text/html;base64,AAAA"), env, PLAIN)).status, 400);
+  assert.equal((await W.meAvatarApi(W.DEFAULT_TENANT_ID, new Request("https://example.test/__me/avatar"), env, PLAIN)).status, 405);
   assert.equal(kv.store.size, 0, "nothing written");
 });
 
@@ -1395,7 +1395,7 @@ test("a user can only ever set their OWN photo — there is no email parameter",
     method: "POST", headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ avatar: jpegUri(), email: ADMIN.email }),
   });
-  await W.meAvatarApi(req, envWith(kv), PLAIN);
+  await W.meAvatarApi(W.DEFAULT_TENANT_ID, req, envWith(kv), PLAIN);
   assert.deepEqual(Object.keys(JSON.parse(await kv.get(W.USER_AVATARS_KEY))), ["u@example.test"]);
 });
 
@@ -1403,8 +1403,8 @@ test("DELETE /__me/avatar drops the index entry (and the config seed comes back)
   const kv = memKV();
   const env = envWith(kv);
   const uri = jpegUri();
-  await W.meAvatarApi(meAvatarPost(uri), env, PLAIN);
-  const res = await W.meAvatarApi(meAvatarDelete(), env, PLAIN);
+  await W.meAvatarApi(W.DEFAULT_TENANT_ID, meAvatarPost(uri), env, PLAIN);
+  const res = await W.meAvatarApi(W.DEFAULT_TENANT_ID, meAvatarDelete(), env, PLAIN);
   assert.deepEqual(await res.json(), { ok: true, avatar: null });
   assert.deepEqual(JSON.parse(await kv.get(W.USER_AVATARS_KEY)), {});
   const seeded = { email: PLAIN.email, avatar: "data:image/png;base64,AAAA" };
@@ -1417,7 +1417,7 @@ test("serving a self-set photo: known key returns the bytes, unknown key never r
   const counting = { ...kv, async get(k) { reads++; return kv.get(k); } };
   const env = envWith(counting);
   const uri = jpegUri();
-  await W.meAvatarApi(meAvatarPost(uri), env, PLAIN);
+  await W.meAvatarApi(W.DEFAULT_TENANT_ID, meAvatarPost(uri), env, PLAIN);
   const k = await W.avatarHash(uri);
 
   // The route trusts the index the CALLING workspace's config tick built, handed to it as
@@ -1444,7 +1444,7 @@ test("an indexed key whose blob vanished 404s rather than serving a broken image
   const kv = memKV();
   const env = envWith(kv);
   const uri = jpegUri();
-  await W.meAvatarApi(meAvatarPost(uri), env, PLAIN);
+  await W.meAvatarApi(W.DEFAULT_TENANT_ID, meAvatarPost(uri), env, PLAIN);
   const k = await W.avatarHash(uri);
   const tctx = W.applyAvatars([{ email: PLAIN.email }], await W.readAvatars(env));
   await kv.delete(W.AVATAR_BLOB_PREFIX + k);
@@ -1454,7 +1454,7 @@ test("an indexed key whose blob vanished 404s rather than serving a broken image
 test("removing a user takes their face out of the index too", async () => {
   const kv = memKV();
   const env = envWith(kv);
-  await W.meAvatarApi(meAvatarPost(jpegUri()), env, PLAIN);
+  await W.meAvatarApi(W.DEFAULT_TENANT_ID, meAvatarPost(jpegUri()), env, PLAIN);
   const res = await callAdmin(adminPost({ op: "remove", email: PLAIN.email }), env, [ADMIN, PLAIN], [ADMIN, PLAIN]);
   assert.equal(res.status, 200);
   assert.deepEqual(JSON.parse(await kv.get(W.USER_AVATARS_KEY)), {});
@@ -1515,7 +1515,7 @@ test("applyNames matches addresses case-insensitively and ignores malformed entr
 test("POST /__me/name stores the cleaned name and answers with it plus fresh initials", async () => {
   const kv = memKV();
   const env = envWith(kv);
-  const res = await W.meNameApi(meNamePost("  Bee   Wilson "), env, PLAIN);
+  const res = await W.meNameApi(W.DEFAULT_TENANT_ID, meNamePost("  Bee   Wilson "), env, PLAIN);
   const body = await res.json();
   assert.equal(body.ok, true);
   assert.equal(body.name, "Bee Wilson");
@@ -1528,10 +1528,10 @@ test("POST /__me/name stores the cleaned name and answers with it plus fresh ini
 test("/__me/name refuses a signed-out caller, a blank name and the wrong method", async () => {
   const kv = memKV();
   const env = envWith(kv);
-  assert.equal((await W.meNameApi(meNamePost("Bee"), env, null)).status, 401);
-  assert.equal((await W.meNameApi(meNamePost("   "), env, PLAIN)).status, 400);
-  assert.equal((await W.meNameApi(meNamePost(null), env, PLAIN)).status, 400);
-  assert.equal((await W.meNameApi(new Request("https://example.test/__me/name"), env, PLAIN)).status, 405);
+  assert.equal((await W.meNameApi(W.DEFAULT_TENANT_ID, meNamePost("Bee"), env, null)).status, 401);
+  assert.equal((await W.meNameApi(W.DEFAULT_TENANT_ID, meNamePost("   "), env, PLAIN)).status, 400);
+  assert.equal((await W.meNameApi(W.DEFAULT_TENANT_ID, meNamePost(null), env, PLAIN)).status, 400);
+  assert.equal((await W.meNameApi(W.DEFAULT_TENANT_ID, new Request("https://example.test/__me/name"), env, PLAIN)).status, 405);
   assert.equal(kv.store.size, 0, "nothing written");
 });
 
@@ -1541,14 +1541,14 @@ test("a user can only ever set their OWN name — there is no email parameter", 
     method: "POST", headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ name: "Impostor", email: ADMIN.email }),
   });
-  await W.meNameApi(req, envWith(kv), PLAIN);
+  await W.meNameApi(W.DEFAULT_TENANT_ID, req, envWith(kv), PLAIN);
   assert.deepEqual(Object.keys(JSON.parse(await kv.get(W.USER_NAMES_KEY))), ["u@example.test"]);
 });
 
 test("removing a user takes their chosen name out too, so a re-invite doesn't inherit it", async () => {
   const kv = memKV();
   const env = envWith(kv);
-  await W.meNameApi(meNamePost("Bee Wilson"), env, PLAIN);
+  await W.meNameApi(W.DEFAULT_TENANT_ID, meNamePost("Bee Wilson"), env, PLAIN);
   const res = await callAdmin(adminPost({ op: "remove", email: PLAIN.email }), env, [ADMIN, PLAIN], [ADMIN, PLAIN]);
   assert.equal(res.status, 200);
   assert.deepEqual(JSON.parse(await kv.get(W.USER_NAMES_KEY)), {});

@@ -114,7 +114,7 @@ const served = (ctx) => ({
 
 test("assets mode: a read that fails leaves the working gate exactly as it was", async () => {
   const kv = memKV();
-  W.__setConfigTestState({ cfgAt: 0, rosterReadAt: 0 });
+  W.__setConfigTestState({ cfgAt: 0, roster: null });
   const good = served(await W.loadConfig(T, { ASSETS: assetsBinding(), COMMENTS: kv }));
   assert.deepEqual(good.users, ["known@x.test"], "the fixture actually loaded");
   assert.equal(good.openPath, true);
@@ -133,7 +133,7 @@ test("assets mode: a read that fails leaves the working gate exactly as it was",
 
 test("assets mode: a 404 or a non-JSON document contributes nothing either", async () => {
   const kv = memKV();
-  W.__setConfigTestState({ cfgAt: 0, rosterReadAt: 0 });
+  W.__setConfigTestState({ cfgAt: 0, roster: null });
   const good = served(await W.loadConfig(T, { ASSETS: assetsBinding(), COMMENTS: kv }));
 
   // Not a throw — a 200 that is not JSON, and a 404. grab() answers null for both.
@@ -154,7 +154,7 @@ test("assets mode: a 404 or a non-JSON document contributes nothing either", asy
 test("stamp-first: concurrent requests behind a broken read cost ONE attempt, not one each", async () => {
   const kv = memKV();
   const broken = assetsBinding({ fail: true });
-  W.__setConfigTestState({ cfgAt: 0, rosterReadAt: 0 });
+  W.__setConfigTestState({ cfgAt: 0, roster: null });
   await Promise.all([
     W.loadConfig(T, { ASSETS: broken, COMMENTS: kv }),
     W.loadConfig(T, { ASSETS: broken, COMMENTS: kv }),
@@ -172,7 +172,7 @@ test("stamp-first: concurrent requests behind a broken read cost ONE attempt, no
 
 test("bundle mode: the store going down keeps the last good config", async () => {
   const kv = memKV();
-  W.__setConfigTestState({ cfgAt: 0, rosterReadAt: 0 });
+  W.__setConfigTestState({ cfgAt: 0, roster: null });
   const good = served(await W.loadConfig(T, { GV_ASSET_SOURCE: "r2", BUNDLES: bundleBinding(MANIFESTS), COMMENTS: kv }));
   assert.deepEqual(good.users, ["known@x.test"], "the fixture actually loaded");
   assert.equal(good.openPath, true);
@@ -185,7 +185,7 @@ test("bundle mode: the store going down keeps the last good config", async () =>
 
 test("bundle mode: a corrupt instance document changes nothing, routing included", async () => {
   const kv = memKV();
-  W.__setConfigTestState({ cfgAt: 0, rosterReadAt: 0 });
+  W.__setConfigTestState({ cfgAt: 0, roster: null });
   const good = served(await W.loadConfig(T, { GV_ASSET_SOURCE: "r2", BUNDLES: bundleBinding(MANIFESTS), COMMENTS: kv }));
 
   // The parse throws inside the load's try, so routing is not derived on this tick
@@ -202,7 +202,7 @@ test("the KV overlay failing leaves the config roster, never an empty one", asyn
     async put() { throw new Error("KV down"); },
     async delete() { throw new Error("KV down"); },
   };
-  W.__setConfigTestState({ cfgAt: 0, rosterReadAt: 0 });
+  W.__setConfigTestState({ cfgAt: 0, roster: null });
   await W.loadConfig(T, { ASSETS: assetsBinding(), COMMENTS: angryKV });
   assert.deepEqual(
     W.__usersNow().map((u) => u.email), ["known@x.test"],

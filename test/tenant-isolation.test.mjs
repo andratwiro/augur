@@ -23,13 +23,21 @@
 // second tenant on its own. The harness calls the loader directly, which is the only place
 // two tenants can meet while there is still one of them.
 //
-// The ONE exception is the last section, and it earns it. Two of the caches this file
-// guards are read from EARLY EXITS in `fetch()` — before the gate, before the login page —
-// so "which workspace was answered" and "was anybody even signed in" are the same
-// question there, and a function-level case cannot ask it. That section clears the
+// The EXCEPTIONS are the last two sections, and they earn it. Several of the caches this
+// file guards are read from EARLY EXITS in `fetch()` — before the gate, before the login
+// page — so "which workspace was answered" and "was anybody even signed in" are the same
+// question there, and a function-level case cannot ask it. Those sections clear the
 // resolver's own per-isolate memo (`__setTenantTestState`) between requests, which is the
-// only thing standing between a static resolver and two workspaces, and drives the real
+// only thing standing between a static resolver and two workspaces, and drive the real
 // default export end to end. Nothing else about the request path is stubbed.
+//
+// ⚠️ AND THAT IS THE ONE THING TO GET RIGHT WHEN ADDING TO THEM. The `request()` helper
+// resets the resolver memo and NOTHING ELSE. It used to reset the roster overlay's clock
+// on every call, which meant no case in this file could observe that cache through
+// `fetch()` — and the leak in it was pinned as a "known gap", through the loader, for as
+// long as that was true. A helper that resets a memo is a helper that hides it. If a case
+// needs a cold isolate it calls `resetSharedCaches()` in its own body, where the reset is
+// visible beside the assertion.
 //
 // ---- ADDING A CASE ------------------------------------------------------------------
 // Each item that closes a module-scope cache two workspaces used to share (the MCP
@@ -44,9 +52,10 @@
 //   });
 //
 // `fixture()` takes overrides, so a case can vary one document without restating both;
-// `resetSharedCaches()` puts the per-isolate memos back to cold. The KNOWN GAP section at
-// the bottom shows the same shape used the other way round — pinning a channel that is
-// still open, so closing it turns a test red instead of passing unremarked.
+// `resetSharedCaches()` puts the per-isolate memos back to cold. If a cache's value is
+// read by an UNGATED route, the case belongs in one of the two `fetch()`-driven sections
+// at the bottom instead: a function-level case cannot tell "answered the wrong workspace"
+// from "answered a stranger".
 
 import { test } from "node:test";
 import assert from "node:assert/strict";
@@ -104,8 +113,12 @@ function routingDoc(n, { runtimeChrome = n.charCodeAt(0) % 2 === 0 } = {}) {
   };
 }
 
-// The KV overlay a workspace keeps beside its config documents. Only the fixtures that
-// exercise the overlay bind one — see the KNOWN GAP section for why most do not.
+// The KV overlay a workspace keeps beside its config documents. EVERY fixture in this file
+// binds one: the six documents behind it decide who exists in a workspace and what they
+// may do, so an overlay-less fixture would compare two workspaces on config alone and call
+// that isolation. (It used to be the other way round — most fixtures bound no KV, and the
+// reason was that the READ under the overlay was shared, which made the fields it owns
+// untestable. That is the leak, not a property of the fixtures.)
 function kvDoc(n) {
   return {
     // The roster key is a literal because the worker does not export it; the case below
@@ -142,7 +155,7 @@ function fixture(n, { instance = instanceDoc(n), routing = routingDoc(n), kv = n
 }
 
 const NAMES = ["alpha", "beta"];
-const envFor = (n) => fixture(n);
+const envFor = (n) => fixture(n, { kv: kvDoc(n) });
 
 // Every per-isolate memo `loadTenantContext` can reach, back to cold. Called at the top
 // of every case: these caches are module scope, so without it a case inherits whatever
@@ -156,13 +169,18 @@ const envFor = (n) => fixture(n);
 // slot on the config path, and `createTenantContextCache` is what replaces it.
 function resetSharedCaches() {
   __setConfigTestState({
-    cfgAt: 0, rosterReadAt: 0, mcpHostAllowlist: null,
+    cfgAt: 0, cfgGoodAt: 0, mcpHostAllowlist: null,
     // The two bundle-store caches. Both are keyed by workspace and both outlive a case,
     // so a case that inherited them would be asserting about the previous store.
     manifests: null, storage: null,
     // The two KV documents the ungated routes poll, same rule. The leak cases below PRIME
     // one workspace's entry on purpose and must not inherit a third one's.
     canvasRegistry: null, pitiRemarks: null,
+    // The roster overlay's six KV documents, same rule again — and this one matters most
+    // between cases, because a case that inherited a warm entry would be asserting about
+    // the KV of whichever workspace the PREVIOUS case bound, which is exactly the leak
+    // this file is here to catch.
+    roster: null,
   });
 }
 
@@ -180,10 +198,32 @@ const load = (tenantId, env, opts = {}) => loadTenantContext(tenantId, env, { pr
 // invisible to a same-vs-same comparison. Measured: a shared routing memo injected into
 // the loader passed the interleaving test until the reference stopped being another load.
 //
-// It is exact only for a fixture that binds no KV: with no overlay to read, rosterFields
-// contributes USERS = CONFIG_USERS, SPACES unchanged and an empty icon index — which is
-// what the pure builder leaves in place.
-const expected = (n) => buildTenantContext(n, { instance: instanceDoc(n), routing: routingDoc(n) });
+// The pure builder covers the CONFIG half exactly. The overlay half — the three fields
+// `rosterFields` derives from `kvDoc(n)`'s six KV documents — is written out as LITERALS
+// on top of it, for the same reason: an oracle that computed them by calling the worker's
+// own `mergeRoster`/`applyAvatars`/`applySpaceIcons` would agree with those functions
+// however wrong they were, and it is precisely those three fields whose KV read used to be
+// shared between workspaces. Every value here names its owner, so a leak reads as
+// "alpha" in beta's expected-vs-actual rather than merely as "not equal".
+//
+//   USERS            the config user, then the roster overlay's invitee, with the photo
+//                    URL the avatar index vouches for stamped onto them
+//   AVATAR_KEYS      the hash `/__avatar/u/<hash>` will serve, UNGATED, for this workspace
+//   SPACE_ICONS      the raw icon index, and SPACE_ICON_KEYS/SPACES what it stamps
+const expected = (n) => {
+  const base = buildTenantContext(n, { instance: instanceDoc(n), routing: routingDoc(n) });
+  return Object.freeze({
+    ...base,
+    USERS: [
+      { email: `one@${n}.invalid`, name: `One of ${n}`, role: "admin" },
+      { email: `two@${n}.invalid`, name: `Two of ${n}`, avatar: `/__avatar/u/${n}face` },
+    ],
+    AVATAR_KEYS: new Set([`${n}face`]),
+    SPACE_ICONS: { [n]: { k: `${n}icon`, mime: "image/png", at: 1 } },
+    SPACE_ICON_KEYS: new Set([`${n}icon`]),
+    SPACES: base.SPACES.map((s) => (s.id === n ? { ...s, icon: `/__space-icon/${n}icon` } : s)),
+  });
+};
 
 // Deep equality as a predicate rather than an assertion — used to compare fixtures field
 // by field. Handles the Sets and Maps the context carries, as deepStrictEqual does.
@@ -257,9 +297,9 @@ test("the two fixtures actually differ — no comparison below is a tautology", 
   // at its default compares equal for reasons that have nothing to do with isolation, and
   // its "no leak" assertion would pass forever.
   resetSharedCaches();
-  const a = await load("alpha", fixture("alpha", { kv: kvDoc("alpha") }));
+  const a = await load("alpha", envFor("alpha"));
   resetSharedCaches();
-  const b = await load("beta", fixture("beta", { kv: kvDoc("beta") }));
+  const b = await load("beta", envFor("beta"));
 
   for (const name of TENANT_FIELD_NAMES) {
     if (SHARED_BY_NATURE[name]) {
@@ -321,6 +361,38 @@ test("interleaved loads answer each workspace with its own config, every iterati
         assert.ok(!sameValue(got[x], got[y]), `iteration ${i}: two workspaces' contexts are deep-equal`);
       }
     }
+  }
+});
+
+test("a workspace loading SECOND, inside the caches' own TTLs, still gets its own everything", async () => {
+  // The case above resets between iterations and loads concurrently, and concurrency is
+  // the WEAKER shape: a slot filled by six simultaneous loads is read back by each of them
+  // with no await in between, so every one of them sees the value it wrote itself. The
+  // shape that actually leaks is sequential — prime one workspace, then ask as the next
+  // inside a cache's TTL, which is one isolate answering two requests in a row. That is
+  // the recipe in ADDING A CASE at the top, and it is the shape the roster overlay's six
+  // KV reads failed for as long as they rode one clock with no workspace key.
+  //
+  // No `resetSharedCaches()` between the two loads: that is the whole case.
+  for (const plan of [["alpha", "beta"], ["beta", "alpha"]]) {
+    resetSharedCaches();
+    const first = await load(plan[0], envFor(plan[0]));
+    assert.deepStrictEqual(first, expected(plan[0]), `${plan[0]} is wrong before any interleaving`);
+    const second = await load(plan[1], envFor(plan[1]));
+    assert.deepStrictEqual(
+      second, expected(plan[1]),
+      `${plan[1]} loaded second, inside the previous workspace's tick, and was answered out of ITS caches`,
+    );
+    // Named field by field for the three the roster overlay owns, because a deep compare
+    // reports the first difference and these are the ones whose leak is a security
+    // question rather than a rendering one.
+    assert.deepStrictEqual(
+      second.USERS.map((u) => u.email),
+      [`one@${plan[1]}.invalid`, `two@${plan[1]}.invalid`],
+      `${plan[1]}'s roster names somebody from ${plan[0]}`,
+    );
+    assert.deepStrictEqual([...second.AVATAR_KEYS], [`${plan[1]}face`], `${plan[1]} vouches for a neighbour's photo hash`);
+    assert.deepStrictEqual(Object.keys(second.SPACE_ICONS), [plan[1]], `${plan[1]} holds a neighbour's icon index`);
   }
 });
 
@@ -1074,70 +1146,6 @@ test("the multiplayer proxy dials the CALLING workspace's realtime worker", asyn
   assert.equal((await res.json()).error, "realtime-not-configured");
 });
 
-// ---- KNOWN GAP: the roster overlay cache is shared -----------------------------------
-//
-// `rosterFields()` reads its six KV documents through the module-scope `rosterCache` /
-// `rosterReadAt` pair, which no tenant keys. Within ROSTER_TTL_MS the SECOND workspace to
-// load reuses the FIRST workspace's KV read, and the fields the overlay owns — USERS, the
-// workspace icon index, and the photo hashes /__avatar/ will serve — come back as the
-// neighbour's.
-//
-// Note what this gap is NOT any more: those fields live on the CONTEXT, so each workspace
-// is at least answered from its own value rather than from whatever the isolate loaded
-// last. What is still shared is the KV READ they are built from. Keying that read closes
-// the gap; nothing else has to move.
-//
-// This is pinned rather than merely noted so that closing it cannot happen unremarked:
-// the case below goes RED the day the roster cache is keyed by tenant. When it does,
-// delete this section and move USERS, SPACE_ICONS and AVATAR_KEYS into the interleaved
-// comparison above (they are excluded from it today only because their KV read is shared,
-// which is why that test's fixtures bind no KV at all).
-//
-// The allowlist entry in scripts/no-tenant-globals.mjs calls this cache "overlay only,
-// never the auth boundary", which is true of the SECURITY question — identify() resolves
-// users:secrets per request and the tombstone fails closed — and not true of the
-// isolation one: a workspace's roster additions and icons are its own.
-
-test("KNOWN GAP: a workspace's roster overlay is served to the next workspace to load", async () => {
-  resetSharedCaches();
-  const a = await load("alpha", fixture("alpha", { kv: kvDoc("alpha") }));
-  assert.deepStrictEqual(
-    a.USERS.map((u) => u.email), ["one@alpha.invalid", "two@alpha.invalid"],
-    "alpha did not get its own overlay — the fixture is not exercising the roster path",
-  );
-  assert.deepStrictEqual(
-    Object.keys(a.SPACE_ICONS), ["alpha"],
-    "alpha did not get its own icon index — the fixture is not exercising the icon path",
-  );
-  assert.deepStrictEqual(
-    [...a.AVATAR_KEYS], ["alphaface"],
-    "alpha did not get its own photo hashes — the fixture is not exercising the avatar path",
-  );
-
-  // No reset: beta loads inside ROSTER_TTL_MS, exactly as a second workspace served by the
-  // same isolate would.
-  const b = await load("beta", fixture("beta", { kv: kvDoc("beta") }));
-  assert.deepStrictEqual(
-    b.USERS.map((u) => u.email), ["one@beta.invalid", "two@alpha.invalid"],
-    "the roster overlay cache is no longer shared — this gap is CLOSED. Delete this section and fold USERS/SPACE_ICONS into the interleaved comparison above.",
-  );
-  assert.deepStrictEqual(
-    Object.keys(b.SPACE_ICONS), ["alpha"],
-    "the workspace icon index is no longer shared — see above, this gap is CLOSED",
-  );
-  // The sharpest form of the gap: beta's context vouches for a hash beta's own photo index
-  // never named, so /__avatar/u/alphaface serves — ungated — out of a shared KV namespace.
-  assert.deepStrictEqual(
-    [...b.AVATAR_KEYS], ["alphaface"],
-    "the photo index is no longer shared — see above, this gap is CLOSED",
-  );
-
-  // What is NOT leaked, and must stay that way: everything the config documents own.
-  assert.equal(b.BUILD_ID, "build-beta");
-  assert.equal(b.LOGIN_HINT, "the beta hint");
-  assert.deepStrictEqual(b.CONFIG_USERS.map((u) => u.email), ["one@beta.invalid"]);
-});
-
 // ---- the two KV documents the UNGATED routes poll, end to end through fetch() ---------
 //
 // Two per-isolate caches hold a KV DOCUMENT rather than a config field: the created-board
@@ -1191,24 +1199,32 @@ function servingFixture(n, kvSeed = {}) {
   };
 }
 
-// One request, arriving at an isolate that has already served the neighbour. The tenant
-// memo — `tenantMemo`, the one slot `resolveTenant()` reads the static id into — is
+// One request, arriving at an isolate that has already served the neighbour.
+//
+// ⚠️ IT CLEARS EXACTLY ONE THING, and the list is the whole value of this helper. The
+// tenant memo — `tenantMemo`, the one slot `resolveTenant()` reads the static id into — is
 // cleared because the Phase A resolver would otherwise pin the first workspace to reach it
 // for the isolate's life, and every case below would be two requests for alpha. Clearing
 // it is what a Host-reading resolver will do for itself; leaving it is what makes the
 // slot's own wrongness visible, since with it warm this whole section answers "alpha"
-// twice. The config tick is cleared for the same reason `resetSharedCaches` does it. Every
-// OTHER per-isolate memo — including the two this section is about — is left exactly as
-// the previous request left it, which is the whole point of the case.
-function request(fx, path) {
+// twice. It is also the only memo a REAL two-workspace isolate would not have.
+//
+// EVERY OTHER PER-ISOLATE MEMO IS LEFT EXACTLY AS THE PREVIOUS REQUEST LEFT IT. That is
+// not a convenience, it is the coverage: a memo this helper resets is a memo no case in
+// this file can observe through `fetch()`, and this helper used to reset the roster
+// overlay's clock on every request. The roster leak was pinned as a KNOWN GAP for exactly
+// that long — asserted through the loader, invisible to the router — while the file's own
+// header said nothing but the resolver was stubbed. So: no blanket resets here. A case
+// that genuinely needs a cold memo calls `resetSharedCaches()` itself, in its own body,
+// where the reset is visible next to the assertion it is standing behind.
+function request(fx, path, init) {
   W.__setTenantTestState({ memo: null });
-  W.__setConfigTestState({ cfgAt: 0, cfgGoodAt: 0, rosterReadAt: 0 });
-  return worker.fetch(new Request("https://x.test" + path), fx.env, { waitUntil() {} });
+  return worker.fetch(new Request("https://x.test" + path, init), fx.env, { waitUntil() {} });
 }
 
 // How many times this workspace's KV was asked for one key. Counted per key rather than in
-// total, because clearing the config tick between requests makes the roster overlay re-read
-// its own six documents every time and a total would drown the one read under test.
+// total, because a request reads several documents and a total would drown the one read
+// under test.
 const reads = (fx, key) => fx.reads.filter((k) => k === key).length;
 
 const boardOf = (n) => `/boards/${n}-board/`;
@@ -1348,4 +1364,242 @@ test("the remark queue is still a cache, and a write busts only its OWN workspac
   const betaPoll = await (await poll(beta)).json();
   assert.equal(reads(beta, "pt:remarks"), b0, "a write to ALPHA's queue busted beta's entry too");
   assert.deepStrictEqual(betaPoll.remarks, [], "beta saw a remark written for alpha");
+});
+
+// ---- the roster overlay, end to end through fetch() -----------------------------------
+//
+// The sixth cache, and the only one whose value decides AUTHORIZATION. `rosterFields()`
+// reads six KV documents — the roster overlay (invites and removals), the display-name
+// index, the ROLE overlay, the per-workspace MEMBERSHIP index, the photo index and the
+// workspace-icon index — and used to hold them in one module-scope slot behind one clock.
+// Within ROSTER_TTL_MS the second workspace to load reused the first's six reads, and the
+// three context fields built from them (USERS, AVATAR_KEYS, SPACE_ICONS/SPACE_ICON_KEYS)
+// came back as the neighbour's.
+//
+// WHY IT IS DRIVEN THROUGH THE ROUTER. Two of the three routes that read those fields are
+// UNGATED — `/__people` and `/__avatar/`, both taken at early exits ahead of the login page
+// because the comment overlay and the presence chips load them from public prototypes. So
+// the leak is not "a signed-in member of one workspace sees a neighbour's colleague", it is
+// "a signed-out stranger does", and only `fetch()` can say that. The third is the sharpest
+// and needs a session: a person's ROLE rides the same cache, so a workspace's role overlay
+// was answering for a workspace that has no role overlay at all.
+//
+// WHY IT WAS NOT CAUGHT. It was pinned — as a KNOWN GAP, asserted through
+// `loadTenantContext`. `request()` reset the roster clock on every call, so no case in this
+// file could reach the cache through the router, and the interleaved comparison excluded
+// the three fields for the same reason. The pin recorded the gap and hid its blast radius:
+// nothing in it said "ungated" and nothing in it said "admin".
+//
+// WHY THE SNAPSHOT IS NOT THE EVIDENCE, again. `test/response-snapshot.test.mjs` pins no
+// `/__people` request and no `/__avatar/` request — its corpus has neither — so the byte
+// ratchet is green whatever these routes answer.
+
+// The overlay documents a workspace keeps, as a KV seed for `servingFixture`. Written out
+// rather than reusing `kvDoc` because these cases care about the KEYS the worker reads and
+// about bytes that are reachable, not only about the parsed fields.
+const PNG = (tag) => "data:image/png;base64," + Buffer.concat([
+  Buffer.from([0x89, 0x50, 0x4e, 0x47, 13, 10, 26, 10]),
+  Buffer.from((tag + "................................").slice(0, 32)),
+]).toString("base64");
+
+function overlaySeed(n) {
+  return {
+    "users:roster": JSON.stringify({
+      add: { [`two@${n}.invalid`]: { email: `two@${n}.invalid`, name: `Two of ${n}` } }, remove: [],
+    }),
+    [W.USER_AVATARS_KEY]: JSON.stringify({ [`two@${n}.invalid`]: { k: `${n}face`, mime: "image/png", at: 1 } }),
+  };
+}
+
+test("a signed-out stranger asking a workspace's /__people is never shown a NEIGHBOUR's person", async () => {
+  resetSharedCaches();
+  const alpha = servingFixture("alpha", overlaySeed("alpha"));
+  const beta = servingFixture("beta", overlaySeed("beta"));
+
+  // Premise: alpha's own overlay person resolves, with no cookie on the request. If this
+  // did not answer, a `[]` below would mean "the route is broken", not "the leak is shut".
+  const primed = await (await request(alpha, "/__people?names=Two%20of%20alpha")).json();
+  assert.deepStrictEqual(
+    primed.people.map((p) => p.name), ["Two of alpha"],
+    "alpha's own invitee did not resolve — the case would assert nothing",
+  );
+
+  // …and now beta asks for that person, inside the tick alpha just stamped. Beta's roster
+  // overlay never named them, and beta's config does not either.
+  beta.reads.length = 0;
+  const leaked = await (await request(beta, "/__people?names=Two%20of%20alpha")).json();
+  assert.deepStrictEqual(
+    leaked.people, [],
+    "beta's UNGATED /__people named a person out of ALPHA's roster overlay, to a stranger with no cookie: the roster cache is shared",
+  );
+  assert.ok(
+    beta.reads.includes("users:roster"),
+    "beta never read its own roster overlay — it was answered out of a neighbour's tick",
+  );
+
+  // The standard the rest of this file holds to: not "the two differ" but "each got ITS
+  // OWN answer". A cache that answered every workspace with an empty overlay would also
+  // stop the leak, and would un-invite everybody doing it.
+  const own = await (await request(beta, "/__people?names=Two%20of%20beta")).json();
+  assert.deepStrictEqual(
+    own.people.map((p) => p.name), ["Two of beta"],
+    "beta cannot resolve the person its OWN overlay invited",
+  );
+
+  // And alpha's view was not rewritten by beta's read.
+  const again = await (await request(alpha, "/__people?names=Two%20of%20alpha")).json();
+  assert.deepStrictEqual(again.people.map((p) => p.name), ["Two of alpha"], "beta's request rewrote alpha's roster");
+});
+
+test("a workspace's ungated /__avatar/ never serves a hash only a NEIGHBOUR's photo index vouches for", async () => {
+  resetSharedCaches();
+  // ⚠️ BOTH stores hold the blob at `avatar:alphaface`. Avatar blobs are content-addressed,
+  // so anything sharing a namespace shares them, and the fixture says so deliberately: the
+  // ONLY thing standing between beta and those bytes is whether beta's own photo INDEX
+  // vouches for the hash, which is the property under test. A fixture where the blob were
+  // simply missing from beta's store would 404 for a reason that has nothing to do with the
+  // index — and would pass against the leaking worker.
+  const blob = PNG("alpha-face");
+  const alpha = servingFixture("alpha", { ...overlaySeed("alpha"), [W.AVATAR_BLOB_PREFIX + "alphaface"]: blob });
+  const beta = servingFixture("beta", {
+    ...overlaySeed("beta"),
+    [W.AVATAR_BLOB_PREFIX + "alphaface"]: blob,
+    [W.AVATAR_BLOB_PREFIX + "betaface"]: PNG("beta-face"),
+  });
+
+  const primed = await request(alpha, "/__avatar/u/alphaface");
+  assert.equal(primed.status, 200, "alpha cannot serve the photo its own index vouches for");
+  assert.equal(primed.headers.get("Content-Type"), "image/png");
+
+  beta.reads.length = 0;
+  const leaked = await request(beta, "/__avatar/u/alphaface");
+  assert.equal(
+    leaked.status, 404,
+    "beta served a photo at a hash only ALPHA's index names — ungated, signed out, and the bytes are a person's face",
+  );
+  assert.equal(
+    beta.reads.includes(W.AVATAR_BLOB_PREFIX + "alphaface"), false,
+    "beta read the blob before deciding it was allowed to — the allowlist check must come FIRST, or an ungated route is a KV read amplifier",
+  );
+
+  // Its own still serves: the fix is a key, not a closed door. A cache that answered every
+  // workspace with an empty photo index would also stop the leak, and would blank every
+  // face on every board doing it.
+  const own = await request(beta, "/__avatar/u/betaface");
+  assert.equal(own.status, 200, "beta cannot serve the photo its OWN index vouches for");
+  assert.equal(own.headers.get("Content-Type"), "image/png");
+
+  // And alpha's view was not rewritten by beta's request.
+  assert.equal((await request(alpha, "/__avatar/u/alphaface")).status, 200, "beta's request closed alpha's own photo");
+});
+
+// Roles ride the same six reads, and this is the case that makes the cache an authorization
+// boundary rather than a disclosure one. One PERSON, two workspaces — which is the hosted
+// model: an address is an identity across workspaces, and what it may do is decided per
+// workspace. Pat is an admin in alpha (alpha's KV carries the role overlay that says so)
+// and a viewer in beta, whose KV carries no role overlay at all.
+const PAT = "pat@example.invalid";
+
+function roleFixture(n, { role, roles = null } = {}) {
+  const seed = { "users:secrets": JSON.stringify({ [PAT]: null }) };
+  if (roles) seed[W.USER_ROLES_KEY] = JSON.stringify(roles);
+  const fx = servingFixture(n, seed);
+  // The instance document is this workspace's own: same person, its own verdict on them.
+  fx.env.ASSETS = fixture(n, {
+    instance: { ...instanceDoc(n), users: [{ email: PAT, name: "Pat", role }] },
+  }).ASSETS;
+  return fx;
+}
+
+async function patCookie(fx, role) {
+  const user = { email: PAT, name: "Pat", role };
+  const hash = await W.hashPassword("correct horse battery staple");
+  fx.store.set("users:secrets", JSON.stringify({ [PAT]: hash }));
+  const secret = await W.effectiveSecret(fx.env, user);
+  assert.ok(secret, "the fixture did not give Pat a resolvable secret");
+  // `__Host-augur_user` is spelled out because the worker does not export the name; the
+  // assertions below would fail loudly if a rename made this cookie unreadable.
+  return { headers: { Cookie: `__Host-augur_user=${PAT}.${await W.userToken(fx.env, user, secret)}` } };
+}
+
+test("a viewer in THIS workspace is not made an admin by a neighbour's role overlay", async () => {
+  resetSharedCaches();
+  const alpha = roleFixture("alpha", { role: "viewer", roles: { [PAT]: "admin" } });
+  const beta = roleFixture("beta", { role: "viewer" });
+  const alphaAuth = await patCookie(alpha, "viewer");
+  const betaAuth = await patCookie(beta, "viewer");
+
+  // Premise: in alpha the overlay really does promote Pat, so the leak has something to
+  // leak. Without this a "viewer" below could mean the overlay never applied anywhere.
+  const inAlpha = await (await request(alpha, "/__me", alphaAuth)).json();
+  assert.equal(inAlpha.user.role, "admin", "alpha's role overlay did not apply — the case would assert nothing");
+  assert.equal((await request(alpha, "/__admin/users", alphaAuth)).status, 200, "alpha's admin was refused");
+
+  // …and now beta, inside the tick alpha just stamped. Beta's config says viewer and beta's
+  // KV holds no role overlay at all, so there is no document anywhere in beta that could
+  // make this answer "admin".
+  beta.reads.length = 0;
+  const inBeta = await (await request(beta, "/__me", betaAuth)).json();
+  assert.equal(
+    inBeta.user.role, "viewer",
+    "beta reported ADMIN for a person its own config calls a viewer — out of ALPHA's role overlay, through a shared roster cache",
+  );
+  assert.equal(inBeta.user.admin, false, "…and the admin flag the chrome renders the panel from agreed with it");
+
+  // The boundary itself, not the label on it.
+  const refused = await request(beta, "/__admin/users", betaAuth);
+  assert.equal(
+    refused.status, 403,
+    "beta's admin API let in a person who is only an admin NEXT DOOR: the roster cache decides authorization, so keying it is not cosmetic",
+  );
+  assert.equal((await refused.json()).error, "forbidden");
+  assert.ok(
+    beta.reads.includes(W.USER_ROLES_KEY),
+    "beta never read its own role overlay — it was answered out of a neighbour's tick",
+  );
+
+  // And alpha still administers alpha: the fix is a key, not a demotion.
+  assert.equal((await request(alpha, "/__admin/users", alphaAuth)).status, 200, "alpha's admin lost their own workspace");
+});
+
+test("the roster overlay is still a cache, and a write busts only its OWN workspace", async () => {
+  // Isolation alone would be satisfied by deleting the cache, which puts SIX KV reads back
+  // on every config tick — the reads that exhausted the daily get() budget (2026-08-20).
+  // Both properties, or neither is pinned.
+  resetSharedCaches();
+  const alpha = servingFixture("alpha", overlaySeed("alpha"));
+  const beta = servingFixture("beta", overlaySeed("beta"));
+  const people = (fx, who) => request(fx, `/__people?names=${encodeURIComponent(who)}`);
+
+  await people(alpha, "Two of alpha");
+  await people(beta, "Two of beta");
+  const [a0, b0] = [reads(alpha, "users:roster"), reads(beta, "users:roster")];
+  assert.ok(a0 > 0 && b0 > 0, "neither workspace read its overlay at all — nothing here is a cache");
+  await people(alpha, "Two of alpha");
+  await people(beta, "Two of beta");
+  assert.equal(reads(alpha, "users:roster"), a0, "the TTL stopped working — every request re-reads six KV documents");
+  assert.equal(reads(beta, "users:roster"), b0, "beta's second lookup did not ride its own entry");
+
+  // A name set in alpha is live on alpha at once — the bust reached alpha's entry.
+  const me = { email: "one@alpha.invalid", name: "One of alpha", role: "admin" };
+  const named = await W.meNameApi("alpha", new Request("https://x.test/__me/name", {
+    method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ name: "Renamed in alpha" }),
+  }), alpha.env, me);
+  assert.equal(named.status, 200, "the rename was refused");
+  const after = await (await people(alpha, "Renamed in alpha")).json();
+  assert.deepStrictEqual(
+    after.people.map((p) => p.name), ["Renamed in alpha"],
+    "a just-set display name is not live on its own workspace",
+  );
+
+  // …and beta, whose six documents that write never touched, still answers from its own
+  // entry rather than being sent back to KV by a neighbour's bust.
+  const before = reads(beta, "users:roster");
+  const unaffected = await (await people(beta, "Two of beta")).json();
+  assert.deepStrictEqual(unaffected.people.map((p) => p.name), ["Two of beta"]);
+  assert.equal(
+    reads(beta, "users:roster"), before,
+    "a rename in ALPHA sent beta back to KV — the bust is not keyed by workspace",
+  );
 });

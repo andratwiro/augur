@@ -98,7 +98,7 @@ function bundle(seed, mode = "ok") {
 
 // Back to a cold isolate: no tick, no last-good, no roster cache, no manifest cache.
 const cold = () => W.__setConfigTestState({
-  cfgAt: 0, cfgGoodAt: 0, rosterReadAt: 0, manifests: false, storage: false,
+  cfgAt: 0, cfgGoodAt: 0, roster: null, manifests: false, storage: false,
 });
 // A new tick, keeping whatever last-good the previous load established.
 const tick = () => W.__setConfigTestState({ cfgAt: 0 });

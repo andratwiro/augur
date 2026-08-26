@@ -173,13 +173,13 @@ test("only an admin of THAT workspace may set its icon", async () => {
   });
   const boss = users[0], ed = users[1];
 
-  let res = await W.spaceIconApi(req(boss.email, "beta"), iconEnv(kv), boss, SPACES);
+  let res = await W.spaceIconApi(W.DEFAULT_TENANT_ID, req(boss.email, "beta"), iconEnv(kv), boss, SPACES);
   assert.equal(res.status, 403, "boss administers alpha, not beta");
 
-  res = await W.spaceIconApi(req(ed.email, "alpha"), iconEnv(kv), ed, SPACES);
+  res = await W.spaceIconApi(W.DEFAULT_TENANT_ID, req(ed.email, "alpha"), iconEnv(kv), ed, SPACES);
   assert.equal(res.status, 403, "ed is only an editor in alpha");
 
-  res = await W.spaceIconApi(req(ed.email, "beta"), iconEnv(kv), ed, SPACES);
+  res = await W.spaceIconApi(W.DEFAULT_TENANT_ID, req(ed.email, "beta"), iconEnv(kv), ed, SPACES);
   assert.equal(res.status, 200, "ed administers beta");
 });
 
@@ -189,7 +189,7 @@ test("an unknown workspace is refused before any authority check", async () => {
     method: "POST", headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ space: "nope", icon: "data:image/png;base64,iVBORw0KGgo=" }),
   });
-  const res = await W.spaceIconApi(req, iconEnv(memKV()), users[0], SPACES);
+  const res = await W.spaceIconApi(W.DEFAULT_TENANT_ID, req, iconEnv(memKV()), users[0], SPACES);
   assert.equal(res.status, 400);
 });
 
@@ -201,7 +201,7 @@ test("a payload whose bytes do not match its declared type is refused", async ()
     method: "POST", headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ space: "alpha", icon: "data:image/png;base64," + Buffer.from("<svg/>").toString("base64") }),
   });
-  const res = await W.spaceIconApi(req, iconEnv(memKV()), users[0], SPACES);
+  const res = await W.spaceIconApi(W.DEFAULT_TENANT_ID, req, iconEnv(memKV()), users[0], SPACES);
   assert.equal(res.status, 400);
 });
 

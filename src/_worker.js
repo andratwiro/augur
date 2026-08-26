@@ -516,7 +516,7 @@ function applyInstance(inst) {
 // Bundle mode is ALL-OR-NOTHING per tick for the same reason: an instance document that
 // parsed is discarded along with the routing derivation that then threw, rather than
 // leaving one half of a tick applied on top of the other half's stale values.
-async function loadTenantContext(tenantId, env, { prev = null, forced = false } = {}) {
+async function loadTenantContext(tenantId, env, { prev = null } = {}) {
   let next = prev && prev.tenantId === tenantId ? prev : emptyTenantContext(tenantId);
   // Bundle mode: instance config lives in the store (pushed via /__publish/
   // _instance/config) and routing derives from the live manifests.
@@ -529,7 +529,7 @@ async function loadTenantContext(tenantId, env, { prev = null, forced = false } 
     // A present one that will not parse is a FAILED read, and throws from here.
     if (instObj) next = withTenantFields(next, instanceFields(JSON.parse(await instObj.text())));
     next = withTenantFields(next, derivedRoutingFields(manifests, next.SPACE_ICONS));
-    return withTenantFields(next, await rosterFields(next, env, forced));
+    return withTenantFields(next, await rosterFields(next, env));
   }
   if (!env.ASSETS) return next;
   const grab = async (name) => {
@@ -548,7 +548,7 @@ async function loadTenantContext(tenantId, env, { prev = null, forced = false } 
   // (there is only ever one whole-site build in this mode, so the file is authoritative).
   // Same fields, same serving route as bundle mode.
   if (routing) next = withTenantFields(next, routingFields(routing));
-  return withTenantFields(next, await rosterFields(next, env, forced));
+  return withTenantFields(next, await rosterFields(next, env));
 }
 
 // A loaded context is now the ONLY place a workspace's config lives. There is no mirror
@@ -592,13 +592,10 @@ async function loadConfig(tenantId, env) {
   // BY DESIGN, and it must never become a refusal.
   if (!env) return mine ? TENANT_CTX : emptyTenantContext(tenantId);
   if (mine && Date.now() - cfgAt < 1500) return TENANT_CTX;
-  // A write handler busted the cache, or this workspace has never loaded — either way
-  // the roster must re-read now rather than ride its own longer clock.
-  const forced = !mine || !cfgAt;
   cfgAt = Date.now(); // stamp first — a failed load retries next tick, never stampedes
   let next;
   try {
-    next = await loadTenantContext(tenantId, env, { prev: mine ? TENANT_CTX : null, forced });
+    next = await loadTenantContext(tenantId, env, { prev: mine ? TENANT_CTX : null });
   } catch (e) {
     // The store could not say what this workspace is. Keep serving the last config that
     // worked while it is still young enough to be worth trusting; past that, and on a
@@ -753,22 +750,68 @@ function mergeRoster(configUsers, roster) {
 // browsing ≈ 350k/day) and exhausted the free-tier daily get() budget, after which
 // every KV-touching route threw for the rest of the day (2026-08-20). The APPLY
 // still runs every tick — instanceFields resets `USERS` to the config list and counts
-// on the overlay landing on top — only the KV reads are cached. Freshness: any
-// admin write sets cfgAt = 0, which reaches here as `forced` and re-reads at once
-// on that isolate; other isolates converge within ROSTER_TTL_MS. None of this
-// touches auth: identify() resolves users:secrets per request, so a removal or
-// reset still bites immediately — the tombstone, not this overlay, is the boundary.
+// on the overlay landing on top — only the KV reads are cached.
+//
+// KEYED BY WORKSPACE, and the key is an AUTHORIZATION boundary, not a tidiness one. The
+// six documents in an entry are one workspace's roster overlay: who has been invited or
+// removed since the config was built, what role each person holds, which workspaces they
+// are a member of, the photo hashes `/__avatar/` will serve ungated, and the icon hashes
+// `/__space-icon/` will. A single slot hands all six to the SECOND workspace to load
+// inside the TTL, which was reproduced end to end through the real fetch(): beta's
+// ungated `/__people` naming an alpha person to a signed-out stranger, `/__avatar/u/…`
+// answering 200 with alpha's photo bytes from beta, and — the one that makes this an
+// authorization leak rather than a disclosure — a person who is a VIEWER in beta's own
+// config, with no users:roles document in beta's KV at all, coming back ADMIN out of
+// alpha's role overlay. Bounded and evicted like the manifest cache and the board
+// registry: an evicted workspace re-reads its own six documents, which costs six KV gets
+// and can never answer with a neighbour's.
+//
+// FRESHNESS IS KEYED TOO. Every handler that writes one of the six busts the entry for
+// the workspace it wrote in (`bustRosterOverlay`), so the write is live on that
+// workspace's next request; other isolates converge within ROSTER_TTL_MS. There is
+// deliberately no blanket bust: `cfgAt = 0` reached every workspace's read at once, which
+// is the coarse shape this cache is being moved away from.
+//
+// None of this touches auth: identify() resolves users:secrets per request, so a removal
+// or reset still bites immediately — the tombstone, not this overlay, is the boundary.
 const ROSTER_TTL_MS = 60_000;
-let rosterReadAt = 0;
-let rosterCache = null;
+const ROSTER_CACHE_MAX = 256;
+const ROSTER_OVERLAY = new Map(); // tenantId -> { at, docs }
+
+// Delete-then-set so insertion order is recency order and the first key is the eviction
+// victim — the same idiom the manifest cache and the board registry use.
+function touchRosterOverlay(tenantId, entry) {
+  ROSTER_OVERLAY.delete(tenantId);
+  ROSTER_OVERLAY.set(tenantId, entry);
+  while (ROSTER_OVERLAY.size > ROSTER_CACHE_MAX) ROSTER_OVERLAY.delete(ROSTER_OVERLAY.keys().next().value);
+  return entry;
+}
+
+// A roster write making itself visible on the very next request, for ITS workspace only.
+// The last-read documents are KEPT: this asks for a re-read, it does not blank what the
+// workspace is serving in the meantime.
+function bustRosterOverlay(tenantId) {
+  const e = ROSTER_OVERLAY.get(tenantId);
+  if (e) e.at = 0;
+}
 // Test hooks: the cadence above is timing state a test can't reach otherwise.
-function __setConfigTestState({ cfgAt: c, cfgGoodAt: g, rosterReadAt: r, mcpHostAllowlist: m, manifests, storage, canvasRegistry, pitiRemarks } = {}) {
+function __setConfigTestState({ cfgAt: c, cfgGoodAt: g, roster, mcpHostAllowlist: m, manifests, storage, canvasRegistry, pitiRemarks } = {}) {
   if (c !== undefined) cfgAt = c;
   // The last-good stamp is set INDEPENDENTLY of the tick stamp, because ageing one past
   // the other is the whole staleness-ceiling story: `{cfgAt: 0}` means "a new tick", and
   // only `{cfgGoodAt: …}` means "and the last config that worked is this old".
   if (g !== undefined) cfgGoodAt = g;
-  if (r !== undefined) { rosterReadAt = r; if (!r) rosterCache = null; }
+  // The roster overlay, keyed by workspace like the four below. Falsy clears the whole
+  // map (a case that leaves it warm is asserting about the previous case's KV);
+  // `{tenantId, at}` ages ONE workspace's entry, which is how a case reaches the TTL
+  // without reaching a neighbour's documents.
+  if (roster !== undefined) {
+    if (!roster) ROSTER_OVERLAY.clear();
+    else {
+      const e = ROSTER_OVERLAY.get(roster.tenantId);
+      if (e) e.at = roster.at;
+    }
+  }
   // The proxy's derived host lists, back to cold. Falsy clears; the Map is keyed by
   // workspace, so a case that does not clear it is asserting about whatever the previous
   // case resolved.
@@ -792,16 +835,21 @@ const __usersNow = () => TENANT_CTX.USERS;
 // throw anywhere in the chain reaches the caller having changed nothing — and the answer
 // then is the config roster alone, which is the one thing that must never be an overlay's
 // to decide (the tombstone, not this, is the security boundary — see the note above).
-async function rosterFields(ctx, env, forced) {
+async function rosterFields(ctx, env) {
   try {
-    if (forced || !rosterCache || Date.now() - rosterReadAt >= ROSTER_TTL_MS) {
-      rosterReadAt = Date.now();
-      rosterCache = await Promise.all([
+    // Insert BEFORE the await, so two concurrent requests for one workspace fill one
+    // entry rather than racing two into the map. The stamp goes up before the read for
+    // the same reason loadConfig stamps first: a store refusing every read must not get
+    // six gets per request just because the answers are useless.
+    const cur = touchRosterOverlay(ctx.tenantId, ROSTER_OVERLAY.get(ctx.tenantId) || { at: 0, docs: null });
+    if (!cur.docs || Date.now() - cur.at >= ROSTER_TTL_MS) {
+      cur.at = Date.now();
+      cur.docs = await Promise.all([
         readRoster(env), readAvatars(env), readNames(env), readRoles(env), readSpaces(env),
         readSpaceIcons(env),
       ]);
     }
-    const [roster, avatars, names, roles, spaces, icons] = rosterCache;
+    const [roster, avatars, names, roles, spaces, icons] = cur.docs;
     // The photo pass hands back the users AND the hashes it stamped — see applyAvatars —
     // so the rest of the pipeline runs on its users while the Set travels to the context
     // rather than to a module binding.
@@ -1003,7 +1051,11 @@ async function serveSpaceIcon(tctx, env, k) {
 
 // POST {space, icon: "data:image/…"} sets it; DELETE {space} restores the repo's seed.
 // Admin of THAT workspace only — the same authority that edits its people.
-async function spaceIconApi(request, env, me, spaces) {
+//
+// `tenantId` is carried for the roster overlay's cache and nothing else: the KV keys are
+// the instance's, but which workspace's icon index this isolate is holding is not
+// something the binding can answer.
+async function spaceIconApi(tenantId, request, env, me, spaces) {
   if (!me) return jsonResponse({ error: "unauthorized" }, 401);
   const kv = kvFor(env);
   if (!kv) return jsonResponse({ error: "no-kv-binding" }, 500);
@@ -1019,7 +1071,7 @@ async function spaceIconApi(request, env, me, spaces) {
   if (request.method === "DELETE") {
     const index = await readSpaceIcons(env);
     if (sid in index) { delete index[sid]; await kv.put(SPACE_ICONS_KEY, JSON.stringify(index)); }
-    cfgAt = 0;
+    bustRosterOverlay(tenantId); cfgAt = 0;
     return jsonResponse({ ok: true, icon: null });
   }
   if (request.method === "POST") {
@@ -1032,7 +1084,7 @@ async function spaceIconApi(request, env, me, spaces) {
     const index = await readSpaceIcons(env);
     index[sid] = { k, mime: parsed.mime, at: new Date().toISOString() };
     await kv.put(SPACE_ICONS_KEY, JSON.stringify(index));
-    cfgAt = 0;
+    bustRosterOverlay(tenantId); cfgAt = 0;
     return jsonResponse({ ok: true, icon: "/__space-icon/" + k });
   }
   return jsonResponse({ error: "method-not-allowed" }, 405);
@@ -1136,7 +1188,9 @@ async function clearName(env, email) {
 // their own row: there is no email parameter, the same rule the photo route follows.
 // A rename propagates everywhere a name is read (chip, admin table, comment authors),
 // because comments store a person id, never a name snapshot.
-async function meNameApi(request, env, me) {
+//
+// `tenantId` is carried for the roster overlay's cache — see spaceIconApi.
+async function meNameApi(tenantId, request, env, me) {
   if (!me) return jsonResponse({ error: "unauthorized" }, 401);
   if (request.method !== "POST") return jsonResponse({ error: "method-not-allowed" }, 405);
   const kv = kvFor(env);
@@ -1148,7 +1202,8 @@ async function meNameApi(request, env, me) {
   const index = await readNames(env);
   index[lcEmail(me.email)] = { name, at: new Date().toISOString() };
   await kv.put(USER_NAMES_KEY, JSON.stringify(index));
-  cfgAt = 0; // this isolate re-reads on the next request; others within ~1.5s
+  // This workspace re-reads on the next request; other isolates within ROSTER_TTL_MS.
+  bustRosterOverlay(tenantId); cfgAt = 0;
   return jsonResponse({ ok: true, name, initials: initialsFor(name) });
 }
 
@@ -1228,14 +1283,17 @@ async function clearAvatar(env, email) {
 // NOTE: nothing in the shell calls DELETE any more — the account settings modal
 // deliberately ships no "remove photo" affordance. The route stays live and tested
 // on purpose (a later UI, or a script, still needs it); it is not dead code.
-async function meAvatarApi(request, env, me) {
+//
+// `tenantId` is carried for the roster overlay's cache — see spaceIconApi.
+async function meAvatarApi(tenantId, request, env, me) {
   if (!me) return jsonResponse({ error: "unauthorized" }, 401);
   const kv = kvFor(env);
   if (!kv) return jsonResponse({ error: "no-kv-binding" }, 500);
 
   if (request.method === "DELETE") {
     await clearAvatar(env, me.email);
-    cfgAt = 0; // this isolate re-reads on the next request; others within ~1.5s
+    // This workspace re-reads next request; other isolates within ROSTER_TTL_MS.
+    bustRosterOverlay(tenantId); cfgAt = 0;
     return jsonResponse({ ok: true, avatar: null });
   }
 
@@ -1251,7 +1309,7 @@ async function meAvatarApi(request, env, me) {
     const index = await readAvatars(env);
     index[lcEmail(me.email)] = { k, mime: parsed.mime, at: new Date().toISOString() };
     await kv.put(USER_AVATARS_KEY, JSON.stringify(index));
-    cfgAt = 0;
+    bustRosterOverlay(tenantId); cfgAt = 0;
     return jsonResponse({ ok: true, avatar: "/__avatar/" + AVATAR_KV_PREFIX + k });
   }
 
@@ -2677,6 +2735,7 @@ async function publishApi(tctx, request, url, env) {
         const remove = roster.remove.filter((e) => named.has(String(e).toLowerCase()));
         if (Object.keys(add).length !== Object.keys(roster.add).length || remove.length !== roster.remove.length) {
           await kv.put(USER_ROSTER_KEY, JSON.stringify({ ...roster, add, remove }));
+          bustRosterOverlay(tctx.tenantId);
         }
       }
     } catch (e) {}
@@ -4586,9 +4645,11 @@ async function adminUsersApi(tctx, request, url, env, me, users = tctx.USERS, co
   if (!me || !administersAny(me, spaces)) return jsonResponse({ error: "forbidden" }, 403);
   const kv = kvFor(env);
   // A roster write lands in THIS isolate immediately (so the list the admin is looking
-  // at is right) and everywhere else on the next config tick, which cfgAt=0 brings
-  // forward to the next request. Only the live list is touched — a caller that injected
-  // its own roster (tests) gets its list back untouched.
+  // at is right) and everywhere else within ROSTER_TTL_MS. The overlay bust is keyed by
+  // workspace, so the six KV documents re-read are the ones this write touched and no
+  // neighbour is sent back to its own store for a change that was never theirs. Only the
+  // live list is touched — a caller that injected its own roster (tests) gets its list
+  // back untouched.
   const commitRoster = (roster) => {
     const next = mergeRoster(configUsers, roster);
     // ⚠️ Only when this call is answering for the LIVE roster of the workspace it was
@@ -4598,7 +4659,7 @@ async function adminUsersApi(tctx, request, url, env, me, users = tctx.USERS, co
     // its list back untouched. The isolate's own context advances so the next request
     // sees the write without waiting for the tick.
     if (users === tctx.USERS) TENANT_CTX = withTenantFields(TENANT_CTX, { USERS: next });
-    cfgAt = 0;
+    bustRosterOverlay(tctx.tenantId); cfgAt = 0;
   };
 
   if (request.method === "GET") {
@@ -4750,7 +4811,8 @@ async function adminUsersApi(tctx, request, url, env, me, users = tctx.USERS, co
       if (role === null) delete next[sid]; else next[sid] = role;
       index[email] = next;
       await kv.put(USER_SPACES_KEY, JSON.stringify(index));
-      cfgAt = 0; // the next request re-reads, so the panel sees its own write
+      // The next request re-reads THIS workspace's overlay, so the panel sees its own write.
+      bustRosterOverlay(tctx.tenantId); cfgAt = 0;
       return jsonResponse({ ok: true, email, space: sid, role });
     }
 
@@ -4823,7 +4885,7 @@ async function adminUsersApi(tctx, request, url, env, me, users = tctx.USERS, co
           USERS: applyRoles(mergeRoster(configUsers, roster), nextRoles),
         });
       }
-      cfgAt = 0;
+      bustRosterOverlay(tctx.tenantId); cfgAt = 0;
 
       // identity.json stays the durable record: ask the shell to commit the new role,
       // and the config push its deploy sends back drains the overlay entry above.
@@ -5206,17 +5268,17 @@ export default {
     }
     if (url.pathname === "/__admin/space-icon") {
       if (!authed) return jsonResponse({ error: "unauthorized" }, 401);
-      return spaceIconApi(request, env, me, tctx.SPACES);
+      return spaceIconApi(tctx.tenantId, request, env, me, tctx.SPACES);
     }
 
     // My own profile photo — set or clear. Ahead of the gate for the same reason
     // /__me is: the profile chip is chrome, and it must work on every page a signed-in
     // person can already see. meAvatarApi re-checks the session (401 without one).
-    if (url.pathname === "/__me/avatar") return meAvatarApi(request, env, me);
+    if (url.pathname === "/__me/avatar") return meAvatarApi(tctx.tenantId, request, env, me);
 
     // My own display name — same placement and the same reasoning as the photo route
     // above: chrome, ahead of the gate, re-checks the session itself (401 without one).
-    if (url.pathname === "/__me/name") return meNameApi(request, env, me);
+    if (url.pathname === "/__me/name") return meNameApi(tctx.tenantId, request, env, me);
 
     // Comment-author faces, same deal as /__me and /__avatar/ above: this route must
     // stay here, ahead of the auth gate, because intercepting first is what makes it

@@ -28,14 +28,19 @@
 //
 // ---- WHY THE LIST HAS THE SHAPE IT HAS ----------------------------------------------
 //
-// THE FAILURE THIS FILE WAS REBUILT AROUND. Two cross-tenant leaks — the ungated avatar
-// index, and the board registry + remark queue the ungated poll routes read — were both
-// reproduced end to end serving one workspace another's content. Neither was an unlisted
-// binding. Both were ON this list, in a category called CACHES, under written reasons
-// that asserted the very safety they did not have ("a hash is content-addressed, so it
-// means the same thing everywhere"; "a stale stamp costs a re-read"). Every direction the
-// lint had — unlisted, stale, unreachable, readmitted — was green throughout, because all
-// four ask whether the list AGREES WITH THE CODE and none asks whether an entry is TRUE.
+// THE FAILURE THIS FILE WAS REBUILT AROUND. Three cross-tenant leaks — the ungated avatar
+// index; the board registry + remark queue the ungated poll routes read; and the roster
+// overlay, which decides not only who exists in a workspace but what they may do — were
+// each reproduced end to end serving one workspace another's content. None was an
+// unlisted binding. All were ON this list under written reasons that asserted the very
+// safety they did not have ("a hash is content-addressed, so it means the same thing
+// everywhere"; "a stale stamp costs a re-read"; "overlay only, never the auth boundary").
+// Every direction the lint had — unlisted, stale, unreachable, readmitted — was green
+// throughout, because all four ask whether the list AGREES WITH THE CODE and none asks
+// whether an entry is TRUE. The third one adds a lesson the first two did not: it was
+// listed as a KNOWN GAP, pinned by a test, and still shipped, because the pin drove the
+// loader directly while the only harness helper that drove the real router reset the very
+// memo the gap was in.
 //
 // A LINT CANNOT READ PROSE, so this one no longer tries. It does not grade a reason, score
 // its wording, or look for the word "keyed" in a sentence. Instead the category whose
@@ -60,10 +65,10 @@
 //              config. "Tenant-invariant by construction" used to be a claim; it is now
 //              the thing that was checked.
 //
-//   UNKEYED    a bare per-isolate slot. THIS IS THE SHAPE BOTH LEAKS HAD, and the list
-//              treats it as such. There is no "it's only a clock" kind, because both leaks
-//              had one: `canvasRegAt` was a number, and it is what made the stale document
-//              answer. An entry here must name a `proof` — a test file that exists and
+//   UNKEYED    a bare per-isolate slot. THIS IS THE SHAPE EVERY LEAK HAD, and the list
+//              treats it as such. There is no "it's only a clock" kind, because each leak
+//              had one: `canvasRegAt` and `rosterReadAt` were numbers, and they are what
+//              made the stale document answer. An entry here must name a `proof` — a test file that exists and
 //              speaks the binding's name — and the TOTAL number of unkeyed entries across
 //              every module must equal `UNKEYED_BUDGET` exactly. Exact, not a ceiling:
 //              closing one forces the budget down in the same commit, and opening one
@@ -75,7 +80,7 @@
 // code will describe the key they meant. Reading the key off the ACCESS SITES gets the
 // same guarantee from the source of truth. (b) Failing when a function that reads a
 // module cache is called from a site holding a tenant context but not passing it does
-// describe both leaks exactly — but it needs a call graph this regex scanner does not
+// describe every one of the leaks exactly — but it needs a call graph this regex scanner does not
 // have, and it verifies PLUMBING: it goes green the moment the parameter is threaded and
 // ignored. The keyed rule subsumes the useful half locally — a cache that may only be
 // touched with a `tenantId` in hand forces the parameter to exist, at the one place where
@@ -113,8 +118,8 @@
 //     job, guarded by `scripts/one-tenant-resolver.mjs`, not this one's.
 //   · The budget is a line in this file, and the same commit that adds a slot can raise
 //     it. That is on purpose: the point is not that it is impossible, it is that it is
-//     LOUD. What is impossible is doing it the way both leaks were done — by adding a
-//     sentence to a list of sentences.
+//     LOUD. What is impossible is doing it the way all three leaks were done — by adding
+//     a sentence to a list of sentences.
 //
 // Usage: node scripts/no-tenant-globals.mjs [--entry <path>] [--quiet]
 // No config, no dependencies. Exit 1 on any failure.
@@ -130,7 +135,7 @@ export const ENTRY = "src/_worker.js";
 // How many bare per-isolate slots this engine still has. EXACT, and it only goes down —
 // see UNKEYED above. Every one of them is a workspace-shared slot that a Host-resolving
 // isolate will get wrong, so this number is the phase's remaining debt, counted.
-export const UNKEYED_BUDGET = 6;
+export const UNKEYED_BUDGET = 4;
 
 // ---- the allowlist, per module -------------------------------------------------------
 //
@@ -152,6 +157,7 @@ const ALLOWLIST = {
       mcpHostAllowlist: "the proxy host lists resolved from each workspace's published document, bounded; the value is derived from one workspace's config, so the key is what stops a neighbour answering from it",
       CANVAS_REGISTRY:  "the created-board registry each workspace keeps in KV, bounded; the value names one workspace's boards and the route that reads it serves them to a signed-out stranger before the login page, so the key is what stops a neighbour's boards answering at this workspace's URLs",
       PITI_REMARKS:     "the queued remarks each workspace's companion polls for, bounded; the poll is an ungated route and the value is text written for one workspace's pages",
+      ROSTER_OVERLAY:   "the six roster KV documents each workspace keeps beside its config — invites, removals, roles, memberships, photo hashes, icon hashes — bounded; the value decides who exists in a workspace and WHAT THEY MAY DO, so the key is an authorization boundary: a single slot was reproduced serving a neighbour's person from the ungated /__people, a neighbour's photo bytes from /__avatar/, and admin to a viewer out of a neighbour's role overlay",
     },
 
     // INVARIANT — never written after module load, which is what the lint checks. The note
@@ -181,14 +187,6 @@ const ALLOWLIST = {
       },
       TENANT_CTX: {
         why: "the last good context this isolate loaded, in ONE slot; it would answer a second workspace with the first one's config, and the per-workspace createTenantContextCache is what replaces it when the resolver stops answering with one static id",
-        proof: "test/tenant-isolation.test.mjs",
-      },
-      rosterReadAt: {
-        why: "the roster read clock, one for the isolate; paired with rosterCache below, and a clock over an unkeyed document is exactly what made both closed leaks serve a neighbour's bytes",
-        proof: "test/tenant-isolation.test.mjs",
-      },
-      rosterCache: {
-        why: "the six roster KV documents this isolate last read, in one slot — so the second workspace to load inside the tick builds its USERS, SPACE_ICONS and AVATAR_KEYS from the first one's read. Those fields are per-workspace on the context now; the READ under them is not, and keying it is what closes this",
         proof: "test/tenant-isolation.test.mjs",
       },
       tenantMemo: {
@@ -494,7 +492,7 @@ export function checkKeyedUses(source, name, declLine) {
       message:
         `.${member}(${key === null ? "" : key}) is not keyed by workspace — the first argument must be a tenantId ` +
         "expression (or a local assigned from one). This is the check that replaces the sentence beside the entry: " +
-        "both closed leaks were a cache whose written reason claimed a safety its accesses did not have",
+        "every closed leak was a cache whose written reason claimed a safety its accesses did not have",
     });
   }
   return problems;
@@ -574,7 +572,7 @@ export function checkModuleGlobals(source, options = {}) {
           "rather than declaring it here. Otherwise it belongs under one of the three kinds in ALLOWLIST in " +
           "scripts/no-tenant-globals.mjs — `keyed` (a Map this lint checks is keyed by workspace at every access), " +
           "`invariant` (a const this lint checks is never written after load), or `unkeyed` (a slot the whole isolate " +
-          "shares — the shape both cross-tenant leaks had, so it costs a proof and a line off UNKEYED_BUDGET)",
+          "shares — the shape every cross-tenant leak had, so it costs a proof and a line off UNKEYED_BUDGET)",
       });
       continue;
     }
@@ -596,7 +594,8 @@ export function checkModuleGlobals(source, options = {}) {
           message:
             "listed as keyed by workspace, but declared as a bare value rather than `const " + b.name + " = new Map()`. " +
             "A slot that holds one answer cannot hold one answer PER WORKSPACE, whatever the entry says — this is " +
-            "exactly what the avatar index and the board registry were when they leaked. Key it by tenantId, or move " +
+            "exactly what the avatar index, the board registry and the roster overlay were when they leaked. Key it by " +
+            "tenantId, or move " +
             "the entry to `unkeyed` and pay its budget",
         });
       } else {
@@ -708,7 +707,7 @@ export function checkGraph(root, options = {}) {
       message:
         `${unkeyed} unkeyed per-isolate slot(s) allowlisted, UNKEYED_BUDGET says ${budget}. ` +
         (unkeyed > budget
-          ? "Adding one is adding a slot two workspaces share — the shape both closed cross-tenant leaks had. If it is " +
+          ? "Adding one is adding a slot two workspaces share — the shape every closed cross-tenant leak had. If it is " +
             "genuinely unavoidable, raise the budget in the same commit and say in the message which workspace's data " +
             "the isolate now shares"
           : "One has been closed — lower the budget in the same commit, so the number keeps being this phase's remaining debt " +

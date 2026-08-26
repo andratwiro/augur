@@ -581,7 +581,7 @@ test("bust forces a re-read on the next request but keeps the gate serving", () 
   cache.bust("alpha");
   const due = cache.due("alpha");
   assert.equal(due.due, true, "a busted tenant re-reads at once");
-  assert.equal(due.forced, true, "and reports forced, so dependent reads skip their own clocks");
+  assert.equal(due.forced, true, "and reports forced — this tenant was busted, not the isolate");
   assert.equal(cache.get("alpha"), ctx, "busting asks for a re-read; it must not blank the gate");
 });
 

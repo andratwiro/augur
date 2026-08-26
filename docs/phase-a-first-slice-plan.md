@@ -247,6 +247,54 @@ the real default export end to end, because "which workspace was answered" and "
 anybody signed in" are the same question at an early exit. The byte snapshot pins no
 canvas board and no `/__piti` poll, so it is green either way.
 
+And the roster overlay — `rosterCache` / `rosterReadAt`, now the one `ROSTER_OVERLAY` map.
+This is the same shape a third time and the worst of the three, because what it holds is
+not content but AUTHORIZATION. The six KV documents behind it are a workspace's invites and
+removals, its display names, its ROLE overlay, its per-workspace memberships, the photo
+hashes `/__avatar/` will serve and the icon hashes `/__space-icon/` will; one slot behind
+one 60-second clock handed all six to the second workspace to load. Reproduced through the
+real `fetch()`, with the two workspaces holding SEPARATE per-workspace KV so module scope
+was the only channel: beta's UNGATED `/__people` naming an alpha person to a signed-out
+stranger; `/__avatar/u/<hash>` answering 200 `image/png` from beta for a hash only alpha's
+index vouches for; and a person who is a VIEWER in beta's own config, with no
+`users:roles` document in beta's KV at all, coming back ADMIN out of alpha's role overlay —
+which is `/__admin/users` opening, not a rendering going wrong. It is a `Map` keyed by
+tenant and bounded now, `rosterFields` reads it through `ctx.tenantId`, and every handler
+that writes one of the six calls `bustRosterOverlay(tenantId)`: `spaceIconApi`, `meNameApi`
+and `meAvatarApi` take the workspace for that reason alone, and `adminUsersApi` and the
+instance-config push already had it. The blanket `cfgAt = 0` no longer reaches this clock,
+so a rename in one workspace does not send every neighbour back to KV for six documents.
+
+Two things about how that one got past everything, because they are the transferable part.
+It was PINNED, as a "KNOWN GAP" — and the pin asserted it through `loadTenantContext`,
+while `request()`, the only helper in `test/tenant-isolation.test.mjs` that drives the real
+router, reset the roster clock on every call. So no case in the file could observe the
+cache through `fetch()`, and the pin recorded the gap while hiding its blast radius:
+nothing in it said "ungated" and nothing in it said "admin". A helper that resets a memo is
+a helper that hides it; `request()` now clears the resolver memo and nothing else, and a
+case that wants a cold isolate says so in its own body. And the lint's allowlist entry
+called the cache "overlay only, never the auth boundary", which is true of *sign-in* — the
+`users:secrets` tombstone fails closed and `identify()` resolves it per request — and false
+of *what you may do once signed in*. That entry is why the lint no longer reads reasons.
+The evidence is five cases in `test/tenant-isolation.test.mjs`, four of them through the
+default export; checked by sabotage, keying the cache on a constant turns all five red and
+leaves the byte snapshot green (it pins no `/__people`, no `/__avatar/` and no board, and
+runs in ASSETS mode).
+
+**⚠️ NOT CLOSED, AND A DIFFERENT AXIS: the KV KEYS are not namespaced by workspace.**
+Recorded here so it is not rediscovered a fourth time. Everything above is about per-isolate
+CACHES — state that outlives a request. Underneath them, the KV document names are flat and
+instance-wide: `canvases`, `pt:remarks`, `board:<path>`, and the six roster documents. With
+one KV binding shared by two workspaces — which is what an isolate serving both by Host
+would have unless something changes — `beta GET /boards/alpha-secret/` answers 200 with
+alpha's board even after every memo is cold, because both workspaces read the same
+`canvases` document. No cache is involved and no amount of keying the caches touches it.
+**Do not rename the keys as a side quest**: the settled architecture moves mutable state
+into a per-workspace Durable Object, which resolves this by giving each workspace its own
+storage rather than by prefixing strings in a shared one, and a half-done rename would
+leave live instances reading keys nothing writes. The caches being keyed is what makes this
+the only remaining path — that is the value of writing it down.
+
 Excluded as per-isolate runtime caches, not config: `cfgAt`, `MANIFESTS`, `STORAGE_CACHE` —
 the latter two keyed by tenant rather than shared, per the paragraph above. `AVATAR_KEYS`
 was excluded here too and should not have been: it is the list of photo hashes the UNGATED
@@ -259,8 +307,8 @@ i.e. ~110–120 read sites once decls/assigns are removed — matching the plan'
 numbers here drift; the lint walks the module graph the worker pulls into the isolate —
 every module it reaches by a relative import, because module scope is per ISOLATE and a
 `let` one import away is shared exactly as widely — and counts what is actually declared —
-today 24 module-scope bindings across four modules: NO config global at all, 5 caches
-keyed by workspace, 13 tables never written after module load, and 6 slots the whole
+today 23 module-scope bindings across four modules: NO config global at all, 6 caches
+keyed by workspace, 13 tables never written after module load, and 4 slots the whole
 isolate still shares. It fails CI, and therefore the deploy, on a binding it has never
 been told about, on an allowlist entry whose binding is gone, and on an allowlist entry
 that names a field of the tenant context — so the list shrank as the threading landed
@@ -294,9 +342,9 @@ Three kinds replace it, two of them decided from the code:
   exact, not a ceiling, so closing one forces the number down in the same commit and
   opening one forces a diff line that says the isolate now shares one more slot.
 
-Today's six are `cfgAt`, `cfgGoodAt`, `TENANT_CTX`, `rosterReadAt`, `rosterCache` and
-`tenantMemo` — the config slot with its two clocks, the shared roster read under §2a, and
-the resolver's memo. That is this phase's remaining debt, counted rather than described,
+Today's four are `cfgAt`, `cfgGoodAt`, `TENANT_CTX` and `tenantMemo` — the config slot
+with its two clocks, and the resolver's memo. That is this phase's remaining debt, counted
+rather than described,
 and the budget is what makes it a debt rather than a category. Checked against the pre-fix
 tree: with `AVATAR_KEYS` and the `canvasReg*`/`pitiRemarks*` pairs restored, all four ways
 a maintainer could list them fail — unlisted if left off, `keyed-not-a-map` under `keyed`,
@@ -408,14 +456,13 @@ Two properties are load-bearing, and both mirror §2a rather than inventing anyt
   is kept — a deployment's identity does not change without a redeploy, and re-reading it
   would put a second config read on every request. A FAILED read is stamped instead
   (`tenantMemo = {at, tenantId: null}`, TTL 1.5s), so a broken config document costs one
-  retry per tick rather than one per request. `tenantMemo` is one of two entries left in
-  the lint's cache allowlist that would be a *wrong* answer if an isolate served two
-  workspaces, and the Host resolver that makes that possible is what deletes it. The other
-  is `rosterCache`/`rosterReadAt`, whose entry claims "overlay only, never the auth
-  boundary" — true of the security question and not of the isolation one, since a
-  workspace's roster additions, icons and photo hashes are its own. That one is pinned as
-  a KNOWN GAP at the foot of `test/tenant-isolation.test.mjs`, which goes red the day it
-  is keyed.
+  retry per tick rather than one per request. `tenantMemo` is the last entry in the lint's
+  unkeyed quarantine whose VALUE would be a *wrong* answer if an isolate served two
+  workspaces, and the Host resolver that makes that possible is what deletes it. The roster
+  overlay used to be the other, under an entry claiming "overlay only, never the auth
+  boundary"; it is keyed by workspace now — see the roster paragraph in §2a for what that
+  entry was wrong about, and for how the pin on it hid the blast radius rather than
+  showing it.
 
 ---
 

@@ -5,7 +5,13 @@
 // for the rest of the day (2026-08-20). The overlay must still be RE-APPLIED every
 // tick — applyInstance resets USERS to the config list and counts on the overlay
 // landing on top — so the cadence is about the KV READS, never the apply.
-// An admin write busts via cfgAt = 0, which forces a fresh read on that isolate.
+//
+// Freshness is KEYED. The cache is one entry per workspace, and a handler that writes
+// one of the six busts that workspace's entry — not the isolate's. `cfgAt = 0` no
+// longer reaches this clock at all: a config tick that forced every workspace's six
+// documents to be re-read because a neighbour renamed themselves is the coarse shape
+// this cache was moved off. So the write path is driven here through a real handler,
+// which is the only thing that proves the bust is wired to the write.
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { __testables as W } from "../src/_worker.js";
@@ -50,8 +56,8 @@ test("roster KV reads ride a slow clock, not the 1.5s config tick", async () => 
     add: { "inv@x.test": { email: "inv@x.test", name: "Invited" } }, remove: [],
   }));
 
-  // Cold isolate: first load is forced, roster read happens.
-  W.__setConfigTestState({ cfgAt: 0, rosterReadAt: 0 });
+  // Cold isolate: no entry for this workspace yet, so the roster read happens.
+  W.__setConfigTestState({ cfgAt: 0, roster: null });
   await W.loadConfig(W.DEFAULT_TENANT_ID, env);
   assert.ok(env.COMMENTS.gets > 0, "cold isolate reads the roster overlay");
   assert.ok(W.__usersNow().some((u) => u.email === "inv@x.test"), "overlay applied");
@@ -65,19 +71,54 @@ test("roster KV reads ride a slow clock, not the 1.5s config tick", async () => 
   assert.ok(W.__usersNow().some((u) => u.email === "inv@x.test"), "cached overlay re-applied every tick");
   assert.ok(W.__usersNow().some((u) => u.email === "cfg@x.test"), "config users present");
 
-  // Once the roster TTL elapses, the next tick re-reads KV.
+  // Ageing THIS workspace's entry past the TTL re-reads on the next tick. Aged by key,
+  // because there is no clock left that could age every workspace's entry at once.
   env.COMMENTS.gets = 0;
-  W.__setConfigTestState({ cfgAt: Date.now() - 2000, rosterReadAt: Date.now() - 61_000 });
+  W.__setConfigTestState({
+    cfgAt: Date.now() - 2000,
+    roster: { tenantId: W.DEFAULT_TENANT_ID, at: Date.now() - 61_000 },
+  });
   await W.loadConfig(W.DEFAULT_TENANT_ID, env);
   assert.ok(env.COMMENTS.gets > 0, "elapsed TTL re-reads the overlay");
 
-  // An admin write busts with cfgAt = 0: forced fresh read, no 60s wait.
-  env.COMMENTS.store.set("users:roster", JSON.stringify({
-    add: { "inv2@x.test": { email: "inv2@x.test", name: "Second" } }, remove: [],
-  }));
+  // A write through a REAL handler busts this workspace's entry: fresh read, no 60s wait.
+  // Driving the handler rather than poking the clock is the point — it is what says the
+  // bust is actually wired to the write, on the workspace the write happened in.
+  const me = { email: "cfg@x.test", name: "Config" };
+  const named = await W.meNameApi(W.DEFAULT_TENANT_ID, new Request("https://x.test/__me/name", {
+    method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ name: "Renamed" }),
+  }), env, me);
+  assert.equal(named.status, 200, "the rename was refused");
   env.COMMENTS.gets = 0;
   W.__setConfigTestState({ cfgAt: 0 });
   await W.loadConfig(W.DEFAULT_TENANT_ID, env);
-  assert.ok(env.COMMENTS.gets > 0, "cfgAt=0 bust forces a roster read");
-  assert.ok(W.__usersNow().some((u) => u.email === "inv2@x.test"), "busted read sees the new invite");
+  assert.ok(env.COMMENTS.gets > 0, "the write did not bust this workspace's entry");
+  assert.ok(
+    W.__usersNow().some((u) => u.name === "Renamed"),
+    "the busted read did not see the write that busted it",
+  );
+});
+
+test("a write in one workspace does not send another back to KV", async () => {
+  // The other half of "keyed": the bust reaches the entry the write belongs to and no
+  // other. A blanket bust would be invisible here except as six KV reads per workspace
+  // per admin action, which is the budget this cache exists to protect.
+  W.__setConfigTestState({ cfgAt: 0, roster: null });
+  const alpha = bundleEnv();
+  const beta = bundleEnv();
+  await W.loadConfig("alpha", alpha);
+  await W.loadConfig("beta", beta);
+  assert.ok(beta.COMMENTS.gets > 0, "beta never read its own overlay — nothing below distinguishes anything");
+
+  const me = { email: "cfg@x.test", name: "Config" };
+  await W.meNameApi("alpha", new Request("https://x.test/__me/name", {
+    method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ name: "Renamed in alpha" }),
+  }), alpha, me);
+
+  beta.COMMENTS.gets = 0;
+  W.__setConfigTestState({ cfgAt: 0 });
+  await W.loadConfig("beta", beta);
+  assert.equal(beta.COMMENTS.gets, 0, "a rename in ALPHA sent beta back to KV for six documents");
 });
