@@ -422,7 +422,6 @@ function cmdCheck() {
 }
 
 function report(graded, what) {
-  const answered = OBSERVED_ROLES.length - graded.errors.filter((e) => e.startsWith("tokens: ") && e.includes("unanswered")).length;
   say(`canon: ${what}`);
   say(`  roles      ${ROLES.length} total, ${OBSERVED_ROLES.length} to answer, ${graded.derived.length} computed`);
   say(`  components ${graded.componentCount || 0}`);

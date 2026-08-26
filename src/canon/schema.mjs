@@ -278,7 +278,13 @@ export function validateCanon(canon, { strict = false } = {}) {
 
   for (const r of ROLES) {
     const v = tokens[r.role];
-    if (v == null || v === "") { if (!missing.includes(r.role)) err(`tokens.${r.role}: empty`); continue; }
+    if (v == null || v === "") {
+      // A computed role is empty only because the role it computes FROM is unanswered,
+      // and that is already the finding above. Repeating it once per dependant turns one
+      // real problem into a wall of noise and buries the list of what to actually do.
+      if (!missing.includes(r.role) && !(r.derived && missing.length)) err(`tokens.${r.role}: empty`);
+      continue;
+    }
     if (typeof v !== "string") { err(`tokens.${r.role}: must be a string`); continue; }
     if (r.kind === "color" && !toHex(v)) err(`tokens.${r.role}: "${v}" is not a colour this can read (hex, rgb(), hsl(), or a basic keyword)`);
     if (r.kind === "length" && toPx(v) == null && !/^[\d.]+\s*(ch|ex|vw|vh|vmin|vmax|%)$/.test(v.trim())) err(`tokens.${r.role}: "${v}" is not a length`);
