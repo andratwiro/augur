@@ -139,6 +139,32 @@ export const TENANT_SCHEMA = Object.freeze([
      n REAL NOT NULL
    )`,
 
+  // The content overlay: everything the site remembers ABOUT published content rather than
+  // in it. Four families today — `statuses` (a prototype's dev status), `names` (a card's
+  // display-name override), `canvases` (boards created from a folder index) and `pins` (a
+  // person's sidebar) — each of which was a single KV document holding the whole map.
+  //
+  // ONE ROW PER KEY IS THE POINT. A whole-map document is read, mutated and written back,
+  // so two edits to DIFFERENT keys landing together lose one of them: the second write is
+  // computed from a map that predates the first. Nobody sees an error; a status simply
+  // does not stick, and the person clicks it again. Per-key rows make concurrent edits to
+  // different keys independent by construction.
+  //
+  // `scope` is for the one family that is per person: pins. Empty for the rest. It is a
+  // column rather than four tables because a fifth family should be an INSERT and not a
+  // migration on every workspace that exists.
+  //
+  // `v` is TEXT holding JSON, not a typed column: `statuses` stores a word and `canvases`
+  // stores an object, and a schema that tried to be both would be a schema that is neither.
+  `CREATE TABLE IF NOT EXISTS overlay (
+     family TEXT NOT NULL,
+     scope  TEXT NOT NULL DEFAULT '',
+     k      TEXT NOT NULL,
+     v      TEXT NOT NULL,
+     at     TEXT NOT NULL,
+     PRIMARY KEY (family, scope, k)
+   )`,
+
   // The publish counter, per space. R2 keeps the payloads — the blobs, `versions/<n>.json`,
   // the manifest — and this table is the sole ISSUER of the next number.
   //
@@ -442,6 +468,84 @@ export class TenantStore {
     return rows.length ? Number(rows[0].version) : null;
   }
 
+  // ── the content overlay ────────────────────────────────────────────────────
+  // Four verbs, each the shape one of the four families actually needs. Reading them
+  // together: `read` is what a page load does, `set` is a single edit, `insert` is a
+  // create that must not clobber, and `replace` is a family whose client owns the whole
+  // map. Nothing here is generic for its own sake — a verb that no call site wants is a
+  // verb whose semantics nobody has thought about.
+
+  /** The whole family as a plain `{key: value}` map, JSON decoded. */
+  overlayRead(family, scope = "") {
+    const out = {};
+    for (const row of this.sql.exec(
+      `SELECT k, v FROM overlay WHERE family = ? AND scope = ?`, String(family), String(scope),
+    )) {
+      try { out[row.k] = JSON.parse(row.v); } catch (e) { /* a corrupt row is not a corrupt map */ }
+    }
+    return out;
+  }
+
+  /**
+   * Set or clear ONE key. `null` clears — the same signal the KV path uses, where an empty
+   * name means "revert to the build default".
+   *
+   * This is the verb the whole item is about: two edits to different keys are two rows and
+   * cannot lose each other, where the KV document they replace lost one every time they
+   * landed together.
+   */
+  overlaySet(family, scope, k, v, at) {
+    if (v === null || v === undefined) {
+      this.sql.exec(`DELETE FROM overlay WHERE family = ? AND scope = ? AND k = ?`,
+        String(family), String(scope), String(k));
+      return null;
+    }
+    this.sql.exec(
+      `INSERT INTO overlay (family, scope, k, v, at) VALUES (?,?,?,?,?)
+         ON CONFLICT(family, scope, k) DO UPDATE SET v = excluded.v, at = excluded.at`,
+      String(family), String(scope), String(k), JSON.stringify(v), at || new Date().toISOString(),
+    );
+    return v;
+  }
+
+  /**
+   * Create a key only if it is absent, and say which happened.
+   *
+   * Creating a board reads the map, checks the slug is free, then writes — so two creates
+   * of one name both pass the check and the second silently takes the first's board. One
+   * statement in one object cannot.
+   */
+  overlayInsert(family, scope, k, v, at) {
+    const rows = [...this.sql.exec(
+      `INSERT INTO overlay (family, scope, k, v, at) VALUES (?,?,?,?,?)
+         ON CONFLICT(family, scope, k) DO NOTHING
+       RETURNING k`,
+      String(family), String(scope), String(k), JSON.stringify(v), at || new Date().toISOString(),
+    )];
+    return rows.length > 0;
+  }
+
+  /**
+   * Replace a whole family for one scope, atomically.
+   *
+   * For the family whose client owns the complete map — pins, where adding, removing and
+   * reordering all produce a new full map. Delete-then-insert inside a transaction, so a
+   * reader never sees the gap between the two.
+   */
+  overlayReplace(family, scope, map, at) {
+    const body = () => {
+      this.sql.exec(`DELETE FROM overlay WHERE family = ? AND scope = ?`, String(family), String(scope));
+      const stamp = at || new Date().toISOString();
+      for (const [k, v] of Object.entries(map || {})) {
+        this.sql.exec(`INSERT INTO overlay (family, scope, k, v, at) VALUES (?,?,?,?,?)`,
+          String(family), String(scope), String(k), JSON.stringify(v), stamp);
+      }
+    };
+    if (this.ctx.storage.transactionSync) this.ctx.storage.transactionSync(body);
+    else body();
+    return map || {};
+  }
+
   /**
    * The worker's way in. A Durable Object stub is not publicly routable — only code
    * holding the binding can reach it — so this is an internal API, not a surface.
@@ -460,6 +564,30 @@ export class TenantStore {
       await this.init(body.workspaceId);
       const version = this.nextPublishVersion(space, body.floor);
       return Response.json({ version });
+    }
+    if (url.pathname.startsWith("/overlay/") && request.method === "POST") {
+      let body = null;
+      try { body = await request.json(); } catch (e) { /* handled below */ }
+      if (!body || !body.family) return Response.json({ error: "no-family" }, { status: 400 });
+      await this.init(body.workspaceId);
+      const scope = body.scope || "";
+      switch (url.pathname) {
+        case "/overlay/read":
+          return Response.json({ map: this.overlayRead(body.family, scope) });
+        case "/overlay/set":
+          if (!body.k) return Response.json({ error: "no-key" }, { status: 400 });
+          this.overlaySet(body.family, scope, body.k, body.v === undefined ? null : body.v);
+          return Response.json({ map: this.overlayRead(body.family, scope) });
+        case "/overlay/insert": {
+          if (!body.k) return Response.json({ error: "no-key" }, { status: 400 });
+          const inserted = this.overlayInsert(body.family, scope, body.k, body.v);
+          return Response.json({ inserted, map: this.overlayRead(body.family, scope) });
+        }
+        case "/overlay/replace":
+          return Response.json({ map: this.overlayReplace(body.family, scope, body.map) });
+        default:
+          return Response.json({ error: "not-found" }, { status: 404 });
+      }
     }
     return Response.json({ error: "not-found" }, { status: 404 });
   }

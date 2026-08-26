@@ -37,7 +37,7 @@ const envWith = (kv) => ({
 const CTX = { ...W.applyDerivedRouting({}), tenantId: "alpha" };
 const ME = { email: "a@example.test", name: "Ada", role: "admin" };
 const canvasesUrl = new URL("https://example.test/__canvases");
-const create = (kv, body) => W.canvasesApi(CTX.tenantId, new Request(canvasesUrl, {
+const create = (kv, body) => W.canvasesApi(CTX, new Request(canvasesUrl, {
   method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body),
 }), canvasesUrl, envWith(kv), ME);
 const get = (p) => ({ req: new Request("https://example.test" + p), url: new URL("https://example.test" + p) });

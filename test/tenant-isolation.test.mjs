@@ -1312,7 +1312,7 @@ test("the board registry is still a cache, and a create busts only its OWN works
   // A create in alpha is live on alpha at once — the bust reached alpha's entry.
   const me = { email: "one@alpha.invalid", name: "One of alpha", role: "admin" };
   const canvasesUrl = new URL("https://x.test/__canvases");
-  const created = await W.canvasesApi("alpha", new Request(canvasesUrl, {
+  const created = await W.canvasesApi(alpha.ctx || Object.freeze({ tenantId: "alpha" }), new Request(canvasesUrl, {
     method: "POST", headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ dir: "/boards/", name: "Fresh" }),
   }), canvasesUrl, alpha.env, me);

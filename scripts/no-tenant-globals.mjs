@@ -238,6 +238,7 @@ const ALLOWLIST = {
       "MCP_PROXY_PATHS",      // the three paths the MCP/OAuth protocol speaks
       "VALID_STATUS",         // the prototype status vocabulary
       "IMAGES_OFF",           // the refusal body when an instance has user images switched off
+      "OVERLAY_KV_KEYS",      // family -> the KV document name it lives under; the same for every workspace
       "__testables",          // the table of helpers the suite imports; the request path reads none of it
     ],
 

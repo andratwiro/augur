@@ -127,8 +127,12 @@ const canvasesUrl = new URL("https://example.test/__canvases");
 // serve this URL?") reads one workspace's published content, so the fixture names one
 // rather than leaving the answer to whatever the isolate last cached.
 const TENANT = "workspace-under-test";
+// canvasesApi takes the CONTEXT now, not the id: the overlay accessor it reads through
+// decides between the workspace's Durable Object and KV, and the context is where the
+// workspace's identity lives.
+const TENANT_CTX = Object.freeze({ tenantId: TENANT });
 const create = (kv, body, shipped) =>
-  W.canvasesApi(TENANT, post(canvasesUrl, body), canvasesUrl, envWith(kv, shipped), ME);
+  W.canvasesApi(TENANT_CTX, post(canvasesUrl, body), canvasesUrl, envWith(kv, shipped), ME);
 
 test("creating a canvas slugs the name and registers it under the dir", async () => {
   const kv = memKV();
@@ -225,15 +229,15 @@ test("removing an unregistered path is a 404", async () => {
 test("GET returns the whole registry map", async () => {
   const kv = memKV();
   await create(kv, { dir: "/x/", name: "One" });
-  const res = await W.canvasesApi(TENANT, new Request(canvasesUrl), canvasesUrl, envWith(kv), ME);
+  const res = await W.canvasesApi(TENANT_CTX, new Request(canvasesUrl), canvasesUrl, envWith(kv), ME);
   assert.deepEqual(Object.keys((await res.json()).map), ["/x/one/"]);
 });
 
 test("canvasesApi answers 405 to other methods and warns with no KV", async () => {
   const kv = memKV();
   const del = new Request(canvasesUrl, { method: "DELETE" });
-  assert.equal((await W.canvasesApi(TENANT, del, canvasesUrl, envWith(kv), ME)).status, 405);
-  const res = await W.canvasesApi(TENANT, new Request(canvasesUrl), canvasesUrl, {}, ME);
+  assert.equal((await W.canvasesApi(TENANT_CTX, del, canvasesUrl, envWith(kv), ME)).status, 405);
+  const res = await W.canvasesApi(TENANT_CTX, new Request(canvasesUrl), canvasesUrl, {}, ME);
   assert.deepEqual(await res.json(), { map: {}, warning: "no-kv-binding" });
 });
 

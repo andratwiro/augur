@@ -4887,6 +4887,106 @@ async function reviewApi(tctx, request, url, env, authed) {
   return jsonResponse({ error: "method-not-allowed" }, 405);
 }
 
+// ---- The content overlay: one accessor, two backings ------------------------
+//
+// Four families remember things ABOUT published content rather than in it: a prototype's
+// dev status, a card's display-name override, the boards created from a folder index, and
+// a person's pins. Each was a single KV document holding the whole map, read and written
+// back on every edit.
+//
+// WHAT THAT COSTS. A whole-map document is read, mutated and written back, so two edits to
+// DIFFERENT keys landing together lose one: the second write is computed from a map that
+// predates the first. There is no error and nothing to see — a status simply does not
+// stick and the person clicks it again. It is the same shape as the pins wipe this code
+// already carries a warning about, and the pins fix (the client owns the whole map) works
+// only because pins have ONE writer.
+//
+// So the families move to one row per key in the workspace's Durable Object, where two
+// edits to different keys are two rows and cannot lose each other.
+//
+// THE KV BACKING IS TODAY'S CODE, VERBATIM, and it stays. No instance binds TENANTS yet;
+// every one of them keeps the exact keys, the exact documents and the exact behaviour it
+// has now, including the races. This accessor is the seam that lets a family move without
+// its four call sites learning where it lives.
+const OVERLAY_KV_KEYS = Object.freeze({
+  statuses: "statuses",
+  names: "names",
+  canvases: "canvases",
+  pins: "pins",
+});
+
+/** The KV key a family+scope lives under. Pins are per person; the rest are workspace-wide. */
+function overlayKvKey(family, scope) {
+  const base = OVERLAY_KV_KEYS[family];
+  if (!base) throw new Error(`unknown overlay family: ${family}`);
+  return scope ? `${base}:${scope}` : base;
+}
+
+function kvOverlay(kv) {
+  const read = async (family, scope = "") => {
+    const raw = await kv.get(overlayKvKey(family, scope));
+    return raw ? JSON.parse(raw) : {};
+  };
+  return {
+    backing: "kv",
+    read,
+    async set(family, scope, k, v) {
+      const map = await read(family, scope);
+      if (v === null || v === undefined) delete map[k]; else map[k] = v;
+      await kv.put(overlayKvKey(family, scope), JSON.stringify(map));
+      return map;
+    },
+    async insert(family, scope, k, v) {
+      // Read-then-write, which is what it has always been: KV has no conditional put, so
+      // two creates of one key can both pass the check. Named rather than hidden — the DO
+      // backing below is where this stops being true.
+      const map = await read(family, scope);
+      if (Object.prototype.hasOwnProperty.call(map, k)) return { inserted: false, map };
+      map[k] = v;
+      await kv.put(overlayKvKey(family, scope), JSON.stringify(map));
+      return { inserted: true, map };
+    },
+    async replace(family, scope, map) {
+      await kv.put(overlayKvKey(family, scope), JSON.stringify(map));
+      return map;
+    },
+  };
+}
+
+function doOverlay(stub, tenantId) {
+  const call = async (op, body) => {
+    const res = await stub.fetch(`https://workspace/overlay/${op}`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ ...body, workspaceId: tenantId }),
+    });
+    if (!res.ok) throw new Error(`workspace store answered ${res.status}`);
+    return res.json();
+  };
+  return {
+    backing: "do",
+    read: async (family, scope = "") => (await call("read", { family, scope })).map,
+    set: async (family, scope, k, v) => (await call("set", { family, scope, k, v })).map,
+    insert: async (family, scope, k, v) => {
+      const r = await call("insert", { family, scope, k, v });
+      return { inserted: r.inserted, map: r.map };
+    },
+    replace: async (family, scope, map) => (await call("replace", { family, scope, map })).map,
+  };
+}
+
+/**
+ * The overlay for THIS workspace, or null when the deployment has no store at all (a raw
+ * engine build). Callers answer `{map:{}, warning:"no-kv-binding"}` on null, which is what
+ * they have always done.
+ */
+function overlayFor(env, tctx) {
+  const stub = tenantStub(env, tctx && tctx.tenantId);
+  if (stub) return doOverlay(stub, tctx.tenantId);
+  const kv = kvFor(env);
+  return kv ? kvOverlay(kv) : null;
+}
+
 // ---- Dev-status API (KV-backed, single key) ---------------------------------
 // The ENTIRE status map lives under one key ("statuses"), so a page load is one
 // kv.get and a click is one kv.put — NO kv.list (the small-bucket call that burned
@@ -4896,13 +4996,12 @@ async function reviewApi(tctx, request, url, env, authed) {
 const STATUS_KEY = "statuses";
 const VALID_STATUS = Object.freeze({ "in-progress": 1, "dev-ready": 1, ignore: 1, reviewed: 1 });
 
-async function statusApi(request, url, env) {
-  const kv = kvFor(env);
-  if (!kv) return jsonResponse({ map: {}, warning: "no-kv-binding" });
+async function statusApi(tctx, request, url, env) {
+  const store = overlayFor(env, tctx);
+  if (!store) return jsonResponse({ map: {}, warning: "no-kv-binding" });
 
   if (request.method === "GET") {
-    const raw = await kv.get(STATUS_KEY);
-    return jsonResponse({ map: raw ? JSON.parse(raw) : {} });
+    return jsonResponse({ map: await store.read("statuses") });
   }
   if (request.method === "POST") {
     let op;
@@ -4910,11 +5009,7 @@ async function statusApi(request, url, env) {
     const key = clamp(op && op.key, 300);
     const status = clamp(op && op.status, 40);
     if (!key || !VALID_STATUS[status]) return jsonResponse({ error: "bad-input" }, 400);
-    const raw = await kv.get(STATUS_KEY);
-    const map = raw ? JSON.parse(raw) : {};
-    map[key] = status;
-    await kv.put(STATUS_KEY, JSON.stringify(map));
-    return jsonResponse({ map });
+    return jsonResponse({ map: await store.set("statuses", "", key, status) });
   }
   return jsonResponse({ error: "method-not-allowed" }, 405);
 }
@@ -4925,18 +5020,19 @@ async function statusApi(request, url, env) {
 // Value: { "<path>": { label, href } }. POST { key, label, href, pinned } toggles.
 const PINS_KEY = "pins";
 
-async function pinsApi(request, url, env, user) {
-  const kv = kvFor(env);
-  if (!kv) return jsonResponse({ map: {}, warning: "no-kv-binding" });
+async function pinsApi(tctx, request, url, env, user) {
+  const store = overlayFor(env, tctx);
+  if (!store) return jsonResponse({ map: {}, warning: "no-kv-binding" });
   // Pins are per-user (key "pins:<email>"), independent across users; the global
   // "pins" key is only the fallback when nobody is signed in. Note: NO migration
   // from the global map — that seeded EVERY new user from one shared (effectively
   // the first user's) map, leaking pins across accounts. A new user starts empty.
-  const key = user ? `${PINS_KEY}:${user.email}` : PINS_KEY;
+  // The scope, not the key: the accessor turns it back into `pins:<email>` on the KV
+  // backing, so the documents a live instance already holds keep their exact names.
+  const scope = user ? user.email : "";
 
   if (request.method === "GET") {
-    const raw = await kv.get(key);
-    return jsonResponse({ map: raw ? JSON.parse(raw) : {} });
+    return jsonResponse({ map: await store.read("pins", scope) });
   }
   if (request.method === "POST") {
     let op;
@@ -4959,11 +5055,9 @@ async function pinsApi(request, url, env, user) {
     // (stale/poisoned client); only honour it when the client explicitly clears the
     // last pin (allowEmpty). Otherwise leave KV untouched and echo the stored map back.
     if (Object.keys(next).length === 0 && !(op && op.allowEmpty)) {
-      const raw = await kv.get(key);
-      return jsonResponse({ map: raw ? JSON.parse(raw) : {}, skipped: "empty-guard" });
+      return jsonResponse({ map: await store.read("pins", scope), skipped: "empty-guard" });
     }
-    await kv.put(key, JSON.stringify(next));
-    return jsonResponse({ map: next });
+    return jsonResponse({ map: await store.replace("pins", scope, next) });
   }
   return jsonResponse({ error: "method-not-allowed" }, 405);
 }
@@ -4976,13 +5070,12 @@ async function pinsApi(request, url, env, user) {
 // edit). An empty name clears the override (the card reverts to its build default).
 const NAMES_KEY = "names";
 
-async function nameApi(request, url, env) {
-  const kv = kvFor(env);
-  if (!kv) return jsonResponse({ map: {}, warning: "no-kv-binding" });
+async function nameApi(tctx, request, url, env) {
+  const store = overlayFor(env, tctx);
+  if (!store) return jsonResponse({ map: {}, warning: "no-kv-binding" });
 
   if (request.method === "GET") {
-    const raw = await kv.get(NAMES_KEY);
-    return jsonResponse({ map: raw ? JSON.parse(raw) : {} });
+    return jsonResponse({ map: await store.read("names") });
   }
   if (request.method === "POST") {
     let op;
@@ -4991,12 +5084,9 @@ async function nameApi(request, url, env) {
     // Component descriptions (keys ending "#desc") are full sentences; names stay short.
     const name = clamp(op && op.name, key && key.endsWith("#desc") ? 280 : 80);
     if (!key) return jsonResponse({ error: "bad-input" }, 400);
-    const raw = await kv.get(NAMES_KEY);
-    const map = raw ? JSON.parse(raw) : {};
-    if (name) map[key] = name;
-    else delete map[key]; // empty → revert to the build-time default
-    await kv.put(NAMES_KEY, JSON.stringify(map));
-    return jsonResponse({ map });
+    // An empty name CLEARS: null is the accessor's "delete this key", and the card reverts
+    // to its build-time default.
+    return jsonResponse({ map: await store.set("names", "", key, name || null) });
   }
   return jsonResponse({ error: "method-not-allowed" }, 405);
 }
@@ -5087,29 +5177,27 @@ const CANVAS_DIR_RE = /^\/(?:[a-z0-9-]+\/)+$/;
 // already serves the URL a board is being created at, and that question is answered from
 // one workspace's published content. Passed rather than looked up, so a create in one
 // workspace can never be refused — or waved through — by what a neighbour publishes.
-async function canvasesApi(tenantId, request, url, env, me) {
-  const kv = kvFor(env);
-  if (!kv) return jsonResponse({ map: {}, warning: "no-kv-binding" });
+async function canvasesApi(tctx, request, url, env, me) {
+  const tenantId = tctx && tctx.tenantId;
+  const store = overlayFor(env, tctx);
+  if (!store) return jsonResponse({ map: {}, warning: "no-kv-binding" });
 
   if (request.method === "GET") {
-    const raw = await kv.get(CANVASES_KEY);
-    return jsonResponse({ map: raw ? JSON.parse(raw) : {} });
+    return jsonResponse({ map: await store.read("canvases") });
   }
   if (request.method === "POST") {
     let op;
     try { op = await request.json(); } catch (e) { return jsonResponse({ error: "bad-json" }, 400); }
-    const raw = await kv.get(CANVASES_KEY);
-    const map = raw ? JSON.parse(raw) : {};
+    const map = await store.read("canvases");
 
     if (op && op.remove) {
       const path = clamp(op.path, 300);
       if (!map[path]) return jsonResponse({ error: "not-found" }, 404);
       // The board doc (board:<path>) is left in KV on purpose — recreating the same
       // name restores the board, so a mis-click never destroys anyone's work.
-      delete map[path];
-      await kv.put(CANVASES_KEY, JSON.stringify(map));
+      const after = await store.set("canvases", "", path, null);
       bustCanvasRegistry(tenantId);
-      return jsonResponse({ map });
+      return jsonResponse({ map: after });
     }
     // Rename in place: the display name changes, the path (and so the board doc)
     // stays — same model as card renames, but the registry IS the name store here.
@@ -5117,10 +5205,9 @@ async function canvasesApi(tenantId, request, url, env, me) {
       const path = clamp(op.path, 300);
       const name = clamp(op.name, 80).trim();
       if (!map[path] || !name) return jsonResponse({ error: "bad-input" }, 400);
-      map[path].name = name;
-      await kv.put(CANVASES_KEY, JSON.stringify(map));
+      const after = await store.set("canvases", "", path, { ...map[path], name });
       bustCanvasRegistry(tenantId);
-      return jsonResponse({ map });
+      return jsonResponse({ map: after });
     }
 
     const dir = clamp(op && op.dir, 200);
@@ -5133,10 +5220,14 @@ async function canvasesApi(tenantId, request, url, env, me) {
     if (map[path]) return jsonResponse({ error: "exists", path }, 409);
     // Never shadow a real shipped file at the same URL (any non-404, incl. redirects).
     if (await assetPathExists(tenantId, env, new URL(path, url))) return jsonResponse({ error: "exists", path }, 409);
-    map[path] = { name, by: me ? me.email : "", t: Date.now() };
-    await kv.put(CANVASES_KEY, JSON.stringify(map));
+    // `insert`, not `set`: the check above and the write below are two steps, so two
+    // creates of one name both pass the check and the second takes the first's board.
+    // On the DO backing that is one statement and the loser is told; on KV it is the
+    // read-then-write it has always been, and the guard above is all there is.
+    const created = await store.insert("canvases", "", path, { name, by: me ? me.email : "", t: Date.now() });
+    if (!created.inserted) return jsonResponse({ error: "exists", path }, 409);
     bustCanvasRegistry(tenantId);
-    return jsonResponse({ map, path });
+    return jsonResponse({ map: created.map, path });
   }
   return jsonResponse({ error: "method-not-allowed" }, 405);
 }
@@ -5232,18 +5323,24 @@ const CANVAS_REG_CACHE_MAX = 256;
 const CANVAS_REGISTRY = tenantCache("canvas-registry", { max: CANVAS_REG_CACHE_MAX });
 
 // Takes the workspace, not only the binding: the caller (virtualCanvas) has one in hand,
-// and a read that knows only which KV to talk to cannot tell whose entry it is filling.
-async function readCanvasRegistry(tenantId, kv) {
+// and a read that knows only which store to talk to cannot tell whose entry it is filling.
+//
+// It caches the MAP rather than the raw document, because the document is no longer the
+// unit — the overlay accessor answers with a map whichever backing it is reading from, and
+// a cache that held bytes would have to know which one that was.
+async function readCanvasRegistry(tctx, env) {
+  const store = overlayFor(env, tctx);
+  if (!store) return null;
   // Insert BEFORE the await, so two concurrent requests for one workspace fill one entry
   // rather than racing two into the map.
-  const cur = CANVAS_REGISTRY.entry(tenantId, () => ({ at: 0, raw: null }));
+  const cur = CANVAS_REGISTRY.entry(tctx.tenantId, () => ({ at: 0, map: null }));
   if (!cur.at || Date.now() - cur.at >= CANVAS_REG_TTL_MS) {
     try {
-      cur.raw = await kv.get(CANVASES_KEY);
+      cur.map = await store.read("canvases");
       cur.at = Date.now();
-    } catch (e) {}
+    } catch (e) { /* keep the last good map rather than blanking the registry */ }
   }
-  return cur.raw;
+  return cur.map;
 }
 
 // A registry write making itself visible on the very next request, for ITS workspace —
@@ -5260,16 +5357,13 @@ function bustCanvasRegistry(tenantId) {
 // keyed by the page's URL path, and two spellings must not split one board in two.
 async function virtualCanvas(tctx, request, env, url) {
   if (request.method !== "GET" && request.method !== "HEAD") return null;
-  const kv = kvFor(env);
-  if (!kv) return null;
   let p = url.pathname;
   if (p.endsWith("/index.html")) p = p.slice(0, -"index.html".length);
   const normalized = p.endsWith("/") ? p : p + "/";
   if (!CANVAS_DIR_RE.test(normalized)) return null;
-  const raw = await readCanvasRegistry(tctx.tenantId, kv);
-  if (!raw) return null;
-  let entry;
-  try { entry = JSON.parse(raw)[normalized]; } catch (e) { return null; }
+  const map = await readCanvasRegistry(tctx, env);
+  if (!map) return null;
+  const entry = map[normalized];
   if (!entry) return null;
   if (url.pathname !== normalized && !url.pathname.endsWith("/index.html")) {
     return Response.redirect(new URL(normalized, url).toString(), 301);
@@ -6300,17 +6394,17 @@ async function handleRequest(request, env, ctx, url, trace) {
       if (!authed) return jsonResponse({ error: "unauthorized" }, 401);
       const denied = viewerWriteRefusal(request, url, me, "status", tctx.SPACES);
       if (denied) return denied;
-      return statusApi(request, url, env);
+      return statusApi(tctx, request, url, env);
     }
     if (url.pathname === "/__pins") {
       if (!authed) return jsonResponse({ error: "unauthorized" }, 401);
-      return pinsApi(request, url, env, me);
+      return pinsApi(tctx, request, url, env, me);
     }
     if (url.pathname === "/__name") {
       if (!authed) return jsonResponse({ error: "unauthorized" }, 401);
       const denied = viewerWriteRefusal(request, url, me, "name", tctx.SPACES);
       if (denied) return denied;
-      return nameApi(request, url, env);
+      return nameApi(tctx, request, url, env);
     }
     // The shipped space list (id/name/badge/base/adminOnly) for shell UI — gated
     // like the rail pages that render it (space names are internal until shipped
@@ -6328,7 +6422,7 @@ async function handleRequest(request, env, ctx, url, trace) {
       // not add things other people will find in the gallery.
       const denied = viewerWriteRefusal(request, url, me, "canvas", tctx.SPACES);
       if (denied) return denied;
-      return canvasesApi(tctx.tenantId, request, url, env, me);
+      return canvasesApi(tctx, request, url, env, me);
     }
     // Prototype deletion — DESTRUCTIVE (repo write). Admin-only in identity mode; in
     // legacy/open mode any authed operator (a single-operator instance has no roles).
@@ -6489,7 +6583,7 @@ export const __testables = Object.freeze({
   revokePublishTokens, loginThrottled, loginSlowed, loginFail, DUMMY_HASH,
   pathOwnedBySpace, isPublishablePublicPrefix, removedPublicPrefixes, publishApi, loadManifests, LOGIN_MAX_FAILS,
   tokenActorRefusal, publishTokenTtlMs, mintPublishToken, adminTokensApi,
-  nextPublishVersion,
+  nextPublishVersion, overlayFor, overlayKvKey, statusApi, nameApi, pinsApi,
   publishAuthDetailed, publishRefusalBody,
   adminStorageApi,
   isPrefixBacked, backedPublicPrefixes,
