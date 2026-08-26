@@ -70,11 +70,12 @@ give them all the same time, or write Start Here last.
   fallback when the network is not there.
 - **Copy is instruction, not decoration.** Every step says what you should see
   when it worked, and every step that can fail carries its own way out.
-- **`CANON.md` is written by the tool, not by hand.** It is byte-for-byte what
-  `augur canon save` writes into a workspace that has none, and
-  `test/canon-naming.test.mjs` fails when the two drift. Edit the string in
-  `scripts/canon.mjs` and regenerate; the rules it summarises live in
-  `agents/canon.md`.
+- **`CANON.md` is written by the tool, not by hand.** It is byte-for-byte the
+  `NOTE` string in `scripts/canon.mjs` — the same one `augur init` scaffolds and
+  `augur canon save` writes into a workspace that has none, so a hosted workspace
+  and a self-hosted one describe their names identically.
+  `test/canon-naming.test.mjs` fails when any of the three drift. Edit the string
+  and regenerate this copy; the rules it summarises live in `agents/canon.md`.
 - **The four canon tiers are ABSENT here, not empty.** There is no `base/`,
   `components/`, `patterns/` or `pages/` in this tree, and adding one would be
   wrong: a workspace's canon is what its own work promoted into it, so a seeded

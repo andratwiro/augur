@@ -20,6 +20,7 @@
 
 import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import path from "node:path";
+import { NOTE as CANON_NOTE } from "./canon.mjs";
 
 const log = (msg) => console.error(`\x1b[32m[init]\x1b[0m ${msg}`);
 const die = (msg) => { console.error(`\x1b[31m[init]\x1b[0m ${msg}`); process.exit(1); };
@@ -103,8 +104,18 @@ const html = `<!doctype html>
 mkdirSync(protoDir, { recursive: true });
 writeFileSync(protoPath, html);
 
+// The naming scheme travels WITH the workspace, because the agent that needs it is the one
+// that arrives cold — often with no engine clone beside it to read agents/canon.md from.
+// Written at birth rather than at the first promotion: an affordance nobody can see is one
+// nobody uses, and a workspace that has been worked in for a month is exactly the one whose
+// names have already drifted. Never overwritten — same rule as space.json.
+const canonPath = path.join(CWD, "CANON.md");
+const wroteCanon = !existsSync(canonPath);
+if (wroteCanon) writeFileSync(canonPath, CANON_NOTE);
+
 log(`space "${id}" scaffolded:`);
 log(`  space.json`);
 log(`  ${rel}`);
+if (wroteCanon) log(`  CANON.md`);
 if (!origin) log(`no siteOrigin set — add one to space.json (or pass --origin) so login/publish work from this clone.`);
 log(`next: edit the prototype, then \`augur ship\`.`);

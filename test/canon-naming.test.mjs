@@ -19,7 +19,7 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import { spawnSync } from "node:child_process";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
@@ -73,6 +73,27 @@ test("seed/CANON.md is byte-for-byte what a promotion writes into a workspace th
     fs.readFileSync(path.join(SEED, "CANON.md"), "utf8"),
     "the seed's CANON.md and the one `augur canon save` writes have drifted — regenerate the seed copy from the NOTE string in scripts/canon.mjs",
   );
+});
+
+test("BOTH ways a workspace can be born carry the scheme, identically", async () => {
+  // A workspace learns its naming scheme at birth or not at all: the agent that needs it is
+  // the one arriving cold, and a workspace that has been worked in for a month is exactly
+  // the one whose names have already drifted. Hosted workspaces get it from the seed;
+  // self-hosted ones from `augur init`. One string, so the two cannot say different things.
+  const { NOTE } = await import(pathToFileURL(CANON).href);
+  assert.equal(fs.readFileSync(path.join(SEED, "CANON.md"), "utf8"), NOTE, "the seed's copy has drifted from the tool's");
+
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "canon-init-"));
+  const r = spawnSync(process.execPath, [path.join(ROOT, "scripts", "init.mjs"), "--id", "probe"], { cwd: dir, encoding: "utf8" });
+  assert.equal(r.status, 0, r.stderr);
+  assert.equal(fs.readFileSync(path.join(dir, "CANON.md"), "utf8"), NOTE, "`augur init` scaffolds a workspace that never learns how its names work");
+});
+
+test("importing the command runs nothing — it is a module and a CLI, and only one at a time", async () => {
+  const r = spawnSync(process.execPath, ["-e", `import(${JSON.stringify(pathToFileURL(CANON).href)}).then(m => console.log(m.NOTE.length))`], { encoding: "utf8" });
+  assert.equal(r.status, 0, r.stderr);
+  assert.doesNotMatch(r.stdout, /usage:/, "importing canon.mjs printed the CLI usage — the entry guard is gone");
+  assert.ok(Number(r.stdout.trim()) > 500);
 });
 
 test("the note names every tier and every state qualifier, so reading it is enough to guess a name", () => {

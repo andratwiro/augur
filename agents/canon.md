@@ -115,8 +115,11 @@ What it does, and what each part of it exists to prevent:
 - **Refuses rather than half-doing it.** No description and no `--desc` → refused. A name
   already used in another tier → refused. An entry already there → refused unless
   `--replace`. `--dry-run` prints the identical plan and writes nothing.
-- **Writes `CANON.md` at the workspace root** the first time, so an agent arriving cold
-  finds the scheme by looking at the workspace rather than by being told.
+- **Writes `CANON.md` at the workspace root** if the workspace has none, so an agent
+  arriving cold finds the scheme by looking at the workspace rather than by being told.
+  Most workspaces already have it at birth — `augur init` scaffolds one and the seed ships
+  one — because the workspace whose names have already drifted is exactly the one that has
+  been worked in for a month without anybody promoting anything.
 
 Promotion is also how a planned page becomes a real one: a slug listed in `space.json`
 `pendingPages` shows on the site as a roadmap entry and drops off by itself the moment

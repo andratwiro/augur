@@ -31,6 +31,7 @@
  */
 import fs from "node:fs";
 import path from "node:path";
+import { pathToFileURL } from "node:url";
 
 const C = { dim: "\x1b[2m", warn: "\x1b[33m", bad: "\x1b[31m", ok: "\x1b[32m", off: "\x1b[0m" };
 const log = (m) => console.log(`\x1b[35m[canon]\x1b[0m ${m}`);
@@ -321,7 +322,13 @@ function planCopy(srcDir, destDir, root, skill, desc) {
 // repeats anything from agents/canon.md is that the engine clone is not guaranteed to be
 // beside every checkout. It lists no entries: an enumerated index is a second copy of the
 // tree, and a second copy of the tree is a thing that goes stale.
-const NOTE = `# The canon
+//
+// EXPORTED because a workspace has to carry it from birth, not from its first promotion.
+// `augur init` writes it beside the space.json it scaffolds and the seed ships a copy, so
+// the two ways a workspace can be born — self-hosted and hosted — describe their names the
+// same way. Written once here and imported by both: a second copy is a thing that drifts,
+// and `test/canon-naming.test.mjs` fails if either ever does.
+export const NOTE = `# The canon
 
 The screens and parts in this workspace that are meant to be **pulled by name** —
 "build it the way \`invoice-detail\` is built", "pull \`invoice-list\`,
@@ -543,14 +550,17 @@ function cmdCheck() {
   if (errors.length) process.exit(1);
 }
 
-const sub = argv[0];
-const run = { list: cmdList, find: cmdFind, save: cmdSave, check: cmdCheck }[sub];
-if (!run) {
-  console.error("usage: augur canon <list|find|save|check> [options]");
-  console.error("  augur canon find  <name>…                     resolve a canonical name to files");
-  console.error("  augur canon list  [--tier <t>] [--json]       every canonical name and what it shows");
-  console.error("  augur canon save  <path> [--as <name>] [--tier <t>] [--desc \"…\"] [--replace] [--dry-run]");
-  console.error("  augur canon check                             names that will not be found the same way twice");
-  process.exit(sub ? 1 : 0);
+// Only when this file IS the command. Imported (for NOTE), it must do nothing.
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  const sub = argv[0];
+  const run = { list: cmdList, find: cmdFind, save: cmdSave, check: cmdCheck }[sub];
+  if (!run) {
+    console.error("usage: augur canon <list|find|save|check> [options]");
+    console.error("  augur canon find  <name>…                     resolve a canonical name to files");
+    console.error("  augur canon list  [--tier <t>] [--json]       every canonical name and what it shows");
+    console.error("  augur canon save  <path> [--as <name>] [--tier <t>] [--desc \"…\"] [--replace] [--dry-run]");
+    console.error("  augur canon check                             names that will not be found the same way twice");
+    process.exit(sub ? 1 : 0);
+  }
+  run();
 }
-run();
