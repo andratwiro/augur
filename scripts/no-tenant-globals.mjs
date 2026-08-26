@@ -297,6 +297,16 @@ const ALLOWLIST = {
     ],
   },
 
+  // The checks an instance runs on itself from its own cron. Every function here is pure —
+  // a build stamp, a clock and at most one outbound fetch in, a report out — so there is
+  // nothing per-workspace to hold. The stamp is passed in by the caller, which is what
+  // keeps it that way.
+  "src/health-cron.mjs": {
+    frozen: [
+      "HEALTH_GRACE",  // the grace windows, kept equal to templates/shell/health.yml's
+    ],
+  },
+
   // The account of what an instance stores and where each family goes. A fact about the
   // ENGINE, identical for every workspace — the per-workspace part is the data it names,
   // which lives in each workspace's own store.

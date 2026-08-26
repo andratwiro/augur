@@ -31,6 +31,11 @@
  *              `n/a`        not state.
  */
 export const STATE_INVENTORY = Object.freeze([
+  // ── derived, and deliberately not carried ──────────────────────────────────
+  {
+    id: "health:report", store: "kv", kind: "key", to: "drop",
+    why: "The last report the health cron wrote. It is transient and wholly recreated on every run from the build stamp, so there is nothing here a copy could preserve that the next run would not overwrite. Carrying it would be worse than dropping it: a restored report describes a moment that has passed and would read as current, and 'healthy' must never be indistinguishable from 'nobody has looked since the restore'.",
+  },
   // ── identity ───────────────────────────────────────────────────────────────
   {
     id: "users:secrets", store: "kv", kind: "key", to: "account",

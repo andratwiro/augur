@@ -59,6 +59,13 @@ import { tenantLabelFromHost } from "./tenant-host.mjs";
 // a link, and a verdict saying no mail was sent. See src/mail.mjs.
 import { sendMail, mailNotice } from "./mail.mjs";
 
+// The checks an instance runs on ITSELF, from its own cron. Same deal again: build.js
+// copies it next to the worker so the relative import resolves at the edge. Pure — a
+// function of a build stamp, a clock and at most one outbound fetch — which is what keeps
+// the `scheduled` handler below short enough to read. See src/health-cron.mjs for what it
+// deliberately does NOT check, and why a worker must never probe its own front door.
+import { runHealth } from "./health-cron.mjs";
+
 // KV's identity documents translated into the workspace object's rows. Same deal again:
 // build.js copies it next to the worker so the relative import resolves at the edge. Pure
 // and stateless — the mapping is where a copy silently loses somebody, so it is a function
@@ -162,6 +169,11 @@ const LEGACY_USER_COOKIES = Object.freeze(["__Host-gv_user", "gv_user"]);
 // means "no secret", and must never fall through to the roster's seed. Only an ABSENT
 // key falls back. Anything here that is not a `pbkdf2$…` string verifies against
 // nothing — verifyPassword accepts hashes only.
+// The last report the cron wrote. DERIVED, never authored: every field is recomputed from
+// the build stamp on the next run, so it is `to: "drop"` in the state inventory and no
+// backup carries it. A restored copy of this key would be a health report describing a
+// moment that has passed, which is worse than none.
+const HEALTH_REPORT_KEY = "health:report";
 const USER_SECRETS_KEY = "users:secrets";
 const LASTSEEN_PREFIX = "users:lastseen:";  // KV per-user ISO stamp — admin list column
 const USER_INVITES_KEY = "users:invites";   // KV {token: {email, expires}}
@@ -4210,6 +4222,33 @@ function semverBehind(cur, latest) {
   for (let i = 0; i < 3; i++) { const x = a[i] || 0, y = b[i] || 0; if (x !== y) return x < y; }
   return false;
 }
+/**
+ * The last report the cron wrote, and NOTHING ELSE — this never runs a check.
+ *
+ * The distinction is the whole value of the endpoint. If reading it triggered a run, then
+ * "the cron is not firing" and "nobody has opened this page" would produce the same green
+ * answer, and the first is the condition this item exists to make visible. So an absent
+ * report is reported as absent, with the reason an operator would need: no cron is
+ * configured, or one is and it has never completed.
+ */
+async function adminHealthApi(env, me) {
+  if (!me || me.role !== "admin") return jsonResponse({ error: "forbidden" }, 403);
+  const kv = kvFor(env);
+  if (!kv) return jsonResponse({ report: null, why: "no store bound, so the cron has nowhere to write" });
+  let report = null;
+  try { report = JSON.parse((await kv.get(HEALTH_REPORT_KEY)) || "null"); } catch (e) { report = null; }
+  if (!report) {
+    return jsonResponse({
+      report: null,
+      why: "no report has ever been written. Either this deployment declares no `[triggers] crons` entry, or it does and the cron has not completed one run yet. An empty report is not a healthy one.",
+    });
+  }
+  // How old it is, computed here rather than trusted from the document: a stale report is
+  // the failure mode of a cron that stopped, and it is invisible if you only read `ok`.
+  const ageSeconds = Math.max(0, Math.round((Date.now() - Date.parse(report.at || 0)) / 1000));
+  return jsonResponse({ report, ageSeconds });
+}
+
 async function adminVersionApi(tctx, env, me) {
   if (!me || me.role !== "admin") return jsonResponse({ error: "forbidden" }, 403);
   const current = tctx.INSTANCE_ENGINE_VERSION || null;
@@ -7689,7 +7728,75 @@ function logRequest(trace, request, url, status, ms, err) {
   } catch { /* a logger may never break a response */ }
 }
 
+/**
+ * ⚠️ THE CRON LIVES HERE AND NOT IN src/entry.js, deliberately.
+ *
+ * entry.js is an export manifest and `test/worker-entry.test.mjs` reads its source to keep
+ * it one: no `await`, no branch, no Response, and its default export must BE this object
+ * rather than a copy. A `scheduled` handler written there would also be invisible to every
+ * test in this repo, because they all drive src/_worker.js. Hanging it off this object
+ * instead means entry.js re-exports it unchanged and the tests can reach it.
+ *
+ * ⚠️ IT NEVER RUNS ON A PAGES INSTANCE, which is every instance today. Pages has no cron
+ * triggers, so this property is inert there — and inert is the right shape: identical code
+ * on both front doors, with the platform deciding whether it fires, rather than two
+ * codebases that drift.
+ *
+ * It also does not fire on a Worker instance until that instance's wrangler.toml declares
+ * a `[triggers] crons` entry. None does. So this ships dark, twice over.
+ */
+async function runScheduledHealth(env) {
+  // ⚠️ IT DOES NOT CALL resolveTenant, and it must not: `scripts/one-tenant-resolver.mjs`
+  // fails the build on a second call site, and the reason is exactly this shape of caller.
+  // A cron has no request, so it has no Host, so on a deployment that tells workspaces
+  // apart BY Host there is no one workspace for it to check — and inventing one would be a
+  // second answer to the question the whole isolation model is keyed on. So it declines,
+  // out loud, rather than checking somebody's workspace at random.
+  const suffix = env && typeof env.TENANT_HOST_SUFFIX === "string" ? env.TENANT_HOST_SUFFIX : "";
+  if (suffix.trim()) {
+    return {
+      at: new Date().toISOString(), ok: true, failures: 0, stored: false,
+      checks: [{
+        name: "health cron", skip: true,
+        detail: "this deployment resolves workspaces by hostname and a cron has no hostname, so there is no single workspace to check. Per-workspace checks belong to a job that holds the workspace list.",
+      }],
+    };
+  }
+  const tenantId = (await readInstanceTenantId(env)) || DEFAULT_TENANT_ID;
+  const tctx = await loadConfig(tenantId, env);
+  // No context means the config read failed, and the honest report is that one — not a
+  // health report computed from nothing, which would read as an all-clear.
+  const stamp = tctx && bundleMode(env)
+    ? synthBuildStamp(tctx, await loadManifests(tenantId, env, true))
+    : null;
+  const report = await runHealth({ stamp });
+  const kv = kvFor(env);
+  // A report nobody can read is not a check. If there is nowhere to put it, say so in the
+  // log rather than failing the cron: a thrown scheduled handler retries and re-runs every
+  // check, and the thing that could not be written still cannot be.
+  if (!kv) return { ...report, stored: false, why: "no store bound" };
+  try {
+    await kv.put(HEALTH_REPORT_KEY, JSON.stringify(report));
+    return { ...report, stored: true };
+  } catch (e) {
+    return { ...report, stored: false, why: String((e && e.message) || e).slice(0, 200) };
+  }
+}
+
 export default {
+  /**
+   * Cloudflare reads `scheduled` off this object. See runScheduledHealth above for why it
+   * is here rather than in entry.js, and why it is inert on every instance today.
+   */
+  async scheduled(event, env, ctx) {
+    const out = await runScheduledHealth(env);
+    // One line, the same shape the request log uses, because the only place a cron's
+    // result can surface without a request is the log.
+    try {
+      console.log(JSON.stringify({ t: "health", at: out.at, ok: out.ok, failures: out.failures, stored: out.stored }));
+    } catch (e) { /* a log line must never fail the run it describes */ }
+  },
+
   async fetch(request, env, ctx) {
     // The thin wrapper exists so the log line sees the STATUS. handleRequest has dozens of
     // early returns and wrapping each one would be a change to every route; wrapping the
@@ -7989,6 +8096,14 @@ async function handleRequest(request, env, ctx, url, trace) {
     // Engine version + update-available nudge (the profile chip's fetch).
     if (url.pathname === "/__admin/version") return adminVersionApi(tctx, env, me);
 
+    // The last thing the health cron wrote. Admin-only, and deliberately a READ: it never
+    // runs the checks, because a health check that only ever runs when somebody looks at it
+    // is not a check, and a page that could trigger one would make the two states — "the
+    // cron is dead" and "nobody has opened this page" — indistinguishable. An absent report
+    // says exactly that, in words, rather than answering 404 and letting an operator read
+    // it as "healthy".
+    if (url.pathname === "/__admin/health") return adminHealthApi(env, me);
+
     // Invite redemption is reachable WITHOUT a session — that is the whole point.
     if (url.pathname === "/__invite") {
       if (request.method === "GET") return inviteGet(tctx, url, env);
@@ -8280,6 +8395,7 @@ export const __testables = Object.freeze({
   exportState, importState,
   quotaBump, quotaMinute, quotaDay, workspaceStatus, touchWorkspaceActivity,
   deleteWorkspace, purgeDue, blobGc, clearFamilies, NEVER_CLEARED,
+  runScheduledHealth, adminHealthApi, HEALTH_REPORT_KEY,
   readFreeze, setFreeze, isFrozenWrite, FROZEN_WRITES, FREEZE_KEY,
   readSuspension, isAllowedWhileSuspended, SUSPENDED_ALLOWED, SUSPENDED_ALLOWED_READS,
   SUSPENSION_TTL_MS,

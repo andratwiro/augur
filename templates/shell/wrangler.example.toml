@@ -159,6 +159,33 @@ GV_ASSET_SOURCE = "r2"
 # And never PUBLISH_BOOTSTRAP_TOKEN on a live instance: it is compared as a bare string
 # and grants star-scope publish. The preflight refuses a config that names it.
 
+# ── The health cron, once you want to stop paying GitHub to run your canary ─────────────
+#
+# Uncomment and this deployment checks ITSELF on a schedule: whether any workspace is
+# serving a working-tree publish that has outlived its window, whether any is serving page
+# chrome baked by an older engine than the one deployed, and whether the engine you are
+# running is behind the newest RELEASE. The last one is the point — if your own CI is
+# broken, this is the only thing left that will tell you your engine is months old.
+#
+# The report lands at `/__admin/health`, admin-only. That endpoint READS; it never runs the
+# checks, deliberately, so that "the cron is dead" and "nobody opened this page" cannot
+# produce the same green answer. An absent report says so in words.
+#
+# ⚠️ IT DOES NOT ASK WHETHER YOUR SITE IS GATED, and that omission is deliberate rather
+# than missing. A worker probing its own front door is a detector inside the thing it
+# detects: the request re-enters this deployment, so the misconfiguration that would make
+# the platform serve assets before the worker is exactly the condition under which the
+# worker's own answer stops being worth anything. That question stays with
+# `scripts/frontdoor-parity.mjs`, run from OUTSIDE — health.yml step (g), or by hand.
+#
+# ⚠️ ONE WORKSPACE ONLY. A cron has no Host header, so on a deployment that tells
+# workspaces apart by hostname (TENANT_HOST_SUFFIX above) there is no single workspace to
+# check, and it declines rather than picking one. Nothing is lost — that deployment wants a
+# job that holds the workspace list, not a cron that guesses.
+#
+# [triggers]
+# crons = ["23 */6 * * *"]   # every six hours, offset off the hour
+
 # The front door. A route attaches to a hostname that already has a proxied DNS record —
 # which a Pages custom domain is — and takes precedence over Pages on the same hostname,
 # so adding this is the cutover and deleting it is the rollback, in seconds, with no DNS
