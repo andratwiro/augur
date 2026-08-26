@@ -5163,9 +5163,64 @@ async function pitiApi(tenantId, request, url, env) {
   return jsonResponse({ error: "method-not-allowed" }, 405);
 }
 
+// ── Per-request log line ──────────────────────────────────────────────────────
+//
+// This worker had no logging at all. One structured line per request, and the field that
+// makes it worth having is `tenant`: once one deployment serves several workspaces, an
+// error rate, a 500 or a burst of 404s means nothing until you can say WHOSE it was, and
+// a log you have to correlate by hand at 3am is a log you do not read.
+//
+// It is JSON on one line so it groups and filters as data rather than as prose.
+//
+// WHAT IT DELIBERATELY DOES NOT CARRY. Never the query string: publish and review paths
+// carry bearer tokens and export secrets there, and a log is a place secrets go to be
+// kept. Never a cookie, never a body, never an address. The PATH is instance content
+// (prototype folder names) and stays, because a log that cannot say which page 500ed
+// cannot be acted on — it is capped so one long URL cannot dominate a line.
+//
+// It never throws. A logger that can fail the request it is describing is a worse
+// availability risk than having no logs, so the whole thing sits inside a try/catch that
+// discards its own errors.
+function logRequest(trace, request, url, status, ms, err) {
+  try {
+    const line = {
+      tenant: trace.tenant || "-",
+      status,
+      method: request.method,
+      path: url.pathname.slice(0, 200),
+      ms,
+    };
+    if (err) {
+      line.level = "error";
+      line.error = String((err && err.message) || err).slice(0, 300);
+    }
+    console.log(JSON.stringify(line));
+  } catch { /* a logger may never break a response */ }
+}
+
 export default {
   async fetch(request, env, ctx) {
+    // The thin wrapper exists so the log line sees the STATUS. handleRequest has dozens of
+    // early returns and wrapping each one would be a change to every route; wrapping the
+    // whole thing is one place that cannot fall out of date. `trace` is how the tenant
+    // comes back out — it is resolved deep inside, after the /__config refusal, which is
+    // deliberately context-free and must stay ahead of it.
+    const t0 = Date.now();
+    const trace = { tenant: "" };
     const url = new URL(request.url);
+    let res;
+    try {
+      res = await handleRequest(request, env, ctx, url, trace);
+    } catch (err) {
+      logRequest(trace, request, url, 500, Date.now() - t0, err);
+      throw err;
+    }
+    logRequest(trace, request, url, res.status, Date.now() - t0, null);
+    return res;
+  },
+};
+
+async function handleRequest(request, env, ctx, url, trace) {
 
     // Runtime config is data served alongside the assets, for the worker's own
     // reads only — instance.json carries the user list. Reject external requests
@@ -5184,6 +5239,7 @@ export default {
     // (The /__config refusal above comes first because it is the same answer for every
     // workspace and costs no read.)
     const { tenantId } = await resolveTenant(request, env);
+    trace.tenant = tenantId; // the one field the log line exists for
     // ONE context for this request, for THAT workspace, built here and handed down.
     // `tctx` is the config half of the request — users, prefixes, versions, the gate's
     // flag — as a single frozen value, and from here on the router reads it and nothing
@@ -5623,8 +5679,7 @@ export default {
     // Otherwise show the login page, remembering where they were headed.
     // 200 (not 401) so password managers treat it as a normal login page.
     return htmlResponse(loginPage(tctx, url.pathname + url.search, false, url.href), 200);
-  },
-};
+}
 
 // Pure helpers exposed for unit tests. Nothing in the request path references
 // __testables — it exists only so test/worker.test.mjs can import them.
