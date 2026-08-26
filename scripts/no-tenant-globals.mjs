@@ -93,10 +93,8 @@ const ALLOWLIST = {
       MANIFESTS:        "the live content manifests each workspace's store lists, KEYED BY WORKSPACE and bounded; the value IS one workspace's published content and its gate-deciding routing, so the key is what stops a neighbour's bytes answering at this workspace's URLs",
       STORAGE_CACHE:    "the R2 fill gauge the admin panel shows, KEYED BY WORKSPACE and bounded; the number measures one workspace's own store",
       mcpHostAllowlist: "the proxy host lists resolved from each workspace's published document, KEYED BY WORKSPACE and bounded; the value is derived from one workspace's config, so the key is what stops a neighbour answering from it",
-      canvasRegAt:      "canvas registry clock; a stale stamp costs a re-read",
-      canvasRegRaw:     "the last canvas registry document read from KV",
-      pitiRemarksAt:    "remark poll clock; a stale stamp costs a re-read",
-      pitiRemarksRaw:   "the last remark document read from KV",
+      CANVAS_REGISTRY:  "the created-board registry each workspace keeps in KV, KEYED BY WORKSPACE and bounded; the value names one workspace's boards and the route that reads it serves them to a signed-out stranger before the login page, so the key is what stops a neighbour's boards answering at this workspace's URLs",
+      PITI_REMARKS:     "the queued remarks each workspace's companion polls for, KEYED BY WORKSPACE and bounded; the poll is an ungated route and the value is text written for one workspace's pages",
       tenantMemo:       "the static tenant id resolveTenant() read from instance.json; the ONE entry here that would be a wrong answer if an isolate served two workspaces, and the Host resolver that makes that possible replaces the body it belongs to",
     },
     constants: {

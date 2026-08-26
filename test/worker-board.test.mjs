@@ -242,7 +242,12 @@ test("canvasesApi answers 405 to other methods and warns with no KV", async () =
 // The workspace whose loader page these boards get. virtualCanvas renders it for a
 // named workspace now (the loader carries that workspace's canvas extras), so the
 // fixture supplies one instead of leaving it to whatever module scope was holding.
-const VC_CTX = W.applyDerivedRouting({});
+//
+// It names the SAME workspace the `create` calls above register under, because the
+// registry cache is keyed by workspace: a create busts that workspace's entry, and a read
+// asking as a different one would (correctly) be answered from its own cold entry instead.
+// Two names here would make every "create then serve it" case below depend on a cache miss.
+const VC_CTX = { ...W.applyDerivedRouting({}), tenantId: TENANT };
 
 const get = (p) => ({ req: new Request("https://example.test" + p), url: new URL("https://example.test" + p) });
 

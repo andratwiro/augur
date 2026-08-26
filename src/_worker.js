@@ -756,7 +756,7 @@ const ROSTER_TTL_MS = 60_000;
 let rosterReadAt = 0;
 let rosterCache = null;
 // Test hooks: the cadence above is timing state a test can't reach otherwise.
-function __setConfigTestState({ cfgAt: c, cfgGoodAt: g, rosterReadAt: r, mcpHostAllowlist: m, manifests, storage } = {}) {
+function __setConfigTestState({ cfgAt: c, cfgGoodAt: g, rosterReadAt: r, mcpHostAllowlist: m, manifests, storage, canvasRegistry, pitiRemarks } = {}) {
   if (c !== undefined) cfgAt = c;
   // The last-good stamp is set INDEPENDENTLY of the tick stamp, because ageing one past
   // the other is the whole staleness-ceiling story: `{cfgAt: 0}` means "a new tick", and
@@ -771,6 +771,11 @@ function __setConfigTestState({ cfgAt: c, cfgGoodAt: g, rosterReadAt: r, mcpHost
   // leaves them warm is asserting about the previous case's store.
   if (manifests !== undefined && !manifests) MANIFESTS.clear();
   if (storage !== undefined && !storage) STORAGE_CACHE.clear();
+  // The two KV documents the ungated routes poll — the board registry and the remark
+  // queue. Keyed by workspace like the pair above, and cleared the same way: a case that
+  // leaves one warm is asserting about the previous case's KV.
+  if (canvasRegistry !== undefined && !canvasRegistry) CANVAS_REGISTRY.clear();
+  if (pitiRemarks !== undefined && !pitiRemarks) PITI_REMARKS.clear();
 }
 // The roster this isolate last loaded, out of the context rather than out of a module
 // binding — the cadence tests need to see what the config tick settled on, and there is
@@ -4263,7 +4268,7 @@ async function canvasesApi(tenantId, request, url, env, me) {
       // name restores the board, so a mis-click never destroys anyone's work.
       delete map[path];
       await kv.put(CANVASES_KEY, JSON.stringify(map));
-      bustCanvasRegistry();
+      bustCanvasRegistry(tenantId);
       return jsonResponse({ map });
     }
     // Rename in place: the display name changes, the path (and so the board doc)
@@ -4274,7 +4279,7 @@ async function canvasesApi(tenantId, request, url, env, me) {
       if (!map[path] || !name) return jsonResponse({ error: "bad-input" }, 400);
       map[path].name = name;
       await kv.put(CANVASES_KEY, JSON.stringify(map));
-      bustCanvasRegistry();
+      bustCanvasRegistry(tenantId);
       return jsonResponse({ map });
     }
 
@@ -4290,7 +4295,7 @@ async function canvasesApi(tenantId, request, url, env, me) {
     if (await assetPathExists(tenantId, env, new URL(path, url))) return jsonResponse({ error: "exists", path }, 409);
     map[path] = { name, by: me ? me.email : "", t: Date.now() };
     await kv.put(CANVASES_KEY, JSON.stringify(map));
-    bustCanvasRegistry();
+    bustCanvasRegistry(tenantId);
     return jsonResponse({ map, path });
   }
   return jsonResponse({ error: "method-not-allowed" }, 405);
@@ -4370,19 +4375,53 @@ function canvasLoaderPage(tctx, name) {
 // stamp is NOT advanced, so recovery is retried next call), fallthrough if not —
 // never a 500. Registry writes bust via bustCanvasRegistry(), so a just-created
 // canvas is live at once on its isolate; other isolates converge within the TTL.
+//
+// KEYED BY WORKSPACE, and that key is the whole of what makes the cache safe. The value
+// is one workspace's board registry — the paths it has created boards at and the names
+// on them — and the route that reads it is the LAST door in fetch(): a registered path
+// is served to a signed-out stranger, before the login page, because a board is a share
+// link. A single slot therefore hands the second workspace to ask, inside the TTL, the
+// first one's boards at the first one's URLs, ungated — while that workspace's OWN
+// boards 404 into its login page, because the registry answering is not the one its KV
+// holds. Bounded like the manifest cache and the proxy allowlist: an evicted workspace
+// re-reads its own registry, which costs one KV get and can never answer with a
+// neighbour's.
 const CANVAS_REG_TTL_MS = 15_000;
-let canvasRegAt = 0;
-let canvasRegRaw = null;
-async function readCanvasRegistry(kv) {
-  if (!canvasRegAt || Date.now() - canvasRegAt >= CANVAS_REG_TTL_MS) {
+const CANVAS_REG_CACHE_MAX = 256;
+const CANVAS_REGISTRY = new Map(); // tenantId -> { at, raw }
+
+// Delete-then-set so insertion order is recency order and the first key is the eviction
+// victim — the same idiom the manifest cache uses.
+function touchCanvasRegistry(tenantId, entry) {
+  CANVAS_REGISTRY.delete(tenantId);
+  CANVAS_REGISTRY.set(tenantId, entry);
+  while (CANVAS_REGISTRY.size > CANVAS_REG_CACHE_MAX) CANVAS_REGISTRY.delete(CANVAS_REGISTRY.keys().next().value);
+  return entry;
+}
+
+// Takes the workspace, not only the binding: the caller (virtualCanvas) has one in hand,
+// and a read that knows only which KV to talk to cannot tell whose entry it is filling.
+async function readCanvasRegistry(tenantId, kv) {
+  // Insert BEFORE the await, so two concurrent requests for one workspace fill one entry
+  // rather than racing two into the map.
+  const cur = touchCanvasRegistry(tenantId, CANVAS_REGISTRY.get(tenantId) || { at: 0, raw: null });
+  if (!cur.at || Date.now() - cur.at >= CANVAS_REG_TTL_MS) {
     try {
-      canvasRegRaw = await kv.get(CANVASES_KEY);
-      canvasRegAt = Date.now();
+      cur.raw = await kv.get(CANVASES_KEY);
+      cur.at = Date.now();
     } catch (e) {}
   }
-  return canvasRegRaw;
+  return cur.raw;
 }
-const bustCanvasRegistry = () => { canvasRegAt = 0; };
+
+// A registry write making itself visible on the very next request, for ITS workspace —
+// busting the whole map would send every other workspace back to KV for a change that
+// was never theirs. The last-read document is KEPT: this asks for a re-read, it does not
+// blank what the workspace is serving in the meantime.
+function bustCanvasRegistry(tenantId) {
+  const e = CANVAS_REGISTRY.get(tenantId);
+  if (e) e.at = 0;
+}
 
 // Serve a registered created-canvas path (null when the path isn't one). Called only
 // on asset 404s, so the extra kv.get never taxes a real page load. Bare
@@ -4396,7 +4435,7 @@ async function virtualCanvas(tctx, request, env, url) {
   if (p.endsWith("/index.html")) p = p.slice(0, -"index.html".length);
   const normalized = p.endsWith("/") ? p : p + "/";
   if (!CANVAS_DIR_RE.test(normalized)) return null;
-  const raw = await readCanvasRegistry(kv);
+  const raw = await readCanvasRegistry(tctx.tenantId, kv);
   if (!raw) return null;
   let entry;
   try { entry = JSON.parse(raw)[normalized]; } catch (e) { return null; }
@@ -4876,11 +4915,35 @@ async function reviewExport(tctx, request, url, env) {
 const PITI_VIEW_KEY = "pt:view";
 const PITI_REMARKS_KEY = "pt:remarks";
 // Per-isolate poll cache — see the GET remarks path in pitiApi.
+//
+// KEYED BY WORKSPACE, for the same reason the canvas registry above is. The value is one
+// workspace's queued remarks — the text an agent wrote for that workspace's pages — and
+// the poll that reads it is an OPEN route, taken at an early exit in fetch() before the
+// gate, because the cat lives on public prototypes that carry no cookie. A single slot
+// therefore reads one workspace's queue once and reads it aloud to every workspace behind
+// it for the rest of the TTL, without touching their keys at all. Bounded and evicted the
+// same way: an evicted workspace re-reads its own document.
 const PITI_REMARKS_TTL_MS = 15_000;
-let pitiRemarksAt = 0;
-let pitiRemarksRaw = null;
+const PITI_REMARKS_CACHE_MAX = 256;
+const PITI_REMARKS = new Map(); // tenantId -> { at, raw }
 
-async function pitiApi(request, url, env) {
+function touchPitiRemarks(tenantId, entry) {
+  PITI_REMARKS.delete(tenantId);
+  PITI_REMARKS.set(tenantId, entry);
+  while (PITI_REMARKS.size > PITI_REMARKS_CACHE_MAX) PITI_REMARKS.delete(PITI_REMARKS.keys().next().value);
+  return entry;
+}
+
+// A remark or a clear making itself visible on the next poll, for ITS workspace only.
+function bustPitiRemarks(tenantId) {
+  const e = PITI_REMARKS.get(tenantId);
+  if (e) e.at = 0;
+}
+
+// `tenantId` is carried for the cache above and nothing else: the KV keys are the
+// instance's, but which workspace's queue this isolate is holding is not something the
+// binding can answer.
+async function pitiApi(tenantId, request, url, env) {
   const kv = kvFor(env);
   if (!kv) return jsonResponse({ warning: "no-kv-binding" });
   const secret = env.REVIEW_EXPORT_KEY;
@@ -4903,14 +4966,15 @@ async function pitiApi(request, url, env) {
     // next poll), or empty — never a 500 at the cat.
     const path = clamp(url.searchParams.get("path") || "/", 600);
     const since = Number(url.searchParams.get("since")) || 0;
-    if (!pitiRemarksAt || Date.now() - pitiRemarksAt >= PITI_REMARKS_TTL_MS) {
+    const cur = touchPitiRemarks(tenantId, PITI_REMARKS.get(tenantId) || { at: 0, raw: null });
+    if (!cur.at || Date.now() - cur.at >= PITI_REMARKS_TTL_MS) {
       try {
-        pitiRemarksRaw = await kv.get(PITI_REMARKS_KEY);
-        pitiRemarksAt = Date.now();
+        cur.raw = await kv.get(PITI_REMARKS_KEY);
+        cur.at = Date.now();
       } catch (e) {}
     }
     let all;
-    try { all = pitiRemarksRaw ? JSON.parse(pitiRemarksRaw) : []; } catch (e) { all = []; }
+    try { all = cur.raw ? JSON.parse(cur.raw) : []; } catch (e) { all = []; }
     return jsonResponse({ remarks: all.filter((r) => r.path === path && r.id > since) });
   }
 
@@ -4959,7 +5023,7 @@ async function pitiApi(request, url, env) {
       });
       if (all.length > 24) all = all.slice(-24);
       await kv.put(PITI_REMARKS_KEY, JSON.stringify(all));
-      pitiRemarksAt = 0;
+      bustPitiRemarks(tenantId);
       return jsonResponse({ ok: true, id: all[all.length - 1].id });
     }
 
@@ -4967,7 +5031,7 @@ async function pitiApi(request, url, env) {
     if (body && body.type === "clear") {
       if (!authed) return jsonResponse({ error: "forbidden" }, 403);
       await kv.put(PITI_REMARKS_KEY, JSON.stringify([]));
-      pitiRemarksAt = 0;
+      bustPitiRemarks(tenantId);
       return jsonResponse({ ok: true });
     }
 
@@ -5058,7 +5122,7 @@ export default {
     // Piti live channel bypasses the gate too: the cat lives on PUBLIC prototypes
     // (no cookie), so browser reads/view-writes are open; agent ops self-guard with
     // the export secret. Same early-exit shape as /__version and the review export.
-    if (url.pathname === "/__piti") return pitiApi(request, url, env);
+    if (url.pathname === "/__piti") return pitiApi(tctx.tenantId, request, url, env);
 
     // Platform MCP proxy — public prototypes call the platform through their own
     // origin (the platform's Bearer token is the real auth; see mcpProxy).

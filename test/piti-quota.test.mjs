@@ -25,16 +25,21 @@ const throwingKV = () => ({
 });
 const KEY = "sekrit";
 const envWith = (kv) => ({ COMMENTS: kv, REVIEW_EXPORT_KEY: KEY });
+// The workspace whose queue these polls are about. The cache is keyed by workspace, so
+// the poll and the write that busts it have to name the same one — which is what a real
+// request does, both routes taking the id the resolver answered with.
+const TENANT = "workspace-under-test";
 const getUrl = new URL("https://example.test/__piti?type=remarks&path=%2Fx%2Fp%2F&since=0");
 const getReq = () => new Request(getUrl);
-const postRemark = (kv, text) => W.pitiApi(new Request("https://example.test/__piti", {
+const poll = (kv) => W.pitiApi(TENANT, getReq(), getUrl, envWith(kv));
+const postRemark = (kv, text) => W.pitiApi(TENANT, new Request("https://example.test/__piti", {
   method: "POST", headers: { "content-type": "application/json", "X-Review-Key": KEY },
   body: JSON.stringify({ type: "remark", path: "/x/p/", text }),
 }), new URL("https://example.test/__piti"), envWith(kv));
 
 // Order matters: the first test needs the cold-cache state of a fresh process.
 test("a throwing KV with nothing cached answers an empty list, not a 500", async () => {
-  const res = await W.pitiApi(getReq(), getUrl, envWith(throwingKV()));
+  const res = await poll(throwingKV());
   assert.equal(res.status, 200);
   assert.deepEqual(await res.json(), { remarks: [] });
 });
@@ -43,22 +48,22 @@ test("repeat polls inside the TTL cost one KV read; a remark write busts", async
   const kv = memKV();
   await postRemark(kv, "first quip");
   const before = kv.gets;
-  const r1 = await W.pitiApi(getReq(), getUrl, envWith(kv));
+  const r1 = await poll(kv);
   assert.equal((await r1.json()).remarks.length, 1);
-  const r2 = await W.pitiApi(getReq(), getUrl, envWith(kv));
+  const r2 = await poll(kv);
   assert.equal((await r2.json()).remarks.length, 1);
   assert.equal(kv.gets, before + 1, "second poll rides the cache");
   await postRemark(kv, "second quip");
-  const r3 = await W.pitiApi(getReq(), getUrl, envWith(kv));
+  const r3 = await poll(kv);
   assert.equal((await r3.json()).remarks.length, 2, "a fresh remark is visible at once");
 });
 
 test("a throwing KV serves the last-read list rather than erroring", async () => {
   const kv = memKV();
   await postRemark(kv, "survivor");
-  await W.pitiApi(getReq(), getUrl, envWith(kv)); // cache filled
+  await poll(kv); // cache filled
   await postRemark(kv, "buster"); // bust: the next poll must re-read...
-  const res = await W.pitiApi(getReq(), getUrl, envWith(throwingKV())); // ...and it throws
+  const res = await poll(throwingKV()); // ...and it throws
   assert.equal(res.status, 200);
   assert.ok((await res.json()).remarks.length >= 1, "stale list still serves");
 });

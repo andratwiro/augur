@@ -18,10 +18,18 @@
 // on every field this file claims to compare. A fixture that forgot to vary a field would
 // otherwise turn that field's isolation test into a tautology.
 //
-// WHAT IT DELIBERATELY DOES NOT GO THROUGH. Not the router: `resolveTenant()` is static in
+// WHAT IT MOSTLY DOES NOT GO THROUGH. Not the router: `resolveTenant()` is static in
 // Phase A and only ever answers one workspace, so driving `fetch()` could never produce a
-// second tenant. The harness calls the loader directly, which is the only place two
-// tenants can meet while there is still one of them.
+// second tenant on its own. The harness calls the loader directly, which is the only place
+// two tenants can meet while there is still one of them.
+//
+// The ONE exception is the last section, and it earns it. Two of the caches this file
+// guards are read from EARLY EXITS in `fetch()` — before the gate, before the login page —
+// so "which workspace was answered" and "was anybody even signed in" are the same
+// question there, and a function-level case cannot ask it. That section clears the
+// resolver's own per-isolate memo (`__setTenantTestState`) between requests, which is the
+// only thing standing between a static resolver and two workspaces, and drives the real
+// default export end to end. Nothing else about the request path is stubbed.
 //
 // ---- ADDING A CASE ------------------------------------------------------------------
 // Each item that closes a module-scope cache two workspaces used to share (the MCP
@@ -43,7 +51,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
-import { __testables as W } from "../src/_worker.js";
+import worker, { __testables as W } from "../src/_worker.js";
 import {
   TENANT_FIELD_NAMES,
   emptyTenantContext,
@@ -145,6 +153,9 @@ function resetSharedCaches() {
     // The two bundle-store caches. Both are keyed by workspace and both outlive a case,
     // so a case that inherited them would be asserting about the previous store.
     manifests: null, storage: null,
+    // The two KV documents the ungated routes poll, same rule. The leak cases below PRIME
+    // one workspace's entry on purpose and must not inherit a third one's.
+    canvasRegistry: null, pitiRemarks: null,
   });
 }
 
@@ -1118,4 +1129,213 @@ test("KNOWN GAP: a workspace's roster overlay is served to the next workspace to
   assert.equal(b.BUILD_ID, "build-beta");
   assert.equal(b.LOGIN_HINT, "the beta hint");
   assert.deepStrictEqual(b.CONFIG_USERS.map((u) => u.email), ["one@beta.invalid"]);
+});
+
+// ---- the two KV documents the UNGATED routes poll, end to end through fetch() ---------
+//
+// Two per-isolate caches hold a KV DOCUMENT rather than a config field: the created-board
+// registry (`readCanvasRegistry`, a 15s tick, read on every asset 404) and the companion's
+// remark queue (`pitiApi`'s GET branch, same tick, read on every poll). Both existed to
+// keep a steady KV reader off the free-tier daily get() budget, and both were keyed on
+// nothing, so within one tick the SECOND workspace to ask was handed the FIRST one's
+// document — its boards, or the text an agent queued for its pages — having read none of
+// its own keys.
+//
+// WHY THIS SECTION DRIVES THE REAL fetch() AND THE REST OF THE FILE DOES NOT. Both routes
+// are reached from EARLY EXITS, ahead of the login page: a board is a share link, so
+// `virtualCanvas` runs as the last door before the gate answers, and `/__piti` exits before
+// identity is resolved at all. The leak is therefore not "a signed-in user of one workspace
+// sees a neighbour's board" but "a stranger does", and only the router can show that. The
+// resolver is static in Phase A, so these cases clear its memo between requests — which is
+// exactly what an isolate serving two workspaces will do for itself once the body reads
+// Host. Nothing else is stubbed: the gate, the config load and the routing are the real
+// ones.
+//
+// WHY THE SNAPSHOT IS NOT THE EVIDENCE. `test/response-snapshot.test.mjs` pins no canvas
+// board and no `/__piti` poll — its corpus has neither — so the byte ratchet is green
+// whatever these two routes answer. It also runs in ASSETS mode, which is what these cases
+// use, so it could not have covered them in bundle mode either.
+
+// A workspace serving on its own: its two config documents, its own KV, and a record of
+// every key that KV was actually asked for. Each workspace gets its own store, because
+// these two documents ARE per-workspace content — unlike the token store in the exchange
+// section above, which two workspaces share on purpose.
+function servingFixture(n, kvSeed = {}) {
+  const docs = { "instance.json": instanceDoc(n), "routing.json": routingDoc(n) };
+  const store = new Map(Object.entries(kvSeed));
+  const reads = [];
+  return {
+    reads, store,
+    env: {
+      ASSETS: {
+        async fetch(url) {
+          const name = String(url).split("/").pop();
+          const doc = docs[name];
+          if (!doc) return { ok: false, status: 404, async json() { throw new Error("not found"); } };
+          return { ok: true, status: 200, async json() { return structuredClone(doc); } };
+        },
+      },
+      COMMENTS: {
+        async get(k) { reads.push(k); return store.has(k) ? store.get(k) : null; },
+        async put(k, v) { store.set(k, v); },
+        async delete(k) { store.delete(k); },
+      },
+    },
+  };
+}
+
+// One request, arriving at an isolate that has already served the neighbour. The tenant
+// memo is cleared because the Phase A resolver would otherwise pin the first workspace to
+// reach it for the isolate's life; the config tick is cleared for the same reason
+// `resetSharedCaches` does it. Every OTHER per-isolate memo — including the two this
+// section is about — is left exactly as the previous request left it, which is the whole
+// point of the case.
+function request(fx, path) {
+  W.__setTenantTestState({ memo: null });
+  W.__setConfigTestState({ cfgAt: 0, cfgGoodAt: 0, rosterReadAt: 0 });
+  return worker.fetch(new Request("https://x.test" + path), fx.env, { waitUntil() {} });
+}
+
+// How many times this workspace's KV was asked for one key. Counted per key rather than in
+// total, because clearing the config tick between requests makes the roster overlay re-read
+// its own six documents every time and a total would drown the one read under test.
+const reads = (fx, key) => fx.reads.filter((k) => k === key).length;
+
+const boardOf = (n) => `/boards/${n}-board/`;
+const registryOf = (n) => JSON.stringify({ [boardOf(n)]: { name: `Board of ${n}`, by: "", t: 1 } });
+
+test("a signed-out stranger is never served a NEIGHBOUR's board, and the workspace's own still serves", async () => {
+  resetSharedCaches();
+  const alpha = servingFixture("alpha", { [W.CANVASES_KEY]: registryOf("alpha") });
+  const beta = servingFixture("beta", { [W.CANVASES_KEY]: registryOf("beta") });
+
+  // Premise: nobody is signed in, and each workspace's config really did load. Without
+  // this a 200 below could be an open gate rather than a served board.
+  const primed = await request(alpha, boardOf("alpha"));
+  const primedHtml = await primed.text();
+  assert.equal(primed.status, 200, "alpha's own board did not serve at all");
+  assert.match(primedHtml, /<title>Board of alpha<\/title>/, "alpha was not served its own board");
+
+  // …and now beta asks for the SAME URL, inside the tick alpha just stamped. Beta's
+  // registry never named that path, so the answer must be beta's login page.
+  beta.reads.length = 0;
+  const leaked = await request(beta, boardOf("alpha"));
+  const leakedHtml = await leaked.text();
+  assert.equal(
+    /Board of alpha/.test(leakedHtml), false,
+    "beta was served ALPHA's board — ungated, signed out, at the early exit before the login page: the board registry cache is shared",
+  );
+  assert.ok(
+    beta.reads.includes(W.CANVASES_KEY),
+    "beta never read its own registry — it was answered out of a neighbour's tick",
+  );
+
+  // The standard the rest of this file holds to: not "the two differ" but "each got ITS
+  // OWN answer". A cache that answered every workspace with an empty registry would also
+  // stop the leak, and would take every board offline doing it.
+  beta.reads.length = 0;
+  const own = await request(beta, boardOf("beta"));
+  assert.equal(own.status, 200);
+  assert.match(
+    await own.text(), /<title>Board of beta<\/title>/,
+    "beta cannot reach the board its OWN registry names",
+  );
+
+  // And alpha's view was not rewritten by beta's read.
+  const again = await request(alpha, boardOf("alpha"));
+  assert.match(await again.text(), /<title>Board of alpha<\/title>/, "beta's request rewrote alpha's registry view");
+});
+
+test("the board registry is still a cache, and a create busts only its OWN workspace", async () => {
+  // Isolation alone would be satisfied by deleting the cache, which puts a KV read back on
+  // every asset 404 — every gated page a stranger opens. Both properties, or neither is
+  // pinned.
+  resetSharedCaches();
+  const alpha = servingFixture("alpha", { [W.CANVASES_KEY]: registryOf("alpha") });
+  const beta = servingFixture("beta", { [W.CANVASES_KEY]: registryOf("beta") });
+
+  await request(alpha, boardOf("alpha"));
+  await request(beta, boardOf("beta"));
+  const [a0, b0] = [reads(alpha, W.CANVASES_KEY), reads(beta, W.CANVASES_KEY)];
+  assert.ok(a0 > 0 && b0 > 0, "neither workspace read its registry at all — nothing here is a cache");
+  await request(alpha, boardOf("alpha"));
+  await request(beta, boardOf("beta"));
+  assert.equal(reads(alpha, W.CANVASES_KEY), a0, "the tick stopped working — every 404 re-reads the registry");
+  assert.equal(reads(beta, W.CANVASES_KEY), b0, "beta's second lookup did not ride its own cache");
+
+  // A create in alpha is live on alpha at once — the bust reached alpha's entry.
+  const me = { email: "one@alpha.invalid", name: "One of alpha", role: "admin" };
+  const canvasesUrl = new URL("https://x.test/__canvases");
+  const created = await W.canvasesApi("alpha", new Request(canvasesUrl, {
+    method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ dir: "/boards/", name: "Fresh" }),
+  }), canvasesUrl, alpha.env, me);
+  assert.equal(created.status, 200, "the create was refused");
+  const fresh = await request(alpha, "/boards/fresh/");
+  assert.match(await fresh.text(), /<title>Fresh<\/title>/, "a just-created board is not live on its own workspace");
+
+  // …and beta, whose registry that write never touched, still answers from its own entry.
+  const before = reads(beta, W.CANVASES_KEY);
+  const unaffected = await request(beta, boardOf("beta"));
+  assert.match(await unaffected.text(), /<title>Board of beta<\/title>/);
+  assert.equal(
+    reads(beta, W.CANVASES_KEY), before,
+    "a create in ALPHA sent beta back to KV — the bust is not keyed by workspace",
+  );
+});
+
+test("a workspace's queued remarks are never read aloud to the next workspace to poll", async () => {
+  resetSharedCaches();
+  const now = Date.now();
+  const queue = (n, id) => JSON.stringify([{ id, path: "/p/", text: `${n}'s queued remark`, kind: "ux", ts: now }]);
+  const alpha = servingFixture("alpha", { "pt:remarks": queue("alpha", 1) });
+  const beta = servingFixture("beta", { "pt:remarks": queue("beta", 2) });
+
+  const primed = await (await request(alpha, "/__piti?path=/p/&since=0")).json();
+  assert.deepStrictEqual(
+    primed.remarks.map((r) => r.text), ["alpha's queued remark"],
+    "alpha was not handed its own queue — the case would assert nothing",
+  );
+
+  beta.reads.length = 0;
+  const leaked = await (await request(beta, "/__piti?path=/p/&since=0")).json();
+  assert.deepStrictEqual(
+    leaked.remarks.map((r) => r.text), ["beta's queued remark"],
+    "beta was handed ALPHA's queued remark — the poll is an ungated route and the cache is shared",
+  );
+  assert.ok(
+    beta.reads.includes("pt:remarks"),
+    "beta never read its own queue — it was answered out of a neighbour's tick",
+  );
+});
+
+test("the remark queue is still a cache, and a write busts only its OWN workspace", async () => {
+  resetSharedCaches();
+  const env = (n) => servingFixture(n, { "pt:remarks": JSON.stringify([]) });
+  const alpha = env("alpha");
+  const beta = env("beta");
+  const poll = (fx) => request(fx, "/__piti?path=/p/&since=0");
+
+  await poll(alpha);
+  await poll(beta);
+  const [a0, b0] = [reads(alpha, "pt:remarks"), reads(beta, "pt:remarks")];
+  assert.ok(a0 > 0 && b0 > 0, "neither workspace read its queue at all — nothing here is a cache");
+  await poll(alpha);
+  assert.equal(reads(alpha, "pt:remarks"), a0, "the tick stopped working — every poll re-reads KV");
+
+  // A remark posted to alpha shows up on alpha's very next poll…
+  const url = new URL("https://x.test/__piti");
+  const posted = await W.pitiApi("alpha", new Request(url, {
+    method: "POST", headers: { "Content-Type": "application/json", "X-Review-Key": "k" },
+    body: JSON.stringify({ type: "remark", path: "/p/", text: "for alpha only" }),
+  }), url, { ...alpha.env, REVIEW_EXPORT_KEY: "k" });
+  assert.equal(posted.status, 200);
+  const after = await (await poll(alpha)).json();
+  assert.deepStrictEqual(after.remarks.map((r) => r.text), ["for alpha only"], "the bust did not reach alpha");
+
+  // …and beta's cached entry is untouched by it: beta polls AFTER the write and must still
+  // be answered from its own entry rather than sent back to KV by a neighbour's bust.
+  const betaPoll = await (await poll(beta)).json();
+  assert.equal(reads(beta, "pt:remarks"), b0, "a write to ALPHA's queue busted beta's entry too");
+  assert.deepStrictEqual(betaPoll.remarks, [], "beta saw a remark written for alpha");
 });

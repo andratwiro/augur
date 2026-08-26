@@ -92,8 +92,8 @@ test("the allowlist shrinks with the sweep — a threaded-away global cannot lin
   // Each thread-* commit deletes a `let` from the worker AND its line here. Without this
   // direction the list would rot into standing permission for whatever gets added later.
   assert.deepEqual(
-    inWorker(WORKER.replace("let pitiRemarksRaw = null;", "")),
-    ["stale:pitiRemarksRaw"],
+    inWorker(WORKER.replace("const PITI_REMARKS = new Map();", "")),
+    ["stale:PITI_REMARKS"],
   );
 });
 
