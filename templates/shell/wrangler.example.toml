@@ -115,7 +115,7 @@ bucket_name = "<your-r2-bucket>"
 # re-run, so amending a tag that has already shipped does nothing at all, silently.
 #
 # [[durable_objects.bindings]]
-# name = "WORKSPACE"
+# name = "TENANTS"
 # class_name = "TenantStore"
 #
 # [[migrations]]
@@ -131,6 +131,21 @@ GV_ASSET_SOURCE = "r2"
 # deploy.config.json -> build.js -> dist/__config/instance.json -> resolveTenant(), pinned
 # to a single call site by scripts/one-tenant-resolver.mjs. A var would be a second source
 # of truth for the one value the whole isolation model is keyed on.
+#
+# TENANT_HOST_SUFFIX is the exception, and it is not that value — it is the switch between
+# ONE workspace and MANY. Leave it unset and this deployment serves the single workspace
+# its build named, which is what a self-hosted instance is. Set it and the workspace comes
+# from the Host header instead: `TENANT_HOST_SUFFIX = ".example.com"` makes
+# `acme.example.com` the workspace `acme`, and a hostname that names no workspace gets a
+# 404 rather than somebody else's site.
+#
+# The suffix is LITERAL, which is worth a moment. A dotted suffix puts workspaces one level
+# down and needs a wildcard certificate; a hyphenated one (`-team.example.com`) keeps every
+# workspace on a first-level hostname that a universal certificate already covers. Pick
+# before the first workspace exists — changing it later changes everybody's URL.
+#
+# Set it ONLY together with the TENANTS binding above. Without it there is nowhere for a
+# workspace's own state to live, and the deployment would resolve names it cannot serve.
 #
 # NO SECRETS HERE EITHER — [vars] is plaintext in the repo. These go in with
 # `npx wrangler secret put <NAME> -c wrangler.toml`:

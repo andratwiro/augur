@@ -114,6 +114,36 @@ test("a # inside a quoted value is not treated as a comment", () => {
   assert.match(rejects(GOOD + '\n[vars]\nMAIL_API_KEY = "abc#def"\n'), /secret-in-vars/);
 });
 
+// ── one workspace or many ────────────────────────────────────────────────────
+
+test("TENANT_HOST_SUFFIX without a TENANTS binding is refused", () => {
+  // The two halves live in different tables, so adding one and not the other is an easy
+  // mistake — and each half alone fails somewhere nobody would connect back to this file.
+  // With a suffix and no binding, every hostname resolves to a workspace with nowhere to
+  // keep anything.
+  const out = rejects(GOOD + '\n[vars]\nTENANT_HOST_SUFFIX = ".example.com"\n');
+  assert.match(out, /tenants-binding/);
+  assert.match(out, /Host header/);
+});
+
+test("with both halves it passes", () => {
+  accepts(GOOD
+    + '\n[[durable_objects.bindings]]\nname = "TENANTS"\nclass_name = "TenantStore"\n'
+    + '\n[[migrations]]\ntag = "v1"\nnew_sqlite_classes = ["TenantStore"]\n'
+    + '\n[vars]\nTENANT_HOST_SUFFIX = ".example.com"\n');
+});
+
+test("an EMPTY suffix is refused rather than quietly meaning single-workspace", () => {
+  // It reads as multi-workspace to a person and as single-workspace to the resolver, and
+  // the difference between those two readings is whether hostnames are identity.
+  assert.match(rejects(GOOD + '\n[vars]\nTENANT_HOST_SUFFIX = ""\n'), /tenants-suffix-empty/);
+});
+
+test("a single-workspace config is not asked for any of this", () => {
+  // Every self-hosted instance is this shape, and the new rule must be invisible to it.
+  accepts(GOOD);
+});
+
 // ── the shipped template and fixture are themselves valid ────────────────────
 
 test("the shell template declares the gate and every binding", () => {

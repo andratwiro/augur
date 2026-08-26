@@ -35,11 +35,25 @@ deploy is Phase B's job, resolved by Host, not by path.
 
 **Which workspace a request is for is decided in exactly one place**:
 `resolveTenant(request, env)` in `src/_worker.js`, called once at the top of `fetch()`
-before any config is read. Today it answers the `tenantId` the build stamped into
-`instance.json`; Host-based resolution replaces that body and nothing else.
-`scripts/one-tenant-resolver.mjs` runs in `check` and fails the deploy if a second call
-site appears or the one call drifts below the config load — a second caller returns the
-same answer while there is one workspace, so nothing else would notice.
+before any config is read. `scripts/one-tenant-resolver.mjs` runs in `check` and fails the
+deploy if a second call site appears or the one call drifts below the config load — a
+second caller returns the same answer while there is one workspace, so nothing else would
+notice.
+
+**It has two bodies now, and the deployment picks one by its shape.** Unset
+`TENANT_HOST_SUFFIX` (every self-hosted instance) → the `tenantId` the build stamped into
+`instance.json`, read once per isolate. Set it → the workspace is the first label of the
+Host header (`acme.example.com` with suffix `.example.com` is `acme`), parsed by
+`src/tenant-host.mjs`, plus that workspace's Durable Object stub via
+`env.TENANTS.idFromName`. The suffix is LITERAL, so `-team.example.com` keeps every
+workspace on a first-level hostname a universal certificate already covers.
+**The dynamic branch never falls back to the static one**: a hostname that names no
+workspace — the apex, a deeper name, a malformed label, or one of the RESERVED_LABELS
+(`www`, `admin`, `login`, `postmaster` …) — gets a bare 404 before any config read, because
+a fallback there would answer with somebody else's workspace. Reserved and malformed are
+refused in identical words on purpose. The resolver does NOT check whether a workspace
+exists: that answer lives inside the object it would have to reach anyway, and asking here
+would put a round trip in front of every request.
 
 **Nothing an isolate keeps may be shared between workspaces, and the proof of that is a
 TEST, not a lint.** `test/tenant-route-sweep.test.mjs` drives the real worker in BUNDLE
@@ -213,6 +227,11 @@ only, no space discovery — what a shell's CI runs) · `GV_ONLY_SPACE` (build o
 space) · `GV_IDENTITY_PATH` (user list) · `GV_DEPLOY_CONFIG_PATH` (deploy config) ·
 `OFFLINE_PORT` (offline preview).
 Runtime worker env (per-instance Cloudflare project settings, not build-time):
+`TENANT_HOST_SUFFIX` — unset (the default, and every self-hosted instance) means one
+workspace named by the build; set means the workspace comes from the Host header. Set it
+only together with a `TENANTS` Durable Object binding — `scripts/wrangler-preflight.mjs`
+refuses a config with one half and not the other, and refuses an empty-string suffix,
+which reads as multi-workspace to a person and single-workspace to the resolver.
 `DELETE_DISPATCH_URL` + `DELETE_DISPATCH_TOKEN` — the shell-dispatch channel
 (`shellDispatch`): the one way a worker action changes a REPO rather than only live
 state. Two event types ride it: `prototype-delete` (the admin-only `/__delete` route;

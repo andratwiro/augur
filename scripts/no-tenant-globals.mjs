@@ -289,6 +289,14 @@ const ALLOWLIST = {
     ],
   },
 
+  // Which workspace a hostname names. Pure string work, no env and no clock — nothing here
+  // is about a particular workspace, which is why it can be a table at all.
+  "src/tenant-host.mjs": {
+    frozen: [
+      "RESERVED_LABELS",  // hostnames no workspace may be; the same list the name generator reads
+    ],
+  },
+
   // The workspace store. Same shape as the room above and for the same reason: one DO per
   // workspace is the isolation, so nothing per-workspace is at module scope here either.
   "src/tenant-do.js": {

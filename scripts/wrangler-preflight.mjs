@@ -62,11 +62,13 @@ function valueOf(key, table = null) {
   }
   return null;
 }
-const bindings = (table) => lines
+// `key` because the tables do not agree: KV, R2 and queues name theirs `binding`, and
+// Durable Objects name theirs `name`.
+const bindings = (table, key = "binding") => lines
   .join("\n")
   .split(/^\s*\[\[/m)
   .filter((chunk) => chunk.startsWith(`${table}]]`))
-  .map((chunk) => (chunk.match(/^\s*binding\s*=\s*["']([^"']+)["']/m) || [])[1])
+  .map((chunk) => (chunk.match(new RegExp(String.raw`^\s*${key}\s*=\s*["']([^"']+)["']`, "m")) || [])[1])
   .filter(Boolean);
 
 const findings = [];
@@ -106,6 +108,22 @@ const r2 = bindings("r2_buckets");
 if (valueOf("binding", "assets") !== "ASSETS") fail("binding-assets", "[assets] binding must be \"ASSETS\" — src/_worker.js reads env.ASSETS by that name.");
 if (!kv.includes("COMMENTS")) fail("binding-comments", "no COMMENTS KV binding. Sessions, rosters, comments, pins and publish tokens all live there, and effectiveSecret fails CLOSED on a KV error, so nobody can sign in.");
 if (!r2.includes("BUNDLES")) fail("binding-bundles", "no BUNDLES R2 binding. Published content is served from the bundle store; without it the site has nothing in it.");
+
+// ── one workspace or many, and the pieces that have to agree ─────────────────
+// TENANT_HOST_SUFFIX is the switch: unset, the deployment serves the one workspace its
+// build named; set, the workspace comes from the Host header. The two halves are declared
+// in different tables, so it is easy to add one and not the other — and each half alone
+// fails in a way nobody would connect to this file.
+const suffix = valueOf("TENANT_HOST_SUFFIX", "vars");
+const dos = bindings("durable_objects.bindings", "name");
+if (suffix !== null && suffix.trim() !== "" && !dos.includes("TENANTS")) {
+  fail("tenants-binding",
+    `TENANT_HOST_SUFFIX = "${suffix}" makes the workspace come from the Host header, but there is no TENANTS Durable Object binding for those workspaces to live in. Every hostname would resolve to a workspace with nowhere to keep anything.`);
+}
+if (suffix !== null && suffix.trim() === "") {
+  fail("tenants-suffix-empty",
+    'TENANT_HOST_SUFFIX is set to an empty string. That reads as "multi-workspace" to a person and as "single workspace" to the resolver. Delete the line, or give it the real suffix.');
+}
 
 // ── the entry ────────────────────────────────────────────────────────────────
 const main = valueOf("main");

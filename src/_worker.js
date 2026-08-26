@@ -46,6 +46,12 @@ import {
 // modules above: build.js copies it next to the worker (dist/tenant-cache.mjs).
 import { tenantCache } from "./tenant-cache.mjs";
 
+// Which workspace a hostname names, as pure string work. Same deal as the modules above:
+// build.js copies it next to the worker (dist/tenant-host.mjs). It holds the reserved-label
+// list too, because the control plane's name GENERATOR has to read the same one — a
+// generator that emits `admin` and a resolver that refuses it are one list disagreeing.
+import { tenantLabelFromHost } from "./tenant-host.mjs";
+
 // The mail transport. Same deal again: build.js copies it next to the worker
 // (dist/mail.mjs) so the relative import resolves at the edge. It reads its provider,
 // endpoint, key and sending address from the runtime env and holds no state, so a
@@ -667,25 +673,60 @@ function configSealedResponse() {
   });
 }
 
+// No workspace claims this hostname. Only a multi-workspace deployment can reach this —
+// a single-workspace one has a workspace whatever the Host says.
+//
+// Context-free for the same reason as the refusal above, and one reason more: there IS no
+// context to build. Reaching for one would mean picking a workspace to answer as, and on a
+// deployment where hostname is identity that is picking somebody at random.
+//
+// 404 rather than 400, and the same body whether the name is unprovisioned, malformed or
+// reserved. A distinguishable refusal for a reserved name would be a free directory of
+// which names the operator kept, and one for an unprovisioned name would let a stranger
+// enumerate which workspaces exist. Nobody legitimate is here: a workspace's own links all
+// carry its own hostname.
+function unknownHostResponse() {
+  return new Response("Not found\n", {
+    status: 404,
+    headers: {
+      "Content-Type": "text/plain; charset=utf-8",
+      "Cache-Control": "no-store",
+      "X-Robots-Tag": "noindex, nofollow, noarchive",
+    },
+  });
+}
+
 // ---- The tenant resolver seam -----------------------------------------------
 // ONE function answers "which workspace is this request for", and fetch() calls it
 // ONCE, before any config is read. Everything downstream takes the answer as a
-// parameter, so the day the answer stops being static there is a single line to
-// change instead of a hunt through the read sites.
+// parameter, so there is a single line here to change instead of a hunt through the
+// read sites.
 //
-// TODAY the body is static: a deployment serves exactly one workspace, so the answer
-// is the identity the build stamped into instance.json (`tenantId`), read once per
-// isolate. NEXT, serving several workspaces from one deployment replaces this body
-// with a Host lookup — `request.headers.get("Host")` → the workspace that claims that
-// hostname → its id. Same signature, same single call site, same `{tenantId}` answer;
-// `request` is a parameter today for exactly that reason and is deliberately unused.
+// THERE ARE NOW TWO BODIES, AND THE DEPLOYMENT PICKS ONE BY ITS SHAPE.
 //
-// The fallback carries more weight than the happy path. Every instance built before
-// the field existed carries no `tenantId`, and a raw or offline build has no config
-// document at all — all of them answer DEFAULT_TENANT_ID, which is precisely what the
-// single-workspace world has been doing all along under another name: one identity,
-// one config cache, one gate. Nothing about a live deployment changes when it takes
-// this engine; it starts naming out loud the tenant it already was.
+//   STATIC (`TENANT_HOST_SUFFIX` unset) — a deployment serves exactly one workspace,
+//   so the answer is the identity the build stamped into instance.json (`tenantId`),
+//   read once per isolate. This is what every self-hosted instance is, and nothing
+//   about the path below changed when the dynamic branch landed above it.
+//
+//   DYNAMIC (`TENANT_HOST_SUFFIX` set) — several workspaces behind one deployment,
+//   told apart by the first label of the Host header. No read, no memo, no clock:
+//   the answer is a function of one header and one env var, which is what makes it
+//   safe to run before anything else and on every request.
+//
+// The two cannot be confused, because the suffix is a runtime var a deployment either
+// has or does not, and the dynamic branch never falls back to the static one. That
+// matters more than it looks: a fallback here would answer an unrecognised hostname
+// with SOME workspace, and on a multi-workspace deployment "some workspace" is
+// somebody else's. An unrecognised hostname gets a refusal instead — see
+// unknownHostResponse, which fetch() serves before a single config read.
+//
+// The static fallback carries more weight than its happy path. Every instance built
+// before the field existed carries no `tenantId`, and a raw or offline build has no
+// config document at all — all of them answer DEFAULT_TENANT_ID, which is precisely
+// what the single-workspace world has been doing all along under another name: one
+// identity, one config cache, one gate. Nothing about a live deployment changes when
+// it takes this engine; it starts naming out loud the tenant it already was.
 const DEFAULT_TENANT_ID = "default";
 const TENANT_MEMO_TTL_MS = 1500;
 // This isolate's static answer: `{at, tenantId}`, or null before the first attempt. A
@@ -715,15 +756,41 @@ async function readInstanceTenantId(env) {
   } catch (e) { return null; }
 }
 
+// The workspace's own Durable Object, or null on a deployment that binds none.
+//
+// `idFromName` is a hash, not a lookup: it does no I/O, it cannot fail, and the same name
+// gives the same object in every isolate and every colo. So this is free to do on every
+// request, and there is nothing to cache — caching a stub keyed on nothing is how an
+// isolate ends up handing one workspace another's object.
+//
+// It is deliberately NOT an existence check. Whether a workspace has been provisioned is a
+// question with an answer inside the object, and asking it here would put a round trip in
+// front of every request including the ones that never touch the store.
+function tenantStub(env, tenantId) {
+  const ns = env && env.TENANTS;
+  if (!ns || !tenantId) return null;
+  return ns.get(ns.idFromName(tenantId));
+}
+
 async function resolveTenant(request, env) {
+  // DYNAMIC — several workspaces, one deployment, told apart by Host. A null answer here
+  // is a refusal, never a fall-through to the static branch: see the seam header.
+  const suffix = env && typeof env.TENANT_HOST_SUFFIX === "string" ? env.TENANT_HOST_SUFFIX : "";
+  if (suffix.trim()) {
+    const host = request && request.headers ? request.headers.get("host") : "";
+    const tenantId = tenantLabelFromHost(host, suffix);
+    return { tenantId, store: tenantStub(env, tenantId) };
+  }
+  // STATIC — one workspace, named by the build. Unchanged.
   if (tenantMemo) {
-    if (tenantMemo.tenantId) return { tenantId: tenantMemo.tenantId };
-    if (Date.now() - tenantMemo.at < TENANT_MEMO_TTL_MS) return { tenantId: DEFAULT_TENANT_ID };
+    if (tenantMemo.tenantId) return { tenantId: tenantMemo.tenantId, store: tenantStub(env, tenantMemo.tenantId) };
+    if (Date.now() - tenantMemo.at < TENANT_MEMO_TTL_MS) return { tenantId: DEFAULT_TENANT_ID, store: tenantStub(env, DEFAULT_TENANT_ID) };
   }
   tenantMemo = { at: Date.now(), tenantId: null }; // stamp first, then read
   const tenantId = await readInstanceTenantId(env);
   if (tenantId) tenantMemo = { at: Date.now(), tenantId };
-  return { tenantId: tenantId || DEFAULT_TENANT_ID };
+  const id = tenantId || DEFAULT_TENANT_ID;
+  return { tenantId: id, store: tenantStub(env, id) };
 }
 
 // Test hook: the memo is per-isolate, so a suite driving two deployments through one
@@ -5741,6 +5808,10 @@ async function handleRequest(request, env, ctx, url, trace) {
     // workspace and costs no read.)
     const { tenantId } = await resolveTenant(request, env);
     trace.tenant = tenantId; // the one field the log line exists for
+    // Null means the hostname names no workspace, which only a multi-workspace deployment
+    // can say. Refuse HERE, before the config load — there is no workspace to load config
+    // for, and every branch below assumes there is one.
+    if (!tenantId) return unknownHostResponse();
     // ONE context for this request, for THAT workspace, built here and handed down.
     // `tctx` is the config half of the request — users, prefixes, versions, the gate's
     // flag — as a single frozen value, and from here on the router reads it and nothing
@@ -6249,5 +6320,5 @@ export const __testables = Object.freeze({
   composeChrome, renderAppChrome, renderSpaceContextScript, __setChromeTestState,
   loadConfig, loadTenantContext, __setConfigTestState, __usersNow, pitiApi,
   CONFIG_STALE_CEILING_MS,
-  resolveTenant, DEFAULT_TENANT_ID, TENANT_MEMO_TTL_MS, __setTenantTestState,
+  resolveTenant, DEFAULT_TENANT_ID, TENANT_MEMO_TTL_MS, __setTenantTestState, tenantStub,
 });

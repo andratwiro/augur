@@ -1,8 +1,17 @@
-// The tenant resolver seam — `resolveTenant(request, env)`.
+// The tenant resolver seam — `resolveTenant(request, env)`, STATIC half.
 //
 // One function answers "which workspace is this request for", and fetch() calls it once,
-// at the top, before any config is read. Today the body is static; serving several
-// workspaces from one deployment replaces the body with a Host lookup and nothing else.
+// at the top, before any config is read. There are two bodies behind that one signature
+// now, chosen by whether the deployment sets `TENANT_HOST_SUFFIX`. This file is the
+// STATIC one: no suffix, one workspace, the identity the build stamped. Every self-hosted
+// instance is this path, so what these tests are really pinning is that the dynamic branch
+// landing above it changed nothing here. The Host branch has its own file,
+// test/tenant-resolver-host.test.mjs.
+//
+// `store: null` in the expected values is the one visible change: the resolve now hands
+// back the workspace's Durable Object stub alongside its id, and a deployment that binds
+// no TENANTS namespace has none. The assertions are deepEqual on purpose — an extra field
+// appearing in this answer is something a reader of this seam should be told about.
 //
 // Two things are worth testing about a seam that currently returns a constant per
 // deployment, and neither is the constant:
@@ -78,22 +87,22 @@ test("two deployments resolve to two different tenant ids", async () => {
   W.__setTenantTestState(); // a second isolate: the memo is per-deployment, per-isolate
   const beta = await W.resolveTenant(req(), assetsEnv({ tenantId: "beta-works", users: [] }));
 
-  assert.deepEqual(alpha, { tenantId: "alpha-studio" });
-  assert.deepEqual(beta, { tenantId: "beta-works" });
+  assert.deepEqual(alpha, { tenantId: "alpha-studio", store: null });
+  assert.deepEqual(beta, { tenantId: "beta-works", store: null });
   assert.notEqual(alpha.tenantId, beta.tenantId, "the resolver must not answer a constant");
 });
 
 test("bundle mode reads the same document out of the store", async () => {
   W.__setTenantTestState();
   const env = bundleEnv({ tenantId: "gamma-lab", users: [] });
-  assert.deepEqual(await W.resolveTenant(req(), env), { tenantId: "gamma-lab" });
+  assert.deepEqual(await W.resolveTenant(req(), env), { tenantId: "gamma-lab", store: null });
   assert.equal(env.reads, 1);
 });
 
 test("an instance.json with no tenantId answers the default — every live instance today", async () => {
   W.__setTenantTestState();
   const env = assetsEnv({ users: [], engineVersion: "0.14.0" }); // a build from before the field
-  assert.deepEqual(await W.resolveTenant(req(), env), { tenantId: W.DEFAULT_TENANT_ID });
+  assert.deepEqual(await W.resolveTenant(req(), env), { tenantId: W.DEFAULT_TENANT_ID, store: null });
   assert.equal(W.DEFAULT_TENANT_ID, "default");
 });
 
@@ -101,32 +110,32 @@ test("a blank or non-string tenantId is the same as absent", async () => {
   for (const tenantId of ["", "   ", 7, null, {}]) {
     W.__setTenantTestState();
     const answer = await W.resolveTenant(req(), assetsEnv({ tenantId, users: [] }));
-    assert.deepEqual(answer, { tenantId: W.DEFAULT_TENANT_ID }, `tenantId: ${JSON.stringify(tenantId)}`);
+    assert.deepEqual(answer, { tenantId: W.DEFAULT_TENANT_ID, store: null }, `tenantId: ${JSON.stringify(tenantId)}`);
   }
 });
 
 test("a tenantId is trimmed, not taken raw", async () => {
   W.__setTenantTestState();
-  assert.deepEqual(await W.resolveTenant(req(), assetsEnv({ tenantId: " padded \n" })), { tenantId: "padded" });
+  assert.deepEqual(await W.resolveTenant(req(), assetsEnv({ tenantId: " padded \n" })), { tenantId: "padded", store: null });
 });
 
 test("a raw build with no config source at all answers the default, and reads nothing", async () => {
   W.__setTenantTestState();
-  assert.deepEqual(await W.resolveTenant(req(), {}), { tenantId: W.DEFAULT_TENANT_ID });
+  assert.deepEqual(await W.resolveTenant(req(), {}), { tenantId: W.DEFAULT_TENANT_ID, store: null });
   W.__setTenantTestState();
-  assert.deepEqual(await W.resolveTenant(req(), undefined), { tenantId: W.DEFAULT_TENANT_ID });
+  assert.deepEqual(await W.resolveTenant(req(), undefined), { tenantId: W.DEFAULT_TENANT_ID, store: null });
 });
 
 test("a failed config read answers the default rather than throwing", async () => {
   W.__setTenantTestState();
   const env = assetsEnv({ tenantId: "delta-x" }, { fail: true });
-  assert.deepEqual(await W.resolveTenant(req(), env), { tenantId: W.DEFAULT_TENANT_ID });
+  assert.deepEqual(await W.resolveTenant(req(), env), { tenantId: W.DEFAULT_TENANT_ID, store: null });
 });
 
 test("a resolved id is read once per isolate, not once per request", async () => {
   W.__setTenantTestState();
   const env = assetsEnv({ tenantId: "epsilon" });
-  for (let i = 0; i < 5; i++) assert.deepEqual(await W.resolveTenant(req(), env), { tenantId: "epsilon" });
+  for (let i = 0; i < 5; i++) assert.deepEqual(await W.resolveTenant(req(), env), { tenantId: "epsilon", store: null });
   assert.equal(env.reads, 1, "the deployment's identity does not change without a redeploy");
 });
 
@@ -144,7 +153,7 @@ test("a FAILED read is stamped, not pinned: it retries on the next tick, not eve
   // Age the stamp past the TTL, then let the read succeed.
   W.__setTenantTestState({ memo: { at: Date.now() - (W.TENANT_MEMO_TTL_MS + 1), tenantId: null } });
   const healthy = assetsEnv({ tenantId: "zeta" });
-  assert.deepEqual(await W.resolveTenant(req(), healthy), { tenantId: "zeta" });
+  assert.deepEqual(await W.resolveTenant(req(), healthy), { tenantId: "zeta", store: null });
 });
 
 test("the resolver is declared once and called once, before the config load", () => {

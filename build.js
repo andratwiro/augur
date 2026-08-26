@@ -7291,17 +7291,19 @@ async function main() {
     runtimeChrome: process.env.GV_RUNTIME_CHROME === "1" || DEPLOY.runtimeChrome === true,
   }), "utf8");
   await fs.writeFile(path.join(DIST, "_worker.js"), workerSrc, "utf8");
-  // The worker imports five modules by relative path — the shared chrome renderer
+  // The worker imports six modules by relative path — the shared chrome renderer
   // ("./chrome/appchrome.mjs"), the tenant context ("./tenant-context.mjs"), the
-  // per-workspace cache constructor ("./tenant-cache.mjs"), the mail transport
-  // ("./mail.mjs") and the KV backup codec ("./kv-codec.mjs"). _worker.js ships
-  // verbatim, so each must sit next to it in the deploy dir for the import to resolve at
-  // the edge (and under `wrangler pages dev` offline). Copied verbatim; all five are
-  // listed in ENGINE_CHROME below, so they belong to the engine.
+  // per-workspace cache constructor ("./tenant-cache.mjs"), the Host-to-workspace parser
+  // ("./tenant-host.mjs"), the mail transport ("./mail.mjs") and the KV backup codec
+  // ("./kv-codec.mjs"). _worker.js ships verbatim, so each must sit next to it in the
+  // deploy dir for the import to resolve at the edge (and under `wrangler pages dev`
+  // offline). Copied verbatim; all six are listed in ENGINE_CHROME below, so they belong
+  // to the engine.
   await fs.mkdir(path.join(DIST, "chrome"), { recursive: true });
   await fs.copyFile(path.join(ROOT, "src", "chrome", "appchrome.mjs"), path.join(DIST, "chrome", "appchrome.mjs"));
   await fs.copyFile(path.join(ROOT, "src", "tenant-context.mjs"), path.join(DIST, "tenant-context.mjs"));
   await fs.copyFile(path.join(ROOT, "src", "tenant-cache.mjs"), path.join(DIST, "tenant-cache.mjs"));
+  await fs.copyFile(path.join(ROOT, "src", "tenant-host.mjs"), path.join(DIST, "tenant-host.mjs"));
   await fs.copyFile(path.join(ROOT, "src", "mail.mjs"), path.join(DIST, "mail.mjs"));
   await fs.copyFile(path.join(ROOT, "src", "kv-codec.mjs"), path.join(DIST, "kv-codec.mjs"));
 
@@ -7546,6 +7548,7 @@ async function main() {
     "chrome/", // the shared chrome renderer module the worker imports (runtime-chrome)
     "tenant-context.mjs", // the per-request config value the worker imports
     "tenant-cache.mjs",   // the per-workspace cache constructor the worker imports
+    "tenant-host.mjs",    // the Host-to-workspace parser the worker imports
     "mail.mjs",           // the mail transport the worker imports
     "kv-codec.mjs",       // the KV backup value codec the worker imports
   ];
