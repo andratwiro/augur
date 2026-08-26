@@ -50,7 +50,12 @@ function memR2(initial = {}) {
     },
     async put(k, v, opts) { store.set(k, { body: v, httpMetadata: (opts || {}).httpMetadata }); },
     async delete(k) { store.delete(k); },
-    async list() { return { objects: [], truncated: false }; },
+    // A REAL listing, because the export now reads one. A stub that always answered "no
+    // objects" would let a change to that read pass without ever being run.
+    async list(opts = {}) {
+      const prefix = opts.prefix || "";
+      return { objects: [...store.keys()].filter((k) => k.startsWith(prefix)).map((k) => ({ key: k })), truncated: false };
+    },
   };
 }
 function namespace() {
@@ -355,6 +360,34 @@ test("AN IMAGE PASTED BEFORE THE R2 MOVE IS IN THE COPY, and a restore moves it"
   const got = await call(env, `/__publish/_state/asset/${hash}`);
   assert.equal(got.status, 200);
   assert.deepEqual(new Uint8Array(await got.arrayBuffer()), bytes);
+});
+
+test("AN IMAGE A RESTORE PUT IN R2 IS IN THE NEXT COPY, so a migration can verify itself", async () => {
+  // The other end of the legacy-image gap, and the one that breaks `augur migrate`.
+  //
+  // The asset list had TWO sources: the `basset-meta:` rows, and the `basset:` keys in KV.
+  // A restore writes bytes straight to R2 (`_state/asset/<hash>` PUT) and writes no
+  // metadata row, because a pre-move image never had one to carry. So the same image is in
+  // NEITHER source on the far side: not in KV, and not in the metadata family.
+  //
+  // migrate.mjs compares the source's asset list against the target's. Every pre-move image
+  // therefore reads as missing, on every run, and re-running gives the identical answer
+  // because the data is already exactly where it belongs. The images serve correctly
+  // throughout — which is what makes it dangerous, since the tempting read is that the
+  // verification is broken and can be skipped, on the one command whose whole purpose is
+  // proving the far side arrived.
+  const hash = "f".repeat(40);
+  const kv = seededKv();
+  await kv.put("publish:tokens", JSON.stringify({ [await W.tokenFor("pub:star")]: { space: "*", label: "ci" } }));
+  const env = { COMMENTS: kv, BUNDLES: memR2() };
+  // Exactly what a restore leaves behind: bytes in R2, no metadata row, nothing in KV.
+  await env.BUNDLES.put(W.ASSET_R2_PREFIX + hash, new Uint8Array([1, 2, 3, 4]));
+
+  const doc = await exportVia(env);
+  assert.ok(
+    doc.assets.includes(hash),
+    `an image restored into R2 is not in the copy: ${JSON.stringify(doc.assets)} — a migration would report it missing forever`,
+  );
 });
 
 // ── the import is one transaction, not a family-by-family replay ─────────────

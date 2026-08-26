@@ -5525,11 +5525,22 @@ async function exportState(tctx, env) {
   }
   // The hashes a restore has to fetch the bytes for, separately, at `_state/asset/<hash>`.
   //
-  // TWO SOURCES, because a workspace mid-migration has both. The rows are the images
-  // already in R2. The `basset:` keys are the ones pasted before that move, whose bytes are
-  // still in KV — and leaving them out would make `--full` a copy that quietly omits every
-  // image on every instance that has been running for a while. Carrying them also means a
-  // restore MOVES them: they are written back to R2, which is where they were going anyway.
+  // THREE SOURCES, because an image can be in any of three states and a copy that counts
+  // only two makes a migration unable to prove itself.
+  //
+  //   · a `basset-meta:` row — an image pasted through the canvas, which writes the bytes
+  //     to R2 and the row together;
+  //   · a `basset:` key in KV — pasted before the R2 move, bytes still in KV, no row. Left
+  //     out, `--full` quietly omits every image on any instance running a while;
+  //   · an object under `assets/` in R2 with NO row — which is exactly what a restore
+  //     leaves, because it writes the bytes it was given and a pre-move image never had a
+  //     row to carry across.
+  //
+  // ⚠️ THE THIRD IS WHAT MAKES `augur migrate` VERIFIABLE. That command compares the
+  // source's asset list against the target's; without this the far side reported every
+  // restored pre-move image as missing, forever, on a workspace where the data had in fact
+  // arrived and was serving. A verification that cannot pass on correct data teaches people
+  // to skip it, on the one command whose entire purpose is proving the copy landed.
   const assets = new Set(families["basset-meta:"] ? Object.keys(families["basset-meta:"]) : []);
   if (kv && typeof kv.list === "function") {
     try {
@@ -5541,6 +5552,18 @@ async function exportState(tctx, env) {
       } while (cursor);
     } catch (err) {
       failed.push({ id: ASSET_PREFIX, error: String((err && err.message) || err).slice(0, 200) });
+    }
+  }
+  if (env.BUNDLES && typeof env.BUNDLES.list === "function") {
+    try {
+      let cursor;
+      do {
+        const page = await env.BUNDLES.list({ prefix: ASSET_R2_PREFIX, cursor });
+        for (const o of page.objects || []) assets.add(o.key.slice(ASSET_R2_PREFIX.length));
+        cursor = page.truncated ? page.cursor : null;
+      } while (cursor);
+    } catch (err) {
+      failed.push({ id: ASSET_R2_PREFIX, error: String((err && err.message) || err).slice(0, 200) });
     }
   }
   return { families, absent, failed, assets: [...assets], format: 1 };
