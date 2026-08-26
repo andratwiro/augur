@@ -30,6 +30,7 @@ function memKv(initial = {}) {
     store,
     async get(k) { return store.has(k) ? store.get(k) : null; },
     async getWithMetadata(k) { return { value: store.get(k) ?? null, metadata: null }; },
+    async head(k) { return store.has(k) ? {} : null; },
     async put(k, v) { store.set(k, typeof v === "string" ? v : JSON.stringify(v)); },
     async delete(k) { store.delete(k); },
     async list({ prefix = "" } = {}) {
@@ -330,4 +331,26 @@ test("THE ASSET WRITE ROUTE CHECKS THE HASH AGAINST THE BYTES", async () => {
   const back = await call(env, `/__publish/_state/asset/${hash}`);
   assert.equal(back.status, 200);
   assert.deepEqual(new Uint8Array(await back.arrayBuffer()), bytes);
+});
+
+test("AN IMAGE PASTED BEFORE THE R2 MOVE IS IN THE COPY, and a restore moves it", async () => {
+  // The gap found by taking a real backup of a live instance: `basset:<hash>` images live
+  // in KV, are destined for R2, and are therefore in neither the state families (which walk
+  // workspace-destined entries) nor the R2 asset list. A copy that omitted them would omit
+  // every image on every instance that has been running for a while.
+  const bytes = new Uint8Array([9, 8, 7, 6]);
+  const hash = "e".repeat(40);
+  const kv = seededKv();
+  await kv.put(W.ASSET_PREFIX + hash, bytes);
+  kv.store.set(W.ASSET_PREFIX + hash, bytes); // with no metadata, as the oldest ones are
+  await kv.put("publish:tokens", JSON.stringify({ [await W.tokenFor("pub:star")]: { space: "*", label: "ci" } }));
+  const env = { COMMENTS: kv, BUNDLES: memR2() };
+
+  const doc = await exportVia(env);
+  assert.ok(doc.assets.includes(hash), `the legacy image is not listed: ${doc.assets}`);
+
+  // And its bytes come back through the same route the R2-backed ones do.
+  const got = await call(env, `/__publish/_state/asset/${hash}`);
+  assert.equal(got.status, 200);
+  assert.deepEqual(new Uint8Array(await got.arrayBuffer()), bytes);
 });

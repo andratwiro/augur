@@ -3318,10 +3318,24 @@ async function publishApi(tctx, request, url, env) {
       // which walks `blobs/` and would never see these.
       if (!/^[0-9a-f]{40}$/.test(arg || "")) return jsonResponse({ error: "bad-input" }, 400);
       const obj = env.BUNDLES ? await env.BUNDLES.get(ASSET_R2_PREFIX + arg) : null;
-      if (!obj) return jsonResponse({ error: "not-found" }, 404);
-      return new Response(obj.body, {
+      if (obj) {
+        return new Response(obj.body, {
+          headers: {
+            "content-type": (obj.httpMetadata && obj.httpMetadata.contentType) || "application/octet-stream",
+            "cache-control": "no-store",
+          },
+        });
+      }
+      // The same R2-then-KV fallback the serving path uses, for the same reason: an image
+      // pasted before canvas bytes moved to R2 is still a `basset:<hash>` value, and a
+      // backup that could not read it would be a backup missing every image on every
+      // instance that has been running for a while.
+      const kvStore = kvFor(env);
+      const legacy = kvStore ? await kvStore.getWithMetadata(ASSET_PREFIX + arg, { type: "arrayBuffer" }) : null;
+      if (!legacy || !legacy.value) return jsonResponse({ error: "not-found" }, 404);
+      return new Response(legacy.value, {
         headers: {
-          "content-type": (obj.httpMetadata && obj.httpMetadata.contentType) || "application/octet-stream",
+          "content-type": (legacy.metadata && legacy.metadata.ct) || "application/octet-stream",
           "cache-control": "no-store",
         },
       });
@@ -5266,8 +5280,26 @@ async function exportState(tctx, env) {
     }
   }
   // The hashes a restore has to fetch the bytes for, separately, at `_state/asset/<hash>`.
-  const assets = families["basset-meta:"] ? Object.keys(families["basset-meta:"]) : [];
-  return { families, absent, failed, assets, format: 1 };
+  //
+  // TWO SOURCES, because a workspace mid-migration has both. The rows are the images
+  // already in R2. The `basset:` keys are the ones pasted before that move, whose bytes are
+  // still in KV — and leaving them out would make `--full` a copy that quietly omits every
+  // image on every instance that has been running for a while. Carrying them also means a
+  // restore MOVES them: they are written back to R2, which is where they were going anyway.
+  const assets = new Set(families["basset-meta:"] ? Object.keys(families["basset-meta:"]) : []);
+  if (kv && typeof kv.list === "function") {
+    try {
+      let cursor;
+      do {
+        const page = await kv.list({ prefix: ASSET_PREFIX, cursor });
+        for (const k of page.keys) assets.add(k.name.slice(ASSET_PREFIX.length));
+        cursor = page.list_complete ? null : page.cursor;
+      } while (cursor);
+    } catch (err) {
+      failed.push({ id: ASSET_PREFIX, error: String((err && err.message) || err).slice(0, 200) });
+    }
+  }
+  return { families, absent, failed, assets: [...assets], format: 1 };
 }
 
 /**
