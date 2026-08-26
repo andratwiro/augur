@@ -9,6 +9,8 @@
 //   augur status    what is live vs what your clones hold (see status.mjs)
 //   augur export    take an off-Cloudflare copy of the store (see export.mjs)
 //   augur restore   put a copy back (see restore.mjs)
+//   augur freeze    make a workspace read-only while it is being moved
+//   augur thaw      accept writes again, and print how long the freeze lasted
 //
 // Each subcommand is its own script with its own --help-worthy header; this
 // router only dispatches, so `node scripts/<name>.mjs` keeps working too.
@@ -33,18 +35,27 @@ const map = {
   login: "login.mjs",
   connect: "connect.mjs",
   clone: "clone.mjs",
+  // Same script again: `thaw` is `freeze` in the other direction, and one file is what
+  // keeps the two from disagreeing about which paths a freeze closes.
+  freeze: "freeze.mjs",
+  thaw: "freeze.mjs",
   // Same script: `pull` is `clone` with a three-way merge instead of an overwrite, and one
   // file is what keeps the URL→source mapping from being written twice.
   pull: "clone.mjs",
   build: path.join("..", "build.js"),
 };
 if (!map[sub]) {
-  console.error("usage: augur <init|ship|dev|offline|build|deploy|publish|status|clone|pull|export|restore|connect|login> [options]");
+  console.error("usage: augur <init|ship|dev|offline|build|deploy|publish|status|clone|pull|export|restore|freeze|thaw|connect|login> [options]");
   process.exit(sub ? 1 : 0);
 }
 const child = spawn(process.execPath, [path.join(SCRIPTS, map[sub]), ...rest], {
   stdio: "inherit",
   // `clone` and `pull` share a script; the verb is how it knows which one was asked for.
-  env: { ...process.env, AUGUR_CLONE_MODE: sub === "pull" ? "pull" : "clone" },
+  env: {
+    ...process.env,
+    AUGUR_CLONE_MODE: sub === "pull" ? "pull" : "clone",
+    // Which verb was typed, for the two scripts that serve two of them.
+    AUGUR_CMD: sub,
+  },
 });
 child.on("close", (code) => process.exit(code ?? 0));

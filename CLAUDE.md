@@ -233,7 +233,10 @@ engine/worker verification; content goes out with `ship`/`publish` ·
 (publish only; `AUGUR_TOKEN` + `AUGUR_ORIGIN`) · `augur status`
 (live vs clones vs `origin/main`; exit 1 on drift) ·
 `augur export --out <dir> [--full]` / `augur restore <dir> [--state]`
-(store backup; `--full`/`--state` cover everything that is not published content).
+(store backup; `--full`/`--state` cover everything that is not published content) ·
+`augur freeze [--reason …] [--status]` / `augur thaw` (read-only while a workspace is
+being moved — writes refused with a 503 that says why, reads and sign-in unaffected;
+`thaw` prints the duration a migration has to publish. See `docs/migration-freeze.md`).
 
 Env reference: `GV_SPACES_ROOT` (spaces location) · `GV_ENGINE_ONLY` (=1: chrome
 only, no space discovery — what a shell's CI runs) · `GV_ONLY_SPACE` (build one

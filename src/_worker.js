@@ -3381,6 +3381,16 @@ async function publishApi(tctx, request, url, env) {
       try { body = await request.json(); } catch (e) { /* a dry run needs no body */ }
       return jsonResponse(await blobGc(env, { dryRun: !(body && body.confirm === "reclaim") }));
     }
+    if (op === "freeze") {
+      if (request.method === "GET") return jsonResponse({ freeze: await readFreeze(tctx, env) });
+      let body = null;
+      try { body = await request.json(); } catch (e) { /* an empty body means freeze */ }
+      return jsonResponse(await setFreeze(tctx, env, {
+        on: !(body && body.thaw === true),
+        reason: body && body.reason,
+        by: who.label || "",
+      }));
+    }
     if (op === "status" && request.method === "GET") {
       return jsonResponse(await workspaceStatus(tctx, env));
     }
@@ -5561,6 +5571,106 @@ async function replayFamilies(store, kv, doc, ids) {
   return { written, skipped };
 }
 
+// ---- The migration freeze ---------------------------------------------------
+//
+// `MIG-cutover-freeze`. Moving a workspace to a new home is export → verify → cut the
+// hostname over, and anything written to the OLD instance inside that window is written to
+// a copy nobody will ever read again. Not lost noisily — lost the way a comment is lost
+// when somebody posts it, sees it appear, and comes back tomorrow to a page that never had
+// it.
+//
+// TWO WAYS TO STOP THAT, AND THIS IS THE SMALLER ONE. Pulling the route or the DNS record
+// is simpler and blocks READS too: the site goes dark for however long the copy and the
+// verification take, which on a real workspace is minutes and looks like an outage to
+// everybody who is not migrating. A worker-side flag refuses only the writes, so the site
+// stays up, the reader sees what was there, and the person who tries to change something
+// is TOLD rather than quietly ignored.
+//
+// IT LIVES IN KV RATHER THAN IN CONFIG, because the thing it has to be is FAST TO FLIP. A
+// config field means composing and pushing an instance document; this is one key, set and
+// cleared through the state routes with a publish token. During a migration KV is the store
+// being read from anyway.
+//
+// Reads are never frozen. Neither is signing in — somebody watching the migration must be
+// able to get in and look at what is about to move.
+const FREEZE_KEY = "freeze";
+const FREEZE_TTL_MS = 10_000;
+// tenantId -> { at, doc }
+const FREEZE_STATE = tenantCache("freeze", { max: 64 });
+
+/** The freeze record for this workspace, or null. Read only on writes; see the router. */
+async function readFreeze(tctx, env) {
+  const kv = kvFor(env);
+  if (!kv) return null;
+  const cur = FREEZE_STATE.entry(tctx.tenantId, () => ({ at: 0, doc: null }));
+  if (!cur.at || Date.now() - cur.at >= FREEZE_TTL_MS) {
+    try {
+      const raw = await kv.get(FREEZE_KEY);
+      cur.doc = raw ? JSON.parse(raw) : null;
+      cur.at = Date.now();
+    } catch (e) { /* keep the last answer; a freeze must not fail open on a blip, and a
+                     thaw that takes one tick longer costs nothing */ }
+  }
+  return cur.doc;
+}
+
+/**
+ * The write paths a freeze closes. Named as a table rather than checked at each route, so
+ * "what does a freeze stop" is answerable by reading one list.
+ *
+ * `/__auth` is deliberately NOT here: somebody has to be able to sign in and look at what
+ * is about to move. Nor is anything that only reads.
+ */
+const FROZEN_WRITES = Object.freeze([
+  "/__publish/",   // commit, rollback, config push — the big one
+  "/__review/api", // comments
+  "/__board",      // canvas documents
+  "/__asset",      // canvas images
+  "/__status",
+  "/__name",
+  "/__pins",
+  "/__canvases",
+  "/__admin/",     // roster, tokens, icons — a change here during a migration is lost too
+  "/__me/",        // display name, profile photo
+  "/__delete",
+  "/__piti",
+]);
+
+/** Whether this request would write. A freeze that also blocked reads is a DNS pull. */
+function isFrozenWrite(request, url) {
+  if (request.method === "GET" || request.method === "HEAD" || request.method === "OPTIONS") return false;
+  // The state routes are how a freeze is lifted, so they can never be frozen by one.
+  if (url.pathname.startsWith("/__publish/_state/")) return false;
+  return FROZEN_WRITES.some((p) => url.pathname === p || url.pathname.startsWith(p));
+}
+
+/** The refusal. Visible, and it says who to ask and when to come back. */
+function freezeRefusal(doc) {
+  return jsonResponse({
+    error: "frozen",
+    reason: (doc && doc.reason) || "this workspace is being moved",
+    since: (doc && doc.at) || null,
+    message: "This workspace is read-only while it is being moved. Nothing you send now would arrive. Try again shortly.",
+  }, 503, { "Retry-After": "60" });
+}
+
+/** Freeze or thaw, and report how long a freeze lasted — the number a migration publishes. */
+async function setFreeze(tctx, env, { on, reason, by }) {
+  const kv = kvFor(env);
+  if (!kv) return { ok: false, reason: "no-store" };
+  const prevRaw = await kv.get(FREEZE_KEY);
+  const prev = prevRaw ? JSON.parse(prevRaw) : null;
+  FREEZE_STATE.bust(tctx.tenantId);
+  if (!on) {
+    await kv.delete(FREEZE_KEY);
+    const ms = prev && prev.at ? Date.now() - Date.parse(prev.at) : null;
+    return { ok: true, frozen: false, was: prev, durationMs: ms };
+  }
+  const doc = prev || { at: new Date().toISOString(), reason: reason || "migration", by: by || "" };
+  await kv.put(FREEZE_KEY, JSON.stringify(doc));
+  return { ok: true, frozen: true, since: doc.at, reason: doc.reason };
+}
+
 // ---- Deleting a workspace, and reclaiming what nothing references -----------
 //
 // `E-gdpr-delete-tenant`. Two operations, deliberately separate, and the separation is the
@@ -7133,6 +7243,15 @@ async function handleRequest(request, env, ctx, url, trace) {
     // it the way a raw build with no identity answers it, which is "open".
     if (!tctx) return configUnavailableResponse();
 
+    // ── the migration freeze ──────────────────────────────────────────────────
+    // Checked here rather than at each write route, so "what does a freeze stop" is
+    // answerable by reading one list. Only for requests that would WRITE, so a frozen
+    // workspace costs a reader nothing at all — see FROZEN_WRITES.
+    if (isFrozenWrite(request, url)) {
+      const freeze = await readFreeze(tctx, env);
+      if (freeze) return freezeRefusal(freeze);
+    }
+
     // Direct-publish API — self-authed (bearer tokens), before the gate like
     // the other tooling routes.
     // Device pairing rides alongside the publish API but is NOT part of it: two of its
@@ -7626,6 +7745,7 @@ export const __testables = Object.freeze({
   exportState, importState,
   quotaBump, quotaMinute, quotaDay, workspaceStatus, touchWorkspaceActivity,
   deleteWorkspace, blobGc, clearFamilies, NEVER_CLEARED,
+  readFreeze, setFreeze, isFrozenWrite, FROZEN_WRITES, FREEZE_KEY,
   PITI_VIEW_KEY, PITI_REMARKS_KEY,
   publishAuthDetailed, publishRefusalBody,
   adminStorageApi,

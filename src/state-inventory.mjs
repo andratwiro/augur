@@ -153,6 +153,10 @@ export const STATE_INVENTORY = Object.freeze([
     why: "A five-minute debounce on asking the deploy shell to re-bake. Recreated on the next publish.",
   },
   {
+    id: "freeze", store: "kv", kind: "key", to: "drop",
+    why: "The migration freeze: present means this instance is refusing writes while a workspace is being moved off it. Destined for `drop` and it is the one entry where that word is load-bearing — a workspace that ARRIVED frozen would be one nobody can write to and nobody would know why, and the instance it was frozen ON is the one being retired.",
+  },
+  {
     id: "engine:update-check", store: "kv", kind: "key", to: "drop",
     why: "The cached answer to 'is there a newer engine'. Instance-global rather than per workspace, and re-fetched within the hour.",
   },

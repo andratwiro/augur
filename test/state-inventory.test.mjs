@@ -62,7 +62,7 @@ test("nothing that is a promise to somebody is marked droppable", () => {
   // like one, and dropping it silently resumes mailing people who asked us to stop.
   assert.equal(inventoryEntry("mail:suppressed").to, "workspace");
   for (const e of STATE_INVENTORY.filter((x) => x.to === "drop")) {
-    assert.ok(/transient|recreat|re-run|re-fetch|collaps|debounce|instance-global|rate limit|only tier/i.test(e.why),
+    assert.ok(/transient|recreat|re-run|re-fetch|collaps|debounce|instance-global|rate limit|only tier|being retired/i.test(e.why),
       `${e.id} is marked droppable without saying what makes it safe to drop`);
   }
 });
