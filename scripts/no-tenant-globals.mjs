@@ -297,6 +297,17 @@ const ALLOWLIST = {
     ],
   },
 
+  // What each PLAN allows. Note the direction: this is a table of plans, not of
+  // workspaces. A workspace's own ceilings are seeded into its Durable Object and read
+  // from there, so nothing here is about a particular one — which is the whole reason the
+  // quotas live in the store rather than in a constant a deploy would have to move.
+  "src/tenant-quotas.mjs": {
+    frozen: [
+      "PLANS",         // plan name -> ceilings; seeded into a workspace, never read live per request
+      "QUOTA_FIELDS",  // the field names, so a plan missing one fails rather than being unlimited
+    ],
+  },
+
   // The workspace store. Same shape as the room above and for the same reason: one DO per
   // workspace is the isolation, so nothing per-workspace is at module scope here either.
   "src/tenant-do.js": {

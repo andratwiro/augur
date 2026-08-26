@@ -31,6 +31,8 @@
 // column for it. Anyone reinstating a per-space role should put it in the membership model
 // rather than resurrect the map.
 
+import { PLANS, DEFAULT_PLAN, QUOTA_FIELDS, quotasForPlan } from "./tenant-quotas.mjs";
+
 export const TENANT_SCHEMA_VERSION = 1;
 
 /**
@@ -108,6 +110,21 @@ export const TENANT_SCHEMA = Object.freeze([
      v TEXT
    )`,
 
+  // What this workspace is allowed: seeded at provisioning from src/tenant-quotas.mjs and
+  // read by every enforcement point, so raising a limit for one customer is a row and not
+  // a deploy. Separate from `settings` because these are not preferences — nobody in the
+  // workspace may change them — and a table an admin UI writes to must not be the table a
+  // ceiling is read from.
+  //
+  // A key/value shape for the same reason as settings, and one more: a quota added later
+  // is an INSERT, while a column added later is a migration on every workspace that
+  // exists. `n` is a number, never null — see QUOTA_FIELDS for why unlimited is a large
+  // number rather than an absent one.
+  `CREATE TABLE IF NOT EXISTS quotas (
+     k TEXT PRIMARY KEY,
+     n REAL NOT NULL
+   )`,
+
   // Schema version and the workspace's own id, so a stored object can say what it is
   // without being told. `meta` is deliberately separate from `settings`: one is about the
   // database, the other about the workspace, and a migration reads the first before it is
@@ -149,6 +166,45 @@ export function applyTenantSchema(sql, workspaceId) {
 }
 
 /**
+ * Seed this workspace's quotas from its plan. Provisioning calls it once.
+ *
+ * INSERT ... DO NOTHING, so it is safe to re-run and so an operator's raise for one
+ * customer is not undone by anything that re-seeds. Changing a plan is a deliberate write
+ * (`setWorkspacePlan` below), never a side effect of the schema being applied again.
+ *
+ * The `plans` parameter exists so the defaults have exactly one home: a test proves that
+ * changing a value in that table is the whole change, with nothing else to keep in step.
+ */
+export function seedQuotas(sql, plan = DEFAULT_PLAN, plans = PLANS) {
+  const q = quotasForPlan(plan, plans);
+  sql.exec(`INSERT INTO meta (k, v) VALUES ('plan', ?) ON CONFLICT(k) DO NOTHING`, q.plan);
+  for (const field of QUOTA_FIELDS) {
+    sql.exec(`INSERT INTO quotas (k, n) VALUES (?, ?) ON CONFLICT(k) DO NOTHING`, field, q[field]);
+  }
+}
+
+/**
+ * Move this workspace onto another plan: the plan name AND every quota it implies, in one
+ * statement each. A plan change that moved the label and left the ceilings behind would be
+ * a workspace that has paid and is still refused.
+ *
+ * It overwrites, which means it also DISCARDS a per-customer raise. That is the honest
+ * behaviour for "put this workspace on the paid plan" and the reason a raise should be
+ * re-applied after a plan change rather than assumed to survive one.
+ */
+export function setWorkspacePlan(sql, plan, plans = PLANS) {
+  const q = quotasForPlan(plan, plans);
+  sql.exec(`INSERT INTO meta (k, v) VALUES ('plan', ?) ON CONFLICT(k) DO UPDATE SET v = excluded.v`, q.plan);
+  for (const field of QUOTA_FIELDS) {
+    sql.exec(
+      `INSERT INTO quotas (k, n) VALUES (?, ?) ON CONFLICT(k) DO UPDATE SET n = excluded.n`,
+      field, q[field],
+    );
+  }
+  return q.plan;
+}
+
+/**
  * One workspace's mutable state.
  *
  * Deliberately thin at this stage: the schema and its migration are what `B-do-schema-core`
@@ -173,9 +229,17 @@ export class TenantStore {
    * concurrent requests to a cold object cannot both run the migration — the statements are
    * idempotent, but a half-applied schema read by the other request is not.
    */
-  async init(workspaceId) {
+  async init(workspaceId, { plan = DEFAULT_PLAN } = {}) {
     if (this.ready) return;
-    const run = () => { applyTenantSchema(this.sql, workspaceId); this.ready = true; };
+    const run = () => {
+      applyTenantSchema(this.sql, workspaceId);
+      // Seeded here rather than at provisioning ONLY: a workspace that somehow reaches an
+      // enforcement point with no quota row would be a workspace with no ceilings, and
+      // "no ceilings" is the wrong way for that to fail. Seeding is DO NOTHING, so a
+      // provisioned plan and any per-customer raise both survive it.
+      seedQuotas(this.sql, plan);
+      this.ready = true;
+    };
     if (this.ctx.blockConcurrencyWhile) await this.ctx.blockConcurrencyWhile(async () => run());
     else run();
   }
@@ -189,5 +253,13 @@ export class TenantStore {
   schemaVersion() {
     const rows = [...this.sql.exec(`SELECT v FROM meta WHERE k = 'schema_version'`)];
     return rows.length ? Number(rows[0].v) : 0;
+  }
+
+  /** The plan this workspace is on, and every ceiling it carries, as one flat object. */
+  quotas() {
+    const plan = [...this.sql.exec(`SELECT v FROM meta WHERE k = 'plan'`)];
+    const out = { plan: plan.length ? plan[0].v : DEFAULT_PLAN };
+    for (const row of this.sql.exec(`SELECT k, n FROM quotas`)) out[row.k] = row.n;
+    return out;
   }
 }
