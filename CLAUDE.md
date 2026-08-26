@@ -97,6 +97,28 @@ on why it went. Proving membership costs a config read, so it is paid ONLY when 
 cookie is actually present, and the check fails to "stranger" on anything at all: it unlocks
 nothing, and a wrong answer costs a member a sentence.
 **A single-workspace instance pays nothing**: no `TENANTS` binding, no question asked.
+**One kind of suspension lifts itself.** The lifecycle page promises a workspace paused for
+DORMANCY comes back on the first successful sign-in by an admin, and `resumeAfterDormancy`
+(inside the `/__auth` success branch) offers the workspace that chance. **The whole of it is
+the discriminator, not the resume**: the reason is decided by `resumeOnSignIn` in the workspace
+object against an ALLOWLIST — `DORMANCY_SUSPENSION_REASONS`, one word — never a denylist, so a
+suspension kind invented later is inert here until somebody adds it on purpose instead of
+resuming on the day it ships. An acceptable-use takedown and a tombstone both survive their own
+admin signing in, and that is the case to read `test/dormancy-resume.test.mjs` for. The split is
+deliberate: the WORKER knows who signed in (the roster is its, and an editor or a viewer never
+gets as far as a call), the OBJECT knows the reason — the worker's copy is cached, and a
+workspace re-suspended seconds ago still reads as its old reason from there. The resume is
+RECORDED (`resumedAt`/`resumedFrom`/`resumedBy` in `status()`, the person as a one-way id)
+because resuming clears the suspension row. Fire-and-forget on `waitUntil`, like the activity
+stamp: a sign-in never waits on it and never fails over it. **It is wired into `/__auth` and
+nowhere else, and that is complete rather than partial**: this engine mints a session in two
+places, and the other (`/__invite`) is not on `SUSPENDED_ALLOWED`, so a paused workspace's
+gate answers before that handler ever runs. `test/dormancy-resume.test.mjs` pins the list from
+this side — if it fails, the question is not "widen the array" but "does the new path have to
+resume too". `/__publish/_login/token` is on the list and deliberately does NOT resume: it
+mints a publish token, not a session, carries no role, and a backup script must not un-pause
+anything. ⏳ Nothing writes that reason yet — the 90-day sweep is not built, and when it is it
+must suspend with exactly that word.
 
 **Nothing an isolate keeps may be shared between workspaces, and the proof of that is a
 TEST, not a lint.** `test/tenant-route-sweep.test.mjs` drives the real worker in BUNDLE

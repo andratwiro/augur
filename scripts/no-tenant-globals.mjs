@@ -347,6 +347,7 @@ const ALLOWLIST = {
       "SEEDABLE_FAMILIES",   // which overlay families a seed pack may write; a fact about the schema
       "IDENTITY_FAMILIES",   // which identity families a copy may write; a fact about the schema, and the list that keeps a credential out
       "MEMBER_ROLES",        // the three roles the members CHECK constraint allows; the same three everywhere
+      "DORMANCY_SUSPENSION_REASONS", // which suspension reasons a sign-in may lift; a published policy, identical for every workspace
     ],
   },
 

@@ -189,6 +189,10 @@ test("the store exposes no read or write verb it does not yet need", () => {
   // five counts and a page total — see B-suspend-check-in-resolver. `importAll` is
   // `importOverlay` plus the identity families, in one transaction, and `importOverlay` is
   // kept as the name its existing callers use — see test/kv-adopt-identity.test.mjs.
+  // `resumeOnSignIn` is NOT a fifth operator verb and is deliberately absent from
+  // `CONTROL_VERBS`: it is the REQUEST PATH asking the workspace about itself, the side of
+  // the line `suspension` and `touchActivity` are on, and nobody should be grantable it —
+  // see E-dormancy-resume and test/dormancy-resume.test.mjs.
   const names = Object.getOwnPropertyNames(TenantStore.prototype).filter((n) => n !== "constructor");
   assert.deepEqual(names.sort(), [
     "bumpCounter", "clearMeta", "controlResult", "deleteWorkspace", "destroy", "fetch",
@@ -196,7 +200,8 @@ test("the store exposes no read or write verb it does not yet need", () => {
     "nextPublishVersion",
     "overlayCas", "overlayInsert", "overlayOwner", "overlayRead", "overlayReadRev",
     "overlayReplace", "overlaySet", "provision",
-    "purgeAuthor", "quotas", "readCounter", "readMeta", "resume", "rotate", "schemaVersion",
+    "purgeAuthor", "quotas", "readCounter", "readMeta", "resume", "resumeOnSignIn",
+    "rotate", "schemaVersion",
     "sessionKey",
     "sql", "status", "suspend", "suspension", "touchActivity",
     "usersActive", "workspaceId", "writeMeta",

@@ -6533,6 +6533,51 @@ function touchWorkspaceActivity(env, tctx, ctx) {
   if (ctx && typeof ctx.waitUntil === "function") ctx.waitUntil(p);
 }
 
+/**
+ * An admin signed in successfully. Offer the workspace the chance to come back.
+ *
+ * `E-dormancy-resume`. The hosted lifecycle page promises that a workspace suspended for
+ * DORMANCY "reactivates on the first successful sign-in by an admin", and that nothing else
+ * does — an acceptable-use takedown and a tombstone both survive their own admin signing in.
+ *
+ * ⚠️ THE REASON IS NOT CHECKED HERE, AND MUST NOT BE. `paused` is a cached copy with a TTL
+ * (SUSPENSION_TTL_MS), so a workspace re-suspended for something else moments ago still
+ * reads as its old reason from here — and "resume because my copy said dormancy" is exactly
+ * the un-take-down this item exists to prevent. The allowlist lives in the workspace object
+ * (`DORMANCY_SUSPENSION_REASONS`, src/tenant-do.js), which reads the live row inside its own
+ * single thread. Copying it here would put the discriminator in two places, and one of them
+ * would be the wrong one.
+ *
+ * What IS checked here is the half only this side knows, plus a cheap filter:
+ *   · ADMIN — the roster is the worker's, and the object cannot re-derive a role a live
+ *     instance does not yet keep in it. An editor or a viewer never gets as far as a call.
+ *   · PAUSED AT ALL — a live workspace has nothing to resume, and this is a per-sign-in
+ *     round trip we should not make for the overwhelmingly common case. `undefined` (the
+ *     never-read, fail-closed answer) is not evidence of a suspension and is not a call
+ *     either; if the flag was unreadable the object is unreachable anyway.
+ *
+ * Fire-and-forget, exactly like touchWorkspaceActivity: a sign-in must not fail, or wait,
+ * because a resume did not happen. The next sign-in — or the next isolate — tries again.
+ */
+function resumeAfterDormancy(env, tctx, user, paused, ctx) {
+  if (!paused || !user || user.role !== "admin") return;
+  const stub = tenantStub(env, tctx && tctx.tenantId);
+  if (!stub) return;
+  const p = stub.fetch("https://workspace/resume-on-sign-in", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    // Never the address. `by` is the same one-way id every stored provenance stamp carries.
+    body: JSON.stringify({ workspaceId: tctx.tenantId, role: user.role, by: personId(user.email) }),
+  }).then((res) => res.json()).then((out) => {
+    // The workspace really did come back, so this isolate's cached "paused" is known wrong
+    // — drop it rather than serve the holding page for the rest of the TTL. A HINT, not a
+    // guarantee: every other isolate still waits the TTL out, which is the number to quote
+    // to somebody refreshing the page, and is well inside the "few minutes" we publish.
+    if (out && out.resumed) SUSPENSION_STATE.bust(tctx.tenantId);
+  }).catch(() => {});
+  if (ctx && typeof ctx.waitUntil === "function") ctx.waitUntil(p);
+}
+
 // ---- Quotas -----------------------------------------------------------------
 //
 // A ceiling is per WORKSPACE, seeded at provisioning (src/tenant-quotas.mjs) and counted
@@ -7903,8 +7948,14 @@ async function handleRequest(request, env, ctx, url, trace) {
     // read once — see SUSPENDED_ALLOWED for what still answers and why it is the promise
     // the lifecycle page makes rather than a convenience. Costs a single-workspace
     // instance nothing: no TENANTS binding, no question.
+    //
+    // The answer is kept past this block for ONE reason: sign-in is on the allow list, and
+    // a dormancy suspension is documented to lift on an admin's first successful one. See
+    // resumeAfterDormancy at the /__auth handler — nothing else below reads it, and nothing
+    // else should, because a decision taken from this value is taken from a cached copy.
+    let paused = null;
     if (env && env.TENANTS) {
-      const paused = await readSuspension(tenantId, env);
+      paused = await readSuspension(tenantId, env);
       // `undefined` is "this isolate has never managed to read the flag". It refuses, and
       // that is the one degradation in this file that shuts a door instead of opening one.
       if (paused === undefined || paused) {
@@ -8193,6 +8244,11 @@ async function handleRequest(request, env, ctx, url, trace) {
           const token = await userToken(env, u);
           if (ctx && ctx.waitUntil) ctx.waitUntil(touchLastSeen(env, u));
           touchWorkspaceActivity(env, tctx, ctx);
+          // ⚠️ INSIDE THE SUCCESS BRANCH, WHICH IS THE POINT. A wrong password falls through
+          // to loginFail below and never reaches this line, so a dormant workspace cannot be
+          // brought back by somebody who only knows an admin's address. Whether it actually
+          // resumes is the workspace object's decision — see resumeAfterDormancy.
+          resumeAfterDormancy(env, tctx, u, paused, ctx);
           return new Response(null, {
             status: 303,
             headers: {
@@ -8455,6 +8511,7 @@ export const __testables = Object.freeze({
   readSuspension, isAllowedWhileSuspended, SUSPENDED_ALLOWED, SUSPENDED_ALLOWED_READS,
   SUSPENSION_TTL_MS,
   suspensionPage, suspensionRefusal, wantsJson, hasSessionCookie, memberSuspensionBody,
+  resumeAfterDormancy,
   PITI_VIEW_KEY, PITI_REMARKS_KEY,
   publishAuthDetailed, publishRefusalBody,
   adminStorageApi,

@@ -347,6 +347,40 @@ export const CONTROL_VERBS = Object.freeze([
   "provision", "status", "suspend", "resume", "rotate", "delete", "purge",
 ]);
 
+/**
+ * The suspension reasons a member can lift by signing in — an ALLOWLIST, and the WHOLE of
+ * `E-dormancy-resume` is this list rather than the resume that stands beside it.
+ *
+ * The hosted lifecycle page promises that a workspace suspended for dormancy "reactivates
+ * on the first successful sign-in by an admin". Every OTHER suspension has to survive that
+ * same sign-in: an acceptable-use takedown is lifted by whoever imposed it, a tombstone is
+ * lifted by a restore, and neither is something the suspended workspace's own admin may do
+ * by proving they are the admin. A resume that fired on the wrong reason would un-take-down
+ * a phishing page on the strength of its own owner signing in, which is the one failure
+ * here that reaches people who are not customers.
+ *
+ * ⚠️ AN ALLOWLIST, NEVER A DENYLIST, and that is a decision rather than a style. A denylist
+ * — "resume unless the reason is `deleted`, or starts with the acceptable-use word" —
+ * resumes on every suspension kind invented after it, the day that kind ships, silently and
+ * with nobody having decided it. This list makes a new kind INERT instead: an unrecognised
+ * reason never resumes, and somebody has to come here on purpose and add it.
+ * `test/dormancy-resume.test.mjs` pins the contents, so growing the list is a visible act.
+ *
+ * ⚠️ MATCHED EXACTLY, byte for byte. Not a prefix, not case-folded, not trimmed. An
+ * operator's free-text reason that merely CONTAINS the word is not a dormancy suspension,
+ * and every near miss therefore fails to "it stays paused", which is the safe side of this
+ * particular wrong answer.
+ *
+ * ⚠️ NOTHING WRITES THIS WORD YET. The 90-day sweep the lifecycle page describes is not
+ * built; when it is, it must call `suspend()` with exactly this string, and this constant is
+ * the definition it has to match. Same shape as CONTROL_VERBS and the control plane's
+ * `TENANT_RPC` — the two repos cannot import each other, so the value is written twice and
+ * each side's suite asserts the other's copy. Until the sweep exists, no live workspace can
+ * carry a reason on this list, so the resume below is reachable only by an operator who
+ * suspends with that exact word.
+ */
+export const DORMANCY_SUSPENSION_REASONS = Object.freeze(["dormant"]);
+
 export function newSigningKey(random = (b) => crypto.getRandomValues(b)) {
   const bytes = new Uint8Array(32);
   random(bytes);
@@ -737,6 +771,13 @@ export class TenantStore {
       purgeAfter: meta.purge_after || null,
       createdAt: meta.created_at || null,
       lastActivityAt: meta.last_activity_at || null,
+      // The last time a sign-in brought this workspace back, what it had been paused for,
+      // and who by. A dormancy resume CLEARS the suspension row, so without these three
+      // nothing afterwards can say it ever happened. `resumedBy` is the one-way person id,
+      // never an address — see resumeOnSignIn.
+      resumedAt: meta.resumed_at || null,
+      resumedFrom: meta.resumed_from || null,
+      resumedBy: meta.resumed_by || null,
       plan: meta.plan || DEFAULT_PLAN,
       quotas: this.quotas(),
       members: tables.has("members") ? count(`SELECT COUNT(*) AS n FROM members WHERE removed_at IS NULL`) : 0,
@@ -810,6 +851,79 @@ export class TenantStore {
     for (const k of ["suspended", "suspended_at", "suspended_reason"]) this.clearMeta(k);
     const ms = since ? Math.max(0, Date.parse(at) - Date.parse(since)) : 0;
     return { ok: true, changed: true, suspendedMs: Number.isFinite(ms) ? ms : 0, since, until: at };
+  }
+
+  /**
+   * Bring this workspace back because an admin just signed in — if, and ONLY if, the
+   * suspension is the one the lifecycle page promises a sign-in lifts.
+   *
+   * `E-dormancy-resume`. The page says "Sign in. That is the whole procedure", and until
+   * this existed that sentence was prose: the flag was set by an operator verb and cleared
+   * by an operator verb, and no sign-in touched it.
+   *
+   * ── ⚠️ THIS OBJECT DECIDES THE REASON; THE WORKER DECIDES THE PERSON ────────────────
+   *
+   * Each side checks the half it alone can know, and neither is asked to take the other's
+   * word for its own half:
+   *
+   *   · THE WORKER authenticated the sign-in and holds the roster, so it says who this is
+   *     and what role they have. This object cannot re-derive that — a live instance still
+   *     authenticates against the config roster, not against `members` — so `role` arrives
+   *     as a parameter. That is not a hole: a Durable Object stub is not routable, so the
+   *     only caller that can reach this is the worker that did the authenticating.
+   *   · THIS OBJECT holds the live suspension row. The worker's copy comes out of a cache
+   *     with a TTL, so it can be seconds stale — and a workspace suspended for dormancy at
+   *     10:00:00 and re-suspended for the acceptable-use policy at 10:00:03 still reads as
+   *     dormancy on the worker's copy. Reading the reason HERE, inside the single-threaded
+   *     object that owns the row, is what makes that race unreachable rather than unlikely.
+   *
+   * ── A REFUSAL IS NOT AN ERROR ───────────────────────────────────────────────────────
+   *
+   * This rides a sign-in that has already succeeded, and a person must never be refused
+   * entry because their workspace was not eligible to come back. So every "no" is a 200
+   * carrying `{resumed: false, why}` and the caller drops it. That is the opposite of
+   * `controlResult`'s rule, and deliberately: an operator verb's verdict is read off the
+   * status line into an audit log, and this is not an operator verb.
+   */
+  resumeOnSignIn({ role = "", by = "" } = {}, at = new Date().toISOString()) {
+    if (!this.hasMeta()) return { resumed: false, why: "not-provisioned" };
+    if (!this.isProvisioned()) return { resumed: false, why: "not-provisioned" };
+    // ⚠️ ONLY AN ADMIN. The promise is "the first successful sign-in by an admin"; an
+    // editor or a viewer signing in is activity, which `touchActivity` already records, and
+    // is not a decision to put the public site back on the air.
+    if (role !== "admin") return { resumed: false, why: "not-an-admin" };
+    // A tombstone is not a pause. `resume()` refuses one as well — this is the earlier and
+    // more legible refusal, and unlike that one it does not depend on the reason column
+    // still saying `deleted`.
+    if (this.readMeta("deleted_at")) return { resumed: false, why: "deleted" };
+    if (this.readMeta("suspended") !== "1") return { resumed: false, why: "not-suspended" };
+    const reason = this.readMeta("suspended_reason") || "";
+    // THE DISCRIMINATOR. See DORMANCY_SUSPENSION_REASONS for why it is an allowlist and why
+    // the match is exact — a reason nobody has added is inert here, not open.
+    if (!DORMANCY_SUSPENSION_REASONS.includes(reason)) {
+      return { resumed: false, why: "reason-not-in-allowlist", reason };
+    }
+    const body = () => {
+      const out = this.resume(at);
+      if (!out.ok || !out.changed) return { resumed: false, why: "not-suspended" };
+      // ⚠️ THE RECORD, and it has to be written here because `resume()` CLEARS the reason
+      // and the date. Without these three, nothing afterwards can say the workspace was
+      // ever paused or who lifted it — and "an admin signed in and the site came back" is
+      // exactly the event an incident asks about a week later. A SNAPSHOT, not a log: a
+      // second dormancy round trip overwrites it, because the last one is what anybody
+      // needs, and a growing audit table on a request path is a different decision.
+      // `by` is the one-way person id the rest of the engine stamps provenance with, never
+      // an address: `status()` reads out to an operator console.
+      this.writeMeta("resumed_at", at);
+      this.writeMeta("resumed_from", reason);
+      this.writeMeta("resumed_by", String(by || ""));
+      return {
+        resumed: true, why: reason, reason,
+        suspendedMs: out.suspendedMs, since: out.since, until: at,
+      };
+    };
+    // One transaction, so a half-resume — flag cleared, record missing — cannot exist.
+    return this.ctx.storage.transactionSync ? this.ctx.storage.transactionSync(body) : body();
   }
 
   /**
@@ -1412,6 +1526,21 @@ export class TenantStore {
     // The request path's question, and the reason it is not /status. No init() either.
     if (url.pathname === "/suspension" && request.method === "GET") {
       return Response.json(this.suspension());
+    }
+    // A sign-in that already succeeded, offered to the workspace as a chance to come back.
+    //
+    // NOT a control verb, on purpose: `CONTROL_VERBS` is what the OUTSIDE may do to a
+    // workspace, and this is the request path asking the workspace about itself — the same
+    // side of the line `/activity` and `/suspension` are on. Adding it there would also put
+    // it in the control plane's `TENANT_RPC`, which is a list of things an operator can be
+    // granted, and nobody should be granted this.
+    //
+    // NO init(), for `status()`'s reason: the workspace id comes from a hostname, and a
+    // sign-in attempt against a name nobody provisioned must not spring one into being.
+    if (url.pathname === "/resume-on-sign-in" && request.method === "POST") {
+      let body = null;
+      try { body = await request.json(); } catch (e) { /* an empty body refuses inside */ }
+      return Response.json(this.resumeOnSignIn(body || {}));
     }
     if (url.pathname === "/activity" && request.method === "POST") {
       let body = null;
