@@ -308,6 +308,9 @@ engine/worker verification; content goes out with `ship`/`publish` ·
 `augur publish [--space <id>|--all] [--dry-run] [--allow-unpublish]`
 (publish only; `AUGUR_TOKEN` + `AUGUR_ORIGIN`) · `augur status`
 (live vs clones vs `origin/main`; exit 1 on drift) ·
+`augur mark [<path>] [--ttl <s>] [--clear]` (say what you are about to work on, read
+what everyone else is — a TTL'd note that refuses nothing; see
+[agents/working-marks.md](agents/working-marks.md)) ·
 `augur export --out <dir> [--full]` / `augur restore <dir> [--state]`
 (store backup; `--full`/`--state` cover everything that is not published content) ·
 `augur freeze [--reason …] [--status]` / `augur thaw` (read-only while a workspace is

@@ -18,6 +18,7 @@ Read them by trigger, not up front:
 
 | When you are… | Read |
 |---|---|
+| starting work on a prototype somebody else might also be in | [working-marks.md](./working-marks.md) — read it BEFORE the first edit |
 | shipping / going live | [publishing.md](./publishing.md) |
 | acting on review comments | [review-feedback.md](./review-feedback.md) |
 | building a prototype folder | [prototype-contract.md](./prototype-contract.md) |

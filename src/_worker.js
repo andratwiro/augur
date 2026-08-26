@@ -3398,9 +3398,50 @@ function capabilityRefusal(entry, spaceId, op) {
 }
 
 async function publishApi(tctx, request, url, env) {
-  if (!env.BUNDLES) return jsonResponse({ error: "bundle-store-not-configured" }, 501);
   const [spaceId, op, arg] = url.pathname.slice("/__publish/".length).split("/");
   if (!spaceId || !op || !/^[a-z0-9_][a-z0-9-]*$/.test(spaceId)) return jsonResponse({ error: "bad-path" }, 400);
+
+  // ── working marks (`F-presence-marks`) ─────────────────────────────────────
+  //
+  // AHEAD OF THE BUNDLE-STORE GUARD, deliberately: a mark is not published content and
+  // holds nothing the store knows about, so an instance serving from ASSETS — `augur dev`,
+  // `npm run offline`, a raw engine build — is exactly where two agents most need to stay
+  // out of each other's way, and 501 there would be an accident of where the check sits.
+  //
+  // ANY VALID PUBLISH TOKEN, whatever its scope. A mark names a path, not a space, and a
+  // space-scoped token holder is precisely the person whose work-start is worth announcing.
+  // The capability gate still applies, so a restricted credential (the control plane's
+  // purge token) reaches this no more than it reaches anything else.
+  if (spaceId === "_marks") {
+    const a = await publishAuthDetailed(tctx, request, env, spaceId, true);
+    if (!a.entry) return jsonResponse(publishRefusalBody(a.refusal), 403);
+    if (capabilityRefusal(a.entry, spaceId, op)) {
+      return jsonResponse({ error: "forbidden", reason: "capability-not-granted" }, 403);
+    }
+    // WHO, from the credential and never from the body. `augur login` labels a token with
+    // the holder's address; a token an admin minted by hand carries whatever they typed,
+    // which hashes to a stable id that resolves to no roster face — honest, and better
+    // than letting the caller name itself.
+    const who = { personId: personId(a.entry.label || "") };
+    if (op === "list" && request.method === "GET") {
+      return jsonResponse({ ...(await readMarks(tctx, env)), ttlMs: MARK_TTL_MS, maxTtlMs: MARK_TTL_MAX_MS });
+    }
+    let body = null;
+    if (request.method === "POST") {
+      try { body = await request.json(); } catch (e) { return jsonResponse({ error: "bad-json" }, 400); }
+    }
+    if (op === "set" && request.method === "POST") {
+      const out = await writeMark(tctx, env, who, { path: body && body.path, ttl: body && body.ttl });
+      return out.error ? jsonResponse(out, out.error === "bad-input" ? 400 : 503) : jsonResponse(out);
+    }
+    if (op === "clear" && request.method === "POST") {
+      const out = await clearMark(tctx, env, who, { path: body && body.path });
+      return out.error ? jsonResponse(out, out.error === "bad-input" ? 400 : 503) : jsonResponse(out);
+    }
+    return jsonResponse({ error: "unknown-op" }, 400);
+  }
+
+  if (!env.BUNDLES) return jsonResponse({ error: "bundle-store-not-configured" }, 501);
 
   // Self-serve token exchange: trade an existing web login for a publish token
   // (no admin distribution step — `augur login` calls this once and saves it).
@@ -5350,6 +5391,16 @@ const OVERLAY_KV_KEYS = Object.freeze({
   boards: Object.freeze({ doc: "board", layout: "keyed" }),
   // Canvas image METADATA — the bytes are in R2. See assetApi.
   assets: Object.freeze({ doc: "basset-meta", layout: "keyed" }),
+  // WORKING MARKS — "something is editing here right now". One row per path, and the row
+  // is only meaningful until its own TTL runs out. See the marks section below.
+  //
+  // `map` RATHER THAN `keyed`, and the trade is worth naming because it looks backwards.
+  // Keyed would give one KV document per path, so two marks written in the same window
+  // could not lose each other. It would also turn every READ into a kv.list plus a get per
+  // row — and marks are read by a gallery page as well as by the CLI, which puts a listing
+  // in front of ordinary page loads on a store whose daily get budget has been exhausted
+  // before. One document is one get. What it costs is stated on `writeMark`.
+  marks: Object.freeze({ doc: "marks", layout: "map" }),
 });
 
 /** How many times a compare-and-swap retries before giving up. */
@@ -6689,6 +6740,235 @@ async function nameApi(tctx, request, url, env) {
     return jsonResponse({ map: await store.set("names", "", key, name || null) });
   }
   return jsonResponse({ error: "method-not-allowed" }, 405);
+}
+
+// ---- Working marks (KV-backed, single key) ----------------------------------
+//
+// `F-presence-marks`. Nothing anywhere said what was already being worked on. Two
+// collaborators' tools — usually two agents, on two machines, told to improve "the
+// checkout flow" — would each open the same folder, each edit it, and find out at publish
+// time, where the answer is a fork and a conflict file nobody asked for.
+//
+// ⚠️ THIS IS DELIBERATELY NOT A LOCK, and every line below is written so it cannot become
+// one. A mark REFUSES NOTHING. It is not consulted by the gate, by the publish handler, by
+// the commit CAS or by anything else that could say no. It is a note left where the next
+// reader will look, and the whole protocol is: write one before you start, read them
+// before you start. Enforcement when coordination fails is the composed publish's job
+// (`src/publish-compose.mjs`), which is the only place in this engine allowed to refuse a
+// write over a collision — and it does it on evidence, after the fact, never on a claim.
+//
+// THE PROTOCOL IS AGENT-FIRST. The badge a person sees on a gallery card is the byproduct,
+// not the point: as an agent's edit shrinks toward seconds, a mark is FELT almost never and
+// READ always. So the write side is the CLI (`augur mark`, over a publish token, see the
+// `_marks` branch in publishApi) and the browser side is read-only — a person editing in a
+// tab is not running a work-start step and inventing one for them would be a lie about who
+// wrote what.
+//
+// ⚠️ A MARK EXPIRES BY ITSELF AND IS NEVER TRUSTED TO BE CLEARED. The thing that leaves a
+// mark is a process that can be killed — Ctrl-C, an OOM, a laptop lid — and a claim that
+// outlives the claimant is worse than no claim at all, because the next reader believes it.
+// So EXPIRY IS A READ-TIME FILTER (`liveMarks`), not a cleanup job: the moment `startedAt +
+// ttl` is in the past the mark is gone from every answer, whether or not anything ever runs
+// again. `sweepExpired` below only reclaims the BYTES, opportunistically, and correctness
+// never depends on it having run.
+
+/** How long a mark is good for when the caller does not say. */
+const MARK_TTL_MS = 10 * 60_000;
+/**
+ * The longest a caller may ask for. An agent that wants four hours is describing a lock,
+ * and the answer to a lock is a shorter mark re-written as the work continues.
+ */
+const MARK_TTL_MAX_MS = 60 * 60_000;
+/** The shortest, so a `--ttl 0` cannot write a mark that is already dead. */
+const MARK_TTL_MIN_MS = 5_000;
+/**
+ * How many lapsed rows one write may reclaim. Bounded low because on the KV backing each
+ * row delete is a whole-document read and put, so the sweep can cost more than the litter
+ * it collects; an unbounded one would turn a work-start step into a hundred writes on a
+ * workspace nobody has marked in a month. Nothing depends on it running at all.
+ */
+const MARK_SWEEP_MAX = 4;
+/** Belt and braces: a workspace cannot be filled with marks by a loop. */
+const MARK_MAX_ROWS = 200;
+
+/**
+ * One spelling of a path, so two tools that mean the same folder agree.
+ *
+ * Leading and trailing slash, always: a mark names a UNIT — the prototype folder a URL
+ * names and a person edits — and `unitOfPath` in src/publish-units.mjs decides containment
+ * by prefix, which only works when a folder ends in a slash. `/a/b` and `/a/bc/` would
+ * otherwise overlap.
+ */
+function normalizeMarkPath(p) {
+  const s = clamp(p, 300);
+  if (!s) return "";
+  const trimmed = s.trim().replace(/^\.\//, "").replace(/\/{2,}/g, "/");
+  if (!trimmed || trimmed === "/") return "/";
+  return `/${trimmed.replace(/^\/+/, "").replace(/\/+$/, "")}/`;
+}
+
+/**
+ * Do these two paths describe overlapping work? Containment in either direction — a mark
+ * on `/checkout/` covers `/checkout/step-two/`, and a mark on `/checkout/step-two/` is
+ * worth showing to somebody about to take `/checkout/`.
+ */
+function markPathsOverlap(a, b) {
+  const x = normalizeMarkPath(a), y = normalizeMarkPath(b);
+  if (!x || !y) return false;
+  return x === y || x.startsWith(y) || y.startsWith(x);
+}
+
+/** The instant a mark stops meaning anything. Pure, and the only definition of expiry. */
+function markExpiresAt(m) {
+  const started = Date.parse((m && m.startedAt) || "");
+  if (!Number.isFinite(started)) return 0;
+  const ttl = Number.isFinite(+(m && m.ttl)) ? +m.ttl : MARK_TTL_MS;
+  return started + Math.min(Math.max(ttl, MARK_TTL_MIN_MS), MARK_TTL_MAX_MS);
+}
+
+/**
+ * The live marks in a stored map, newest first. THE expiry rule — every reader goes
+ * through here, so a lapsed mark cannot be reported by one surface and hidden by another.
+ */
+function liveMarks(map, now = Date.now()) {
+  return Object.entries(map || {})
+    .map(([path, m]) => (m && typeof m === "object" ? { ...m, path: m.path || path } : null))
+    .filter((m) => m && markExpiresAt(m) > now)
+    .sort((a, b) => Date.parse(b.startedAt || 0) - Date.parse(a.startedAt || 0));
+}
+
+/**
+ * What a mark looks like on the wire: the stored row plus two things a reader would
+ * otherwise have to compute, and one it could not — the display name behind the id.
+ *
+ * The NAME IS RESOLVED, NEVER STORED. `personId` is the same one-way hash a comment
+ * carries, so a mark holds no address; the roster turns it back into a face at read time,
+ * which also means a rename shows through and an ex-member resolves to nobody.
+ */
+function decorateMark(m, users, now = Date.now()) {
+  const u = (users || []).find((x) => x && personId(x.email) === m.personId);
+  return {
+    path: m.path,
+    personId: m.personId || null,
+    startedAt: m.startedAt,
+    ttl: markExpiresAt(m) - Date.parse(m.startedAt),
+    by: u ? u.name || nameFromEmail(u.email) : null,
+    initials: u ? u.initials || initialsFor(u.name || u.email) : null,
+    color: u ? u.color || null : null,
+    expiresIn: Math.max(0, markExpiresAt(m) - now),
+  };
+}
+
+/** Read the live marks for a workspace, decorated. `null` store answers with nothing. */
+async function readMarks(tctx, env) {
+  const store = overlayFor(env, tctx);
+  if (!store) return { marks: [], warning: "no-kv-binding" };
+  const map = await store.read("marks");
+  const now = Date.now();
+  return { marks: liveMarks(map, now).map((m) => decorateMark(m, tctx.USERS, now)), now };
+}
+
+/**
+ * Reclaim the bytes of rows that lapsed. NOT the expiry mechanism — `liveMarks` already
+ * stopped reporting these, and this runs only so a one-way author id does not sit in the
+ * store for months after it stopped meaning anything. Per-key deletes, never a whole-family
+ * `replace`: a replace computed from a read taken moments ago would drop a mark another
+ * agent wrote in between, and on the workspace object it would delete rows it never read.
+ *
+ * It swallows its own failures on purpose. Reclaiming bytes may never be the reason a
+ * work-start step reports a failure, because the mark it was announcing is already written.
+ */
+async function sweepExpired(store, map, now, keep) {
+  let swept = 0;
+  for (const [path, m] of Object.entries(map || {})) {
+    if (swept >= MARK_SWEEP_MAX) break;
+    if (path === keep) continue;
+    if (markExpiresAt(m) > now) continue;
+    try { await store.set("marks", "", path, null); swept++; } catch (e) { break; }
+  }
+  return swept;
+}
+
+/**
+ * Write one mark. `who` is resolved by the caller from a credential — a session or a
+ * publish token — and NEVER from the request body, exactly like a comment's authorship.
+ *
+ * ⚠️ ON THE KV BACKING TWO MARKS WRITTEN IN THE SAME WINDOW CAN LOSE EACH OTHER, and that
+ * is a known cost rather than an oversight. A `map` family is one document: `set` reads it,
+ * changes one key and puts it back, so a mark written between the read and the put is
+ * overwritten — and KV reads converge globally rather than instantly, which makes the
+ * window as wide as the convergence, not as wide as the round trip. The overlay's own
+ * header says the same thing about statuses, names and pins; the workspace object closes
+ * it for all of them at once by making each key a row.
+ *
+ * WHY IT IS SURVIVABLE HERE AND WOULD NOT BE IN A LOCK. A lost mark costs the next reader
+ * a hint. It cannot cost anybody work, because nothing anywhere asks a mark for permission:
+ * the loser of the race is still editing, still publishing, and still protected by the
+ * composed publish, which settles a real collision on evidence. A lock that lost a write
+ * would hand two writers the same exclusive claim, which is why this is not one.
+ */
+async function writeMark(tctx, env, who, { path, ttl }) {
+  const store = overlayFor(env, tctx);
+  if (!store) return { error: "no-kv-binding" };
+  const p = normalizeMarkPath(path);
+  if (!p) return { error: "bad-input" };
+  const ms = Number.isFinite(+ttl) && +ttl > 0
+    ? Math.min(Math.max(+ttl, MARK_TTL_MIN_MS), MARK_TTL_MAX_MS)
+    : MARK_TTL_MS;
+  const now = Date.now();
+  const before = await store.read("marks");
+  // The only refusal on this route, and it is a runaway-loop guard rather than a policy:
+  // this many things being worked on at once in one workspace is a script, not a team.
+  const live = liveMarks(before, now);
+  if (live.length >= MARK_MAX_ROWS && !live.some((m) => m.path === p)) {
+    return { error: "too-many-marks" };
+  }
+  // ⚠️ THE ROW CARRIES NO ADDRESS — not in the value and not in the `owner` column. A mark
+  // is read by more things than a comment thread is (a gallery page stamps a badge from
+  // it), and `personId` is exactly enough to put a face on it.
+  const mark = { path: p, personId: who.personId, startedAt: new Date(now).toISOString(), ttl: ms };
+  await store.set("marks", "", p, mark, null);
+  const swept = await sweepExpired(store, before, now, p);
+  // The answer is COMPUTED from what was just written, never re-read. A second read costs
+  // a round trip to say what this function already knows, and on KV it can come back
+  // STALER than the write it was meant to confirm — a work-start step that printed "your
+  // mark is not there" right after writing it would teach people to distrust the tool.
+  const marks = [mark, ...live.filter((m) => m.path !== p)];
+  return {
+    mark: decorateMark(mark, tctx.USERS, now),
+    marks: marks.map((m) => decorateMark(m, tctx.USERS, now)),
+    swept,
+  };
+}
+
+/**
+ * Release a mark early. A COURTESY, never the guarantee — the TTL is the guarantee, and a
+ * tool that is killed never reaches this. Only the mark's own author may clear it: taking
+ * somebody else's mark down would turn the note into something worth fighting over.
+ */
+async function clearMark(tctx, env, who, { path }) {
+  const store = overlayFor(env, tctx);
+  if (!store) return { error: "no-kv-binding" };
+  const p = normalizeMarkPath(path);
+  if (!p) return { error: "bad-input" };
+  const map = await store.read("marks");
+  const cur = (map || {})[p];
+  const now = Date.now();
+  if (!cur || markExpiresAt(cur) <= now) return { cleared: false, reason: "no-mark" };
+  if (cur.personId !== who.personId) return { cleared: false, reason: "not-yours" };
+  await store.set("marks", "", p, null);
+  const marks = liveMarks(map, now).filter((m) => m.path !== p);
+  return { cleared: true, marks: marks.map((m) => decorateMark(m, tctx.USERS, now)) };
+}
+
+/**
+ * The browser's read. GET only, on purpose — see the header: the badge is the byproduct of
+ * an agent protocol, and a tab is not a work-start step.
+ */
+async function marksApi(tctx, request, url, env) {
+  if (request.method !== "GET") return jsonResponse({ error: "method-not-allowed" }, 405);
+  const out = await readMarks(tctx, env);
+  return jsonResponse({ ...out, ttlMs: MARK_TTL_MS });
 }
 
 // ---- Prototype deletion (repo-write via dispatch webhook) -------------------
@@ -8262,6 +8542,13 @@ async function handleRequest(request, env, ctx, url, trace) {
       if (!authed) return jsonResponse({ error: "unauthorized" }, 401);
       return pinsApi(tctx, request, url, env, me);
     }
+    // Working marks — READ ONLY here. Who is working where is workspace-internal, so it
+    // asks for a session like the gallery around it; the WRITE side is a publish token and
+    // lives under /__publish/_marks, because a work-start step is something a tool runs.
+    if (url.pathname === "/__marks") {
+      if (!authed) return jsonResponse({ error: "unauthorized" }, 401);
+      return marksApi(tctx, request, url, env);
+    }
     if (url.pathname === "/__name") {
       if (!authed) return jsonResponse({ error: "unauthorized" }, 401);
       const denied = viewerWriteRefusal(request, url, me, "name", tctx.SPACES);
@@ -8446,6 +8733,9 @@ export const __testables = Object.freeze({
   pathOwnedBySpace, isPublishablePublicPrefix, removedPublicPrefixes, publishApi, loadManifests, LOGIN_MAX_FAILS,
   tokenActorRefusal, publishTokenTtlMs, mintPublishToken, adminTokensApi,
   nextPublishVersion, overlayFor, overlayKvKey, statusApi, nameApi, pinsApi,
+  marksApi, readMarks, writeMark, clearMark, liveMarks, markExpiresAt, decorateMark,
+  normalizeMarkPath, markPathsOverlap, sweepExpired,
+  MARK_TTL_MS, MARK_TTL_MAX_MS, MARK_TTL_MIN_MS, MARK_SWEEP_MAX, MARK_MAX_ROWS,
   exportState, importState,
   quotaBump, quotaMinute, quotaDay, workspaceStatus, touchWorkspaceActivity,
   deleteWorkspace, purgeDue, blobGc, clearFamilies, NEVER_CLEARED,
