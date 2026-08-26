@@ -259,14 +259,56 @@ i.e. ~110–120 read sites once decls/assigns are removed — matching the plan'
 numbers here drift; the lint walks the module graph the worker pulls into the isolate —
 every module it reaches by a relative import, because module scope is per ISOLATE and a
 `let` one import away is shared exactly as widely — and counts what is actually declared —
-today 24 module-scope bindings across four modules: NO config global at all, 11
-per-isolate caches, and 13 mutable-container constants that never vary by workspace. It
-fails CI, and therefore the
-deploy, on a binding it has never been told about, on an allowlist entry whose binding is
-gone, and on an allowlist entry that names a field of the tenant context — so the list
-shrank as the threading landed rather than turning into standing permission, and a
-threaded field cannot be re-admitted to it under a plausible-sounding reason. A config
-global is now simply an unlisted binding, which is a failed build.
+today 24 module-scope bindings across four modules: NO config global at all, 5 caches
+keyed by workspace, 13 tables never written after module load, and 6 slots the whole
+isolate still shares. It fails CI, and therefore the deploy, on a binding it has never
+been told about, on an allowlist entry whose binding is gone, and on an allowlist entry
+that names a field of the tenant context — so the list shrank as the threading landed
+rather than turning into standing permission, and a threaded field cannot be re-admitted
+to it under a plausible-sounding reason. A config global is now simply an unlisted
+binding, which is a failed build.
+
+**And it adjudicates, because enumerating was not enough.** Every direction above asks
+whether the list AGREES WITH THE CODE. None asked whether an entry was TRUE — which is how
+all of them stayed green through both cross-tenant leaks above, since neither was an
+unlisted binding: both were ON the list, in one category called CACHES, under written
+reasons that asserted the safety they did not have ("a hash is content-addressed, so it
+means the same thing everywhere"; "a stale stamp costs a re-read"). A lint cannot read
+prose, so it no longer tries, and the category whose safety rested on a sentence is gone.
+Three kinds replace it, two of them decided from the code:
+
+- **`keyed`** — required to be declared `const X = new Map()`, and required to carry a
+  workspace key at every access: `.get/.set/.delete/.has` whose first argument is a
+  `tenantId` expression or a local assigned from one, plus the whole-map operations that
+  cannot hand back one workspace's value and the `X.delete(X.keys().next().value)`
+  eviction idiom. `.values()`, `.forEach()`, or the bare name used as a value all fail.
+- **`invariant`** — required to be `const` and to have no write anywhere after its
+  declaration: no reassignment, no mutator call, no `X[k] =`, no `X.k =`, no
+  `Object.assign(X, …)`. Module load runs before any request, so a table nobody writes
+  cannot hold a workspace's data. "Tenant-invariant by construction" stopped being a claim
+  and became the thing that was checked.
+- **`unkeyed`** — the bare per-isolate slot, which is the shape both leaks had. There is
+  deliberately no "it is only a clock" kind: `canvasRegAt` was only a clock, and it is what
+  made the stale document answer. An entry must name a `proof` test file that exists and
+  speaks the binding's name, and the TOTAL count must equal `UNKEYED_BUDGET` exactly —
+  exact, not a ceiling, so closing one forces the number down in the same commit and
+  opening one forces a diff line that says the isolate now shares one more slot.
+
+Today's six are `cfgAt`, `cfgGoodAt`, `TENANT_CTX`, `rosterReadAt`, `rosterCache` and
+`tenantMemo` — the config slot with its two clocks, the shared roster read under §2a, and
+the resolver's memo. That is this phase's remaining debt, counted rather than described,
+and the budget is what makes it a debt rather than a category. Checked against the pre-fix
+tree: with `AVATAR_KEYS` and the `canvasReg*`/`pitiRemarks*` pairs restored, all four ways
+a maintainer could list them fail — unlisted if left off, `keyed-not-a-map` under `keyed`,
+`invariant-not-const` + `invariant-written` under `invariant`, and `proof-silent` plus a
+budget of 11 against 6 under `unkeyed`.
+
+What it still does not cover is stated in its own header: state with no binding name (`this`
+on the default export), and whether the KEY names the right workspace, which is
+`resolveTenant`'s job and `scripts/one-tenant-resolver.mjs`'s guard. The budget line can be
+raised by the commit that needs it — the point is not that it is impossible but that it is
+loud, and that the way both leaks actually shipped, by adding a sentence to a list of
+sentences, no longer works.
 
 ### 2a. The config cache — stale within a floor — `loadTenantContext()` / `loadConfig()`
 

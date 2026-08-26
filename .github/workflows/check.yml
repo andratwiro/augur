@@ -26,6 +26,13 @@ jobs:
         # the moment the worker can reach it. Naming the files here instead would have put
         # the list in the one file nobody edits when adding a module — the same silent
         # escape by omission the lint exists to catch, moved into its own configuration.
+        #
+        # It also decides, rather than only enumerating. Two reproduced cross-tenant leaks
+        # were both ON its allowlist under written reasons asserting the safety they did
+        # not have, so the kinds it accepts are now checked against the code: a cache it
+        # calls keyed must be a Map touched with a tenantId at every access, a table it
+        # calls invariant must never be written after module load, and the bare per-isolate
+        # slot that both leaks were is a budgeted quarantine. No reason is read.
         run: node scripts/no-tenant-globals.mjs
       - name: One tenant resolver, one call site (one-tenant-resolver)
         # Which workspace a request belongs to is decided in exactly one place, at the

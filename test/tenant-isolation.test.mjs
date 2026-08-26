@@ -147,6 +147,13 @@ const envFor = (n) => fixture(n);
 // Every per-isolate memo `loadTenantContext` can reach, back to cold. Called at the top
 // of every case: these caches are module scope, so without it a case inherits whatever
 // the previous one left behind and the file's results depend on their order.
+//
+// `cfgAt: 0` is what makes every load below COLD, and the thing it makes cold is the
+// worker's single `TENANT_CTX` slot — one context for the whole isolate, refilled by
+// whichever workspace asked last. Every interleaving case in this file is therefore also
+// the case for that slot: leave the tick alone and the second workspace is answered out
+// of the first one's context without loading anything of its own. It is the last shared
+// slot on the config path, and `createTenantContextCache` is what replaces it.
 function resetSharedCaches() {
   __setConfigTestState({
     cfgAt: 0, rosterReadAt: 0, mcpHostAllowlist: null,
@@ -1185,11 +1192,14 @@ function servingFixture(n, kvSeed = {}) {
 }
 
 // One request, arriving at an isolate that has already served the neighbour. The tenant
-// memo is cleared because the Phase A resolver would otherwise pin the first workspace to
-// reach it for the isolate's life; the config tick is cleared for the same reason
-// `resetSharedCaches` does it. Every OTHER per-isolate memo — including the two this
-// section is about — is left exactly as the previous request left it, which is the whole
-// point of the case.
+// memo — `tenantMemo`, the one slot `resolveTenant()` reads the static id into — is
+// cleared because the Phase A resolver would otherwise pin the first workspace to reach it
+// for the isolate's life, and every case below would be two requests for alpha. Clearing
+// it is what a Host-reading resolver will do for itself; leaving it is what makes the
+// slot's own wrongness visible, since with it warm this whole section answers "alpha"
+// twice. The config tick is cleared for the same reason `resetSharedCaches` does it. Every
+// OTHER per-isolate memo — including the two this section is about — is left exactly as
+// the previous request left it, which is the whole point of the case.
 function request(fx, path) {
   W.__setTenantTestState({ memo: null });
   W.__setConfigTestState({ cfgAt: 0, cfgGoodAt: 0, rosterReadAt: 0 });
