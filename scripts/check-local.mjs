@@ -59,16 +59,35 @@ function run(cmd, args) {
 }
 
 function wordScan() {
-  // SCAN THE TRACKED SET, not the working tree. The workflow greps `.` inside a fresh
-  // checkout, which by construction holds only tracked files; a local tree also holds
-  // everything .gitignore covers — agent scratch directories, notes, old reports — and
-  // those are full of the words on purpose and are not going anywhere near a deploy.
-  // Grepping `.` locally therefore reports hundreds of findings CI cannot see, which
-  // trains whoever runs this to ignore its output, which is worse than not having it.
-  const tracked = execSync("git ls-files -z", { cwd: ROOT, encoding: "buffer" })
-    .toString("utf8").split("\0").filter(Boolean)
+  // WHAT TO SCAN: everything the repository WILL contain if you commit — tracked files plus
+  // untracked-but-not-ignored ones. Neither half alone is right, and both halves were
+  // learned the same way.
+  //
+  // Not the whole working tree: a local tree also holds everything .gitignore covers —
+  // agent scratch, notes, old reports — which are full of these words on purpose and are
+  // going nowhere near a deploy. Grepping `.` reported hundreds of findings CI cannot see,
+  // which trains whoever runs this to scroll past its output.
+  //
+  // And not the tracked set alone: a brand-new file is invisible to `git ls-files` until
+  // it is added, so that reports OK on exactly the file you are about to commit, and then
+  // CI — which sees it — goes red. That happened: a new test used a person's name as a
+  // fixture, this check passed because the file was not staged yet, and the push landed
+  // with a red gate and a skipped deploy.
+  //
+  // A brand-new file is invisible to `git ls-files` until it is added, so scanning only the
+  // tracked set reports OK on exactly the file you are about to commit — and then CI, which
+  // sees it, goes red. That happened: a new test used a person's name as a fixture, this
+  // check passed because the file was not staged yet, and the push landed with a red gate
+  // and a skipped deploy. Untracked-and-not-ignored is precisely "what the repository will
+  // contain if you commit", which is what CI is going to scan.
+  //
+  // Ignored files stay out, which is what keeps agent scratch from swamping the output.
+  const ls = (args) => execSync(`git ${args}`, { cwd: ROOT, encoding: "buffer" })
+    .toString("utf8").split("\0").filter(Boolean);
+  const tracked = [...ls("ls-files -z"), ...ls("ls-files -o --exclude-standard -z")]
     // check.yml necessarily writes the words down; so does this file's own excludes.
-    .filter((f) => f !== ".github/workflows/check.yml" && f !== "scripts/check-local.mjs");
+    .filter((f) => f !== ".github/workflows/check.yml" && f !== "scripts/check-local.mjs")
+    .filter((f, i, a) => a.indexOf(f) === i);
 
   // grep exit codes: 0 = found (FAIL), 1 = clean (pass), >=2 = the scan itself broke.
   // Treating >=2 as a pass is how a renamed path turns a guard into a no-op.
@@ -83,7 +102,7 @@ function wordScan() {
   }
   if (rc === 0) throw new Error(`instance/product/personal word found:\n${out.trim()}`);
   if (rc >= 2) throw new Error(`the word scan failed to RUN (grep rc=${rc}) — that is a failure, never a pass:\n${out}`);
-  return `clean — ${tracked.length} tracked files, no instance/product words`;
+  return `clean — ${tracked.length} files (tracked + untracked), no instance/product words`;
 }
 
 let failed = 0;

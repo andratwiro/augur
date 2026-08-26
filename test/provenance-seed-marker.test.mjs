@@ -23,7 +23,7 @@ test("a platform write is recognised, by either the actor or the flag", () => {
 });
 
 test("a person's publish is never mistaken for one", () => {
-  for (const actor of ["rob", "ada", "", "seed", "augursomething", "AUGUR", "not-augur:seed"]) {
+  for (const actor of ["lovelace", "hopper", "", "seed", "augursomething", "AUGUR", "not-augur:seed"]) {
     assert.equal(isSeedSource({ actor }), false, `${JSON.stringify(actor)} was read as a platform write`);
   }
   assert.equal(isSeedSource(null), false);
@@ -45,12 +45,12 @@ test("THE SENTINEL CANNOT BE CLAIMED BY A REAL PUBLISH", () => {
 test("sanitizing does not refuse the publish, it just declines the claim", () => {
   // A person whose $USER genuinely starts with the prefix should still be able to publish.
   // Throwing would turn a naming collision into an outage.
-  assert.equal(sanitizeActor("augur:rob"), "rob");
+  assert.equal(sanitizeActor("augur:hopper"), "hopper");
   assert.equal(sanitizeActor("augur:"), "", "a bare prefix leaves no actor, which is the same as none");
 });
 
 test("ordinary actors pass through untouched", () => {
-  for (const a of ["rob", "ada.lovelace", "runner", "user with spaces"]) {
+  for (const a of ["hopper", "ada.lovelace", "runner", "user with spaces"]) {
     assert.equal(sanitizeActor(a), a);
   }
   assert.equal(sanitizeActor(undefined), "");
