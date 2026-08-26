@@ -55,14 +55,45 @@ jobs:
           GV_IDENTITY_PATH: ${{ github.workspace }}/identity.json
           GV_DEPLOY_CONFIG_PATH: ${{ github.workspace }}/deploy.config.json
 
-      # Pages carries the WORKER (_worker.js) — the code that serves the site — plus
-      # the chrome as an assets-mode fallback. Content is not here.
+      # ── ONE FRONT DOOR OR THE OTHER, chosen by whether this shell has a wrangler.toml ──
+      #
+      # An instance is on Pages or on a plain Worker, and this template answers both so a
+      # shell can move on its own schedule. The `hashFiles` conditional is the pattern this
+      # very file already uses for the realtime worker below.
+      #
+      # Keeping BOTH here is deliberate. `scripts/shell-lint.mjs` compares a shell's
+      # workflows to these templates LINE BY LINE, so a template that knew only about
+      # Workers would red-line every shell still on Pages — and with them the health check
+      # that reads shell-lint — until the last one migrated. One template, both worlds,
+      # and cutover is adding one file to a shell while rollback is deleting it.
+
+      # PAGES. Carries the WORKER (_worker.js) plus the chrome as an assets-mode fallback.
+      # Content is not here.
       - name: Deploy to Cloudflare Pages
+        if: ${{ hashFiles('wrangler.toml') == '' }}
         uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           command: pages deploy engine/dist --project-name=your-pages-project --branch=main
+
+      # PLAIN WORKER. The preflight runs FIRST and the deploy is gated on it, because the
+      # config it checks is the difference between a gated site and a public one: Workers
+      # serves a matching static asset BEFORE invoking the worker unless
+      # `run_worker_first = true`, and the asset directory holds __config/instance.json —
+      # the roster, with seed passwords. A deploy that skips this check and gets it wrong
+      # passes every test, answers the health canary "healthy", and serves the roster.
+      - name: Preflight the worker config
+        if: ${{ hashFiles('wrangler.toml') != '' }}
+        run: node engine/scripts/wrangler-preflight.mjs -c wrangler.toml
+
+      - name: Deploy the Worker
+        if: ${{ hashFiles('wrangler.toml') != '' }}
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: deploy --config wrangler.toml
 
       # The store's copy of the chrome, plus the instance config (identity + knobs)
       # the worker reads at runtime. --engine sets GV_ENGINE_ONLY itself, so it

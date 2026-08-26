@@ -47,8 +47,16 @@ import { __testables as W } from "../src/_worker.js";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(HERE, "..");
+// The DEPLOY entry and the module that holds the worker's globals are two different files
+// since the plain-Worker split: `ENTRY` is src/entry.js, a four-line export manifest with
+// no module scope of its own, and every binding this file exercises lives in the module it
+// imports. Looking the allowlist up by ENTRY silently returned nothing and reported every
+// real global as unlisted, which is a loud failure — but the same conflation in the other
+// direction (pointing the lint at _worker.js while the deploy bundles entry.js) would have
+// been a silent one, so keep the two names apart.
+const WORKER_MODULE = "src/_worker.js";
 const WORKER = readFileSync(join(ROOT, "src", "_worker.js"), "utf8");
-const WORKER_ALLOWED = ALLOWED[ENTRY];
+const WORKER_ALLOWED = ALLOWED[WORKER_MODULE];
 
 const report = (problems) => problems.map((p) => `${p.kind}:${p.name}`);
 const inWorker = (source, allowed = WORKER_ALLOWED) =>
@@ -386,6 +394,13 @@ test("each direction fires against the REAL worker, not only against a fixture",
 
 // ---- the graph: state one import away is state all the same -------------------------
 
+// These graph tests describe a SHAPE rooted at the worker itself, not today's deploy
+// entry — the walker's behaviour is what is under test, and src/entry.js is a four-line
+// re-export that would add a hop and nothing else. Named explicitly so the fixtures do
+// not silently follow a future entry rename. That the REAL graph starts at the real entry
+// is asserted separately, against the real repo, at the top of this file.
+const FAKE_ENTRY = "src/_worker.js";
+
 // A fake repo, so the graph tests describe a shape rather than today's file list.
 const fakeRepo = (files) => ({
   read: (p) => {
@@ -415,7 +430,7 @@ test("state moved one import away is caught — the hole this lint used to have"
     "src/_worker.js": 'import { s } from "./state.mjs";\n',
     "src/state.mjs": "export let PER_ISOLATE = new Map();\n",
   });
-  const { modules, problems } = checkGraph("/root", { read, allowed: { "src/_worker.js": {} } });
+  const { modules, problems } = checkGraph("/root", { read, entry: FAKE_ENTRY, allowed: { "src/_worker.js": {} } });
   assert.deepEqual(modules, ["src/_worker.js", "src/state.mjs"]);
   assert.deepEqual(
     problems.map((p) => `${p.module}:${p.kind}:${p.name}`),
@@ -432,6 +447,7 @@ test("a brand-new module allows nothing until somebody writes the claim down", (
   });
   const { problems } = checkGraph("/root", {
     read,
+    entry: FAKE_ENTRY,
     allowed: { "src/_worker.js": { TABLE: { kind: "frozen" } } },
   });
   assert.deepEqual(
@@ -444,6 +460,7 @@ test("a section outliving its module is reported, like a stale entry one level u
   const { read } = fakeRepo({ "src/_worker.js": "const TABLE = Object.freeze([]);\n" });
   const { problems } = checkGraph("/root", {
     read,
+    entry: FAKE_ENTRY,
     allowed: {
       "src/_worker.js": { TABLE: { kind: "frozen" } },
       "src/gone.mjs": { OLD: { kind: "frozen" } },
@@ -468,7 +485,7 @@ const quarantine = (entry, extraFiles = {}) => {
     "src/_worker.js": "let slot = null;\n",
     ...extraFiles,
   });
-  return checkGraph("/root", { read, allowed: { "src/_worker.js": { slot: entry } }, budget: 1 })
+  return checkGraph("/root", { read, entry: FAKE_ENTRY, allowed: { "src/_worker.js": { slot: entry } }, budget: 1 })
     .problems.map((p) => `${p.kind}:${p.name}`);
 };
 
@@ -491,7 +508,7 @@ test("the budget is exact — a slot added and a slot closed both have to move t
   const entry = { kind: "unkeyed", why: "one slot for the isolate", proof: "test/two-workspaces.test.mjs" };
   const { read } = fakeRepo({ "src/_worker.js": "let slot = null;\n", ...HARNESS });
   const at = (budget) =>
-    checkGraph("/root", { read, allowed: { "src/_worker.js": { slot: entry } }, budget })
+    checkGraph("/root", { read, entry: FAKE_ENTRY, allowed: { "src/_worker.js": { slot: entry } }, budget })
       .problems.map((p) => `${p.kind}:${p.name}`);
   assert.deepEqual(at(1), []);
   assert.deepEqual(at(0), ["budget:UNKEYED_BUDGET"], "adding a shared slot must not be free");

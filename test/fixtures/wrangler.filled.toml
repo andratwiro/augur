@@ -1,0 +1,30 @@
+# A FILLED copy of templates/shell/wrangler.example.toml, for `wrangler deploy --dry-run`
+# and for the preflight's own tests. The ids are placeholders: a dry run resolves bindings
+# by NAME and never contacts the account, which is the whole reason this fixture can live
+# in a public repo.
+#
+# `main` and `directory` are relative to THIS file. `main` climbs to the engine root; the
+# asset dir is the committed stub beside this file rather than the repo dist/, so the
+# preflight test does not depend on some other test file having run a build first. In a
+# real shell these read "engine/src/entry.js" and "engine/dist".
+name = "augur-fixture"
+main = "../../src/entry.js"
+compatibility_date = "2026-07-01"
+
+[assets]
+directory = "./dist"
+binding = "ASSETS"
+run_worker_first = true
+not_found_handling = "none"
+html_handling = "auto-trailing-slash"
+
+[[kv_namespaces]]
+binding = "COMMENTS"
+id = "0000000000000000000000000000beef"
+
+[[r2_buckets]]
+binding = "BUNDLES"
+bucket_name = "augur-fixture-bundles"
+
+[vars]
+GV_ASSET_SOURCE = "r2"

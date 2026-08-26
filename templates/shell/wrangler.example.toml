@@ -1,0 +1,103 @@
+# TEMPLATE — copy this into YOUR DEPLOY SHELL as wrangler.toml and fill it in.
+#
+# It is deliberately not a live wrangler.toml: a worker's name, its account, its KV
+# namespace and its R2 bucket belong to ONE instance, so the shared engine must not carry
+# them. `wrangler` ignores this filename, which also means a stray `npx wrangler` run
+# inside an engine clone cannot pick it up. Same pattern as realtime/wrangler.example.toml.
+#
+# It is hand-authored per shell rather than generated from deploy.config.json ON PURPOSE:
+# five of the six mandatory values below (worker name, account id, compatibility date, KV
+# namespace id, R2 bucket) have no source in any deploy.config.json today, so generating
+# it would mean inventing a config block, bumping the shell contract, and committing
+# account and namespace ids into shell repos — for a file each shell writes once.
+#
+#   npx wrangler deploy --dry-run -c wrangler.toml   # resolves every binding, ships nothing
+#   node engine/scripts/wrangler-preflight.mjs -c wrangler.toml
+#
+# ─────────────────────────────────────────────────────────────────────────────────────
+# ⛔ READ THIS BEFORE CHANGING [assets]. IT IS THE LOGIN GATE.
+#
+# Pages and Workers invert request precedence, and the inversion is silent.
+#
+#   Pages    runs _worker.js FIRST for every request; the worker decides what is public
+#            and falls through to the static asset only when it chooses to.
+#   Workers  serves a MATCHING STATIC ASSET FIRST and only invokes the worker on a miss —
+#            unless `run_worker_first = true`.
+#
+# `engine/dist` is the asset directory, and it contains `__config/instance.json`, which
+# carries the instance's user roster INCLUDING SEED PASSWORDS (build.js writes `users:
+# IDENTITY`, unstripped, and says so in its own comment). It also contains the admin page
+# and, in assets mode, every built page.
+#
+# So without `run_worker_first = true`, a deploy that passes every test in the engine and
+# answers a health check with "healthy" serves the roster, the admin panel and every gated
+# page to anyone who asks. That is not a hardening flag. It IS the gate.
+#
+# `scripts/wrangler-preflight.mjs` refuses to pass a config whose asset directory holds
+# __config/instance.json without it, and runs in the workflow that gates the deploy.
+# ─────────────────────────────────────────────────────────────────────────────────────
+
+name = "<your-instance>"                  # the Worker's name, e.g. augur-<instance>
+account_id = "<your-cloudflare-account-id>"
+main = "engine/src/entry.js"              # relative to THIS file, i.e. your shell's root
+compatibility_date = "2026-07-01"
+
+[assets]
+directory = "engine/dist"                 # what `node engine/build.js` emits
+binding = "ASSETS"                        # the worker reads its own config through this
+# The line the gate depends on. See the block above before touching it.
+run_worker_first = true
+# Stated explicitly rather than left to the default. "none" is what keeps the worker's own
+# `asset.status === 404` branches firing; "single-page-application" would answer every
+# unknown path with the index page at status 200, which is the bug engine/dist/404.html
+# exists to prevent.
+not_found_handling = "none"
+# /foo, /foo/ and /foo/index.html all resolve, which is what published prototype folders
+# rely on. Stated explicitly for the same reason as above.
+html_handling = "auto-trailing-slash"
+
+# Comments, pins, statuses, rosters, canvas boards, publish tokens. The SAME namespace the
+# Pages project binds as COMMENTS and the realtime worker binds as BOARD_KV — during a
+# migration both front doors read one store, which is what makes the cutover reversible.
+[[kv_namespaces]]
+binding = "COMMENTS"
+id = "<your-kv-namespace-id>"
+
+# The bundle store: content-addressed blobs plus per-space manifests. A live instance
+# serves published content from here, never from the asset directory, so an instance with
+# no BUNDLES binding is a site with nothing published in it.
+[[r2_buckets]]
+binding = "BUNDLES"
+bucket_name = "<your-r2-bucket>"
+
+[vars]
+# Bundle mode. Without this the worker falls back to assets mode and every published page
+# answers 404 while the site itself looks healthy.
+GV_ASSET_SOURCE = "r2"
+
+# NO tenantId HERE, on purpose. Which workspace a deployment serves already flows
+# deploy.config.json -> build.js -> dist/__config/instance.json -> resolveTenant(), pinned
+# to a single call site by scripts/one-tenant-resolver.mjs. A var would be a second source
+# of truth for the one value the whole isolation model is keyed on.
+#
+# NO SECRETS HERE EITHER — [vars] is plaintext in the repo. These go in with
+# `npx wrangler secret put <NAME> -c wrangler.toml`:
+#
+#   SESSION_SECRET         REQUIRED. Without it sessions degrade to an unkeyed digest,
+#                          silently, and anyone who knows an address can forge a cookie.
+#   RT_SHARED_SECRET       canvas multiplayer; the realtime worker fails closed without it
+#   MAIL_API_KEY           only if this instance sends mail (with MAIL_PROVIDER/MAIL_FROM)
+#   DELETE_DISPATCH_TOKEN  only if prototype-delete / roster-update dispatch to a repo
+#
+# And never PUBLISH_BOOTSTRAP_TOKEN on a live instance: it is compared as a bare string
+# and grants star-scope publish. The preflight refuses a config that names it.
+
+# The front door. A route attaches to a hostname that already has a proxied DNS record —
+# which a Pages custom domain is — and takes precedence over Pages on the same hostname,
+# so adding this is the cutover and deleting it is the rollback, in seconds, with no DNS
+# propagation and no certificate reissue. Keep the Pages project and its last deployment
+# until the new front door has been watched for a while.
+#
+# [[routes]]
+# pattern = "<your-site-host>/*"
+# zone_name = "<your-zone>"

@@ -182,7 +182,13 @@ import {
   TENANT_CACHE_WHOLE_METHODS,
 } from "../src/tenant-cache.mjs";
 
-export const ENTRY = "src/_worker.js";
+// The DEPLOY entry, which since the plain-Worker split is `src/entry.js` rather than the
+// worker itself. This constant decides what gets scanned — check.yml runs this lint with
+// no arguments on purpose — so it has to name the file wrangler's `main` points at, not
+// the file that happens to hold the fetch handler. A module reachable only from a new
+// entry would otherwise be silently unscanned, which is the escape by omission this lint
+// exists to catch. test/worker-entry.test.mjs pins it to the shell template's `main`.
+export const ENTRY = "src/entry.js";
 
 // The module that owns the one cache constructor. A `cache` entry is only believed in a
 // module that actually imports it from here — otherwise `tenantCache` is just a name
@@ -345,7 +351,13 @@ export function discoverModules(entryAbs, root, read = (p) => fs.readFileSync(p,
     if (seen.has(abs)) continue;
     const rel = path.relative(root, abs).split(path.sep).join("/");
     seen.set(abs, rel);
-    const source = read(abs);
+    // Comments are stripped BEFORE specifiers are matched: a commented-out import is not
+    // an import, and following one drags a module that nothing loads into the scan. The
+    // deploy entry documents its future Durable Object export as a commented line, which
+    // is exactly this case — the class is not in the graph until the line is real.
+    // `stripComments` is the conservative one (whole-line and block only), so it cannot
+    // swallow a live import that shares a line with something else.
+    const source = stripComments(read(abs));
     for (const m of source.matchAll(SPECIFIER)) {
       const next = resolveLocal(abs, m[1], read);
       if (next && !seen.has(next)) queue.push(next);

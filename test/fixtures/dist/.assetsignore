@@ -1,0 +1,7 @@
+# Mirrors what build.js emits into a real dist/. Committed so the preflight fixture is
+# self-contained: a test that depends on the repo's dist/ having been built by some other
+# test file is a test that passes or fails on run order.
+_worker.js
+*.mjs
+chrome/
+__manifests/

@@ -7293,6 +7293,31 @@ async function main() {
   await fs.copyFile(path.join(ROOT, "src", "mail.mjs"), path.join(DIST, "mail.mjs"));
   await fs.copyFile(path.join(ROOT, "src", "kv-codec.mjs"), path.join(DIST, "kv-codec.mjs"));
 
+  // ── .assetsignore — deploy code is not a public file ────────────────────────────────
+  // On Pages, `_worker.js` is a RESERVED NAME: Cloudflare runs it and never serves it. On
+  // a plain Worker, `dist` is an [assets] directory and every byte in it is a public URL
+  // by default, so the same file would be downloadable at /_worker.js — along with the
+  // five modules it imports. wrangler knows this well enough to refuse the deploy
+  // outright ("Uploading a Pages _worker.js file as an asset") until this file exists.
+  //
+  // It is emitted UNCONDITIONALLY, on both deploy paths, because `.assetsignore` is not
+  // one of Pages' reserved names, is excluded from every manifest below so no publish
+  // ever sees it, and is gated like anything else at serve time. One file, one meaning,
+  // no build flag that only one instance exercises.
+  //
+  // This does NOT replace `run_worker_first = true`. It keeps deploy code out of the
+  // asset bundle; what keeps __config/instance.json (the roster, with seed passwords) out
+  // of a stranger's hands is the worker running first. scripts/wrangler-preflight.mjs
+  // checks both, and neither substitutes for the other.
+  await fs.writeFile(path.join(DIST, ".assetsignore"), [
+    "# Emitted by build.js. Deploy code, not content — see the note at the write site.",
+    "_worker.js",
+    "*.mjs",
+    "chrome/",
+    "__manifests/",
+    "",
+  ].join("\n"), "utf8");
+
   // Public build stamp: /_build.json — {builtAt, engine:{sha}, spaces:{<id>:{sha}}}.
   // A space-repo collaborator cannot see this repo's CI, so this is their deploy
   // verification: curl it and compare their space's sha to `git rev-parse HEAD`.
@@ -7529,7 +7554,11 @@ async function main() {
     return out;
   }
   for (const rel of await walkDist(DIST, "", [])) {
-    if (rel === "_worker.js" || rel === "_build.json") continue;
+    // `.assetsignore` is deploy metadata read by wrangler at upload time, in the same
+    // class as _worker.js itself: never content, never served, never owned by a space.
+    // Leaving it in would also fail the GV_ENGINE_ONLY purity assertion, since it is not
+    // in ENGINE_CHROME and would land under the default space's manifest.
+    if (rel === "_worker.js" || rel === "_build.json" || rel === ".assetsignore") continue;
     if (rel.startsWith("__config/") || rel.startsWith("__manifests/")) continue;
     const sp = nonDefaultBases.find((b) => rel.startsWith(b.prefix));
     const owner = sp ? sp.id
