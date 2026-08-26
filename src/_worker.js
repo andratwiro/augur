@@ -3971,8 +3971,46 @@ async function publishApi(tctx, request, url, env) {
         .filter((f) => f && f.h)
         .map((f) => [f.h, Number(f.s) || 0])),
     ).reduce((n, b) => n + b, 0);
+    // ── per-file provenance, recorded at the only moment it is true ────────────
+    //
+    // `C-manifest-provenance`. Who last changed each file and when, stamped HERE — at
+    // commit — and carried forward untouched for every file whose bytes did not change.
+    //
+    // ⚠️ IT REPLACES A CLASS OF BUG, NOT A FEATURE. Provenance was DERIVED from `git log`
+    // at build time, and publishing keeps disturbing the evidence: on one day in August
+    // 2026 the same instance lost it three independent ways — a 76-poster mass commit reset
+    // every card to "edited now"; a build from a shallow clone credited the graft author
+    // with the entire site; and a reconcile-adoption laundered 169 pages' authorship into
+    // one collaborator. Each needed its own build.js guard, and every guard is a tell.
+    //
+    // ⚠️ AND IT DOES NOT STORE AN ADDRESS, which is a deliberate deviation from the plan
+    // item's `{author: who.label}`. `who.label` is an email. A manifest is read by more
+    // things than a comment thread is, and the engine already made this exact choice for
+    // messages: store `by: personId(email)`, a one-way hash, and resolve a name and a face
+    // at RENDER time from the roster. Do not "finish" this by putting the address in.
+    //
+    // ⏳ NOTHING RENDERS IT YET. build.js still derives dates and contributor chips from
+    // git, and it must keep doing so until the render moves — a card cannot read a stamp
+    // that is only assigned AFTER the build that draws it (`C-manifest-provenance`'s second
+    // half moves that read to the client, against the live manifest). What this buys today
+    // is that provenance starts ACCUMULATING truthfully from now, so the render move lands
+    // on real history instead of a flag day where every card says "unknown".
+    const editedAt = new Date().toISOString();
+    const stampedBy = who.label ? personId(who.label) : null;
+    const priorFiles = (cur && cur.files) || {};
+    const stampedFiles = {};
+    for (const [p2, f] of Object.entries(m.files || {})) {
+      const prior = priorFiles[p2];
+      const unchanged = prior && f && prior.h === f.h;
+      // Unchanged bytes keep whatever the last publish recorded — including nothing, for a
+      // file that predates this field. Absent is the honest answer for those, and the
+      // renderer's fallback, not a stamp invented at the first publish that touches nothing.
+      stampedFiles[p2] = unchanged
+        ? { ...f, ...(prior.by ? { by: prior.by } : {}), ...(prior.editedAt ? { editedAt: prior.editedAt } : {}) }
+        : { ...f, ...(stampedBy ? { by: stampedBy } : {}), editedAt };
+    }
     const out = {
-      ...m, version, bytesReferenced,
+      ...m, files: stampedFiles, version, bytesReferenced,
       publishedAt: new Date().toISOString(), publishedBy: who.label || "",
     };
     await env.BUNDLES.put(`spaces/${spaceId}/versions/${version}.json`, JSON.stringify(out));

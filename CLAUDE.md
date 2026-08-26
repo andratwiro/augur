@@ -180,6 +180,21 @@ per-isolate cache) and seals `/__config/*` from external requests. Build.js also
 emits `dist/__manifests/<id>.json` per space (+ pseudo-space `_engine` for shared
 chrome): `{files: {path → {sha256, mime, size}}}` + the space's routing fragment.
 
+**Per-file provenance is RECORDED at commit, not derived from git.** The commit
+handler stamps `{by, editedAt}` on every file whose bytes changed and carries the
+previous stamp forward untouched for every file that did not — so a publish
+touching one page cannot restamp the other five hundred. `by` is `personId(email)`,
+the same one-way hash messages carry, and **never an address**: a manifest is read
+by more things than a comment thread is. This replaces a class of bug rather than
+adding a feature — provenance used to come from `git log` and publishing keeps
+disturbing that evidence (a mass commit, a shallow clone's graft author, a
+reconcile-adoption; each needed its own build.js guard, and every guard was a
+tell). ⏳ **Nothing renders it yet and build.js still derives from git**, because a
+card cannot read a stamp assigned AFTER the build that draws it; moving the render
+to a client-side read against the live manifest is `C-manifest-provenance`'s
+second half. A file that predates the field stays UNSTAMPED — absent is the honest
+answer, and inventing one would tell the same lie the derivation told.
+
 **Direct publish (the bundle store).** With `GV_ASSET_SOURCE=r2` + a `BUNDLES` R2
 binding, the worker serves those manifests from content-addressed R2 blobs and takes
 publishes over `/__publish/<space>/{check,blob,commit,rollback}` (per-space bearer
