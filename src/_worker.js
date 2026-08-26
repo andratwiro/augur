@@ -5090,7 +5090,11 @@ function kvOverlay(kv) {
       await this.set(family, scope, k, after);
       return after;
     },
-    async set(family, scope, k, v) {
+    // `owner` is accepted and dropped. The KV backing has nowhere to put a per-row column
+    // — a map document has no rows — and the alternative, a parallel owner document, is a
+    // second record of the same thing that drifts. Ownership arrives with the workspace
+    // object, like every other new column in this phase.
+    async set(family, scope, k, v, _owner) {
       if (overlayLayout(family) === "keyed") {
         const key = overlayKvKey(family, scope, k);
         if (v === null || v === undefined) await kv.delete(key);
@@ -5102,7 +5106,7 @@ function kvOverlay(kv) {
       await kv.put(overlayKvKey(family, scope), JSON.stringify(map));
       return map;
     },
-    async insert(family, scope, k, v) {
+    async insert(family, scope, k, v, _owner) {
       // Read-then-write, which is what it has always been: KV has no conditional put, so
       // two creates of one key can both pass the check. Named rather than hidden — the DO
       // backing below is where this stops being true.
@@ -5166,11 +5170,13 @@ function doOverlay(stub, tenantId) {
       }
       throw new Error(`overlay: ${family}/${k} kept changing under ${OVERLAY_CAS_ATTEMPTS} attempts`);
     },
-    set: async (family, scope, k, v) => (await call("set", { family, scope, k, v })).map,
-    insert: async (family, scope, k, v) => {
-      const r = await call("insert", { family, scope, k, v });
+    set: async (family, scope, k, v, owner) => (await call("set", { family, scope, k, v, owner })).map,
+    insert: async (family, scope, k, v, owner) => {
+      const r = await call("insert", { family, scope, k, v, owner });
       return { inserted: r.inserted, map: r.map };
     },
+    /** Who owns a row. Nothing reads this to decide anything yet — see B-resource-authz-hook. */
+    owner: async (family, scope, k) => call("owner", { family, scope, k }),
     replace: async (family, scope, map) => (await call("replace", { family, scope, map })).map,
   };
 }
@@ -5481,7 +5487,7 @@ const quotaRefusal = (what, verdict) => jsonResponse({
 const STATUS_KEY = "statuses";
 const VALID_STATUS = Object.freeze({ "in-progress": 1, "dev-ready": 1, ignore: 1, reviewed: 1 });
 
-async function statusApi(tctx, request, url, env) {
+async function statusApi(tctx, request, url, env, me) {
   const store = overlayFor(env, tctx);
   if (!store) return jsonResponse({ map: {}, warning: "no-kv-binding" });
 
@@ -5494,7 +5500,10 @@ async function statusApi(tctx, request, url, env) {
     const key = clamp(op && op.key, 300);
     const status = clamp(op && op.status, 40);
     if (!key || !VALID_STATUS[status]) return jsonResponse({ error: "bad-input" }, 400);
-    return jsonResponse({ map: await store.set("statuses", "", key, status) });
+    // Whoever first set a status on a prototype owns that row. Stamped from the session
+    // the gate already resolved, never from the body — this route is signed-in-only, so
+    // there is always one.
+    return jsonResponse({ map: await store.set("statuses", "", key, status, me ? me.email : null) });
   }
   return jsonResponse({ error: "method-not-allowed" }, 405);
 }
@@ -5709,7 +5718,8 @@ async function canvasesApi(tctx, request, url, env, me) {
     // creates of one name both pass the check and the second takes the first's board.
     // On the DO backing that is one statement and the loser is told; on KV it is the
     // read-then-write it has always been, and the guard above is all there is.
-    const created = await store.insert("canvases", "", path, { name, by: me ? me.email : "", t: Date.now() });
+    const created = await store.insert("canvases", "", path,
+      { name, by: me ? me.email : "", t: Date.now() }, me ? me.email : null);
     if (!created.inserted) return jsonResponse({ error: "exists", path }, 409);
     bustCanvasRegistry(tenantId);
     return jsonResponse({ map: created.map, path });
@@ -5871,7 +5881,7 @@ async function virtualCanvas(tctx, request, env, url) {
 const BOARD_PREFIX = "board:";
 const BOARD_MAX_BYTES = 20 * 1024 * 1024; // under KV's 25MB per-value ceiling (inline images)
 
-async function boardApi(tctx, request, url, env) {
+async function boardApi(tctx, request, url, env, me) {
   const store = overlayFor(env, tctx);
   if (!store) return jsonResponse({ doc: null, warning: "no-kv-binding" });
   const path = clamp(url.searchParams.get("path"), 600);
@@ -5899,7 +5909,12 @@ async function boardApi(tctx, request, url, env) {
     // canvas, reconciled in the realtime room before it ever gets here; two PUTs merged
     // server-side would produce a canvas neither person drew. The revision machinery the
     // comment threads use is exactly what must NOT be applied to this.
-    await store.set("boards", "", path, doc);
+    //
+    // The OWNER is stamped from the session and only on creation — see the overlay schema.
+    // This route is unauthenticated by design, so an anonymous save leaves it absent rather
+    // than inventing one; what it must never do is take an address from the body, which is
+    // why nothing here reads one.
+    await store.set("boards", "", path, doc, me ? me.email : null);
     return jsonResponse({ ok: true });
   }
   return jsonResponse({ error: "method-not-allowed" }, 405);
@@ -7019,7 +7034,7 @@ async function handleRequest(request, env, ctx, url, trace) {
       if (!authed) return jsonResponse({ error: "unauthorized" }, 401);
       const denied = viewerWriteRefusal(request, url, me, "status", tctx.SPACES);
       if (denied) return denied;
-      return statusApi(tctx, request, url, env);
+      return statusApi(tctx, request, url, env, me);
     }
     if (url.pathname === "/__pins") {
       if (!authed) return jsonResponse({ error: "unauthorized" }, 401);
@@ -7059,7 +7074,7 @@ async function handleRequest(request, env, ctx, url, trace) {
     // Canvas board docs follow the COMMENTS model, not the status/pins model: a canvas is a
     // PUBLISHED prototype (public, obscure share link), so its board must load & save without a
     // login, exactly like /__review/api. Writes are full-state but size-capped in boardApi.
-    if (url.pathname === "/__board") return boardApi(tctx, request, url, env);
+    if (url.pathname === "/__board") return boardApi(tctx, request, url, env, me);
     // Board images live OUTSIDE the doc (content-hashed, immutable) — same public model as
     // /__board: the hash is the credential. Reads stay public (a public board renders its
     // images for anyone); UPLOADS require a signed-in user in identity mode, so the KV

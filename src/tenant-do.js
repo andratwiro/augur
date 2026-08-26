@@ -162,6 +162,18 @@ export const TENANT_SCHEMA = Object.freeze([
   // read, changed and written back by the worker, so per-key rows alone do not help: two
   // edits to ONE key still lose each other. The writer sends back the rev it read, the
   // update matches on it, and a mismatch is a retry rather than a silent overwrite.
+  //
+  // `owner` and `acl` are the DATA BASIS for per-resource permissions and nothing else —
+  // nothing reads them to decide anything yet, deliberately. `owner` is stamped from the
+  // authenticated caller AT ROW CREATION and never from a request body, and never moved by
+  // a later writer: a board is owned by whoever made it, not by whoever last saved it.
+  // `acl` is a JSON email→role map; absent means "no per-resource restriction, the
+  // workspace role decides", which is the narrowing-only default the rest of the
+  // permission model already uses.
+  //
+  // They are here rather than in a table of their own because the alternative is a join on
+  // every read of every board, comment thread and status row for a check that does not
+  // exist yet. Two nullable columns cost nothing until something reads them.
   `CREATE TABLE IF NOT EXISTS overlay (
      family TEXT NOT NULL,
      scope  TEXT NOT NULL DEFAULT '',
@@ -169,6 +181,8 @@ export const TENANT_SCHEMA = Object.freeze([
      v      TEXT NOT NULL,
      rev    INTEGER NOT NULL DEFAULT 0,
      at     TEXT NOT NULL,
+     owner  TEXT,
+     acl    TEXT,
      PRIMARY KEY (family, scope, k)
    )`,
 
@@ -516,18 +530,35 @@ export class TenantStore {
    * cannot lose each other, where the KV document they replace lost one every time they
    * landed together.
    */
-  overlaySet(family, scope, k, v, at) {
+  overlaySet(family, scope, k, v, at, owner) {
     if (v === null || v === undefined) {
       this.sql.exec(`DELETE FROM overlay WHERE family = ? AND scope = ? AND k = ?`,
         String(family), String(scope), String(k));
       return null;
     }
+    // The owner is set on INSERT and left alone on UPDATE. Whoever made a board owns it;
+    // whoever saved it last does not, and `COALESCE` is what makes that true without the
+    // caller having to know whether the row already existed.
     this.sql.exec(
-      `INSERT INTO overlay (family, scope, k, v, at) VALUES (?,?,?,?,?)
-         ON CONFLICT(family, scope, k) DO UPDATE SET v = excluded.v, at = excluded.at`,
-      String(family), String(scope), String(k), JSON.stringify(v), at || new Date().toISOString(),
+      `INSERT INTO overlay (family, scope, k, v, at, owner) VALUES (?1,?2,?3,?4,?5,?6)
+         ON CONFLICT(family, scope, k) DO UPDATE SET
+           v = excluded.v, at = excluded.at, owner = COALESCE(overlay.owner, ?6)`,
+      String(family), String(scope), String(k), JSON.stringify(v),
+      at || new Date().toISOString(), owner ? String(owner) : null,
     );
     return v;
+  }
+
+  /** Who owns a row, and any per-resource ACL on it. Read by nothing yet, on purpose. */
+  overlayOwner(family, scope, k) {
+    const rows = [...this.sql.exec(
+      `SELECT owner, acl FROM overlay WHERE family = ? AND scope = ? AND k = ?`,
+      String(family), String(scope), String(k),
+    )];
+    if (!rows.length) return null;
+    let acl = null;
+    try { acl = rows[0].acl ? JSON.parse(rows[0].acl) : null; } catch (e) { acl = null; }
+    return { owner: rows[0].owner || null, acl };
   }
 
   /** One key's value AND the revision it is at, so a caller can write it back safely. */
@@ -571,12 +602,13 @@ export class TenantStore {
    * of one name both pass the check and the second silently takes the first's board. One
    * statement in one object cannot.
    */
-  overlayInsert(family, scope, k, v, at) {
+  overlayInsert(family, scope, k, v, at, owner) {
     const rows = [...this.sql.exec(
-      `INSERT INTO overlay (family, scope, k, v, at) VALUES (?,?,?,?,?)
+      `INSERT INTO overlay (family, scope, k, v, at, owner) VALUES (?,?,?,?,?,?)
          ON CONFLICT(family, scope, k) DO NOTHING
        RETURNING k`,
-      String(family), String(scope), String(k), JSON.stringify(v), at || new Date().toISOString(),
+      String(family), String(scope), String(k), JSON.stringify(v),
+      at || new Date().toISOString(), owner ? String(owner) : null,
     )];
     return rows.length > 0;
   }
@@ -728,13 +760,16 @@ export class TenantStore {
           return Response.json({ map: this.overlayRead(body.family, scope) });
         case "/overlay/set":
           if (!body.k) return Response.json({ error: "no-key" }, { status: 400 });
-          this.overlaySet(body.family, scope, body.k, body.v === undefined ? null : body.v);
+          this.overlaySet(body.family, scope, body.k, body.v === undefined ? null : body.v, null, body.owner);
           return Response.json({ map: this.overlayRead(body.family, scope) });
         case "/overlay/insert": {
           if (!body.k) return Response.json({ error: "no-key" }, { status: 400 });
-          const inserted = this.overlayInsert(body.family, scope, body.k, body.v);
+          const inserted = this.overlayInsert(body.family, scope, body.k, body.v, null, body.owner);
           return Response.json({ inserted, map: this.overlayRead(body.family, scope) });
         }
+        case "/overlay/owner":
+          if (!body.k) return Response.json({ error: "no-key" }, { status: 400 });
+          return Response.json(this.overlayOwner(body.family, scope, body.k) || { owner: null, acl: null });
         case "/overlay/read-rev":
           if (!body.k) return Response.json({ error: "no-key" }, { status: 400 });
           return Response.json(this.overlayReadRev(body.family, scope, body.k));

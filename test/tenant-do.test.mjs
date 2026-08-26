@@ -186,8 +186,8 @@ test("the store exposes no read or write verb it does not yet need", () => {
   assert.deepEqual(names.sort(), [
     "bumpCounter", "fetch", "importOverlay", "init", "isProvisioned", "members",
     "nextPublishVersion",
-    "overlayCas", "overlayInsert", "overlayRead", "overlayReadRev", "overlayReplace",
-    "overlaySet", "provision",
+    "overlayCas", "overlayInsert", "overlayOwner", "overlayRead", "overlayReadRev",
+    "overlayReplace", "overlaySet", "provision",
     "quotas", "readCounter", "schemaVersion", "sessionKey", "sql", "usersActive", "workspaceId",
   ]);
 });
