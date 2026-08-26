@@ -7,6 +7,10 @@ too.
 
 ## What the MIT licence does not grant
 
+These are **unregistered** marks. That is what is true today and it is what this page
+claims — no more, because claiming a registration you do not hold is a misrepresentation,
+and no less, because an unregistered mark is still a mark.
+
 **The name.** "Augur", used as the name of a product, a service, a company or a domain.
 
 **The marks.** `brand/augur-mark.svg`, `brand/augur-icon.svg`, `brand/augur-eye.svg`, and
@@ -56,6 +60,10 @@ question unanswerable.
 ## Asking
 
 Open an issue on the repository. There is no form and no fee.
+
+## In short
+
+Take the code. Leave the name.
 
 ---
 
