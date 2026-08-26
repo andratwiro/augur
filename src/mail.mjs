@@ -211,11 +211,11 @@ export const TEMPLATES = Object.freeze({
     ];
     return {
       subject: "Confirm your email address",
-      text: textBody({ lines, link: v.link, footer: "If you didn't ask for this, ignore this message — nothing was created." }),
+      text: textBody({ lines, link: v.link, footer: "If you didn't ask for this, ignore this message. Nothing was created." }),
       html: htmlShell({
         heading: "Confirm your email address",
         lines, link: v.link, action: "Confirm address",
-        footer: "If you didn't ask for this, ignore this message — nothing was created.",
+        footer: "If you didn't ask for this, ignore this message. Nothing was created.",
       }),
     };
   },
@@ -251,11 +251,11 @@ export const TEMPLATES = Object.freeze({
     ];
     return {
       subject: `Set a new password for ${str(v.workspace) || "your account"}`,
-      text: textBody({ lines, link: v.link, footer: "If you didn't expect this, tell whoever runs the site — someone with admin access did it." }),
+      text: textBody({ lines, link: v.link, footer: "If you didn't expect this, tell whoever runs the site. Someone with admin access did it." }),
       html: htmlShell({
         heading: "Set a new password",
         lines, link: v.link, action: "Choose a new password",
-        footer: "If you didn't expect this, tell whoever runs the site — someone with admin access did it.",
+        footer: "If you didn't expect this, tell whoever runs the site. Someone with admin access did it.",
       }),
     };
   },
@@ -490,7 +490,7 @@ export async function sendMail(env, message = {}, opts = {}) {
   const driver = DRIVERS[cfg.provider];
   if (!driver) {
     return { ok: false, reason: "misconfigured",
-      detail: `unknown MAIL_PROVIDER "${cfg.provider}" — known drivers: ${Object.keys(DRIVERS).join(", ")}` };
+      detail: `unknown MAIL_PROVIDER "${cfg.provider}". Known drivers: ${Object.keys(DRIVERS).join(", ")}` };
   }
   const missing = driver.missing(cfg).concat(cfg.from.email ? [] : ["MAIL_FROM"]);
   if (missing.length) {
@@ -582,7 +582,7 @@ export function mailNotice(result, to) {
       }
     }
     case "misconfigured": return `Email is switched on but not finished: ${result.detail}. Send the link yourself.`;
-    case "bad-recipient": return "Not emailed — that address isn't valid. Send the link yourself.";
+    case "bad-recipient": return "Not emailed. That address isn't valid. Send the link yourself.";
     default: return `Couldn't email them (${result.detail || result.reason}). Send the link yourself.`;
   }
 }

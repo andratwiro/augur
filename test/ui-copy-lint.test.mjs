@@ -125,4 +125,5 @@ test("the real engine's empty states are within one paragraph and the word ceili
   const out = execFileSync(process.execPath, [SCRIPT, ENGINE], { encoding: "utf8" });
   assert.match(out, /OK/);
   assert.match(out, /8 empty state\(s\)/); // a dropped surface is a finding, not a pass
+  assert.match(out, /[1-9]\d* mail string\(s\)/); // a renamed mail file must not read as clean
 });

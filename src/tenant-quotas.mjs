@@ -71,6 +71,11 @@ export const PLANS = Object.freeze({
     rtConcurrentRooms: 5,
     // Wall-clock minutes those rooms may stay awake in a month. The cap that actually
     // corresponds to money; the concurrency one above just stops a single burst.
+    // ⚠️ 1000 IS A PLACEHOLDER STANDING IN FOR A MEASUREMENT, not a number anybody
+    // chose. Nobody knows what a canvas session costs in Durable Object wall-clock, so
+    // this one is a guess wearing a round number: read it as unknown rather than as
+    // agreed. B-rt-do-minutes-measure instruments a real board and sets it from the
+    // result.
     rtMonthlyDoMinutes: 1000,
   }),
   paid: Object.freeze({

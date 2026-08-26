@@ -18,9 +18,20 @@
  * Truth is still a review question, and the Tokens renderer carries a comment saying so
  * for the three readers who land on its empty branch.
  *
- * WHAT IT READS. The `emptyState(...)` call sites and the `addHint:` strings in build.js.
- * Those are a small, findable, closed set, and they are the copy a person meets on a
- * blank workspace.
+ * WHAT IT READS. Two closed sets. The `emptyState(...)` call sites and the `addHint:`
+ * strings in build.js, which are the copy a person meets on a blank workspace. And the
+ * copy-bearing fields of src/mail.mjs — `subject:`, `footer:`, `detail:`, `message:` and
+ * every string a function returns — which are the copy a person meets in their inbox and
+ * the copy an operator meets beside the invite link. The mail file was written after this
+ * guard and so was never in front of it. That is the failure to watch for: a copy surface
+ * this file does not name is a copy surface nothing checks.
+ *
+ * THE MAIL EXTRACTOR IS FIELD-SHAPED, NOT A PARSER, AND THAT IS THE SAFE CHOICE. mail.mjs
+ * holds a regex containing a quote character and comments full of apostrophes, so a
+ * hand-rolled string tokenizer desynchronises on it and starts reporting a developer's
+ * prose as a user's — a wrong scan is worse than a narrow one. Only the DASH rule is
+ * applied there: the semicolon rule would fire on the inline CSS in the HTML mail shell,
+ * which is markup, not writing.
  *
  * Run: node scripts/ui-copy-lint.mjs [ROOT]   (exit 1 on any finding)
  */
@@ -83,6 +94,29 @@ function addHints(src) {
   return out;
 }
 
+/** The copy-bearing fields of src/mail.mjs, with their line numbers. A `subject:`,
+ *  `footer:`, `detail:` or `message:` key followed by a literal, and every literal a
+ *  function returns. No comment in that file contains either shape, so nothing here needs
+ *  a parser and nothing here mistakes a developer's sentence for a user's. */
+const LIT = String.raw`("(?:[^"\\]|\\.)*"|\x60(?:[^\x60\\]|\\.)*\x60)`;
+const MAIL_FIELDS = [
+  new RegExp(String.raw`\b(?:subject|footer|detail|message):\s*` + LIT, "g"),
+  new RegExp(String.raw`\breturn\s+` + LIT + String.raw`\s*;`, "g"),
+];
+function mailCopy(src) {
+  const out = [], seen = new Set();
+  for (const re of MAIL_FIELDS) {
+    for (const m of src.matchAll(re)) {
+      const line = src.slice(0, m.index).split("\n").length;
+      const key = line + "|" + m[1];
+      if (seen.has(key)) continue;
+      seen.add(key);
+      out.push({ line, text: m[1].slice(1, -1) });
+    }
+  }
+  return out.sort((a, b) => a.line - b.line);
+}
+
 const stripTags = (s) => s.replace(/<[^>]+>/g, " ").replace(/&[a-z]+;/gi, " ").replace(/\s+/g, " ").trim();
 const words = (s) => stripTags(s).split(/\s+/).filter(Boolean).length;
 
@@ -101,7 +135,7 @@ const TICS = [
 ];
 
 const findings = [];
-const push = (line, what, detail, text) => findings.push({ line, what, detail, text });
+const push = (line, what, detail, text, file = "build.js") => findings.push({ line, what, detail, text, file });
 
 const src = fs.readFileSync(BUILD, "utf8");
 
@@ -127,6 +161,25 @@ for (const h of addHints(src)) {
   }
 }
 
+// ── the second surface: the mail a person receives, and the notice an operator reads ──
+const MAIL = path.join(ROOT, "src", "mail.mjs");
+const DASH = TICS[0];
+let mailRead = 0;
+if (fs.existsSync(MAIL)) {
+  const msrc = fs.readFileSync(MAIL, "utf8");
+  const strings = mailCopy(msrc);
+  mailRead = strings.length;
+  // Same refusal as below, for the same reason: a scan that found nothing because it
+  // looked at nothing is the failure this file exists to prevent.
+  if (!mailRead) {
+    console.log("ui-copy-lint: FAILED — src/mail.mjs exists but no subject/footer/detail/return copy was found in it. The extractor is broken, not the copy.");
+    process.exit(1);
+  }
+  for (const s of strings) {
+    if (DASH[0].test(s.text)) push(s.line, "claudism", DASH[1], s.text.slice(0, 120), "src/mail.mjs");
+  }
+}
+
 // A guard that finds nothing because it LOOKED at nothing is the failure mode this whole
 // file exists to prevent, so say what was read and refuse to pass on an empty scan.
 const scanned = emptyStateCalls(src).length;
@@ -136,11 +189,11 @@ if (!scanned) {
 }
 
 if (!findings.length) {
-  console.log(`ui-copy-lint: OK — ${scanned} empty state(s) and ${addHints(src).length} tier hint(s) read, all within one paragraph and ${MAX_WORDS} words`);
+  console.log(`ui-copy-lint: OK — ${scanned} empty state(s), ${addHints(src).length} tier hint(s) and ${mailRead} mail string(s) read, all within one paragraph and ${MAX_WORDS} words`);
   process.exit(0);
 }
 for (const f of findings) {
-  console.log(`build.js:${f.line}  [${f.what}]`);
+  console.log(`${f.file}:${f.line}  [${f.what}]`);
   console.log(`    ${f.detail}`);
   console.log(`    ${f.text}`);
 }
