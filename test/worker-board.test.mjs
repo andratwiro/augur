@@ -123,8 +123,12 @@ test("with no KV binding the board answers a warning rather than throwing", asyn
 // ---- canvasesApi: the created-canvas registry ------------------------------
 
 const canvasesUrl = new URL("https://example.test/__canvases");
+// The workspace the registry belongs to. The shadow check ("does a real file already
+// serve this URL?") reads one workspace's published content, so the fixture names one
+// rather than leaving the answer to whatever the isolate last cached.
+const TENANT = "workspace-under-test";
 const create = (kv, body, shipped) =>
-  W.canvasesApi(post(canvasesUrl, body), canvasesUrl, envWith(kv, shipped), ME);
+  W.canvasesApi(TENANT, post(canvasesUrl, body), canvasesUrl, envWith(kv, shipped), ME);
 
 test("creating a canvas slugs the name and registers it under the dir", async () => {
   const kv = memKV();
@@ -221,15 +225,15 @@ test("removing an unregistered path is a 404", async () => {
 test("GET returns the whole registry map", async () => {
   const kv = memKV();
   await create(kv, { dir: "/x/", name: "One" });
-  const res = await W.canvasesApi(new Request(canvasesUrl), canvasesUrl, envWith(kv), ME);
+  const res = await W.canvasesApi(TENANT, new Request(canvasesUrl), canvasesUrl, envWith(kv), ME);
   assert.deepEqual(Object.keys((await res.json()).map), ["/x/one/"]);
 });
 
 test("canvasesApi answers 405 to other methods and warns with no KV", async () => {
   const kv = memKV();
   const del = new Request(canvasesUrl, { method: "DELETE" });
-  assert.equal((await W.canvasesApi(del, canvasesUrl, envWith(kv), ME)).status, 405);
-  const res = await W.canvasesApi(new Request(canvasesUrl), canvasesUrl, {}, ME);
+  assert.equal((await W.canvasesApi(TENANT, del, canvasesUrl, envWith(kv), ME)).status, 405);
+  const res = await W.canvasesApi(TENANT, new Request(canvasesUrl), canvasesUrl, {}, ME);
   assert.deepEqual(await res.json(), { map: {}, warning: "no-kv-binding" });
 });
 

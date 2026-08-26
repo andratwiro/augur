@@ -496,7 +496,7 @@ async function loadTenantContext(tenantId, env, { prev = null, forced = false } 
     try {
       const [instObj, manifests] = await Promise.all([
         env.BUNDLES.get("config/instance.json"),
-        loadManifests(env, true),
+        loadManifests(tenantId, env, true),
       ]);
       if (instObj) next = withTenantFields(next, instanceFields(JSON.parse(await instObj.text())));
       next = withTenantFields(next, derivedRoutingFields(manifests, next.SPACE_ICONS));
@@ -697,13 +697,17 @@ const ROSTER_TTL_MS = 60_000;
 let rosterReadAt = 0;
 let rosterCache = null;
 // Test hooks: the cadence above is timing state a test can't reach otherwise.
-function __setConfigTestState({ cfgAt: c, rosterReadAt: r, mcpHostAllowlist: m } = {}) {
+function __setConfigTestState({ cfgAt: c, rosterReadAt: r, mcpHostAllowlist: m, manifests, storage } = {}) {
   if (c !== undefined) cfgAt = c;
   if (r !== undefined) { rosterReadAt = r; if (!r) rosterCache = null; }
   // The proxy's derived host lists, back to cold. Falsy clears; the Map is keyed by
   // workspace, so a case that does not clear it is asserting about whatever the previous
   // case resolved.
   if (m !== undefined && !m) mcpHostAllowlist.clear();
+  // The two bundle-store caches, same rule: both are keyed by workspace, so a case that
+  // leaves them warm is asserting about the previous case's store.
+  if (manifests !== undefined && !manifests) MANIFESTS.clear();
+  if (storage !== undefined && !storage) STORAGE_CACHE.clear();
 }
 // The roster this isolate last loaded, out of the context rather than out of a module
 // binding — the cadence tests need to see what the config tick settled on, and there is
@@ -1969,10 +1973,53 @@ const INLINE_MAX_BYTES = 1_000_000;
 // client's next publish attempt a self-update nudge even without a hard floor.
 const PUBLISH_PROTOCOL = 5;
 
-let MANIFESTS = { at: 0, spaces: {}, etags: {} };
-async function loadManifests(env, force) {
-  if (!force && Date.now() - MANIFESTS.at < 1500) return MANIFESTS.spaces;
-  MANIFESTS.at = Date.now();
+// The live content manifests, per workspace.
+//
+// ⚠️ KEYED BY WORKSPACE, and of every cache in this file this is the one whose value IS
+// a workspace's published content: the file table every served byte is resolved through,
+// and the routing fragment the gate is derived from. A single slot with one `at` stamp
+// answers the first workspace to warm it and then hands that answer to every workspace
+// behind it for the rest of the tick — a neighbour's pages at this workspace's URLs, and
+// a neighbour's public prefixes deciding this workspace's gate. Nothing in an era with
+// one workspace can observe that, because the one answer is simply correct.
+//
+// The etag shortcut inside the value has the same shape one level down. It is keyed by
+// SPACE id, and two workspaces may each publish a space under the same id, so a shared
+// entry would let one workspace's parsed manifest be handed to the other on an etag
+// match. Keying the container by workspace closes both at once: `cur` below is this
+// workspace's own previous view and nothing else's.
+//
+// BOUNDED like the tenant context cache and the proxy allowlist, for the same reason and
+// with the same safe direction: an isolate serving many workspaces would otherwise hold
+// every manifest it ever parsed, and an evicted workspace re-lists and re-parses its own
+// store. Eviction costs a read; it can never answer with someone else's content.
+const MANIFEST_CACHE_MAX = 256;
+const MANIFESTS = new Map(); // tenantId -> { at, spaces, etags }
+
+// Delete-then-set so insertion order is recency order and the first key is the eviction
+// victim — the same idiom the proxy allowlist uses.
+function touchManifests(tenantId, entry) {
+  MANIFESTS.delete(tenantId);
+  MANIFESTS.set(tenantId, entry);
+  while (MANIFESTS.size > MANIFEST_CACHE_MAX) MANIFESTS.delete(MANIFESTS.keys().next().value);
+  return entry;
+}
+
+// A write handler making its own publish visible on the very next request, for ITS
+// workspace. The parsed view is KEPT: busting asks for a re-read, it does not blank what
+// this workspace is serving in the meantime.
+function bustManifests(tenantId) {
+  const e = MANIFESTS.get(tenantId);
+  if (e) e.at = 0;
+}
+
+async function loadManifests(tenantId, env, force) {
+  const cur = MANIFESTS.get(tenantId) || { at: 0, spaces: {}, etags: {} };
+  if (!force && Date.now() - cur.at < 1500) return cur.spaces;
+  // Stamp FIRST, and carry the last good view forward on the new entry: a failing read
+  // retries on the next tick rather than stampeding the store, and a concurrent request
+  // reading mid-load still gets this workspace's previous manifests.
+  const entry = touchManifests(tenantId, { at: Date.now(), spaces: cur.spaces, etags: cur.etags });
   try {
     const list = await env.BUNDLES.list({ prefix: "spaces/", delimiter: "/" });
     const ids = (list.delimitedPrefixes || []).map((p) => p.slice("spaces/".length, -1));
@@ -1987,8 +2034,8 @@ async function loadManifests(env, force) {
       const key = `spaces/${id}/manifest.json`;
       const head = env.BUNDLES.head ? await env.BUNDLES.head(key) : null;
       const etag = head && (head.etag || head.httpEtag);
-      if (etag && MANIFESTS.etags[id] === etag && MANIFESTS.spaces[id]) {
-        out[id] = MANIFESTS.spaces[id];
+      if (etag && cur.etags[id] === etag && cur.spaces[id]) {
+        out[id] = cur.spaces[id];
         etags[id] = etag;
         return;
       }
@@ -1997,10 +2044,10 @@ async function loadManifests(env, force) {
       out[id] = JSON.parse(await obj.text());
       etags[id] = etag || (obj.etag || obj.httpEtag) || "";
     }));
-    MANIFESTS.spaces = out;
-    MANIFESTS.etags = etags;
+    entry.spaces = out;
+    entry.etags = etags;
   } catch (e) {} // a transient list/get failure keeps serving the last good view
-  return MANIFESTS.spaces;
+  return entry.spaces;
 }
 
 // Site routing from the live manifests (the bundle-mode replacement for
@@ -2279,10 +2326,14 @@ function resolveBundlePath(manifests, pathname) {
 // Versioned URLs (?v=, /fonts/) are promoted back to a year + immutable by
 // withAssetCache(), which runs downstream of this — so the hot path keeps its
 // zero-revalidation caching and only the un-versioned ones pay.
-async function assetFetch(env, request) {
+// `tenantId` is which workspace's published content this path is to be resolved
+// against. It is the first argument for the same reason `loadTenantContext` takes it
+// first: everything below reads one workspace's store, and a function that had to guess
+// would resolve a path against whatever the isolate happened to hold.
+async function assetFetch(tenantId, env, request) {
   if (!bundleMode(env)) return env.ASSETS.fetch(request);
   const url = new URL(request.url);
-  const manifests = await loadManifests(env);
+  const manifests = await loadManifests(tenantId, env);
   const r = resolveBundlePath(manifests, url.pathname);
   if (r.redirect) return Response.redirect(new URL(r.redirect + url.search, url).toString(), 308);
   if (r.miss) return new Response("Not Found", { status: 404 });
@@ -2317,12 +2368,12 @@ async function assetFetch(env, request) {
 }
 
 // Existence probe (no body) — the canvas shadow-check's cheap path.
-async function assetPathExists(env, url) {
+async function assetPathExists(tenantId, env, url) {
   if (!bundleMode(env)) {
     const asset = await env.ASSETS.fetch(new Request(url.toString()));
     return asset.status !== 404;
   }
-  const r = resolveBundlePath(await loadManifests(env), url.pathname);
+  const r = resolveBundlePath(await loadManifests(tenantId, env), url.pathname);
   return !r.miss;
 }
 
@@ -2562,7 +2613,7 @@ async function publishApi(tctx, request, url, env) {
     // A blob already referenced by ANY live manifest exists in the store —
     // content addressing means cross-space and engine duplicates never re-upload.
     const have = new Set();
-    const all = await loadManifests(env, true);
+    const all = await loadManifests(tctx.tenantId, env, true);
     for (const id in all) for (const k in all[id].files) have.add(all[id].files[k].h);
     const missing = [...new Set(Object.values(files).map((f) => f && f.h).filter(Boolean))]
       .filter((h) => !have.has(h));
@@ -2738,7 +2789,7 @@ async function publishApi(tctx, request, url, env) {
     if (m.routing && Array.isArray(m.routing.publicPrefixes)) {
       m.routing.publicPrefixes = backedPublicPrefixes(m);
     }
-    const liveManifests = await loadManifests(env, true);
+    const liveManifests = await loadManifests(tctx.tenantId, env, true);
     // ── Untrusted-token guard — the fix that keeps a space token to its own space. Any
     // signed-in user can mint a default-space token (`augur login`), so without this a
     // user could commit a manifest that claims /admin/* or /__canvas/canvas.js (engine
@@ -2939,7 +2990,7 @@ async function publishApi(tctx, request, url, env) {
     const out = { ...m, version, publishedAt: new Date().toISOString(), publishedBy: who.label || "" };
     await env.BUNDLES.put(`spaces/${spaceId}/versions/${version}.json`, JSON.stringify(out));
     await env.BUNDLES.put(`spaces/${spaceId}/manifest.json`, JSON.stringify(out));
-    MANIFESTS.at = 0; cfgAt = 0; // this isolate flips immediately; others within ~1.5s
+    bustManifests(tctx.tenantId); cfgAt = 0; // this isolate flips immediately; others within ~1.5s
     // ── Stale-bake self-heal. Pages are baked with the PUBLISHER's engine clone,
     // and nothing constrains how old that clone is — runtime chrome recomposes
     // marker-wrapped chrome at serve time, but pages baked before the markers
@@ -3000,7 +3051,7 @@ async function publishApi(tctx, request, url, env) {
     };
     await env.BUNDLES.put(`spaces/${spaceId}/versions/${version}.json`, JSON.stringify(out));
     await env.BUNDLES.put(`spaces/${spaceId}/manifest.json`, JSON.stringify(out));
-    MANIFESTS.at = 0; cfgAt = 0;
+    bustManifests(tctx.tenantId); cfgAt = 0;
     return jsonResponse({ ok: true, version, restoredFrom: v });
   }
 
@@ -3059,7 +3110,7 @@ async function removeFromStore(tctx, env, spaceId, urlPrefix, by) {
   };
   await env.BUNDLES.put(`spaces/${spaceId}/versions/${version}.json`, JSON.stringify(out));
   await env.BUNDLES.put(`spaces/${spaceId}/manifest.json`, JSON.stringify(out));
-  MANIFESTS.at = 0; cfgAt = 0;
+  bustManifests(tctx.tenantId); cfgAt = 0;
   return { removed, version };
 }
 
@@ -3157,12 +3208,20 @@ async function adminTokensApi(request, env, me) {
 // ~2.5k objects) against the R2 free-tier ceiling so the admin panel can show
 // a fill gauge long before a publish would ever hit the wall.
 const STORE_LIMIT_BYTES = 10 * 1024 * 1024 * 1024; // R2 free tier: 10 GB
-let STORAGE_CACHE = { at: 0, data: null };
-async function adminStorageApi(env, me) {
+// ⚠️ KEYED BY WORKSPACE. The number this holds is a measurement of ONE workspace's
+// store — how much of the ceiling its own publishes have spent — and it is shown to that
+// workspace's admins for five minutes. A single slot answers whoever asks second with
+// whoever asked first's fill, which reports a neighbour's usage as this workspace's and
+// leaves a workspace approaching the wall being told it has room. Bounded like the
+// manifest cache above, and evicting an entry only costs the next admin one list.
+const STORAGE_CACHE_MAX = 256;
+const STORAGE_CACHE = new Map(); // tenantId -> { at, data }
+async function adminStorageApi(tenantId, env, me) {
   if (!me || me.role !== "admin") return jsonResponse({ error: "forbidden" }, 403);
   if (!env.BUNDLES) return jsonResponse({ enabled: false });
-  if (STORAGE_CACHE.data && Date.now() - STORAGE_CACHE.at < 5 * 60 * 1000) {
-    return jsonResponse(STORAGE_CACHE.data);
+  const hit = STORAGE_CACHE.get(tenantId);
+  if (hit && hit.data && Date.now() - hit.at < 5 * 60 * 1000) {
+    return jsonResponse(hit.data);
   }
   let bytes = 0, objects = 0, cursor;
   try {
@@ -3178,7 +3237,10 @@ async function adminStorageApi(env, me) {
     pct: Math.round((bytes / STORE_LIMIT_BYTES) * 1000) / 10,
     at: new Date().toISOString(),
   };
-  STORAGE_CACHE = { at: Date.now(), data };
+  // Delete-then-set: insertion order is recency order, so the first key is the victim.
+  STORAGE_CACHE.delete(tenantId);
+  STORAGE_CACHE.set(tenantId, { at: Date.now(), data });
+  while (STORAGE_CACHE.size > STORAGE_CACHE_MAX) STORAGE_CACHE.delete(STORAGE_CACHE.keys().next().value);
   return jsonResponse(data);
 }
 
@@ -4115,7 +4177,11 @@ const CANVASES_KEY = "canvases";
 // "/<folder>/", "/<space>/<folder>/") — never the site root.
 const CANVAS_DIR_RE = /^\/(?:[a-z0-9-]+\/)+$/;
 
-async function canvasesApi(request, url, env, me) {
+// `tenantId` is carried for one reason: the shadow check below asks whether a real file
+// already serves the URL a board is being created at, and that question is answered from
+// one workspace's published content. Passed rather than looked up, so a create in one
+// workspace can never be refused — or waved through — by what a neighbour publishes.
+async function canvasesApi(tenantId, request, url, env, me) {
   const kv = kvFor(env);
   if (!kv) return jsonResponse({ map: {}, warning: "no-kv-binding" });
 
@@ -4160,7 +4226,7 @@ async function canvasesApi(request, url, env, me) {
     const path = dir + slug + "/";
     if (map[path]) return jsonResponse({ error: "exists", path }, 409);
     // Never shadow a real shipped file at the same URL (any non-404, incl. redirects).
-    if (await assetPathExists(env, new URL(path, url))) return jsonResponse({ error: "exists", path }, 409);
+    if (await assetPathExists(tenantId, env, new URL(path, url))) return jsonResponse({ error: "exists", path }, 409);
     map[path] = { name, by: me ? me.email : "", t: Date.now() };
     await kv.put(CANVASES_KEY, JSON.stringify(map));
     bustCanvasRegistry();
@@ -4889,7 +4955,7 @@ export default {
     // In bundle mode the public build stamp is synthesized from the live
     // manifests — same shape and contract as the static file Pages serves.
     if (url.pathname === "/_build.json" && bundleMode(env)) {
-      return jsonResponse(synthBuildStamp(tctx, await loadManifests(env)));
+      return jsonResponse(synthBuildStamp(tctx, await loadManifests(tctx.tenantId, env)));
     }
 
     // Vanity domains (from the deploy config): a host CNAME'd to this
@@ -5052,7 +5118,7 @@ export default {
     if (url.pathname === "/__admin/tokens") return adminTokensApi(request, env, me);
 
     // Admin bundle-store gauge — bytes/objects vs the free-tier ceiling.
-    if (url.pathname === "/__admin/storage") return adminStorageApi(env, me);
+    if (url.pathname === "/__admin/storage") return adminStorageApi(tctx.tenantId, env, me);
 
     // Admin KV export — the other half of durability, next to `augur export`.
     if (url.pathname === "/__admin/backup") return adminBackupApi(env, me);
@@ -5185,7 +5251,7 @@ export default {
       // not add things other people will find in the gallery.
       const denied = viewerWriteRefusal(request, url, me, "canvas", tctx.SPACES);
       if (denied) return denied;
-      return canvasesApi(request, url, env, me);
+      return canvasesApi(tctx.tenantId, request, url, env, me);
     }
     // Prototype deletion — DESTRUCTIVE (repo write). Admin-only in identity mode; in
     // legacy/open mode any authed operator (a single-operator instance has no roles).
@@ -5248,7 +5314,7 @@ export default {
       if (usersActive && (!me || !administersAny(me, tctx.SPACES))) {
         return Response.redirect(new URL("/", url).toString(), 303);
       }
-      const asset = await assetFetch(env, request);
+      const asset = await assetFetch(tctx.tenantId, env, request);
       if (asset.status === 404) return notFoundResponse(tctx);
       return withAssetCache(await composeChrome(tctx, withLiveReload(tctx, asset, url), url), url);
     }
@@ -5257,7 +5323,7 @@ export default {
     // The open door is for easy link-sharing, NOT public discovery, so tag every
     // public response as non-indexable (covers HTML and assets alike).
     if (isPublicPath(tctx, url.pathname)) {
-      const asset = await assetFetch(env, request);
+      const asset = await assetFetch(tctx.tenantId, env, request);
       if (asset.status === 404) return notFoundResponse(tctx);
       const res = withAssetCache(await composeChrome(tctx, withLiveReload(tctx, asset, url), url), url);
       const out = new Response(res.body, res);
@@ -5284,7 +5350,7 @@ export default {
     // Past the gate (or nothing gates the site) → serve. A 404 gets one more chance
     // as a created canvas (a KV-registered board with no repo file — see canvasesApi).
     if (authed) {
-      const asset = await assetFetch(env, request);
+      const asset = await assetFetch(tctx.tenantId, env, request);
       if (asset.status === 404) {
         const virt = await virtualCanvas(tctx, request, env, url);
         if (virt) return virt;
@@ -5338,6 +5404,7 @@ export const __testables = {
   deleteUrlPrefix, removeFromStore,
   revokePublishTokens, loginThrottled, loginSlowed, loginFail, DUMMY_HASH,
   pathOwnedBySpace, isPublishablePublicPrefix, removedPublicPrefixes, publishApi, loadManifests, LOGIN_MAX_FAILS,
+  adminStorageApi,
   isPrefixBacked, backedPublicPrefixes,
   isPublicPath, isTrackPath, isRestrictedPath, versionFor, brandMark,
   boardApi, canvasesApi, virtualCanvas, rtProxy, CANVASES_KEY, BOARD_PREFIX, BOARD_MAX_BYTES,

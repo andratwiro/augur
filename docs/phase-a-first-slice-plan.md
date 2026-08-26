@@ -210,8 +210,29 @@ embeddable thing across all spaces". The merge is unchanged (each workspace stil
 contributes its slice through its routing fragment), but the value it produces belongs to
 the workspace that asked for it, not to the isolate.
 
-Excluded as pure per-isolate runtime caches, not config: `cfgAt` (`358`), `MANIFESTS` (`1654`),
-`STORAGE_CACHE` (`2654`), `AVATAR_KEYS` (`837`). Total config-global occurrences ≈ 200,
+And the bundle-store caches — `MANIFESTS` and `STORAGE_CACHE`. Neither is a config field,
+so neither appears in the table; both hold a value DERIVED from one workspace's store,
+which is the MCP memo's shape and the MCP memo's trap. `MANIFESTS` is the sharper of the
+two, because what it holds is the parsed file table every served byte is resolved through
+and the routing fragment the gate is derived from — behind a single 1.5-second stamp, so
+the first workspace to warm it answered every workspace behind it for the rest of the
+tick: a neighbour's pages at this workspace's URLs, and a neighbour's public prefixes
+deciding this workspace's gate. The etag shortcut inside the value repeated the shape one
+level down, keyed by SPACE id, and two workspaces may each publish a space under the same
+id. `STORAGE_CACHE` measures how full one workspace's store is and showed that number to
+whoever asked next for five minutes. Both are now `Map`s keyed by tenant and bounded like
+the context cache, and the functions that read them take the workspace they answer for:
+`loadManifests`, `assetFetch`, `assetPathExists`, `canvasesApi` (whose shadow check asks
+whether a real file already serves a board's URL) and `adminStorageApi`. Eviction costs a
+list and a parse and can never answer with another workspace's content. The evidence is
+five cases in `test/tenant-isolation.test.mjs`, and it has to be, because the byte-level
+snapshot runs in ASSETS mode where neither cache is reached at all — it stays green
+whatever these two answer. Checked by sabotage: keying both on a constant turns three of
+the five red and leaves the snapshot green.
+
+Excluded as per-isolate runtime caches, not config: `cfgAt`, `MANIFESTS`, `STORAGE_CACHE`,
+`AVATAR_KEYS` — the middle two keyed by tenant rather than shared, per the paragraph
+above. Total config-global occurrences ≈ 200,
 i.e. ~110–120 read sites once decls/assigns are removed — matching the plan's "~110".
 
 **The enumeration of record is `scripts/no-tenant-globals.mjs`, not this table.** Line

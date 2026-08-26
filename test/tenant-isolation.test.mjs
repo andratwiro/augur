@@ -24,9 +24,9 @@
 // tenants can meet while there is still one of them.
 //
 // ---- ADDING A CASE ------------------------------------------------------------------
-// The items after this one each close a module-scope cache that two workspaces currently
-// share (the MCP derived allowlist, the R2 storage gauge, the manifest cache). Each needs
-// the same shape of case, and it belongs in this file:
+// Each item that closes a module-scope cache two workspaces used to share (the MCP
+// derived allowlist, the manifest cache, the R2 storage gauge — all keyed by workspace
+// now) needs the same shape of case, and it belongs in this file:
 //
 //   test("<the cache> is not shared across workspaces", async () => {
 //     resetSharedCaches();
@@ -135,7 +135,12 @@ const envFor = (n) => fixture(n);
 // of every case: these caches are module scope, so without it a case inherits whatever
 // the previous one left behind and the file's results depend on their order.
 function resetSharedCaches() {
-  __setConfigTestState({ cfgAt: 0, rosterReadAt: 0, mcpHostAllowlist: null });
+  __setConfigTestState({
+    cfgAt: 0, rosterReadAt: 0, mcpHostAllowlist: null,
+    // The two bundle-store caches. Both are keyed by workspace and both outlive a case,
+    // so a case that inherited them would be asserting about the previous store.
+    manifests: null, storage: null,
+  });
 }
 
 // One cold load. `prev: null` on purpose — keep-last-good is tested elsewhere; here every
@@ -488,11 +493,10 @@ test("a workspace whose allowlist document fails retries, and takes no neighbour
 // `loadTenantContext` with a different set of per-isolate caches behind it, so a green
 // assets-mode harness is not evidence about it. This case is the evidence.
 //
-// The manifests are given no `head`, so `loadManifests` cannot take its etag shortcut and
-// each load parses its own store. The shortcut is keyed by SPACE id inside one
-// isolate-wide value, so two workspaces that each publish a space under the same id would
-// share a parse — a case for A-thread-bundle-cache, and the reason these two fixtures use
-// distinct space ids rather than pretending the question does not exist.
+// The manifests here are given no `head`, so `loadManifests` cannot take its etag
+// shortcut and each load parses its own store — this section is about the DERIVATION, and
+// the cache the derivation reads through is pinned on its own further down ("the
+// bundle-store caches"), including the same-space-id case the shortcut turns on.
 
 function bundleFixture(n) {
   const manifests = {
@@ -571,6 +575,147 @@ test("bundle mode derives each workspace's routing from its own store, interleav
     got.forEach((ctx, idx) => { byName[plan[idx]] = ctx.BUILD_ID; });
     assert.notEqual(byName.alpha, byName.beta, `iteration ${i}: both workspaces got one build stamp`);
   }
+});
+
+// ---- the bundle-store caches, whose values ARE one workspace's content ---------------
+//
+// Two per-isolate caches sit between a request and the store: the parsed manifests
+// (`loadManifests`, a 1.5s tick) and the R2 fill gauge (`adminStorageApi`, five minutes).
+// Neither is config, so nothing above this line looks at them — and they are the sharpest
+// version of this phase's failure, because what a single slot hands the second workspace
+// is not a setting that renders differently. It is the file table every served byte is
+// resolved through, the routing fragment the gate is derived from, and a measurement of
+// how full someone else's store is.
+//
+// Three shapes are pinned, because closing the leak by deleting the cache would satisfy
+// only the first: a neighbour is never answered from this workspace's entry, the entry is
+// still a cache, and the etag shortcut INSIDE the value is keyed by workspace too — that
+// last one is keyed by SPACE id, and two workspaces may each publish a space under the
+// same id.
+
+// A store holding one published space, plus one blob to weigh. `space` is the id the
+// space is published under, so two workspaces can be given the SAME one; `etag` is what
+// `head` reports, so two stores can be made to agree on it. Every call is counted,
+// because WHOSE store was read is half of what these cases assert.
+function storeFixture(n, { space = n, etag = `"etag-${n}"` } = {}) {
+  const manifest = {
+    space: { id: space, name: `Workspace ${n}`, default: true },
+    version: n.length,
+    files: { "/prototypes/one/index.html": { h: `hash-${n}`, ct: "text/html", s: 10 } },
+    routing: { publicPrefixes: ["/prototypes/one/"], versionMap: {}, shellSig: `sig-${n}` },
+  };
+  const blobs = { [`spaces/${space}/manifest.json`]: JSON.stringify(manifest) };
+  const calls = { list: 0, head: 0, get: 0 };
+  // Distinct per workspace, so a gauge answered from the wrong store names its owner.
+  const bytes = n.length * 1000;
+  return {
+    calls, bytes, space,
+    env: {
+      GV_ASSET_SOURCE: "r2",
+      BUNDLES: {
+        async list({ delimiter } = {}) {
+          calls.list++;
+          if (delimiter) return { delimitedPrefixes: [`spaces/${space}/`], objects: [], truncated: false };
+          return { objects: [{ key: `blobs/${n}`, size: bytes }], truncated: false };
+        },
+        async head(key) { calls.head++; return blobs[key] === undefined ? null : { etag }; },
+        async get(key) {
+          calls.get++;
+          const body = blobs[key];
+          return body === undefined ? null : { etag, async text() { return body; } };
+        },
+      },
+    },
+  };
+}
+
+const ADMIN = { email: "admin@example.invalid", name: "Admin", role: "admin" };
+
+test("one workspace's published manifests are never served to another", async () => {
+  resetSharedCaches();
+  // The same space id in both stores: the id is not what distinguishes them, the
+  // workspace asking is. Different published bytes, so a leak names its owner.
+  const a = storeFixture("alpha", { space: "shared" });
+  const b = storeFixture("beta", { space: "shared" });
+
+  const ma = await W.loadManifests("alpha", a.env);
+  assert.equal(ma.shared.files["/prototypes/one/index.html"].h, "hash-alpha", "alpha did not read its own store");
+
+  // …and now beta asks, INSIDE the 1.5s tick alpha just stamped — the exact window a
+  // single `at` stamp turned into "whatever the isolate last parsed".
+  const mb = await W.loadManifests("beta", b.env);
+  assert.equal(
+    mb.shared.files["/prototypes/one/index.html"].h, "hash-beta",
+    "beta was served ALPHA's published manifest: the manifest cache is shared, and with it every byte and every public prefix it decides",
+  );
+  assert.ok(b.calls.list > 0, "beta never listed its own store — it was answered out of a neighbour's tick");
+  assert.equal(ma.shared.files["/prototypes/one/index.html"].h, "hash-alpha", "beta's load rewrote alpha's view");
+});
+
+test("the etag shortcut is keyed by workspace too — a matching neighbour etag hands over nothing", async () => {
+  resetSharedCaches();
+  // Same space id AND the same etag in both stores. Nothing but the workspace key can
+  // tell these two manifests apart, which is precisely the case the shortcut skips a
+  // parse on.
+  const a = storeFixture("alpha", { space: "shared", etag: '"same"' });
+  const b = storeFixture("beta", { space: "shared", etag: '"same"' });
+
+  await W.loadManifests("alpha", a.env, true);
+  const gets = b.calls.get;
+  const mb = await W.loadManifests("beta", b.env, true);
+
+  assert.equal(
+    mb.shared.files["/prototypes/one/index.html"].h, "hash-beta",
+    "beta took alpha's PARSE through the etag shortcut — the shortcut is keyed by space id, and both workspaces publish that id",
+  );
+  assert.ok(b.calls.get > gets, "beta never fetched its own manifest body");
+});
+
+test("the manifest cache is still a cache — a repeat read inside the tick does not re-list", async () => {
+  // The isolation above would also be satisfied by not caching at all, which would put a
+  // list + a parse of every manifest on every request — the CPU budget this cache exists
+  // to protect. Both properties, or neither is pinned.
+  resetSharedCaches();
+  const a = storeFixture("alpha");
+  await W.loadManifests("alpha", a.env);
+  const { list, get } = a.calls;
+  assert.ok(list > 0 && get > 0, "the first read did not reach the store at all");
+
+  await W.loadManifests("alpha", a.env);
+  await W.loadManifests("alpha", a.env);
+  assert.equal(a.calls.list, list, "the tick stopped working — every request re-lists the store");
+  assert.equal(a.calls.get, get, "the tick stopped working — every request re-parses the manifests");
+});
+
+test("the storage gauge is never answered out of another workspace's store", async () => {
+  resetSharedCaches();
+  const a = storeFixture("alpha");
+  const b = storeFixture("beta");
+  assert.notEqual(a.bytes, b.bytes, "both fixtures weigh the same — nothing below distinguishes them");
+
+  // Prime alpha's entry, then ask as beta well inside the five-minute window.
+  const first = await (await W.adminStorageApi("alpha", a.env, ADMIN)).json();
+  assert.equal(first.bytes, a.bytes, "alpha was not measured against its own store");
+
+  const lists = b.calls.list;
+  const second = await (await W.adminStorageApi("beta", b.env, ADMIN)).json();
+  assert.equal(
+    second.bytes, b.bytes,
+    "beta was shown ALPHA's fill gauge — a workspace approaching the ceiling would be told it has room",
+  );
+  assert.ok(b.calls.list > lists, "beta never listed its own store: it was answered from a neighbour's cached bytes");
+});
+
+test("the storage gauge is still cached, per workspace", async () => {
+  resetSharedCaches();
+  const a = storeFixture("alpha");
+  await W.adminStorageApi("alpha", a.env, ADMIN);
+  const lists = a.calls.list;
+  assert.ok(lists > 0, "the first call did not list the store at all");
+
+  const again = await (await W.adminStorageApi("alpha", a.env, ADMIN)).json();
+  assert.equal(a.calls.list, lists, "the five-minute window stopped working — every admin page load re-walks the store");
+  assert.equal(again.bytes, a.bytes);
 });
 
 // ---- the per-tenant cache under interleaving ----------------------------------------

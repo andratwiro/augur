@@ -123,18 +123,18 @@ test("a normal-size commit is untouched by the ceilings", async () => {
 
 test("the refresh tick re-parses a manifest only when its etag moved", async () => {
   const env = envWithLive();
-  const first = await W.loadManifests(env, true);
+  const first = await W.loadManifests(CTX.tenantId, env, true);
   assert.equal(first.alpha.version, 1);
   const g1 = env.BUNDLES.stats().gets;
 
   // Ticks with an unchanged etag must not re-fetch the body.
-  await W.loadManifests(env, true);
-  await W.loadManifests(env, true);
+  await W.loadManifests(CTX.tenantId, env, true);
+  await W.loadManifests(CTX.tenantId, env, true);
   assert.equal(env.BUNDLES.stats().gets, g1, "no body fetch while the etag is stable");
 
   // A publish bumps the etag — the next tick parses the new manifest.
   await commit(env, base());
-  const after = await W.loadManifests(env, true);
+  const after = await W.loadManifests(CTX.tenantId, env, true);
   assert.equal(after.alpha.version, 2, "etag moved → body re-fetched and parsed");
   assert.ok(env.BUNDLES.stats().gets > g1);
 });

@@ -41,8 +41,11 @@ function bundleEnv() {
   };
 }
 
+// The workspace whose published content these paths resolve against. assetFetch reads
+// one workspace's manifests now, so the fixture names one.
+const TENANT = "workspace-under-test";
 const get = (env, path, headers) =>
-  W.assetFetch(env, new Request("https://example.test" + path, { headers }));
+  W.assetFetch(TENANT, env, new Request("https://example.test" + path, { headers }));
 
 // ---- the invariant --------------------------------------------------------
 
