@@ -306,6 +306,34 @@ export function renderMail(template, vars = {}) {
 // honest limits as the login throttle. With no KV at all none of them apply, which is the
 // local-development case.
 
+// ── ENUMERATION SAFETY IS THE CALLER'S, AND IT IS NOT OPTIONAL ────────────────────────
+//
+// Nothing in this module can provide it: sendMail is told an address and a template, and
+// has no idea whether an account exists behind it. But it is the other half of the same
+// item, so the contract is written where whoever builds the stranger-facing reset and
+// signup flows will be reading.
+//
+// A reset requested for an address that does NOT exist must be indistinguishable from one
+// that does, in three ways, or the endpoint is a free account-existence oracle:
+//
+//   STATUS   the same code.
+//   BODY     the same bytes. "If that address has an account, we have sent a link" for
+//            both — never "unknown user", which is the shape the engine's ADMIN reset
+//            uses and is correct there, because an admin is entitled to know who is on
+//            their own roster.
+//   TIMING   the same elapsed time. This is the one that gets forgotten: the real path
+//            does a KV read, a hash and an HTTP send, and the fake path returns
+//            immediately. A few hundred milliseconds is a reliable oracle over enough
+//            samples, so the miss path has to do the same work or wait out the same
+//            budget.
+//
+// And it must SEND NOTHING for an address with no account, which is why the timing has to
+// be equalised rather than achieved by sending anyway.
+//
+// The engine has no such endpoint today — its only sendMail caller is behind an admin
+// check — and the control plane routes no signup or reset yet. This lands with
+// `B-signup-flow`.
+
 export const MAIL_RATE = Object.freeze({
   "credential-reset": { max: 3, windowMs: 60 * 60 * 1000, minGapMs: 60 * 1000 },
   "signup-verify": { max: 5, windowMs: 60 * 60 * 1000, minGapMs: 60 * 1000 },
