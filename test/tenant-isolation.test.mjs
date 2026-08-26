@@ -105,6 +105,12 @@ function instanceDoc(n) {
     // Also a per-workspace boolean, and varied the OTHER way from userImages so the two
     // cannot be confused for each other in a comparison that reads only one of them.
     devicePairing: n.charCodeAt(0) % 2 !== 0,
+    // What this workspace's session cookies BIND to — the credential hash, or a per-person
+    // session key. Per workspace and not merely per deployment: a session belongs to one
+    // workspace host, so two workspaces sharing an isolate must never share this answer.
+    // Varied with userImages rather than against it, so a comparison that read the wrong
+    // field would still have to be wrong about something.
+    sessionKeys: n.charCodeAt(0) % 2 === 0,
     // How long this workspace's publish tokens live. A number rather than a flag, and one
     // a workspace legitimately sets for itself — a demo with a published password wants a
     // shorter one than a private instance.

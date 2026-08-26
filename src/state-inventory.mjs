@@ -38,6 +38,10 @@ export const STATE_INVENTORY = Object.freeze([
   },
   // ── identity ───────────────────────────────────────────────────────────────
   {
+    id: "users:sessionkeys", store: "kv", kind: "key", to: "workspace",
+    why: "Per-person session-binding keys. NOT a credential and never checked against anything a person types — it is the value the session cookie HMACs, split out of the password hash so that ending a session and changing a credential can be separate acts. It is workspace-destined rather than account-destined for exactly that reason: a session belongs to one workspace host, and the credential that opens several does not. Losing it in a copy signs that workspace's people out once, which is recoverable; carrying it to the WRONG workspace would let a cookie cross a boundary, which is not.",
+  },
+  {
     id: "users:secrets", store: "kv", kind: "key", to: "account",
     why: "Password hashes. A credential is ACCOUNT-level — one address, one password, several workspaces — so it must NOT land in any workspace's store: a workspace admin who could reset it would reach every other workspace that address opens.",
   },

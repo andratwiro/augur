@@ -32,6 +32,7 @@ const FALLBACK_ROLE = "viewer";
 export const UNMAPPED_WORKSPACE_FAMILIES = Object.freeze({
   "spaces:icons": "the workspace icon pointer belongs in the object's `settings` table, which `importAll` does not write yet",
   "mail:suppressed": "the object has NO TABLE for a suppression list, and the inventory entry says dropping it breaks a promise not to mail somebody again — see B-do-schema-core",
+  "users:sessionkeys": "the object has no table for a PER-PERSON session key. It has `signing_keys`, which is the workspace's own one, and the two belong in the same schema decision rather than in two — B-cross-workspace-signin is the item that makes it, because minting a session ON a workspace host is the thing that decides what a session binds to. Declared here rather than given a table now so that decision is made once, deliberately. Losing this family in a copy signs that workspace's people out once, which is recoverable, so it is the safer of the two ways to be wrong.",
 });
 
 /**

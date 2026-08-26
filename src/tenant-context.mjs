@@ -99,6 +99,13 @@ const FIELDS = Object.freeze({
   // USER_IMAGES above and deliberately so: this one ADDS an unauthenticated endpoint that
   // ends in a publish token, so an instance opts in rather than discovers it.
   DEVICE_PAIRING:          { source: "instance", make: () => false },
+  // ⚠️ OFF BY DEFAULT, AND THE DEFAULT IS THE SAFE ONE. With this false the session
+  // derivation is byte-for-byte what it has always been: the cookie binds to the
+  // credential hash, and no extra read happens on the auth path at all. Turning it on
+  // makes the cookie bind to a per-person session key instead, which is what lets a
+  // credential change and a session end become separate acts. See sessionBinding in
+  // src/_worker.js before enabling it on anything you cannot watch.
+  SESSION_KEYS:            { source: "instance", make: () => false },
   // How long a publish token minted for a PERSON lives, in days. Both human doors —
   // `augur login` and `augur connect` — read this one number, because two doors that hand
   // out the same credential with different lifetimes is a difference nobody chose.
@@ -196,6 +203,7 @@ export function instanceFields(inst) {
     // Explicit `true` only — the inverse of USER_IMAGES, because the safe state here is
     // off and a typo must not switch a token-minting path on.
     DEVICE_PAIRING: doc.devicePairing === true,
+    SESSION_KEYS: doc.sessionKeys === true,
     // A number, and only a number. A typo — a string, null, a negative — falls back to the
     // default rather than to "no expiry": a config mistake must not be the thing that
     // quietly returns publish tokens to living forever. An explicit 0 IS honoured, because
