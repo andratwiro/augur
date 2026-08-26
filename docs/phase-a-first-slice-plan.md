@@ -230,17 +230,21 @@ snapshot runs in ASSETS mode where neither cache is reached at all — it stays 
 whatever these two answer. Checked by sabotage: keying both on a constant turns three of
 the five red and leaves the snapshot green.
 
-Excluded as per-isolate runtime caches, not config: `cfgAt`, `MANIFESTS`, `STORAGE_CACHE`,
-`AVATAR_KEYS` — the middle two keyed by tenant rather than shared, per the paragraph
-above. Total config-global occurrences ≈ 200,
+Excluded as per-isolate runtime caches, not config: `cfgAt`, `MANIFESTS`, `STORAGE_CACHE` —
+the latter two keyed by tenant rather than shared, per the paragraph above. `AVATAR_KEYS`
+was excluded here too and should not have been: it is the list of photo hashes the UNGATED
+`/__avatar/` route will serve, derived from one workspace's roster, which makes it an
+authorization set and not a memo. It is a `derived` context field now, beside the
+`SPACE_ICON_KEYS` it is a copy of. Total config-global occurrences ≈ 200,
 i.e. ~110–120 read sites once decls/assigns are removed — matching the plan's "~110".
 
 **The enumeration of record is `scripts/no-tenant-globals.mjs`, not this table.** Line
 numbers here drift; the lint walks the module graph the worker pulls into the isolate —
 every module it reaches by a relative import, because module scope is per ISOLATE and a
 `let` one import away is shared exactly as widely — and counts what is actually declared —
-today 20 module-scope bindings: NO config global at all, 14 per-isolate caches, and 6
-mutable-container constants that never vary by workspace. It fails CI, and therefore the
+today 26 module-scope bindings across four modules: NO config global at all, 13
+per-isolate caches, and 13 mutable-container constants that never vary by workspace. It
+fails CI, and therefore the
 deploy, on a binding it has never been told about, on an allowlist entry whose binding is
 gone, and on an allowlist entry that names a field of the tenant context — so the list
 shrank as the threading landed rather than turning into standing permission, and a

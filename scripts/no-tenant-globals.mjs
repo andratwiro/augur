@@ -45,6 +45,14 @@
 // Being on the list is a claim, in writing, about why that binding is safe to share
 // between workspaces. Adding one is meant to be a deliberate, reviewed act.
 //
+// THE GAP IT DOES NOT COVER, stated so nobody mistakes green for proof. Module-scope
+// state with no BINDING NAME is invisible to a scan that works by names — `export default
+// {…}`, which every worker has exactly one of, is a live object the runtime calls methods
+// on, so a handler writing `this.something = …` would hold per-isolate state this lint
+// never sees. Flagging every default export would flag the one legitimate handler and say
+// nothing useful about it, so this stays a review question rather than a lint one, in the
+// same way `scripts/no-foreign-vocabulary.mjs` names the two shapes it cannot catch.
+//
 // Usage: node scripts/no-tenant-globals.mjs [--entry <path>] [--quiet]
 // No config, no dependencies. Exit 1 on any failure.
 
