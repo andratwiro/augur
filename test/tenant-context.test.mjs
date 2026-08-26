@@ -350,15 +350,15 @@ test("each direction fires against the REAL worker, not only against a fixture",
   // looks like.
   const sabotage = {
     "cache-bad-key:MANIFESTS": [
-      "const cur = MANIFESTS.get(tenantId) || { at: 0, spaces: {}, etags: {} };",
-      'const cur = MANIFESTS.get("one") || { at: 0, spaces: {}, etags: {} };',
+      "const cur = MANIFESTS.get(tenantId) || { at: 0, spaces: {}, etags: {}, filled: false };",
+      'const cur = MANIFESTS.get("one") || { at: 0, spaces: {}, etags: {}, filled: false };',
     ],
     "cache-unknown-method:STORAGE_CACHE": [
       "const hit = STORAGE_CACHE.get(tenantId);", "const hit = [...STORAGE_CACHE.values()][0];",
     ],
     "cache-escapes:MANIFESTS": [
-      "const cur = MANIFESTS.get(tenantId) || { at: 0, spaces: {}, etags: {} };",
-      "const cur = pick(MANIFESTS, tenantId) || { at: 0, spaces: {}, etags: {} };",
+      "const cur = MANIFESTS.get(tenantId) || { at: 0, spaces: {}, etags: {}, filled: false };",
+      "const cur = pick(MANIFESTS, tenantId) || { at: 0, spaces: {}, etags: {}, filled: false };",
     ],
     "cache-not-constructed:CANVAS_REGISTRY": [
       'const CANVAS_REGISTRY = tenantCache("canvas-registry", { max: CANVAS_REG_CACHE_MAX });',

@@ -2148,12 +2148,33 @@ function bustManifests(tenantId) {
 }
 
 async function loadManifests(tenantId, env, force) {
-  const cur = MANIFESTS.get(tenantId) || { at: 0, spaces: {}, etags: {} };
-  if (!force && Date.now() - cur.at < 1500) return cur.spaces;
+  const cur = MANIFESTS.get(tenantId) || { at: 0, spaces: {}, etags: {}, filled: false };
+  if (!force && Date.now() - cur.at < 1500) {
+    // ⚠️ A TICK STAMPED BY A LOAD THAT HAS NOT COME BACK YET IS NOT A VIEW. Stamp-first
+    // (below) carries the previous manifests forward so a concurrent reader keeps being
+    // served while the refresh runs — and on a COLD isolate the previous manifests are
+    // nothing at all. Handing that placeholder out answers every published page with a
+    // 404 and /_build.json with an empty site, for up to a tick, to whichever requests
+    // arrive alongside the first one. That is the "gone reads as locked" failure: the
+    // gate answers a now-unknown path with the login page, so a burst at a cold isolate
+    // looks like the content was unpublished. Wait for the load already in flight
+    // instead — one store read, and everyone behind it gets the answer.
+    //
+    // ONLY when there is nothing else to serve. A workspace that has a view keeps
+    // answering from it without waiting, which is the whole point of the stamp.
+    if (cur.inflight && !cur.filled) return cur.inflight;
+    return cur.spaces;
+  }
   // Stamp FIRST, and carry the last good view forward on the new entry: a failing read
   // retries on the next tick rather than stampeding the store, and a concurrent request
   // reading mid-load still gets this workspace's previous manifests.
-  const entry = MANIFESTS.put(tenantId, { at: Date.now(), spaces: cur.spaces, etags: cur.etags });
+  const entry = MANIFESTS.put(tenantId, {
+    at: Date.now(), spaces: cur.spaces, etags: cur.etags, filled: cur.filled,
+  });
+  // The promise every reader in this tick can wait on, published on the entry BEFORE the
+  // first await so a request that arrives one microtask later can find it.
+  let settle;
+  entry.inflight = new Promise((r) => { settle = r; });
   try {
     const list = await env.BUNDLES.list({ prefix: "spaces/", delimiter: "/" });
     const ids = (list.delimitedPrefixes || []).map((p) => p.slice("spaces/".length, -1));
@@ -2180,7 +2201,16 @@ async function loadManifests(tenantId, env, force) {
     }));
     entry.spaces = out;
     entry.etags = etags;
+    // A store that answered — even with nothing published — IS a view. `filled` is what
+    // tells a reader "this entry is an answer, not a placeholder"; a read that THREW
+    // leaves it as it was, so the waiters above keep waiting for a real one next tick.
+    entry.filled = true;
   } catch (e) {} // a transient list/get failure keeps serving the last good view
+  // Release the waiters, and stop being the in-flight load. Both happen however this
+  // returned: a rejected read that left `inflight` in place would strand every request
+  // in the next tick on a promise nothing will ever settle.
+  entry.inflight = null;
+  settle(entry.spaces);
   return entry.spaces;
 }
 
