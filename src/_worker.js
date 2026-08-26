@@ -2961,6 +2961,44 @@ function synthBuildStamp(tctx, manifests) {
 // email only means a person relative to ONE workspace's roster. Resolving it against a
 // module roster would let a neighbour's admin vouch for a token scoped to this
 // workspace's content.
+// A publish token's LABEL, re-resolved against THIS workspace's live roster, on every
+// publish. Returns a reason string when the token may not publish, or null when it may.
+//
+// WHAT THIS REPLACES AND WHY IT WAS NOT ENOUGH. The re-check used to be two conditions
+// shaped `if (u && …) return null` — refuse when the resolved user is no longer an admin,
+// refuse when they are a viewer. Both silently PASSED when `u` was undefined, and `u` is
+// undefined in exactly one case: the person was REMOVED rather than demoted. So the check
+// caught the smaller failure and waved through the larger one. Removal does revoke tokens
+// today; the point of a re-check is that it holds when the revoke does not run — a
+// hand-edited identity file, a config push that lands before the revoke, a removal verb
+// somebody writes next year that forgets the call.
+//
+// THE DISCRIMINATOR IS THE `@`, and it has to be something. `augur login` and `augur
+// connect` label a token with the holder's address, so a label with an `@` in it NAMES A
+// PERSON and that person must still be a member here. A label an admin typed — "ci",
+// "backup", "uptime-probe" — names no person, answers to no roster, and is unaffected;
+// asking a roster about it would refuse every machine token on the instance.
+//
+// It resolves against `tctx.USERS`, the roster of the workspace the request is FOR. An
+// address means a person only relative to one roster: the same token, the same label,
+// resolved next door, can legitimately answer differently.
+function tokenActorRefusal(tctx, e) {
+  const label = e && e.label ? String(e.label).trim() : "";
+  if (!label) return null;                 // an unlabelled token names nobody to re-check
+  if (!label.includes("@")) return null;   // an admin typed this; there is no person behind it
+  const u = userByEmail(label, tctx.USERS);
+  // The case the `u && …` short-circuit used to skip: the address is gone from the roster.
+  if (!u) return "not-a-member";
+  const role = roleOf(u);
+  // A viewer may hold no publish token at all, however it was minted — the role exists for
+  // accounts whose password is public knowledge.
+  if (role === "viewer") return "viewer-role";
+  // A star-scope token is admin-equivalent: it pushes instance config, i.e. the user list
+  // itself. Still an editor is still not that.
+  if (e.space === "*" && role !== "admin") return "not-an-admin";
+  return null;
+}
+
 async function publishAuth(tctx, request, env, spaceId, anySpace) {
   const m = /^Bearer\s+(.+)$/.exec(request.headers.get("Authorization") || "");
   if (!m) return null;
@@ -3015,18 +3053,23 @@ async function publishAuth(tctx, request, env, spaceId, anySpace) {
     // outlived the role that justified it. (Reset and remove revoke tokens outright; a
     // demotion is the one transition that left one live.) Labels an admin typed by hand
     // — "ci", "backup" — match no roster user and are unaffected.
-    if (e.space === "*" && e.label) {
-      const u = userByEmail(e.label, tctx.USERS);
-      if (u && roleOf(u) !== "admin") return null;
-    }
-    // The same reasoning one rung down, and the reason it is here rather than only at
-    // mint time: a viewer may not hold ANY publish token, but a demotion happens to an
-    // account that already has one. The role op revokes on demotion; this catches the
-    // paths that never go through it — a hand-edited identity.json, a config push that
-    // lands before the revoke, a token minted while the overlay was mid-write.
-    if (e.label) {
-      const u = userByEmail(e.label, tctx.USERS);
-      if (u && roleOf(u) === "viewer") return null;
+    const refusal = tokenActorRefusal(tctx, e);
+    if (refusal) {
+      // Worth a line, because it is a SIGNAL and not just a refusal: a live token whose
+      // holder is no longer entitled to it means something removed or demoted a person
+      // without revoking their tokens, and nothing else would ever say so. The label is an
+      // address, so it is not in the line — the reason and the scope are enough to go
+      // looking, and the admin panel's token list has the rest.
+      try {
+        console.log(JSON.stringify({
+          level: "notice",
+          event: "publish-token-stale-actor",
+          tenant: (tctx && tctx.tenantId) || "-",
+          reason: refusal,
+          scope: e.space === "*" ? "*" : "space",
+        }));
+      } catch { /* a log line may never break the refusal it is announcing */ }
+      return null;
     }
     if (!anySpace && e.space !== "*" && e.space !== spaceId) return null;
     return e;
@@ -6312,6 +6355,7 @@ export const __testables = Object.freeze({
   deleteUrlPrefix, removeFromStore,
   revokePublishTokens, loginThrottled, loginSlowed, loginFail, DUMMY_HASH,
   pathOwnedBySpace, isPublishablePublicPrefix, removedPublicPrefixes, publishApi, loadManifests, LOGIN_MAX_FAILS,
+  tokenActorRefusal,
   adminStorageApi,
   isPrefixBacked, backedPublicPrefixes,
   isPublicPath, isTrackPath, isRestrictedPath, versionFor, brandMark,
