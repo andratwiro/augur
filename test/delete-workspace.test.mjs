@@ -107,6 +107,21 @@ function twoWorkspaces() {
 }
 const ctxFor = (id) => Object.freeze({ tenantId: id });
 
+/**
+ * Tombstone a workspace and put its purge date in the past, because an erasure now needs
+ * the OBJECT'S own agreement that it is due — `purgeDue` in the worker. That is the second
+ * key: the caller cannot forge the date, because the object wrote it.
+ *
+ * Every test below that erases has to come through here, which is the point. Before this
+ * guard existed they all erased a live workspace on a `confirm` string the caller already
+ * knew, and nothing in the suite noticed that was the whole authorisation.
+ */
+function tombstoneDue(env, id) {
+  const ns = env.TENANTS;
+  // graceMs 0 with a past `at` puts purge_after behind us without touching the clock.
+  return ns.get(ns.idFromName(id)).store.deleteWorkspace("2026-01-01T00:00:00.000Z", 0);
+}
+
 // ── the drill the item asks for ──────────────────────────────────────────────
 
 test("DELETING ONE WORKSPACE LEAVES THE OTHER'S CONTENT ENTIRELY ALONE", async () => {
@@ -114,6 +129,7 @@ test("DELETING ONE WORKSPACE LEAVES THE OTHER'S CONTENT ENTIRELY ALONE", async (
   const ns = env.TENANTS;
   await ns.get(ns.idFromName("a")).store.provision({ workspaceId: "a", adminEmail: "a@x.test" });
   await ns.get(ns.idFromName("b")).store.provision({ workspaceId: "b", adminEmail: "b@x.test" });
+  tombstoneDue(env, "a");
 
   const r = await W.deleteWorkspace(ctxFor("a"), env, { confirm: "a", dryRun: false });
   assert.equal(r.ok, true);
@@ -138,6 +154,9 @@ test("DELETING ONE WORKSPACE LEAVES THE OTHER'S CONTENT ENTIRELY ALONE", async (
 
 test("THE SWEEP RECLAIMS WHAT A IS GONE FROM, AND KEEPS WHAT B STILL SERVES", async () => {
   const env = twoWorkspaces();
+  const ns = env.TENANTS;
+  await ns.get(ns.idFromName("a")).store.provision({ workspaceId: "a", adminEmail: "a@x.test" });
+  tombstoneDue(env, "a");
   await W.deleteWorkspace(ctxFor("a"), env, { confirm: "a", dryRun: false });
 
   const gc = await W.blobGc(env, { dryRun: false });
@@ -208,12 +227,15 @@ test("A DELETE WITHOUT THE WORKSPACE'S OWN NAME IS A DRY RUN, and deletes nothin
   assert.ok(env.BUNDLES.store.has("spaces/a/manifest.json"));
 });
 
-test("deleting a workspace that was never provisioned does not create one first", async () => {
+test("deleting a workspace that was never provisioned is REFUSED, and does not create one first", async () => {
+  // It used to report a clean delete of nothing. Now the object is asked whether it agrees
+  // it is due, and a workspace that does not exist cannot agree — so the answer is a
+  // refusal naming why, which is also the answer a typo'd workspace name deserves.
   const env = twoWorkspaces();
   const ns = env.TENANTS;
   const r = await W.deleteWorkspace(ctxFor("never-existed"), env, { confirm: "never-existed", dryRun: false });
-  assert.equal(r.ok, true);
-  assert.equal(r.objects, 0);
+  assert.equal(r.ok, false);
+  assert.equal(r.reason, "not-tombstoned");
   assert.deepEqual(ns.get(ns.idFromName("never-existed")).store.status(),
     { provisioned: false, hasStoredData: false });
 });
@@ -249,8 +271,96 @@ test("BUT A SPACE LISTING IT COULD NOT COMPLETE IS A REFUSAL", async () => {
   assert.equal(gc.reason, "incomplete-listing");
   assert.ok(env.BUNDLES.store.has(`blobs/${SHARED}`), "an unreadable listing reclaimed live blobs");
 
+  await env.TENANTS.get(env.TENANTS.idFromName("a")).store.provision({ workspaceId: "a", adminEmail: "a@x.test" });
+  tombstoneDue(env, "a");
   const del = await W.deleteWorkspace(ctxFor("a"), env, { confirm: "a", dryRun: false });
   assert.equal(del.ok, false);
   assert.equal(del.reason, "incomplete-listing");
   assert.ok(env.BUNDLES.store.has("spaces/a/manifest.json"), "a partial listing deleted a workspace");
+});
+
+// ── THE SECOND KEY ───────────────────────────────────────────────────────────
+//
+// `confirm === tenantId` is a fat-finger guard, not an authorisation: whoever calls this
+// already knows the id, because they had to address the request to it. On a hosted
+// deployment the caller is a scheduled job holding a bearer, and a bearer can be stolen.
+// So the workspace object is asked whether IT agrees the purge date has passed — and it
+// wrote that date itself, at delete time, which is why the caller cannot forge it.
+//
+// These four are the whole value of the guard. The three refusals matter more than the
+// one success: a guard that only ever says yes is not a guard.
+
+test("A LIVE WORKSPACE IS REFUSED, however correct the confirmation string", async () => {
+  const env = twoWorkspaces();
+  const ns = env.TENANTS;
+  await ns.get(ns.idFromName("a")).store.provision({ workspaceId: "a", adminEmail: "a@x.test" });
+  // No tombstone. This is the case a stolen purge bearer would be used for.
+  const r = await W.deleteWorkspace(ctxFor("a"), env, { confirm: "a", dryRun: false });
+  assert.equal(r.ok, false);
+  assert.equal(r.reason, "not-tombstoned");
+  assert.ok(env.BUNDLES.store.has("spaces/a/manifest.json"), "a live workspace was erased");
+  assert.equal(ns.get(ns.idFromName("a")).store.status().provisioned, true);
+});
+
+test("A TOMBSTONE INSIDE ITS GRACE WINDOW IS REFUSED, and says when it will not be", async () => {
+  // The thirty days are a published promise, and this is the code that keeps it. Somebody
+  // who deletes by mistake has until the date to write in; erasing early takes that away.
+  const env = twoWorkspaces();
+  const ns = env.TENANTS;
+  await ns.get(ns.idFromName("a")).store.provision({ workspaceId: "a", adminEmail: "a@x.test" });
+  const t = ns.get(ns.idFromName("a")).store.deleteWorkspace(new Date().toISOString());
+  assert.ok(t.purgeAfter, "the object did not record a purge date");
+
+  const r = await W.deleteWorkspace(ctxFor("a"), env, { confirm: "a", dryRun: false });
+  assert.equal(r.ok, false);
+  assert.equal(r.reason, "grace-window");
+  assert.equal(r.purgeAfter, t.purgeAfter, "the refusal did not carry the date it is waiting for");
+  assert.ok(env.BUNDLES.store.has("spaces/a/manifest.json"), "a workspace inside its grace window was erased");
+});
+
+test("A WORKSPACE OBJECT THAT CANNOT BE READ IS A REFUSAL, NOT A SKIP", async () => {
+  // The failure that would matter. If an unreachable object read as "no object here", a
+  // transient error would become permission to erase — and this is the one verb no
+  // rollback reaches. Same asymmetry `effectiveSecret` makes: bound-but-broken fails
+  // closed, absent-entirely does not.
+  const env = twoWorkspaces();
+  const ns = env.TENANTS;
+  await ns.get(ns.idFromName("a")).store.provision({ workspaceId: "a", adminEmail: "a@x.test" });
+  tombstoneDue(env, "a");
+
+  const realGet = ns.get.bind(ns);
+  ns.get = (id) => {
+    const s = realGet(id);
+    return { ...s, fetch: async () => { throw new Error("workspace unreachable"); } };
+  };
+
+  const r = await W.deleteWorkspace(ctxFor("a"), env, { confirm: "a", dryRun: false });
+  assert.equal(r.ok, false);
+  assert.equal(r.reason, "workspace-status-unreadable");
+  assert.ok(env.BUNDLES.store.has("spaces/a/manifest.json"), "an unreadable object let an erasure through");
+});
+
+test("WITH NO WORKSPACE BINDING AT ALL the guard does not apply — a self-hosted instance is unchanged", async () => {
+  // Not an oversight and not a hole. A self-hosted instance has no workspace object and
+  // never will; there this route is an admin deleting their own content with a star-scope
+  // token, which is legitimate and has no tombstone to consult. The distinction is
+  // "binding absent" versus "binding present and unhappy", and only the second refuses.
+  const env = twoWorkspaces();
+  delete env.TENANTS;
+  const r = await W.deleteWorkspace(ctxFor("a"), env, { confirm: "a", dryRun: false });
+  assert.equal(r.ok, true);
+  assert.deepEqual([...env.BUNDLES.store.keys()].filter((k) => k.startsWith("spaces/a/")), []);
+  assert.deepEqual(r.store, { skipped: "no-object" });
+});
+
+test("A DRY RUN IS NEVER REFUSED BY THE GUARD, because it removes nothing", async () => {
+  // "What would this erase" has to stay askable before the date arrives — it is how an
+  // operator checks the blast radius of a delete they are considering.
+  const env = twoWorkspaces();
+  const ns = env.TENANTS;
+  await ns.get(ns.idFromName("a")).store.provision({ workspaceId: "a", adminEmail: "a@x.test" });
+  const dry = await W.deleteWorkspace(ctxFor("a"), env, {});
+  assert.equal(dry.ok, true);
+  assert.equal(dry.dryRun, true);
+  assert.ok(env.BUNDLES.store.has("spaces/a/manifest.json"));
 });

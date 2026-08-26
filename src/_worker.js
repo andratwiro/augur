@@ -6212,11 +6212,54 @@ async function storeSpaceIds(env) {
  * overwrite everything a workspace has published, and rollback undoes that; this is the one
  * verb whose result no rollback reaches, so the caller says which workspace out loud.
  */
+/**
+ * THE SECOND KEY on an erasure, and the reason it exists.
+ *
+ * `confirm === tenantId` is a fat-finger guard, not an authorisation: whoever calls this
+ * already knows the workspace id, because they had to address the request to it. On a
+ * hosted deployment the caller is a scheduled job in the control plane holding a bearer,
+ * and a bearer can be stolen. So the workspace object is asked whether IT agrees it is
+ * due, and it wrote that date itself at delete time — the caller cannot forge it, because
+ * the date is not the caller's to write. Neither side can erase a workspace alone.
+ *
+ * ⚠️ NO BINDING AT ALL IS NOT A REFUSAL, and that asymmetry is the same one `effectiveSecret`
+ * makes for the same reason. A self-hosted instance has no workspace object and never will;
+ * there, `_state/delete` is an admin deleting their own content with a star-scope token,
+ * which is legitimate and has no tombstone to check. But a deployment that HAS the binding
+ * and cannot get a clear "yes, it is due" out of it FAILS CLOSED — a transient error must
+ * not read as permission. The dangerous direction is the one that erases.
+ */
+async function purgeDue(env, id) {
+  const stub = tenantStub(env, id);
+  if (!stub) return { due: true, checked: false }; // no object model here — see the header
+  let s;
+  try {
+    const res = await stub.fetch("https://workspace/__control/status");
+    if (!res.ok) return { due: false, checked: true, reason: "workspace-status-unreadable" };
+    s = await res.json();
+  } catch (e) {
+    return { due: false, checked: true, reason: "workspace-status-unreadable" };
+  }
+  if (!s || !s.deleted) return { due: false, checked: true, reason: "not-tombstoned" };
+  const at = Date.parse(s.purgeAfter || "");
+  if (!Number.isFinite(at)) return { due: false, checked: true, reason: "no-purge-date" };
+  if (at > Date.now()) {
+    return { due: false, checked: true, reason: "grace-window", purgeAfter: s.purgeAfter };
+  }
+  return { due: true, checked: true, purgeAfter: s.purgeAfter };
+}
+
 async function deleteWorkspace(tctx, env, { confirm, dryRun = true } = {}) {
   const id = tctx && tctx.tenantId;
   if (!id) return { ok: false, reason: "no-workspace" };
   if (!dryRun && confirm !== id) return { ok: false, reason: "confirm-mismatch", expected: id };
   if (!env.BUNDLES) return { ok: false, reason: "no-store" };
+  // Only on the path that actually deletes. A dry run removes nothing, and refusing it
+  // would take away the one way to ask "what would this erase" before the date arrives.
+  if (!dryRun) {
+    const due = await purgeDue(env, id);
+    if (!due.due) return { ok: false, reason: due.reason, ...(due.purgeAfter ? { purgeAfter: due.purgeAfter } : {}) };
+  }
 
   // What this workspace referenced — recorded so the sweep has a starting point, and so a
   // dry run can say what it would eventually reclaim.
@@ -8236,7 +8279,7 @@ export const __testables = Object.freeze({
   nextPublishVersion, overlayFor, overlayKvKey, statusApi, nameApi, pinsApi,
   exportState, importState,
   quotaBump, quotaMinute, quotaDay, workspaceStatus, touchWorkspaceActivity,
-  deleteWorkspace, blobGc, clearFamilies, NEVER_CLEARED,
+  deleteWorkspace, purgeDue, blobGc, clearFamilies, NEVER_CLEARED,
   readFreeze, setFreeze, isFrozenWrite, FROZEN_WRITES, FREEZE_KEY,
   readSuspension, isAllowedWhileSuspended, SUSPENDED_ALLOWED, SUSPENDED_ALLOWED_READS,
   SUSPENSION_TTL_MS,
