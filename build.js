@@ -2560,9 +2560,10 @@ const TABBAR_CSS = `
 
       /* The in-body section headers are folded into the breadcrumb header on mobile.
          Hide the .folderbar EXCEPT ones carrying a real action button (admin's Invite,
-         .aubtn) — those aren't just a title. The create-canvas button never surfaces on
-         mobile even where a folderbar survives. */
-      .folderbar:not(:has(.aubtn)) { display: none; }
+         .aubtn) — those aren't just a title — and ones marked .folderbar--keep, where
+         the fold would lose the name rather than repeat it (emptyHead, build.js). The
+         create-canvas button never surfaces on mobile even where a folderbar survives. */
+      .folderbar:not(:has(.aubtn)):not(.folderbar--keep) { display: none; }
       .folderbar__new { display: none; }
 
       /* ── Floating pill tab bar ────────────────────────────────────────────── */
@@ -5712,8 +5713,17 @@ const emptyState = (...paras) => paras.map((p) => `<p class="empty">${p}</p>`).j
 // An empty surface still gets its title bar. Without one the page is a floating
 // sentence with no indication of which tab you are looking at, and the populated
 // branch of every one of these renderers opens with exactly this header.
-const emptyHead = (title) =>
-  `<header class="folderbar"><h1 class="folderbar__title">${title}</h1><span class="folderbar__count">0</span><span class="folderbar__rule"></span></header>`;
+//
+// `keepOnMobile` survives the narrow-viewport rule that otherwise hides an in-body
+// folderbar (the breadcrumb header folds it in). That fold is only lossless when the
+// crumb says the same word: it does for the landing page and Playground (and for
+// Changelog, whose bar survives on its Help button either way), and it does NOT for
+// the five design-system tabs, whose crumb reads "Design system" for all five while
+// the tab bar's own labels are visually hidden. A populated tab
+// still names itself through its content — a table of components, a wall of swatches —
+// so an empty one is the case where the tab's name survives nowhere else on the page.
+const emptyHead = (title, keepOnMobile = false) =>
+  `<header class="folderbar${keepOnMobile ? " folderbar--keep" : ""}"><h1 class="folderbar__title">${title}</h1><span class="folderbar__count">0</span><span class="folderbar__rule"></span></header>`;
 
 function renderRootIndex(opportunities) {
   if (!opportunities.length) {
@@ -5895,7 +5905,7 @@ function renderPagesIndex(pages) {
       title: "Pages",
       activeTab: "pages",
       wrapClass: "wrap--wide",
-      body: emptyHead("Pages") + emptyCopy,
+      body: emptyHead("Pages", true) + emptyCopy,
     });
   }
 
@@ -5980,7 +5990,7 @@ function renderComponentsIndex(components) {
       // build a second one of it. It is also the tab whose contents are not read out of
       // the folder: every word in that table comes from registry.json, which is worth a
       // clause here because an agent that skips it produces a tab of nameless rows.
-      body: emptyHead("Components") + emptyState(
+      body: emptyHead("Components", true) + emptyState(
         `A button is an atom; a search field with its filter chips, its clear button and its no-results line is a component — several atoms assembled into something with a job. This is the table of those: what each one is in one line, and whether it is settled or still wants a look, so whoever builds tomorrow's screen finds the piece that already exists instead of quietly building a second one.`,
         `Nothing here yet. Each component is a demo folder under <code>components/&lt;name&gt;/</code>, but the names, descriptions and badges in this table are not read out of the folder — they come from <code>registry.json</code> at the top of the workspace, which is also what lets the comment overlay name what you are pointing at. Ask your agent: <em>&ldquo;Add a Components demo for &lt;the component&gt; and register it in <code>registry.json</code>, following the engine's <code>agents/ui-skill.md</code>.&rdquo;</em>`
       ),
@@ -6040,11 +6050,13 @@ function renderComponentsIndex(components) {
 // `empty` is per-tier, not derived from `activeTab`: a base atom and a composition
 // pattern are different things, and one sentence with the noun swapped is exactly the
 // bare-path empty state this replaced.
+// Both tiers it serves are design-system tabs, so the empty title bar is kept on a
+// phone — see emptyHead. A future non-library caller would want that argument off.
 function renderTierGrid(items, { title, activeTab, empty, addHint }) {
   if (!items.length) {
     return shell({
       title, activeTab, wrapClass: "wrap--wide",
-      body: emptyHead(title) + empty,
+      body: emptyHead(title, true) + empty,
     });
   }
   const card = (p) => `
@@ -6351,7 +6363,7 @@ function renderTokensIndex(graph) {
     title: "Tokens", activeTab: "tokens", wrapClass: "wrap--wide",
     body: (names.length
       ? `<header class="folderbar"><h1 class="folderbar__title">Tokens</h1><span class="folderbar__count">${names.length}</span><span class="folderbar__rule"></span></header>`
-      : emptyHead("Tokens")) +
+      : emptyHead("Tokens", true)) +
       hint +
       `${sections}${filterEmpty()}` +
       `<script>${TOKENS_JS}</script>`,
@@ -6477,7 +6489,8 @@ function renderChangelogPage(entries) {
   // ask for. CHANGELOG_SRC is `changelog.md` at the ENGINE root and `changelog/` is in
   // ENGINE_CHROME, so an entry arrives with an engine update and never with a publish —
   // promising the agent route would send a workspace owner to edit a file that is not
-  // in their repo.
+  // in their repo. Its own header is exempt from the mobile fold already (the Help
+  // .aubtn), so it needs no emptyHead.
   const body = entries.length
     ? head(entries.length) +
       `<div data-fgroup><div class="cl-list">${cards}</div></div>${filterEmpty()}` +
