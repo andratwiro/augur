@@ -281,19 +281,47 @@ default export; checked by sabotage, keying the cache on a constant turns all fi
 leaves the byte snapshot green (it pins no `/__people`, no `/__avatar/` and no board, and
 runs in ASSETS mode).
 
-**⚠️ NOT CLOSED, AND A DIFFERENT AXIS: the KV KEYS are not namespaced by workspace.**
-Recorded here so it is not rediscovered a fourth time. Everything above is about per-isolate
-CACHES — state that outlives a request. Underneath them, the KV document names are flat and
-instance-wide: `canvases`, `pt:remarks`, `board:<path>`, and the six roster documents. With
-one KV binding shared by two workspaces — which is what an isolate serving both by Host
-would have unless something changes — `beta GET /boards/alpha-secret/` answers 200 with
-alpha's board even after every memo is cold, because both workspaces read the same
-`canvases` document. No cache is involved and no amount of keying the caches touches it.
-**Do not rename the keys as a side quest**: the settled architecture moves mutable state
-into a per-workspace Durable Object, which resolves this by giving each workspace its own
-storage rather than by prefixing strings in a shared one, and a half-done rename would
-leave live instances reading keys nothing writes. The caches being keyed is what makes this
-the only remaining path — that is the value of writing it down.
+**⚠️ NOT CLOSED, AND A DIFFERENT AXIS: the KV KEYS are not namespaced by workspace. It is
+an AUTHORIZATION and CREDENTIAL boundary, not a content one.** Recorded here so it is not
+rediscovered a fourth time, and stated at its real size — the first telling of it named
+only the content keys, which undersold it by a category. Everything above is about
+per-isolate CACHES, state that outlives a request. Underneath them the KV document names
+are flat and instance-wide, and *every* name is: `canvases`, `pt:remarks`, `board:<path>`,
+`c:<path>`, `statuses`, `pins`, `basset:<hash>` — and `users:secrets`, `users:invites`,
+`users:roles`, `users:roster`, `users:spaces`, `publish:tokens`. Not one of them carries a
+tenant segment (`_worker.js:143–209`, `2135`). With one KV binding shared by two
+workspaces — which is what an isolate serving both by Host would have unless something
+changes — that is four different failures, and only the first is a disclosure:
+
+- **Content.** `beta GET /boards/alpha-secret/` answers 200 with alpha's board even after
+  every memo is cold, because both workspaces read the same `canvases` document. No cache
+  is involved and no amount of keying the caches touches it.
+- **Authorization.** `users:roles` and `users:spaces` are one document each. A role granted
+  in alpha *is* the role in beta, including admin, and beta's own config saying otherwise
+  does not enter into it. This is the same failure the roster overlay produced through a
+  cache — the cache is keyed now, and the document underneath it is not.
+- **Identity.** `users:secrets` is one document, so a password set in alpha is the
+  credential that signs into beta, and `users:invites` is one document, so an invite link
+  minted by alpha's admin redeems into beta. Being on beta's roster is not required for
+  either: `identify()` refuses a user with no effective secret, and this hands them one.
+  The `__Host-` cookie prefix stops a session from being *shared* across hosts; it does
+  nothing about the store the session is derived from.
+- **Credential.** `publish:tokens` is one document. A star-scope token minted in alpha
+  resolves in beta, where star scope is admin-equivalent (it pushes the instance config,
+  i.e. the user list). The two guards that would catch a demoted holder look the token's
+  label up in the *calling* workspace's roster (`publishAuth`, `_worker.js:2651–2670`),
+  where an alpha address names nobody — so they pass, and the token publishes.
+
+**⛔ Do not rename the keys, here or as a side quest anywhere.** The settled architecture
+moves mutable state into a per-workspace Durable Object, which resolves all four of the
+above by giving each workspace its own storage rather than by prefixing strings in a shared
+one. A rename is not a smaller version of that fix; it is a migration of every live
+instance's data, and a half-done one leaves live instances reading keys nothing writes —
+which for `users:secrets` means every session invalid and every login refused (the read
+fails closed, deliberately, and there is no in-app escape hatch), and for `publish:tokens`
+means every publish token silently dead. The caches being keyed is what makes the flat
+names the only remaining path — that is the value of writing this down rather than acting
+on it.
 
 Excluded as per-isolate runtime caches, not config: `cfgAt`, `MANIFESTS`, `STORAGE_CACHE` —
 the latter two keyed by tenant rather than shared, per the paragraph above. `AVATAR_KEYS`
@@ -701,11 +729,14 @@ harder than the deletion did:
 The single-tenant KV shapes
 — `c:<path>` (`_worker.js:3261`), `statuses` (`3308`), `pins` (`3338`), `names` (`3389`),
 `canvases` (`3493`), `board:<path>` (`3645`), `basset:<hash>` (`3678`), and the `users:*`
-/ `spaces:*` family — are the tenant axis Phase B scopes, and the board baseline is
-already written to make that diff loud. The first slice left every one of them
-untouched, as it should have. Retiring the *path-mount* tier must not be conflated with
-*tenant-scoping the KV*; they are different axes and doing both here would violate the
-one-change-per-commit rule.
+/ `spaces:*` family and `publish:tokens` — are the tenant axis Phase B scopes, and the
+board baseline is already written to make that diff loud. The first slice left every one
+of them untouched, as it should have. Retiring the *path-mount* tier must not be conflated
+with *tenant-scoping the KV*; they are different axes and doing both here would violate the
+one-change-per-commit rule. What the enumeration above must not be read as saying is that
+this is a content problem: the `users:*` and `publish:*` names make it an authorization and
+credential boundary, and Phase B resolves it with a per-workspace Durable Object, never a
+rename. The full statement is the ⚠️ paragraph in the leaks section.
 
 **Risk — the realtime DO room key.** `rtProxy` forwards to
 `tctx.RT_ORIGIN + "/room" + url.search`; the realtime worker keys rooms by board path only
