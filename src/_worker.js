@@ -218,13 +218,11 @@ const AVATAR_MIMES = {
 };
 const INVITE_TTL_MS = 7 * 24 * 60 * 60 * 1000; // links get pasted into chat — expire them
 
-// Serve-time chrome composition (runtime-chrome). CHROME_POINTER is the CURRENT engine's
-// chrome bundle names + UI version (routing.chrome); RUNTIME_CHROME gates composeChrome.
-// Inert defaults so a raw/local copy (and every test import) stays side-effect-free — the
-// worker fills them in loadConfig from routing.json (assets mode). Off ⇒ served HTML is
-// untouched, exactly as before.
-let CHROME_POINTER = null;
-let RUNTIME_CHROME = false;
+// Serve-time chrome composition (runtime-chrome) is per workspace, on the context:
+// `tctx.CHROME_POINTER` is the CURRENT engine's chrome bundle names + UI version
+// (routing.chrome), and `tctx.RUNTIME_CHROME` gates composeChrome. Both default inert, so
+// a raw/local copy (and every test import) stays side-effect-free and served HTML is
+// untouched — the worker fills them from routing.json as it loads a workspace's config.
 
 // Per-page live-reload versions: `tctx.VERSION_MAP` is a URL-prefix → token map that
 // changes only when that folder's content changes (routing.json). Lets a tab reload only
@@ -409,27 +407,28 @@ async function verifyPassword(password, stored) {
 
 // ---- Runtime config loader --------------------------------------------------
 // Builds a workspace's config from /__config/{instance,routing}.json — the two documents
-// build.js emits next to the assets — as ONE value (loadTenantContext), then mirrors it
-// onto the bindings above until the read sites take it as a parameter. Cached per isolate
-// for ~1.5s: fast enough that a fresh deploy (or an offline rebuild) flips the gate's view
-// of the world almost immediately, cheap enough to run on the hot path (between refreshes
-// the call is a sync timestamp check). A missing or unreadable document leaves the current
-// values in place — so a raw copy (no config emitted) keeps its empty defaults, and a
-// transient read failure never wipes a working gate.
-// The oldest publish protocol this instance will accept a commit from
-// (deploy.config.json "minClientProtocol"). 0 = accept anything, which is the
-// default and the right one for a single-operator instance: a floor that nobody
-// set should never be the reason a publish fails.
-let MIN_CLIENT_PROTOCOL = 0;
-// Optional one-liner rendered on the login page (deploy.config.json "loginHint") —
-// how a demo instance surfaces its test credentials without opening the gate.
-let LOGIN_HINT = "";
-// Optional email/password baked into the login form's value= attributes
-// (deploy.config.json "loginPrefill": {email, password}) — a demo instance's way of
-// making its throwaway account a one-click login instead of a copy-paste. Empty by
-// default, so a normal instance's form renders with no values, same as before.
-let LOGIN_PREFILL_EMAIL = "";
-let LOGIN_PREFILL_PASSWORD = "";
+// build.js emits next to the assets — as ONE value (loadTenantContext) handed to the
+// request that asked for it. Cached per workspace for ~1.5s: fast enough that a fresh
+// deploy (or an offline rebuild) flips the gate's view of the world almost immediately,
+// cheap enough to run on the hot path (between refreshes the call is a sync timestamp
+// check). A missing or unreadable document leaves the current values in place — so a raw
+// copy (no config emitted) keeps its empty defaults, and a transient read failure never
+// wipes a working gate.
+//
+// The instance knobs this loader fills are fields of that context, not bindings here:
+//   tctx.MIN_CLIENT_PROTOCOL   the oldest publish protocol this workspace accepts a
+//                              commit from (deploy.config.json "minClientProtocol").
+//                              0 = accept anything, the default and the right one for a
+//                              single-operator workspace: a floor nobody set should never
+//                              be the reason a publish fails.
+//   tctx.LOGIN_HINT            optional one-liner rendered on the login page
+//                              (deploy.config.json "loginHint") — how a demo workspace
+//                              surfaces its test credentials without opening the gate.
+//   tctx.LOGIN_PREFILL_EMAIL   optional email/password baked into the login form's value=
+//   tctx.LOGIN_PREFILL_PASSWORD  attributes (deploy.config.json "loginPrefill") — a demo
+//                              workspace's way of making its throwaway account a one-click
+//                              login instead of a copy-paste. Empty by default, so an
+//                              ordinary workspace's form renders with no values.
 // The release feed the update nudge falls back to when a workspace names none. The
 // version it compares against and the feed it prefers are both per-workspace
 // (`tctx.INSTANCE_ENGINE_VERSION`, `tctx.UPDATE_FEED`); only this fallback is fixed.
@@ -449,33 +448,24 @@ let cfgAt = 0;
 // which is the entire window this stamp exists to measure. 0 = this isolate has never
 // had a good config for the workspace in the slot, so there is nothing to keep.
 let cfgGoodAt = 0;
-// The context this isolate is currently serving from — config as ONE value instead of
-// twenty-nine bindings. It is the keep-last-good half of the cache above, expressed as a
-// reference: a tick that reads nothing usable returns this same object, so "keep the last
-// good config" is "do not swap the reference" rather than "do not overwrite twenty-nine
-// variables one at a time". Single-slot, so like the globals it mirrors it would answer a
-// second workspace with the first one's config; the per-tenant cache in
-// src/tenant-context.mjs is what replaces it when fetch() threads the context down.
+// The context this isolate is currently serving from — a workspace's whole config as ONE
+// value. It is the keep-last-good half of the cache above, expressed as a reference: a
+// tick that reads nothing usable returns this same object, so "keep the last good config"
+// is "do not swap the reference" rather than "do not overwrite a field at a time".
+// Single-slot, so it would answer a second workspace with the first one's config; the
+// per-tenant cache in src/tenant-context.mjs is what replaces it when the resolver stops
+// answering with one static id.
 let TENANT_CTX = emptyTenantContext(null);
-// Transitional test seam: the request path builds the identity fields as a value now
-// (instanceFields), but the gate, publish and admin baselines drive this to seed the
-// module globals directly. test/tenant-context.test.mjs pins the two to the same
-// coercions, so a change to either without the other is a red test.
+// Test seam: the request path builds the identity fields as a value (instanceFields), and
+// the gate, publish and admin baselines drive this to seed a workspace from an instance
+// document. test/tenant-context.test.mjs pins the two to the same coercions, so a change
+// to either without the other is a red test.
 //
-// ⚠️ It also advances TENANT_CTX, and must keep doing so. The router now hands the
-// context down, and a read site reached through it must see exactly what the global it
-// replaces would have said. A seam that wrote only the globals would give a threaded
-// site one answer and an unthreaded one another — the two halves of a half-done sweep
-// disagreeing, which is the one failure a green test suite could not show.
+// It seeds and RETURNS the context — the only thing a caller can read the seeded config
+// back out of, since no read site reaches for module scope any more.
 function applyInstance(inst) {
   TENANT_CTX = withTenantFields(TENANT_CTX, instanceFields(inst));
-  MIN_CLIENT_PROTOCOL = Number.isInteger(inst.minClientProtocol) && inst.minClientProtocol > 0
-    ? inst.minClientProtocol : 0;
-  LOGIN_HINT = typeof inst.loginHint === "string" ? inst.loginHint : "";
-  const prefill = inst.loginPrefill && typeof inst.loginPrefill === "object" ? inst.loginPrefill : {};
-  LOGIN_PREFILL_EMAIL = typeof prefill.email === "string" ? prefill.email : "";
-  LOGIN_PREFILL_PASSWORD = typeof prefill.password === "string" ? prefill.password : "";
-  // ⚠️ `CONFIG_LOADED` is NOT set here any more, and must never be set anywhere but
+  // ⚠️ `CONFIG_LOADED` is NOT set here, and must never be set anywhere but
   // `instanceFields`. It answers "has an instance document actually parsed for THIS
   // workspace", which is what lets the gate tell "genuinely no identity" (raw build →
   // open by design) from "config has not loaded yet in this cold isolate" (deployment →
@@ -555,33 +545,21 @@ async function loadTenantContext(tenantId, env, { prev = null, forced = false } 
   return withTenantFields(next, await rosterFields(next, env, forced));
 }
 
-// Transitional: mirror a loaded context onto the module globals the remaining read sites
-// still read. Every threading commit shrinks this function; A-fetch-entrypoint deletes it
-// along with the bindings it writes.
-//
-// The workspace cluster is gone from here: SPACES, the icon index and the hashes it
-// vouches for, the sentinels and the engine-version/update-feed pair are read off the
-// context at every site that wants them, so there is nothing left to mirror. So is the
-// whole MCP-proxy allowlist, hosts and paths alike, and so is the canvas cluster — the
-// two aggregates, the loader tags and the realtime origin.
-function applyTenantContext(ctx) {
-  MIN_CLIENT_PROTOCOL = ctx.MIN_CLIENT_PROTOCOL;
-  LOGIN_HINT = ctx.LOGIN_HINT;
-  LOGIN_PREFILL_EMAIL = ctx.LOGIN_PREFILL_EMAIL;
-  LOGIN_PREFILL_PASSWORD = ctx.LOGIN_PREFILL_PASSWORD;
-  CHROME_POINTER = ctx.CHROME_POINTER;
-  RUNTIME_CHROME = ctx.RUNTIME_CHROME;
-}
+// A loaded context is now the ONLY place a workspace's config lives. There is no mirror
+// left to write: every read site takes the context as a parameter, so nothing in module
+// scope can answer a config question, and therefore nothing in module scope can answer it
+// for the wrong workspace. `scripts/no-tenant-globals.mjs` is what keeps that true — its
+// allowlist holds no config field at all now, so re-declaring one fails the build.
 
-// The transitional caller: one tick of the clock, then the mirror. It owns the three
-// properties the cache has to keep, and all three are here rather than inside
-// loadTenantContext because the CALLER is what decides what a failed read is worth:
+// The caller: one tick of the clock, then the swap. It owns the three properties the
+// cache has to keep, and all three are here rather than inside loadTenantContext because
+// the CALLER is what decides what a failed read is worth:
 //
 //   STAMP-FIRST — the tick is stamped BEFORE the read, so a config document that is
 //   broken costs one attempt per 1.5s tick instead of one per concurrent request. It is
 //   stamped before the failure is classified too: a store that is refusing every read
 //   must not get one attempt per request just because the answers are useless.
-//   KEEP-LAST-GOOD — the mirror runs only when the load handed back a different context.
+//   KEEP-LAST-GOOD — the swap happens only when the load handed back a different context.
 //   A read that produced nothing returns the reference it was given, and the gate keeps
 //   serving the last config that worked. A read that FAILED keeps it too, but only for
 //   as long as CONFIG_STALE_CEILING_MS.
@@ -625,7 +603,6 @@ async function loadConfig(tenantId, env) {
   cfgGoodAt = Date.now();
   if (next === TENANT_CTX) return TENANT_CTX;
   TENANT_CTX = next;
-  applyTenantContext(next);
   return TENANT_CTX;
 }
 
@@ -2224,23 +2201,17 @@ function derivedRoutingFields(manifests, spaceIcons) {
   };
 }
 
-// Transitional test seam: write the derived fields into the module globals the ~110 read
-// sites still use. The request path no longer calls this — loadTenantContext takes the
-// same value and puts it on a context — but the gate, board and link-preview baselines
-// drive it directly to seed a routing table. It goes when the globals do.
-//
-// ⚠️ It advances TENANT_CTX for the same reason applyInstance does: the router hands the
-// context down now, so a seam that seeded only the globals would let a threaded read site
-// and an unthreaded one answer differently from the same fixture.
+// Test seam: seed a routing table from a set of manifests. The request path does not call
+// this — loadTenantContext takes the same value and puts it on a context — but the gate,
+// board and link-preview baselines drive it directly to build a workspace to ask
+// questions of.
 function applyDerivedRouting(manifests) {
   const f = derivedRoutingFields(manifests, TENANT_CTX.SPACE_ICONS);
   TENANT_CTX = withTenantFields(TENANT_CTX, f);
-  CHROME_POINTER = f.CHROME_POINTER;
-  RUNTIME_CHROME = f.RUNTIME_CHROME;
   // Returns the CONTEXT, not the bare field patch. It is a superset — every field of the
   // patch is a field of the context — so a caller reading `f.MCP_PATH_ALLOWLIST` reads the
-  // same value, and a caller that now has to hand a context to a threaded predicate has
-  // one without seeding anything twice.
+  // same value, and a caller that has to hand a context to a predicate has one without
+  // seeding anything twice.
   return TENANT_CTX;
 }
 
@@ -3731,14 +3702,9 @@ async function composeChrome(tctx, res, url) {
 // composeChrome without a config load. It hands back the seeded CONTEXT, which is the
 // only place the workspace list now lives.
 function __setChromeTestState(pointer, spaces, on) {
-  // ⚠️ TENANT_CTX moves with the globals that are left — see applyInstance. A seam that
-  // seeded one and not the other would give composeChrome a different answer through the
-  // threaded context than through the binding it is replacing.
   TENANT_CTX = withTenantFields(TENANT_CTX, {
     CHROME_POINTER: pointer, SPACES: spaces, RUNTIME_CHROME: on,
   });
-  CHROME_POINTER = pointer;
-  RUNTIME_CHROME = on;
   return TENANT_CTX; // the seeded context, for a caller that has to hand one down
 }
 
@@ -5012,7 +4978,7 @@ export default {
       // This refusal deliberately predates the resolve — it is the same answer for
       // every workspace and costs no read — so there is no per-request context to hand
       // the branded 404 yet. TENANT_CTX, the last good one this isolate loaded, is what
-      // the module bindings mirror, so the page renders exactly the bytes it always has.
+      // the page renders from — the same bytes it has always answered with.
       return notFoundResponse(TENANT_CTX);
     }
 
@@ -5024,11 +4990,10 @@ export default {
     const { tenantId } = await resolveTenant(request, env);
     // ONE context for this request, for THAT workspace, built here and handed down.
     // `tctx` is the config half of the request — users, prefixes, versions, the gate's
-    // flag — as a single frozen value, and from here on the router reads it instead of
-    // reaching for a module binding. The bindings still exist and still mirror it (see
-    // applyTenantContext): the later A-thread-* items take the last read sites and delete
-    // them. Until then the two are held equal on purpose — every seam that writes one
-    // writes the other — so a half-threaded router cannot answer two ways.
+    // flag — as a single frozen value, and from here on the router reads it and nothing
+    // else. There is no module binding left to reach for: `scripts/no-tenant-globals.mjs`
+    // allowlists no config field at all, so declaring one fails the build rather than
+    // giving one route an answer this context does not agree with.
     //
     // Note what is NOT here: no second resolve, and no config read that picks its own
     // workspace. Everything below is downstream of these two lines.

@@ -5,21 +5,29 @@
 // config in module-scope `let`s filled once per isolate. An isolate that serves two
 // workspaces answers the second one with the first one's users, prefixes and gate. The
 // fix is a per-request context (`src/tenant-context.mjs`), threaded through the read
-// sites. That sweep takes many commits, and its dangerous failure is not a red test —
-// it is one convenient new global added while the sweep is half done, which nothing in
-// a single-tenant era can observe. This lint is what observes it.
+// sites. That sweep is DONE — no field of the tenant context is declared at module scope
+// any longer — and its dangerous failure was never a red test. It is one convenient new
+// global, which nothing in a single-tenant era can observe: the deployment has one
+// workspace, so a value shared between workspaces and a value belonging to the only
+// workspace there is are the same bytes. This lint is what observes it, and it goes on
+// mattering after the sweep because the next global costs nothing to add and gives back
+// the bug in full.
 //
 // WHAT COUNTS AS A BINDING. Anything at column 0 of the worker that can hold state: a
 // `let` or `var`, and a `const` whose initializer is a mutable container (array literal,
 // object literal, `new Set/Map/WeakSet/WeakMap`). A `const` holding a number, a string,
 // a regex or a function is not state and is not checked.
 //
-// TWO DIRECTIONS, BOTH FATAL.
+// THREE DIRECTIONS, ALL FATAL.
 //
 //   UNLISTED  a binding ALLOWED has never heard of — someone added a global. Fail.
 //   STALE     an ALLOWED entry with no binding left in the worker — the sweep removed
 //             it. Its line goes with it, so the list SHRINKS as threading lands instead
 //             of rotting into standing permission for whatever gets added later.
+//   READMITTED an ALLOWED entry that names a field of the tenant context. The sweep is
+//             done, so the route back to a shared config global is not a new name but an
+//             old one re-declared with a plausible reason attached. A per-workspace field
+//             cannot be invariant, so the reason is refused unread.
 //
 // Being on the list is a claim, in writing, about why that binding is safe to share
 // between workspaces. Adding one is meant to be a deliberate, reviewed act.
@@ -35,22 +43,11 @@ import { TENANT_FIELD_NAMES } from "../src/tenant-context.mjs";
 
 // ---- the allowlist ------------------------------------------------------------------
 //
-// Three kinds, and only two of them are meant to last.
-
-// IN FLIGHT — tenant config that has NOT been threaded yet. These are not tenant-
-// invariant; they are the bug this phase exists to remove, listed so the lint is green
-// the day it lands and blocks only what is new. Every name here must also be a declared
-// field of the tenant context (the lint checks that), and every name here must
-// eventually leave: a thread-* commit deletes the `let` in the worker and the line here
-// in the same change.
-const IN_FLIGHT = {
-  CHROME_POINTER:          "which shared chrome bundle this deployment serves",
-  RUNTIME_CHROME:          "whether chrome is composed at serve time for this deployment",
-  MIN_CLIENT_PROTOCOL:     "the publish protocol floor this deployment demands",
-  LOGIN_HINT:              "the line under the login form",
-  LOGIN_PREFILL_EMAIL:     "demo credentials prefilled on the login form",
-  LOGIN_PREFILL_PASSWORD:  "demo credentials prefilled on the login form",
-};
+// TWO KINDS, and there is no third. There used to be an IN-FLIGHT kind holding the config
+// globals the sweep had not reached yet; it is empty and gone. Not one field of the tenant
+// context is declared at module scope any more, so a config global is now simply an
+// UNLISTED binding and fails the build — which is the point of the whole phase, expressed
+// as a lint rather than as a promise.
 
 // CACHES — per-isolate memos and clocks. Sharing one between workspaces costs at worst a
 // wasted read, never a wrong answer — EXCEPT where the reason below says otherwise, and
@@ -85,7 +82,6 @@ const CONSTANTS = {
 };
 
 export const ALLOWED = Object.freeze({
-  ...Object.fromEntries(Object.entries(IN_FLIGHT).map(([k, why]) => [k, { kind: "in-flight", why }])),
   ...Object.fromEntries(Object.entries(CACHES).map(([k, why]) => [k, { kind: "cache", why }])),
   ...Object.fromEntries(Object.entries(CONSTANTS).map(([k, why]) => [k, { kind: "constant", why }])),
 });
@@ -141,7 +137,11 @@ export function moduleScopeBindings(source) {
 
 // Returns every problem found, each as `{ kind, name, line, message }`. An empty list is
 // the pass condition; the caller decides how to report.
-export function checkWorkerGlobals(source) {
+export function checkWorkerGlobals(source, options = {}) {
+  // `allowed` is injectable so a test can ask the checker about a list other than the one
+  // shipped — the only way to prove the readmission direction fires without shipping the
+  // very entry it is there to refuse.
+  const allowed = options.allowed || ALLOWED;
   const bindings = moduleScopeBindings(source);
   const problems = [];
   const seen = new Set();
@@ -167,7 +167,7 @@ export function checkWorkerGlobals(source) {
         message: "declares more than one binding on one line — split it so every global is named and accounted for",
       });
     }
-    if (!ALLOWED[b.name]) {
+    if (!allowed[b.name]) {
       problems.push({
         kind: "unlisted", name: b.name, line: b.line,
         message:
@@ -178,7 +178,7 @@ export function checkWorkerGlobals(source) {
     }
   }
 
-  for (const name of Object.keys(ALLOWED)) {
+  for (const name of Object.keys(allowed)) {
     if (seen.has(name)) continue;
     problems.push({
       kind: "stale", name, line: 0,
@@ -186,11 +186,16 @@ export function checkWorkerGlobals(source) {
     });
   }
 
-  for (const [name, entry] of Object.entries(ALLOWED)) {
-    if (entry.kind !== "in-flight" || TENANT_FIELD_NAMES.includes(name)) continue;
+  // The allowlist may not re-admit a threaded field. With the in-flight kind gone, the
+  // way back to a shared config global is not a new name — it is an OLD one, put back at
+  // module scope with a plausible cache or constant reason attached. A field of the
+  // tenant context is per workspace BY DEFINITION, so no reason can make it invariant,
+  // and this refuses the claim rather than reading it.
+  for (const name of Object.keys(allowed)) {
+    if (!TENANT_FIELD_NAMES.includes(name)) continue;
     problems.push({
-      kind: "unfielded", name, line: 0,
-      message: "listed as in-flight tenant config but is not a field of the tenant context — add it to FIELDS in src/tenant-context.mjs",
+      kind: "readmitted", name, line: 0,
+      message: "allowlisted but it is a field of the tenant context — per-workspace config cannot be shared between workspaces whatever the entry claims; read it off the context instead",
     });
   }
 
@@ -222,12 +227,12 @@ function main(argv) {
   }
 
   if (!quiet) {
-    const counts = { "in-flight": 0, cache: 0, constant: 0 };
+    const counts = { cache: 0, constant: 0 };
     for (const b of bindings) counts[ALLOWED[b.name].kind]++;
     console.log(
       `${rel}: ${bindings.length} module-scope bindings, all accounted for — ` +
-        `${counts["in-flight"]} tenant config still in flight, ${counts.cache} per-isolate caches, ` +
-        `${counts.constant} tenant-invariant constants`,
+        `${counts.cache} per-isolate caches, ${counts.constant} tenant-invariant constants, ` +
+        `no tenant config`,
     );
   }
   return 0;

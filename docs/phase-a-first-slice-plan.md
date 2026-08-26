@@ -237,12 +237,13 @@ i.e. ~110–120 read sites once decls/assigns are removed — matching the plan'
 
 **The enumeration of record is `scripts/no-tenant-globals.mjs`, not this table.** Line
 numbers here drift; the lint reads the worker and counts what is actually declared —
-today 29 module-scope bindings: 10 config globals still in flight, 13 per-isolate caches,
-and 6 mutable-container constants that never
-vary by workspace. It fails CI, and therefore the deploy, on a binding it has never been
-told about, and equally on an allowlist entry whose binding is gone — so the list shrinks
-as the threading lands rather than turning into standing permission. Each thread-\* commit
-deletes a `let` from the worker and its line from the allowlist in the same change.
+today 20 module-scope bindings: NO config global at all, 14 per-isolate caches, and 6
+mutable-container constants that never vary by workspace. It fails CI, and therefore the
+deploy, on a binding it has never been told about, on an allowlist entry whose binding is
+gone, and on an allowlist entry that names a field of the tenant context — so the list
+shrank as the threading landed rather than turning into standing permission, and a
+threaded field cannot be re-admitted to it under a plausible-sounding reason. A config
+global is now simply an unlisted binding, which is a failed build.
 
 ### 2a. The config cache — stale within a floor — `loadTenantContext()` / `loadConfig()`
 

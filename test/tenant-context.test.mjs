@@ -35,7 +35,11 @@ const report = (problems) => problems.map((p) => `${p.kind}:${p.name}`);
 
 test("every module-scope binding in the worker is on the allowlist, with a reason", () => {
   const { bindings, problems } = checkWorkerGlobals(WORKER);
-  assert.ok(bindings.length > 20, `expected to find the worker's globals, found ${bindings.length}`);
+  // A floor, not a count — the list SHRINKS as state moves onto the context, so a target
+  // number here would have to be edited by every commit that improves things. What it
+  // guards is the scan silently reading nothing: an empty or wrong file passes every other
+  // assertion in this test, because a file with no globals has no unlisted ones.
+  assert.ok(bindings.length > 10, `expected to find the worker's globals, found ${bindings.length}`);
   assert.deepEqual(
     report(problems),
     [],
@@ -76,13 +80,25 @@ test("the allowlist shrinks with the sweep — a threaded-away global cannot lin
   assert.deepEqual(report(checkWorkerGlobals(threaded).problems), ["stale:pitiRemarksRaw"]);
 });
 
-test("every in-flight entry is a real field of the tenant context", () => {
-  // The sweep's other silent failure: a config global listed as "being threaded" that no
-  // context field exists for, so threading it has nowhere to land.
-  for (const [name, entry] of Object.entries(ALLOWED)) {
-    if (entry.kind !== "in-flight") continue;
-    assert.ok(TENANT_FIELD_NAMES.includes(name), `${name} is in flight but is not a context field`);
+test("no allowlist entry names a field of the tenant context", () => {
+  // The sweep is done, so this is the way back in: not a new name, but a threaded field
+  // re-declared at module scope with a plausible cache reason attached. A per-workspace
+  // field cannot be tenant-invariant, so the entry is refused whatever it claims.
+  for (const name of Object.keys(ALLOWED)) {
+    assert.ok(
+      !TENANT_FIELD_NAMES.includes(name),
+      `${name} is a tenant-context field and cannot be allowlisted as shared state`,
+    );
   }
+});
+
+test("re-admitting a threaded field is reported, however good the reason reads", () => {
+  // The guard above checks today's list; this one proves the checker fires, by asking it
+  // about a list that has let one back in.
+  const readmitted = checkWorkerGlobals(WORKER, {
+    allowed: { ...ALLOWED, USERS: { kind: "cache", why: "a plausible-sounding memo" } },
+  }).problems;
+  assert.deepEqual(report(readmitted), ["stale:USERS", "readmitted:USERS"]);
 });
 
 test("two contexts share no mutable value — the leak this phase exists to close", () => {
