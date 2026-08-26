@@ -7357,11 +7357,21 @@ async function main() {
     "utf8"
   );
 
-  // Top-level 404.html. Cloudflare Pages serves this (with a genuine 404 status) for
-  // any unmatched route — WITHOUT it, Pages falls back to serving the root index.html
-  // at status 200, so the worker's `asset.status === 404` branch never fires and bogus
-  // URLs render the internal landing page instead of a 404. Same shell/markup as the
-  // worker's notFoundPage() so direct hits and worker-wrapped hits look identical.
+  // Top-level 404.html, and it means slightly different things on the two front doors.
+  //
+  // PAGES serves this at a genuine 404 status for any unmatched route. Without it, Pages
+  // falls back to the root index.html at status 200, the worker's `asset.status === 404`
+  // branch never fires, and a bogus URL renders the landing page as though it were real.
+  //
+  // WORKERS decides that with `not_found_handling`, which is why the shell template sets
+  // it explicitly instead of relying on a default. "none" is the value that keeps the
+  // same contract: a miss stays a miss, and the worker's own 404 branches keep firing.
+  // "single-page-application" would answer every unknown path with the index page at
+  // status 200 — exactly the failure this file exists to prevent, reintroduced through a
+  // config line instead of a missing file. scripts/wrangler-preflight.mjs refuses it.
+  //
+  // Same shell/markup as the worker's notFoundPage() so direct hits and worker-wrapped
+  // hits look identical on either door.
   await fs.writeFile(path.join(DIST, "404.html"), renderNotFoundPage(), "utf8");
 
   // Review overlay assets (shared; injected into prototypes via absolute /__review/
