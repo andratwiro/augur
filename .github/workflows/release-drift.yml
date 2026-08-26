@@ -1,0 +1,94 @@
+name: Release drift
+
+# Is anybody still cutting tags?
+#
+# Every instance on `TRACK: release` follows the newest GitHub release faithfully and
+# forever. When tagging stops those instances do not break, do not warn and do not fall
+# behind visibly — they keep auto-updating to the same old tag and reporting themselves
+# healthy. The failure is silent on the follower and invisible on the publisher, which is
+# the shape nobody notices without a clock.
+#
+# It has already happened twice here: the release track was abandoned once with pins ~87
+# commits behind while looking fine, then tagging resumed and lapsed again.
+#
+# This lives on the ENGINE and not in each shell on purpose. A shell can only see the tags
+# that exist, so a shell-side check can never say "the tag you are following is the newest
+# one AND it is four months old".
+#
+# It does NOT cut a tag. Deciding that a set of commits is a release is a judgement about
+# what changed and who it reaches, and an automatic tag would remove exactly the review
+# that `TRACK: release` exists to provide.
+
+on:
+  schedule:
+    - cron: "17 8 * * 1" # Mondays, offset minute (GitHub drops top-of-hour crons)
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write # one self-maintaining issue, same shape as a shell's health canary
+
+concurrency:
+  group: release-drift
+  cancel-in-progress: true
+
+jobs:
+  drift:
+    runs-on: ubuntu-latest
+    steps:
+      # Tags and full history, or the check cannot count. It exits 2 rather than 0 when it
+      # cannot see, so a shallow checkout would be a loud failure and not a quiet pass.
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Check release drift
+        id: drift
+        run: |
+          set +e
+          OUT="$(node scripts/release-drift.mjs)"
+          RC=$?
+          set -e
+          echo "$OUT"
+          {
+            echo "report<<EOF"
+            echo "$OUT"
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+          echo "rc=$RC" >> "$GITHUB_OUTPUT"
+          if [ "$RC" -eq 2 ]; then echo "::error::release-drift could not read tags or history"; exit 1; fi
+
+      # One issue, not a pile: create-or-comment while drifting, close on recovery. The
+      # same contract a shell's health canary uses, so an operator meets one behaviour.
+      - name: Maintain the release-drift issue
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          RC: ${{ steps.drift.outputs.rc }}
+          REPORT: ${{ steps.drift.outputs.report }}
+        run: |
+          set -euo pipefail
+          gh label create release-drift --color FBCA04 --description "The release track has gone stale (release-drift.yml)" 2>/dev/null || true
+          EXISTING="$(gh issue list --label release-drift --state open --json number --jq '.[0].number // empty')"
+          if [ "$RC" -ne 0 ]; then
+            BODY="$(printf 'Check: %s\n\n```\n%s\n```\n\nInstances on `TRACK: release` are still auto-updating, to the tag named above. Cut a release, or move the ceilings in `scripts/release-drift.mjs` deliberately.\n\n(Auto-maintained by release-drift.yml — this issue closes itself when a run goes green.)' "$RUN_URL" "$REPORT")"
+            if [ -n "$EXISTING" ]; then
+              gh issue comment "$EXISTING" --body "$BODY" >/dev/null
+              echo "Updated open issue #$EXISTING"
+            else
+              gh issue create --title "📦 The release track has gone stale" --body "$BODY" --label release-drift >/dev/null
+              echo "Opened a release-drift issue"
+            fi
+            exit 0
+          fi
+          echo "No drift."
+          if [ -n "$EXISTING" ]; then
+            gh issue close "$EXISTING" --comment "A release has been cut — closing. ($RUN_URL)" >/dev/null
+            echo "Closed recovered issue #$EXISTING"
+          fi
