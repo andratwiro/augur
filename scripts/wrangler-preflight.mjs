@@ -12,11 +12,17 @@
  * mode `dist` is every built page.
  *
  * So a config missing one line serves the roster and the admin panel to strangers, while
- * all 815 tests stay green, both existing deploy gates stay green, and the shell's health
- * check still answers "healthy" — because /_build.json is a static file that a bare host
- * serves correctly with no worker running at all. Nothing else in this repo can tell
- * those two deploys apart. That is what this script is for, and it is why it runs in
- * `check`, the workflow that gates the deploy, rather than in `test`, which reports.
+ * every test in this repo stays green, both existing deploy gates stay green, and the
+ * shell's health check still answers "healthy" — because /_build.json is a static file
+ * that a bare host serves correctly with no worker running at all. Nothing else in this
+ * repo can tell those two deploys apart. That is what this script is for.
+ *
+ * ⚠️ WHERE IT ACTUALLY RUNS, because this header used to claim otherwise: NOT in `check`.
+ * The config it judges lives in a SHELL repo, and this repo has none, so there is nothing
+ * here for a repo-wide gate to read. It runs at `templates/shell/deploy.yml`, gating each
+ * shell's plain-Worker deploy with the wrangler.toml that shell actually holds, and in
+ * `test/wrangler-preflight.test.mjs` against fixtures. The consequence worth knowing: a
+ * green `check` in the engine says nothing about whether any instance's config is honest.
  *
  * WHAT IT DOES NOT DO: it does not parse TOML. Node has no TOML parser and this repo
  * carries no dependencies for tooling (scripts/shell-lint.mjs works the same way). It is
