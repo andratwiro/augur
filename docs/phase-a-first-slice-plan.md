@@ -745,3 +745,21 @@ single-tenant-shaped but is isolated per-instance by a separate worker deploymen
 shared secret (the closed realtime hole). It is **out of scope for the tier retirement**
 (it is the tenant axis, per Q5), but note it now so Phase B's multi-tenant realtime
 doesn't collide rooms across tenants — flagged, not touched.
+
+**Risk — a published page can revert to an older engine's computation of itself.**
+Card faces, card dates and the generated listing pages are computed by `build.js` and
+baked into published bytes, and generated pages are last-writer-wins. So an engine change
+to what a build EMITS for unchanged input does not reach live when it deploys, and any
+publisher whose clone predates it silently undoes it on their next publish. Observed
+2026-08-25/26 on the reference instance: an attribution fix (`1e85a92`) shipped, was
+published, and was reverted hours later by a routine publish from an older clone; the
+deployed engine had the fix and could not help, because the worker never computes those
+pages. The two heals both miss it — `selfUpdate`/the floor fires on `CLIENT_PROTOCOL`,
+which says nothing about build semantics, and re-bake is O(spaces) per deploy and is what
+`docs/runtime-chrome-plan.md` exists to retire. Chrome escaped the bake; computed page
+CONTENT did not. **At minimum, check this before Phase B multiplies publishers.** The
+cheapest shape is a build-semantics epoch alongside the protocol floor: the manifest
+already records `builtWithEngine`, so an integer bumped only when a build's output changes
+for unchanged input, compared at `commit`, turns a silent revert into the same
+selfUpdate-or-426 path stale protocol clients already take. Serve-time attribution is the
+better end state and needs a manifest sidecar, since the worker has no git.
