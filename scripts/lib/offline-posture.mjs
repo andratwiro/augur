@@ -93,9 +93,21 @@ export function derivePosture(envFile = {}, opts = {}) {
   };
 }
 
-/** The wrangler `--binding K=V` argv a posture implies. */
-export function postureBindings(posture) {
-  return Object.entries(posture.secrets || {}).flatMap(([k, v]) => ["--binding", `${k}=${v}`]);
+/**
+ * The wrangler argv a posture implies: `--var K:V` per secret.
+ *
+ * ON ARGV RATHER THAN IN THE GENERATED CONFIG. These values are a Cloudflare API token and
+ * the shared realtime secret, read out of `.env.deploy`. Putting them in the wrangler.toml
+ * the offline server writes would be a SECOND copy of a live credential on disk, in a file
+ * nobody edits and everybody forgets — the first copy at least announces itself by name.
+ *
+ * `--var K:V` splits on the FIRST colon and keeps the rest, so a secret containing colons
+ * survives (verified against the wrangler this repo spawns). `--var K=V` is silently
+ * ignored — it binds nothing and reports nothing, which is why this is one function with a
+ * test rather than a string built at the call site.
+ */
+export function postureVars(posture) {
+  return Object.entries(posture.secrets || {}).flatMap(([k, v]) => ["--var", `${k}:${v}`]);
 }
 
 /**

@@ -4,10 +4,17 @@
 //
 // What it does:
 //   1. Builds dist once (node build.js).
-//   2. Starts `wrangler pages dev dist` — the REAL src/_worker.js runs locally, so the
-//      per-user login gate is ON (same as live; sign in with an admin account — seed creds
-//      in src/identity.json), and every overlay API (comments / pins / status / names /
-//      piti) works. No deploy — a faithful local mirror of the live site.
+//   2. Starts `wrangler dev` against a generated config (.wrangler/offline.toml) with
+//      src/entry.js as the entry — the SAME front door a deployed instance uses, running
+//      the real worker locally, so the per-user login gate is ON (same as live; sign in
+//      with an admin account — seed creds in src/identity.json) and every overlay API
+//      (comments / pins / status / names / piti) works. No deploy — a faithful local
+//      mirror of the live site.
+//      It used to be `wrangler pages dev dist`, and the difference is not cosmetic: a
+//      Worker serves a matching static asset BEFORE the worker runs unless the config says
+//      otherwise, and dist/__config/instance.json holds the roster with seed passwords.
+//      Running the deployed front door locally is how that difference gets found by a
+//      person. See scripts/lib/offline-wrangler.mjs.
 //      ⚠️ KV is LIVE/prod when .env.deploy holds Cloudflare creds: the worker reads/writes
 //      the REAL production KV via a REST shim (LIVE_KV below), so overlay edits made offline
 //      are live for everyone — intentional (offline editing, shared live overlay). Rename
@@ -18,16 +25,18 @@
 //      wrangler is supervised: a workerd crash respawns it (crash-loop cutoff in
 //      lib/offline-respawn.mjs) instead of killing the whole offline server.
 //   3. Watches the build inputs (the design system, the workspace, build.js, the
-//      worker) and rebuilds on any change. Each build stamps a fresh BUILD_ID into
-//      dist/_worker.js; wrangler reloads the worker, and the page's live-reload poller
-//      (which polls /__version every ~1s on localhost) refreshes open tabs in ~1s.
+//      worker) and rebuilds on any change. Each build writes a fresh BUILD_ID into
+//      dist/__config/instance.json — it is runtime DATA, not something stamped into the
+//      worker's code — and the page's live-reload poller (which polls /__version every
+//      ~1s on localhost) refreshes open tabs within the worker's ~1.5s config tick.
 //
 // Zero new dependencies: Node's recursive fs.watch + npx wrangler (same as deploy).
 
 import { spawn } from "node:child_process";
-import { watch, existsSync, readFileSync, readdirSync } from "node:fs";
+import { watch, existsSync, readFileSync, readdirSync, mkdirSync, writeFileSync } from "node:fs";
 import path from "node:path";
-import { parseEnvFile, derivePosture, postureBindings, postureBanner } from "./lib/offline-posture.mjs";
+import { parseEnvFile, derivePosture, postureVars, postureBanner } from "./lib/offline-posture.mjs";
+import { offlineWranglerConfig } from "./lib/offline-wrangler.mjs";
 import { fileURLToPath } from "node:url";
 import { findShellDir } from "./lib/instance.mjs";
 import { respawnDelay } from "./lib/offline-respawn.mjs";
@@ -57,7 +66,7 @@ const POSTURE = derivePosture(
   parseEnvFile((() => { try { return readFileSync(path.join(ROOT, ".env.deploy"), "utf8"); } catch (e) { return ""; } })()),
   { forceSandbox: process.argv.includes("--sandbox") },
 );
-const POSTURE_BINDINGS = postureBindings(POSTURE);
+const POSTURE_VARS = postureVars(POSTURE);
 
 // Build from the canonical EDIT-HERE clones, not the pinned nested submodules.
 // One repo per space: a maintainer workspace puts each space repo — a self-contained
@@ -164,14 +173,26 @@ log({
 let wrangler = null;
 let stopping = false;
 const crashTimes = [];
+// The config wrangler runs from, rewritten on every start so it can never be stale, and
+// written under .wrangler/ so a stray `npx wrangler` in this clone cannot pick it up.
+// Regenerating it here rather than committing it is also what keeps the gate line
+// (`run_worker_first`) impossible to lose to a local edit.
+const WRANGLER_CONFIG = path.join(ROOT, ".wrangler", "offline.toml");
+mkdirSync(path.dirname(WRANGLER_CONFIG), { recursive: true });
+writeFileSync(WRANGLER_CONFIG, offlineWranglerConfig({ root: ROOT }));
+
 function spawnWrangler() {
   wrangler = spawn(
     "npx",
-    ["--yes", "wrangler", "pages", "dev", "dist",
-      "--kv", "COMMENTS",
-      ...POSTURE_BINDINGS,
+    // `wrangler dev`, not `wrangler pages dev` — the front door a deployed instance uses.
+    // `--local` is explicit rather than assumed: the COMMENTS binding here is a local
+    // namespace and must stay one. A live run reaches production KV through the REST shim
+    // inside the worker (GV_KV_* below), which is a different mechanism on purpose.
+    ["--yes", "wrangler", "dev",
+      "-c", WRANGLER_CONFIG,
+      "--local",
+      ...POSTURE_VARS,
       "--port", PORT,
-      "--compatibility-date", "2024-09-01",
       "--persist-to", ".wrangler/state"],
     { cwd: ROOT, stdio: "inherit" },
   );

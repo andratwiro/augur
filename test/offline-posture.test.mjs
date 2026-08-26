@@ -10,7 +10,7 @@
 // warning, because both are working exactly as the code says.
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { parseEnvFile, derivePosture, postureBindings, postureBanner } from "../scripts/lib/offline-posture.mjs";
+import { parseEnvFile, derivePosture, postureVars, postureBanner } from "../scripts/lib/offline-posture.mjs";
 
 const FULL = {
   CLOUDFLARE_API_TOKEN: "tok", CLOUDFLARE_ACCOUNT_ID: "acct", GV_KV_NS: "ns",
@@ -97,14 +97,24 @@ test("THE BANNER NEVER CARRIES A CREDENTIAL", () => {
   assert.match(postureBanner(derivePosture({})), /KV: local/);
 });
 
-test("the bindings argv matches the posture's secrets exactly", () => {
-  const argv = postureBindings(derivePosture(FULL));
+test("the vars argv matches the posture's secrets exactly", () => {
+  const argv = postureVars(derivePosture(FULL));
   assert.deepEqual(argv, [
-    "--binding", "GV_KV_TOKEN=tok",
-    "--binding", "GV_KV_ACCOUNT=acct",
-    "--binding", "GV_KV_NS=ns",
+    "--var", "GV_KV_TOKEN:tok",
+    "--var", "GV_KV_ACCOUNT:acct",
+    "--var", "GV_KV_NS:ns",
   ]);
-  assert.deepEqual(postureBindings(derivePosture({})), ["--binding", "GV_RT_DISABLE=1"]);
+  assert.deepEqual(postureVars(derivePosture({})), ["--var", "GV_RT_DISABLE:1"]);
+});
+
+test("a secret containing a colon survives the argv form", () => {
+  // `wrangler dev --var K:V` splits on the FIRST colon and keeps the rest. The separator
+  // is a colon and not an `=` because `--var K=V` binds nothing AND reports nothing — the
+  // worker just sees an absent value, which for GV_KV_TOKEN reads as "no live KV" and for
+  // RT_SHARED_SECRET as "the realtime worker is refusing me".
+  const argv = postureVars(derivePosture({ ...FULL, RT_SHARED_SECRET: "a:b:c" }));
+  assert.ok(argv.includes("RT_SHARED_SECRET:a:b:c"));
+  assert.ok(argv.every((a, i) => i % 2 === 1 ? !a.startsWith("-") : a === "--var"));
 });
 
 test("parseEnvFile tolerates comments, blanks and a missing file", () => {

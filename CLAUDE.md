@@ -251,7 +251,16 @@ illustratively).**
 ## Offline mode (local live preview)
 
 `npm run offline` (`scripts/offline.mjs`) builds `dist`, runs the real worker via
-`wrangler pages dev`, and watches every build input with ~1s reload. It points
+`wrangler dev`, and watches every build input with ~1s reload. **It runs the same front
+door a deployed instance does** — `main = src/entry.js`, `[assets] run_worker_first =
+true` — against a config it generates into `.wrangler/offline.toml` on every start
+(`scripts/lib/offline-wrangler.mjs`; generated, not committed, so a stray `npx wrangler`
+cannot pick it up and a local edit cannot lose the gate line). It used to be `wrangler
+pages dev dist`, and the difference is the whole point: a Worker serves a matching static
+asset BEFORE the worker runs unless the config says otherwise, and `dist/__config/
+instance.json` carries the roster with seed passwords — so running the deployed front door
+locally is how that inversion gets found by a person. The posture secrets stay on argv
+(`--var K:V`), never in the generated file. It points
 `GV_SPACES_ROOT` at the PARENT folder and picks out sibling space clones by their
 `space.json` — so edits in any sibling clone preview instantly, no commit or pin bump.
 It auto-detects a sibling deploy shell's `identity.json` (login gate ON, same as live);
