@@ -339,6 +339,12 @@ const ALLOWLIST = {
     ],
   },
 
+  "src/kv-identity.mjs": {
+    frozen: [
+      "UNMAPPED",  // which workspace-destined families this translation does NOT carry, and why; a fact about the schema
+    ],
+  },
+
   "src/mail.mjs": {
     frozen: [
       "DRIVERS",    // the shape of HTTP request each provider takes; every deployment value arrives in env

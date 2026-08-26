@@ -59,6 +59,12 @@ import { tenantLabelFromHost } from "./tenant-host.mjs";
 // a link, and a verdict saying no mail was sent. See src/mail.mjs.
 import { sendMail, mailNotice } from "./mail.mjs";
 
+// KV's identity documents translated into the workspace object's rows. Same deal again:
+// build.js copies it next to the worker so the relative import resolves at the edge. Pure
+// and stateless — the mapping is where a copy silently loses somebody, so it is a function
+// with fixtures rather than a loop inside a handler. See src/kv-identity.mjs.
+import { identityFromKv } from "./kv-identity.mjs";
+
 // How a KV value is written into a backup document. Same deal again: build.js copies it
 // next to the worker (dist/kv-codec.mjs) so the relative import resolves at the edge.
 // Pure, side-effect-free, holds no state. See src/kv-codec.mjs — a KV value is BYTES, and
@@ -812,6 +818,23 @@ function __setTenantTestState({ memo = null } = {}) { tenantMemo = memo; }
 // tokens are always issued by hmacToken().
 async function tokenFor(secret) {
   return toHex(await crypto.subtle.digest("SHA-256", encodeUtf8("gv:" + secret)));
+}
+
+/**
+ * How an invite token is keyed in the workspace object.
+ *
+ * `B-kv-to-do-migration-tool`. KV keys `users:invites` by the RAW token, so it can look one
+ * up directly; the object's `invites` table stores only a hash, so a read of that storage —
+ * a backup, an export, an operator looking — cannot redeem anybody's invitation.
+ *
+ * ⚠️ IT LIVES HERE, ONCE, BECAUSE TWO PLACES HAVE TO AGREE. The copy hashes an outstanding
+ * token on the way in and `B-kv-read-cutover`'s redemption path hashes a presented one on
+ * the way back; spelled differently, every invite link already in somebody's inbox stops
+ * working on the day the reads move, and nothing before that day would notice. The `inv:`
+ * prefix mirrors the `pub:` a publish token carries, so the two can never collide.
+ */
+async function inviteHash(token) {
+  return tokenFor("inv:" + token);
 }
 
 async function hmacToken(secret, message) {
@@ -5645,7 +5668,7 @@ async function importState(tctx, env, doc) {
         const spec = OVERLAY_KV_KEYS[f];
         return spec.doc === id || spec.doc + ":" === id || id.startsWith(spec.doc + ":");
       });
-      if (!family) { skipped.push(id); continue; } // an identity family; see below
+      if (!family) { skipped.push(id); continue; } // an identity family; translated below
       if (id === "pins:") {
         for (const [scope, map] of Object.entries(value || {})) {
           bundle.pins = bundle.pins || {};
@@ -5660,18 +5683,50 @@ async function importState(tctx, env, doc) {
       }
       written.push(id);
     }
+
+    // The identity families, translated into rows the object can store.
+    //
+    // ⚠️ THE ROSTER IS TWO LAYERS AND ONLY ONE OF THEM IS IN THIS DOCUMENT. `users:roster`
+    // is the invite/remove overlay; the durable record is the instance config, which is why
+    // `CONFIG_USERS` goes in beside it — reading the export alone would copy a workspace
+    // with none of the people the config names, which on most instances is all of them.
+    // `CONFIG_USERS` and not `USERS`, because the overlay is applied inside the translation
+    // and applying it twice would resurrect anyone the overlay removed.
+    //
+    // Hashing happens HERE rather than in the object: `crypto.subtle` is async and the
+    // object's write runs inside `transactionSync`, which is not.
+    const { identity, skipped: identitySkipped } = await identityFromKv(
+      Object.fromEntries(skipped.map((id) => [id, doc.families[id]])),
+      {
+        configUsers: (tctx && tctx.CONFIG_USERS) || [],
+        hashInvite: inviteHash,
+      },
+    );
+
     const res = await stub.fetch("https://workspace/state/import", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ overlay: bundle, prune: !!doc.prune, workspaceId: tctx.tenantId }),
+      body: JSON.stringify({
+        overlay: bundle, identity, prune: !!doc.prune, workspaceId: tctx.tenantId,
+      }),
     });
     if (!res.ok) return { ok: false, reason: "workspace-refused", status: res.status };
-    const { atomic } = await res.json();
-    // The families the workspace object has no table for yet — the roster, the invites,
-    // the publish tokens. They still go to KV, per family, and saying so is the honest
-    // report: B-kv-to-do-migration-tool is what gives them tables.
+    const { atomic, refused } = await res.json();
+    // ⚠️ THE IDENTITY FAMILIES GO TO BOTH, AND THAT IS THE POINT OF THE SPLIT.
+    // `B-kv-to-do-migration-tool` is a COPY: the object gets a faithful second copy and KV
+    // stays exactly what the login gate reads, so this cannot take an instance down. Moving
+    // the reads is `B-kv-read-cutover`, and until it lands, skipping the KV write here would
+    // sign everybody out.
     const rest = await replayFamilies(store, kv, doc, skipped);
-    return { ok: true, atomic, ...cleared, written: [...written, ...rest.written], skipped: rest.skipped };
+    return {
+      ok: true, atomic, ...cleared,
+      written: [...written, ...rest.written],
+      skipped: [...rest.skipped, ...identitySkipped.map((s) => s.id)],
+      // Named rather than dropped: a copy that quietly omits a family is indistinguishable
+      // from a complete one, which is the failure this whole path exists to avoid.
+      unmapped: identitySkipped,
+      refusedRows: refused || [],
+    };
   }
 
   const out = await replayFamilies(store, kv, doc, Object.keys(doc.families));
