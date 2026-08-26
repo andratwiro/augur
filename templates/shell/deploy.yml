@@ -125,10 +125,15 @@ jobs:
              || git rev-parse 'HEAD^:engine' 2>/dev/null || true)"
           NEW="$(git rev-parse 'HEAD:engine')"
           if [ -z "$OLD" ] || [ "$OLD" = "$NEW" ]; then echo "engine pin unmoved — skipping realtime."; exit 0; fi
-          if git -C engine diff --quiet "$OLD" "$NEW" -- realtime/ 2>/dev/null; then
-            echo "engine bump didn't touch realtime/ — skipping."; exit 0
+          # BOTH paths, and src/board-room.mjs is the one that is easy to forget: the
+          # BoardRoom class MOVED out of realtime/ into the engine's own module graph, so
+          # this worker's behaviour now lives mostly in a directory this diff used to
+          # ignore. Watching only realtime/ would ship a room fix to the engine worker and
+          # silently leave the standalone realtime workers on the old code.
+          if git -C engine diff --quiet "$OLD" "$NEW" -- realtime/ src/board-room.mjs 2>/dev/null; then
+            echo "engine bump didn't touch realtime/ or src/board-room.mjs — skipping."; exit 0
           fi
-          echo "realtime/ changed in ${OLD:0:12}..${NEW:0:12} — redeploying"
+          echo "realtime code changed in ${OLD:0:12}..${NEW:0:12} — redeploying"
           npx wrangler deploy -c realtime.wrangler.toml
 
   # Drift-driven re-bake after every deploy; the same workflow also answers the
