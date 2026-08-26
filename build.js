@@ -7261,6 +7261,8 @@ async function main() {
     // Explicit false only — see USER_IMAGES in src/tenant-context.mjs for why a typo
     // must leave it on rather than off.
     userImages: DEPLOY.userImages !== false,
+    // Explicit true only — see DEVICE_PAIRING in src/tenant-context.mjs.
+    devicePairing: DEPLOY.devicePairing === true,
     loginPrefill: DEPLOY.loginPrefill || {},
   }), "utf8");
   await fs.writeFile(path.join(DIST, "__config", "routing.json"), JSON.stringify({

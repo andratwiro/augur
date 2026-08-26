@@ -95,6 +95,10 @@ const FIELDS = Object.freeze({
   // canvas images). Defaults to true: every existing instance keeps working, and the one
   // that turns it off is the one whose password is printed on its own login page.
   USER_IMAGES:             { source: "instance", make: () => true },
+  // Device pairing (`augur connect`). Defaults OFF, which is the opposite default from
+  // USER_IMAGES above and deliberately so: this one ADDS an unauthenticated endpoint that
+  // ends in a publish token, so an instance opts in rather than discovers it.
+  DEVICE_PAIRING:          { source: "instance", make: () => false },
 });
 
 export const TENANT_FIELD_NAMES = Object.freeze(Object.keys(FIELDS));
@@ -183,6 +187,9 @@ export function instanceFields(inst) {
     // depends on. Turning it off is the deliberate act, so it is the one that must be
     // spelled correctly.
     USER_IMAGES: doc.userImages !== false,
+    // Explicit `true` only — the inverse of USER_IMAGES, because the safe state here is
+    // off and a typo must not switch a token-minting path on.
+    DEVICE_PAIRING: doc.devicePairing === true,
     LOGIN_PREFILL_EMAIL: typeof prefill.email === "string" ? prefill.email : "",
     LOGIN_PREFILL_PASSWORD: typeof prefill.password === "string" ? prefill.password : "",
     // An instance document was actually applied — the gate may now trust "no users" to

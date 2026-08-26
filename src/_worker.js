@@ -2168,6 +2168,153 @@ function kvFor(env) {
 // store can be seeded before serving is flipped.
 const bundleMode = (env) => !!(env && env.GV_ASSET_SOURCE === "r2" && env.BUNDLES);
 
+// ---- Device pairing: a publish token without a password in a terminal -----------------
+//
+// `C-cli-connect-device-flow`. Today an agent gets a token by being handed an email and a
+// password (`augur login`), which puts a human credential in a terminal, a shell history
+// and quite possibly a transcript. Pairing replaces that: the CLI asks for a code, the
+// person types it into a browser they are ALREADY signed in to, and the CLI collects the
+// token that approval minted.
+//
+// ⛔ OFF BY DEFAULT (`devicePairing: true` in deploy.config.json). Everything here ends in
+// a publish token and `start` is reachable without credentials, so an instance opts in
+// rather than discovers it. All three routes answer as if they do not exist when off —
+// not 403, which would tell a stranger the instance has a pairing flow to come back for.
+//
+// THE THREE SECRETS, and which one does what, because conflating them is how these flows
+// break:
+//   code           SHORT, because a person types it. Names the pairing to the APPROVER.
+//                  Guessing one lets an attacker approve a pairing they cannot collect.
+//   deviceSecret   LONG, never leaves the CLI's process except to claim. It is what
+//                  authorises COLLECTION. Only its hash is stored, so a KV read cannot
+//                  claim anybody's token.
+//   the token      minted at approval, bound to the approving user, handed over once and
+//                  then deleted with the record.
+//
+// ⚠️ THE RESIDUAL RISK IS PHISHING, and no code length fixes it: an attacker starts a
+// pairing and talks somebody into approving THEIR code. That is why the approval page says
+// in plain words where a legitimate code comes from, why the window is five minutes, and
+// why the code is typed rather than carried in a link somebody can be sent.
+const PAIR_PREFIX = "pair:";
+const PAIR_TTL_MS = 5 * 60 * 1000;
+// Unambiguous alphabet: no O/0, no I/1/l. A code is read off one screen and typed into
+// another, and a transcription failure looks exactly like an attack to whoever is watching.
+const PAIR_ALPHABET = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
+const PAIR_CODE_LEN = 8;
+// The minted token's own life. Existing tokens carry no expiry at all; this path is new,
+// so it is cheap not to repeat that.
+const PAIR_TOKEN_TTL_MS = 30 * 24 * 60 * 60 * 1000;
+
+const randomFrom = (alphabet, n) => {
+  const bytes = new Uint8Array(n);
+  crypto.getRandomValues(bytes);
+  // Rejection-free and unbiased enough: 256 % 31 != 0 skews by <2%, which costs a
+  // fraction of a bit against a 40-bit code that lives five minutes.
+  return [...bytes].map((b) => alphabet[b % alphabet.length]).join("");
+};
+const randomHex = (n) => {
+  const bytes = new Uint8Array(n);
+  crypto.getRandomValues(bytes);
+  return [...bytes].map((b) => b.toString(16).padStart(2, "0")).join("");
+};
+// Codes are matched case-insensitively and with separators stripped: somebody typing
+// "abcd-efgh" for "ABCDEFGH" has not made a security decision.
+const normalizePairCode = (raw) => String(raw || "").toUpperCase().replace(/[^A-Z0-9]/g, "");
+
+/** Mint a publish token for a user, the same shape `_login/token` writes. */
+async function mintPublishToken(kv, tctx, u, { ttlMs = null, label = null } = {}) {
+  const space = roleOf(u) === "admin" ? "*" : (tctx.SPACES.find((s) => s.default) || { id: null }).id;
+  if (!space) return null;
+  const token = randomHex(32);
+  const raw = await kv.get(PUBLISH_TOKENS_KEY);
+  const map = raw ? JSON.parse(raw) : {};
+  const rec = { space, label: label || u.email, createdAt: new Date().toISOString() };
+  if (ttlMs) rec.expiresAt = new Date(Date.now() + ttlMs).toISOString();
+  map[await tokenFor("pub:" + token)] = rec;
+  await kv.put(PUBLISH_TOKENS_KEY, JSON.stringify(map));
+  return { token, space };
+}
+
+async function pairApi(tctx, request, url, env, me) {
+  // Answer as though the routes are not here. A 403 would advertise the flow.
+  if (!tctx.DEVICE_PAIRING) return null;
+  const kv = kvFor(env);
+  if (!kv) return jsonResponse({ error: "no-kv-binding" }, 500);
+  if (request.method !== "POST") return jsonResponse({ error: "method-not-allowed" }, 405);
+  const op = url.pathname.slice("/__publish/_pair/".length);
+
+  if (op === "start") {
+    // Unauthenticated on purpose — the whole point is that the terminal holds no
+    // credential. Rate-limited on the caller's address so it cannot be used to fill KV.
+    const ids = loginRlIds(request, null);
+    if (await loginThrottled(env, ids)) return jsonResponse({ error: "rate-limited" }, 429);
+    const code = randomFrom(PAIR_ALPHABET, PAIR_CODE_LEN);
+    const deviceSecret = randomHex(32);
+    await kv.put(PAIR_PREFIX + code, JSON.stringify({
+      deviceHash: await tokenFor("pair:" + deviceSecret),
+      status: "pending",
+      createdAt: new Date().toISOString(),
+    }), { expirationTtl: Math.ceil(PAIR_TTL_MS / 1000) });
+    return jsonResponse({
+      code, deviceSecret,
+      approveUrl: `${url.origin}/__connect`,
+      expiresInMs: PAIR_TTL_MS,
+    });
+  }
+
+  let body;
+  try { body = await request.json(); } catch (e) { return jsonResponse({ error: "bad-json" }, 400); }
+  const code = normalizePairCode(body && body.code);
+  if (!code) return jsonResponse({ error: "bad-input" }, 400);
+
+  if (op === "approve") {
+    // The ONE authenticated step, and the only one that mints. A browser session is the
+    // credential; no password is re-entered and none is typed anywhere else.
+    if (!me) return jsonResponse({ error: "unauthorized" }, 401);
+    // The same rule the password path enforces: an account whose password is public
+    // knowledge (a demo instance's login hint) can look around and can never publish.
+    if (roleOf(me) === "viewer") {
+      return jsonResponse({ error: "viewer-role", message: "This account can look around but not publish." }, 403);
+    }
+    // A signed-in attacker must not be able to walk the code space. Counted on the IP.
+    const ids = loginRlIds(request, null);
+    if (await loginThrottled(env, ids)) return jsonResponse({ error: "rate-limited" }, 429);
+    let rec;
+    try { rec = JSON.parse((await kv.get(PAIR_PREFIX + code)) || "null"); } catch (e) { rec = null; }
+    if (!rec || rec.status !== "pending") {
+      await loginFail(env, ids);
+      return jsonResponse({ error: "no-such-code" }, 404);
+    }
+    const minted = await mintPublishToken(kv, tctx, me, { ttlMs: PAIR_TOKEN_TTL_MS });
+    if (!minted) return jsonResponse({ error: "no-default-space" }, 500);
+    await kv.put(PAIR_PREFIX + code, JSON.stringify({
+      ...rec, status: "approved", token: minted.token, space: minted.space, approvedBy: me.email,
+    }), { expirationTtl: Math.ceil(PAIR_TTL_MS / 1000) });
+    return jsonResponse({ ok: true, space: minted.space });
+  }
+
+  if (op === "claim") {
+    // Unauthenticated, and authorised by the deviceSecret rather than by the code: a
+    // guessed code cannot collect a token, which is what makes a short code survivable.
+    const secret = String((body && body.deviceSecret) || "");
+    if (!secret) return jsonResponse({ error: "bad-input" }, 400);
+    let rec;
+    try { rec = JSON.parse((await kv.get(PAIR_PREFIX + code)) || "null"); } catch (e) { rec = null; }
+    if (!rec) return jsonResponse({ error: "no-such-code" }, 404);
+    if (!safeEqual(rec.deviceHash, await tokenFor("pair:" + secret))) {
+      return jsonResponse({ error: "no-such-code" }, 404);
+    }
+    if (rec.status !== "approved") return jsonResponse({ status: "pending" }, 202);
+    // ONE-SHOT. Delete before answering, so a replayed claim finds nothing even if the
+    // response never reaches the caller. Losing a token to a dropped response is a
+    // re-run of `augur connect`; a replayable claim is a second copy in somebody's logs.
+    await kv.delete(PAIR_PREFIX + code);
+    return jsonResponse({ status: "approved", token: rec.token, space: rec.space });
+  }
+
+  return jsonResponse({ error: "not-found" }, 404);
+}
+
 const PUBLISH_TOKENS_KEY = "publish:tokens"; // KV {sha256("pub:"+token): {space,label,createdAt}}
 const BLOB_MAX_BYTES = 25 * 1024 * 1024;
 // Inline-commit caps: enough for a typical few-file edit in one round trip,
@@ -2712,6 +2859,11 @@ async function publishAuth(tctx, request, env, spaceId, anySpace) {
     const map = raw ? JSON.parse(raw) : {};
     const e = map[h];
     if (!e) return null;
+    // An EXPIRED token is no token. Strictly additive: only a record that carries an
+    // `expiresAt` can fail this, and every token minted before device pairing existed has
+    // none — so this cannot retire a credential somebody is still using. The pairing flow
+    // is the first path here that sets one.
+    if (e.expiresAt && Date.parse(e.expiresAt) <= Date.now()) return null;
     // A star-scope token is admin-equivalent — it pushes instance config, i.e. the user
     // list itself. `augur login` labels the token it mints with the holder's email, so if
     // that address is still on the roster but is no longer an admin, the token has
@@ -5530,6 +5682,19 @@ async function handleRequest(request, env, ctx, url, trace) {
 
     // Direct-publish API — self-authed (bearer tokens), before the gate like
     // the other tooling routes.
+    // Device pairing rides alongside the publish API but is NOT part of it: two of its
+    // three routes are unauthenticated, and it answers null when the instance has not
+    // opted in, so the request falls through to the ordinary 404 rather than a 403 that
+    // would advertise a flow to come back for.
+    if (url.pathname.startsWith("/__publish/_pair/")) {
+      // Identity is resolved here rather than reusing the gate's `me` below, because this
+      // route runs BEFORE the gate — the same early-exit shape /__version and the review
+      // export use. `usersActive` is not in scope yet either; on an instance with no
+      // roster there is nobody to approve, and approve is the only step that needs one.
+      const who = tctx.USERS.length ? await identify(request, env, tctx.USERS) : null;
+      const paired = await pairApi(tctx, request, url, env, who);
+      if (paired) return paired;
+    }
     if (url.pathname.startsWith("/__publish/")) return publishApi(tctx, request, url, env);
 
     // In bundle mode the public build stamp is synthesized from the live

@@ -102,6 +102,9 @@ function instanceDoc(n) {
     // land on opposite values. This one matters per workspace because it is the switch a
     // shared-password demo turns off while a private instance leaves on.
     userImages: n.charCodeAt(0) % 2 === 0,
+    // Also a per-workspace boolean, and varied the OTHER way from userImages so the two
+    // cannot be confused for each other in a comparison that reads only one of them.
+    devicePairing: n.charCodeAt(0) % 2 !== 0,
   };
 }
 
