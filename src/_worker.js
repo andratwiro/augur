@@ -5092,6 +5092,57 @@ function overlayFor(env, tctx) {
   return kv ? kvOverlay(kv) : null;
 }
 
+// ---- Quotas -----------------------------------------------------------------
+//
+// A ceiling is per WORKSPACE, seeded at provisioning (src/tenant-quotas.mjs) and counted
+// in the workspace's own Durable Object — one statement per bump, so two requests arriving
+// together cannot both read the same number and both be let past.
+//
+// ⚠️ NO STORE, NO CEILING, and that is the deliberate half. Every instance today binds no
+// TENANTS namespace, so nothing here changes for any of them: the two endpoints below have
+// never had a rate limit and do not grow one by taking this engine. Inventing a limit for
+// them would be a behaviour change nobody asked for, applied to somebody's live canvas
+// session, in the same release as the machinery that would make it correct. The ceiling
+// arrives with the workspace store, which is what the number is per.
+//
+// The window is computed HERE and the ceiling is read THERE. A limit that travels in a
+// request body is a limit the caller can choose; a clock that lives in the object would be
+// one more thing a test cannot move.
+const quotaMinute = (now) => new Date(now || Date.now()).toISOString().slice(0, 16);
+const quotaDay = (now) => new Date(now || Date.now()).toISOString().slice(0, 10);
+
+/**
+ * Count one use against a workspace's ceiling. Returns `{allowed}` — `true` when there is
+ * no store to count in, because an instance with no ceiling has nothing to exceed.
+ */
+async function quotaBump(env, tctx, { key, field, window, by = 1 }) {
+  const stub = tenantStub(env, tctx && tctx.tenantId);
+  if (!stub) return { allowed: true, unmetered: true };
+  try {
+    const res = await stub.fetch("https://workspace/quota/bump", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ k: key, field, window, by, workspaceId: tctx.tenantId }),
+    });
+    if (!res.ok) throw new Error(`workspace store answered ${res.status}`);
+    return await res.json();
+  } catch (err) {
+    // A counter that cannot be reached must not become a gate: refusing a canvas save
+    // because a bookkeeping object hiccuped loses somebody's work, which is a worse outcome
+    // than one unmetered write. The opposite call from the publish counter, and for the
+    // opposite reason — there, letting one through corrupts the history.
+    return { allowed: true, unmetered: true };
+  }
+}
+
+/** The refusal a ceiling answers with. */
+const quotaRefusal = (what, verdict) => jsonResponse({
+  error: "quota-exceeded",
+  what,
+  ...(Number.isFinite(verdict && verdict.limit) ? { limit: verdict.limit } : {}),
+  message: `This workspace has reached its ${what} limit. It resets on its own; nothing was lost.`,
+}, 429);
+
 // ---- Dev-status API (KV-backed, single key) ---------------------------------
 // The ENTIRE status map lives under one key ("statuses"), so a page load is one
 // kv.get and a click is one kv.put — NO kv.list (the small-bucket call that burned
@@ -5507,6 +5558,14 @@ async function boardApi(tctx, request, url, env) {
     try { op = JSON.parse(body); } catch (e) { return jsonResponse({ error: "bad-json" }, 400); }
     const doc = op && op.doc;
     if (typeof doc !== "object" || doc === null || !Array.isArray(doc.nodes)) return jsonResponse({ error: "bad-input" }, 400);
+    // The write ceiling. This route is unauthenticated by design — the board is the
+    // credential — so it is the one place a stranger with a link can spend a workspace's
+    // storage and subrequests indefinitely. Counted per minute, and the shape check above
+    // comes first so a malformed flood is refused before it is metered.
+    const verdict = await quotaBump(env, tctx, {
+      key: "board-writes", field: "boardWritesPerMinute", window: quotaMinute(),
+    });
+    if (!verdict.allowed) return quotaRefusal("board write", verdict);
     // LAST WRITE WINS, deliberately and unchanged. A board document is the client's whole
     // canvas, reconciled in the realtime room before it ever gets here; two PUTs merged
     // server-side would produce a canvas neither person drew. The revision machinery the
@@ -5515,6 +5574,68 @@ async function boardApi(tctx, request, url, env) {
     return jsonResponse({ ok: true });
   }
   return jsonResponse({ error: "method-not-allowed" }, 405);
+}
+
+/**
+ * Delete canvas images no board refers to any more.
+ *
+ * `B-asset-upload-quota`. An image is uploaded once and referenced from a board document
+ * by its `/__asset/<hash>` URL. Delete the board — or the node — and the bytes stay in R2
+ * forever, counted against a workspace's storage and against the account's bill, with
+ * nothing that would ever notice.
+ *
+ * REFERENCES ARE READ OFF THE BOARDS, NOT COUNTED ON THE WAY IN. A refcount maintained at
+ * write time is a number that has to be right on every path that ever touches a board,
+ * including the realtime worker's own saves and a restore from backup — and the first time
+ * it is wrong, it is wrong in the direction of deleting an image somebody is looking at.
+ * Reading the boards is O(boards) instead of O(1) and cannot drift.
+ *
+ * THE GRACE WINDOW IS WHAT MAKES IT SAFE, and it protects a specific moment: an image is
+ * uploaded seconds BEFORE the board that will reference it is saved. Without a window, a
+ * pass landing in that gap deletes an image the person is still placing. A re-paste
+ * refreshes the row's stamp, so an image that is being used keeps buying itself time.
+ *
+ * `dryRun` reports what it would delete and deletes nothing — which is how anybody should
+ * run it the first time on a real workspace.
+ */
+const ASSET_GC_GRACE_MS = 24 * 60 * 60 * 1000;
+async function assetGc(env, tctx, { graceMs = ASSET_GC_GRACE_MS, now = Date.now(), dryRun = false } = {}) {
+  const store = overlayFor(env, tctx);
+  const r2 = env.BUNDLES || null;
+  if (!store || !r2) return { ok: false, reason: "no-store" };
+
+  const rows = await store.read("assets");
+  const hashes = Object.keys(rows);
+  if (!hashes.length) return { ok: true, scanned: 0, referenced: 0, deleted: 0, kept: 0, hashes: [] };
+
+  // Every board document, as text. A node's shape has changed more than once and will
+  // again; the URL has not, and searching for it finds a reference wherever it is nested.
+  const boards = await store.read("boards");
+  const referenced = new Set();
+  for (const doc of Object.values(boards)) {
+    const text = JSON.stringify(doc || null);
+    for (const m of text.matchAll(/\/__asset\/([0-9a-f]{40})/g)) referenced.add(m[1]);
+  }
+
+  const deleted = [];
+  let kept = 0;
+  for (const hash of hashes) {
+    if (referenced.has(hash)) { kept++; continue; }
+    const at = Date.parse((rows[hash] && rows[hash].at) || "") || 0;
+    if (now - at < graceMs) { kept++; continue; }
+    if (!dryRun) {
+      // The bytes first, then the row. The other order leaves an object nothing knows
+      // about, which is the state this whole pass exists to remove.
+      if (r2.delete) await r2.delete(ASSET_R2_PREFIX + hash);
+      await store.set("assets", "", hash, null);
+    }
+    deleted.push(hash);
+  }
+  return {
+    ok: true, dryRun: !!dryRun,
+    scanned: hashes.length, referenced: referenced.size, kept, deleted: deleted.length,
+    hashes: deleted.slice(0, 20),
+  };
 }
 
 // ---- Canvas board images (/__asset) -----------------------------------------
@@ -5567,6 +5688,15 @@ async function assetApi(tctx, request, url, env) {
     const digest = await crypto.subtle.digest("SHA-256", buf);
     const hash = [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, "0")).join("").slice(0, 40);
 
+    // The daily volume ceiling, counted in BYTES rather than uploads: what costs a
+    // workspace is what it stores, and ten megabytes is ten megabytes however many requests
+    // it arrived in. Counted after the size and type checks, so a refused upload is not
+    // metered — and before the write, so a workspace over its ceiling stores nothing.
+    const verdict = await quotaBump(env, tctx, {
+      key: "asset-bytes", field: "assetUploadDailyBytes", window: quotaDay(), by: buf.byteLength,
+    });
+    if (!verdict.allowed) return quotaRefusal("daily image upload", verdict);
+
     if (toR2) {
       // Content-addressed → a re-paste of the same image is free. `head` rather than `get`
       // so the check does not pull megabytes back to decide it already has them.
@@ -5574,7 +5704,9 @@ async function assetApi(tctx, request, url, env) {
         await r2.put(ASSET_R2_PREFIX + hash, buf, { httpMetadata: { contentType: ct } });
       }
       // The row is bookkeeping, not the record: the image is in R2 either way, so a failed
-      // metadata write must not fail an upload that succeeded.
+      // metadata write must not fail an upload that succeeded. It is REWRITTEN on a
+      // re-paste even though the bytes are not, because the stamp is what the collector
+      // reads: an image somebody is still placing keeps buying itself another grace window.
       try { await store.set("assets", "", hash, { ct, bytes: buf.byteLength, at: new Date().toISOString() }); }
       catch (e) { /* the bytes are stored; the row can be rebuilt from a listing */ }
       return jsonResponse({ url: "/__asset/" + hash });
@@ -6748,13 +6880,14 @@ export const __testables = Object.freeze({
   pathOwnedBySpace, isPublishablePublicPrefix, removedPublicPrefixes, publishApi, loadManifests, LOGIN_MAX_FAILS,
   tokenActorRefusal, publishTokenTtlMs, mintPublishToken, adminTokensApi,
   nextPublishVersion, overlayFor, overlayKvKey, statusApi, nameApi, pinsApi,
+  quotaBump, quotaMinute, quotaDay,
   PITI_VIEW_KEY, PITI_REMARKS_KEY,
   publishAuthDetailed, publishRefusalBody,
   adminStorageApi,
   isPrefixBacked, backedPublicPrefixes,
   isPublicPath, isTrackPath, isRestrictedPath, versionFor, brandMark,
   boardApi, canvasesApi, virtualCanvas, rtProxy, CANVASES_KEY, BOARD_PREFIX, BOARD_MAX_BYTES,
-  assetApi, ASSET_PREFIX, ASSET_R2_PREFIX, ASSET_MAX_BYTES,
+  assetApi, ASSET_PREFIX, ASSET_R2_PREFIX, ASSET_MAX_BYTES, assetGc, ASSET_GC_GRACE_MS,
   composeChrome, renderAppChrome, renderSpaceContextScript, __setChromeTestState,
   loadConfig, loadTenantContext, __setConfigTestState, __usersNow, pitiApi,
   CONFIG_STALE_CEILING_MS,

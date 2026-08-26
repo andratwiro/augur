@@ -172,6 +172,21 @@ export const TENANT_SCHEMA = Object.freeze([
      PRIMARY KEY (family, scope, k)
    )`,
 
+  // Rate and volume counters, one row per thing being counted, reset by window rather than
+  // by a sweep. `window` is the bucket the count belongs to — an ISO minute for a rate, an
+  // ISO day for a volume — so a new window is a comparison rather than a job that has to
+  // run, and a counter for a window nobody is in costs one row until the next bump.
+  //
+  // A REFUSED REQUEST STILL COUNTS. The increment and the verdict are one statement, so a
+  // caller cannot be told "no" without having been counted — which means hammering a
+  // ceiling does not get you more than pacing yourself does, and the window still ends when
+  // it ends.
+  `CREATE TABLE IF NOT EXISTS counters (
+     k      TEXT PRIMARY KEY,
+     window TEXT NOT NULL,
+     n      REAL NOT NULL
+   )`,
+
   // The publish counter, per space. R2 keeps the payloads — the blobs, `versions/<n>.json`,
   // the manifest — and this table is the sole ISSUER of the next number.
   //
@@ -587,6 +602,37 @@ export class TenantStore {
     return map || {};
   }
 
+  // ── quota counters ─────────────────────────────────────────────────────────
+
+  /**
+   * Add to a counter and say whether it is still under its ceiling — in one statement, so
+   * two requests arriving together cannot both read the same number and both be let past.
+   *
+   * `window` is what makes this cheap: the row carries the bucket its count belongs to, so
+   * a new minute or a new day resets it on the next bump rather than needing anything to
+   * sweep. A ceiling of 0 or less means unlimited, matching the quota table's own rule that
+   * unlimited is a number rather than an absence.
+   */
+  bumpCounter(k, window, by, ceiling) {
+    const rows = [...this.sql.exec(
+      `INSERT INTO counters (k, window, n) VALUES (?1, ?2, ?3)
+         ON CONFLICT(k) DO UPDATE SET
+           n = CASE WHEN counters.window = ?2 THEN counters.n + ?3 ELSE ?3 END,
+           window = ?2
+       RETURNING n`,
+      String(k), String(window), Number(by) || 0,
+    )];
+    const n = rows.length ? Number(rows[0].n) : 0;
+    const limit = Number(ceiling);
+    return { n, limit, allowed: !Number.isFinite(limit) || limit <= 0 || n <= limit };
+  }
+
+  /** What a counter stands at, without touching it. */
+  readCounter(k) {
+    const rows = [...this.sql.exec(`SELECT window, n FROM counters WHERE k = ?`, String(k))];
+    return rows.length ? { window: rows[0].window, n: Number(rows[0].n) } : { window: null, n: 0 };
+  }
+
   /**
    * The worker's way in. A Durable Object stub is not publicly routable — only code
    * holding the binding can reach it — so this is an internal API, not a surface.
@@ -605,6 +651,18 @@ export class TenantStore {
       await this.init(body.workspaceId);
       const version = this.nextPublishVersion(space, body.floor);
       return Response.json({ version });
+    }
+    if (url.pathname === "/quota/bump" && request.method === "POST") {
+      let body = null;
+      try { body = await request.json(); } catch (e) { /* handled below */ }
+      if (!body || !body.k || !body.field) return Response.json({ error: "bad-input" }, { status: 400 });
+      await this.init(body.workspaceId);
+      // The ceiling is read HERE rather than sent by the caller: a limit that travels in a
+      // request body is a limit a caller can choose, and this object is the only thing that
+      // can answer both questions in one round trip anyway.
+      const ceiling = this.quotas()[body.field];
+      const out = this.bumpCounter(body.k, body.window || "", body.by, ceiling);
+      return Response.json(out);
     }
     if (url.pathname.startsWith("/overlay/") && request.method === "POST") {
       let body = null;

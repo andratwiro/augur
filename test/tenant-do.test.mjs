@@ -50,7 +50,7 @@ test("every statement executes against a real SQLite engine", () => {
   const db = new DatabaseSync(":memory:");
   for (const stmt of TENANT_SCHEMA) db.exec(stmt); // throws on invalid SQL
   const tables = db.prepare("SELECT name FROM sqlite_master WHERE type='table' ORDER BY name").all().map((r) => r.name);
-  assert.deepEqual(tables, ["blobs", "invites", "lastseen", "members", "meta", "overlay", "publish_tokens", "publish_versions", "quotas", "settings", "signing_keys"]);
+  assert.deepEqual(tables, ["blobs", "counters", "invites", "lastseen", "members", "meta", "overlay", "publish_tokens", "publish_versions", "quotas", "settings", "signing_keys"]);
 });
 
 test("applying it twice changes nothing — a migration is idempotent or it is a hazard", () => {
@@ -184,9 +184,9 @@ test("the store exposes no read or write verb it does not yet need", () => {
   // exists — see test/tenant-provisioning.test.mjs.
   const names = Object.getOwnPropertyNames(TenantStore.prototype).filter((n) => n !== "constructor");
   assert.deepEqual(names.sort(), [
-    "fetch", "init", "isProvisioned", "members", "nextPublishVersion",
+    "bumpCounter", "fetch", "init", "isProvisioned", "members", "nextPublishVersion",
     "overlayCas", "overlayInsert", "overlayRead", "overlayReadRev", "overlayReplace",
     "overlaySet", "provision",
-    "quotas", "schemaVersion", "sessionKey", "sql", "usersActive", "workspaceId",
+    "quotas", "readCounter", "schemaVersion", "sessionKey", "sql", "usersActive", "workspaceId",
   ]);
 });
