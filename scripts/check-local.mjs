@@ -50,6 +50,7 @@ const steps = [
   ["No foreign vocabulary", () => run("node", ["scripts/no-foreign-vocabulary.mjs"])],
   ["No other company's product named", () => run("node", ["scripts/no-product-names.mjs"])],
   ["Empty states are a ghost and one line", () => run("node", ["scripts/ui-copy-lint.mjs"])],
+  ["The state inventory still names everything", () => run("node", ["scripts/state-inventory.mjs"])],
   ["No instance, product, or personal words", wordScan],
 ];
 

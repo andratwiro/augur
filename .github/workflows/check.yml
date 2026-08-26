@@ -83,6 +83,19 @@ jobs:
         # passed every rule it has — and it says so in its own output rather than letting
         # a green run read as proof. Truth stays a review question.
         run: node scripts/ui-copy-lint.mjs
+      - name: The state inventory still names everything (state-inventory)
+        # scripts/lib/state-inventory.mjs is the migration's only complete list of what an
+        # instance stores and where each family goes. A list like that rots by default:
+        # five families appeared between its first draft and its second reading and
+        # nothing caught them, and a family nobody remembers is a family nobody exports.
+        #
+        # This is the SOURCE half — every key-shaped constant and every literal handed to a
+        # store must be accounted for, and every entry must still be named by the engine.
+        # It needs no credentials, so it runs here. The LIVE half (`--live <listing>`) is an
+        # operator command run before a migration, because it needs an account credential
+        # this workflow does not have — and it earns its keep: the first time it ran it
+        # found a real key shape the source scan could not see.
+        run: node scripts/state-inventory.mjs
       - name: No instance, product, or personal words in the engine
         # The engine is generic — instance-specific values belong in deploy.config.json /
         # space.json, never in engine code, scripts, docs, or shipped chrome. Scan the
