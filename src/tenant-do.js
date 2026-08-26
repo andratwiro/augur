@@ -156,11 +156,18 @@ export const TENANT_SCHEMA = Object.freeze([
   //
   // `v` is TEXT holding JSON, not a typed column: `statuses` stores a word and `canvases`
   // stores an object, and a schema that tried to be both would be a schema that is neither.
+  //
+  // `rev` is what makes a read-modify-write safe for the families whose value is a
+  // DOCUMENT rather than a scalar — a page's comment threads, a board's nodes. Those are
+  // read, changed and written back by the worker, so per-key rows alone do not help: two
+  // edits to ONE key still lose each other. The writer sends back the rev it read, the
+  // update matches on it, and a mismatch is a retry rather than a silent overwrite.
   `CREATE TABLE IF NOT EXISTS overlay (
      family TEXT NOT NULL,
      scope  TEXT NOT NULL DEFAULT '',
      k      TEXT NOT NULL,
      v      TEXT NOT NULL,
+     rev    INTEGER NOT NULL DEFAULT 0,
      at     TEXT NOT NULL,
      PRIMARY KEY (family, scope, k)
    )`,
@@ -508,6 +515,40 @@ export class TenantStore {
     return v;
   }
 
+  /** One key's value AND the revision it is at, so a caller can write it back safely. */
+  overlayReadRev(family, scope, k) {
+    const rows = [...this.sql.exec(
+      `SELECT v, rev FROM overlay WHERE family = ? AND scope = ? AND k = ?`,
+      String(family), String(scope), String(k),
+    )];
+    if (!rows.length) return { v: null, rev: 0 };
+    try { return { v: JSON.parse(rows[0].v), rev: Number(rows[0].rev) }; }
+    catch (e) { return { v: null, rev: Number(rows[0].rev) }; }
+  }
+
+  /**
+   * Write a key only if it is still at the revision the caller read. Returns the new rev,
+   * or null when somebody else got there first.
+   *
+   * This is the verb for a value that is a DOCUMENT — a page's comment threads, a board's
+   * nodes — where the worker reads it, changes part of it and writes the whole thing back.
+   * Per-key rows do not help there: two edits to ONE key still lose each other. Matching on
+   * the revision turns "one of these two ops vanished" into "one of them retried".
+   *
+   * `rev 0` means "I expect this key to be absent", so a create races correctly too.
+   */
+  overlayCas(family, scope, k, v, expectedRev, at) {
+    const stamp = at || new Date().toISOString();
+    const rows = [...this.sql.exec(
+      `INSERT INTO overlay (family, scope, k, v, rev, at) VALUES (?1, ?2, ?3, ?4, 1, ?6)
+         ON CONFLICT(family, scope, k) DO UPDATE SET v = ?4, rev = overlay.rev + 1, at = ?6
+           WHERE overlay.rev = ?5
+       RETURNING rev`,
+      String(family), String(scope), String(k), JSON.stringify(v), Number(expectedRev) || 0, stamp,
+    )];
+    return rows.length ? Number(rows[0].rev) : null;
+  }
+
   /**
    * Create a key only if it is absent, and say which happened.
    *
@@ -582,6 +623,14 @@ export class TenantStore {
           if (!body.k) return Response.json({ error: "no-key" }, { status: 400 });
           const inserted = this.overlayInsert(body.family, scope, body.k, body.v);
           return Response.json({ inserted, map: this.overlayRead(body.family, scope) });
+        }
+        case "/overlay/read-rev":
+          if (!body.k) return Response.json({ error: "no-key" }, { status: 400 });
+          return Response.json(this.overlayReadRev(body.family, scope, body.k));
+        case "/overlay/cas": {
+          if (!body.k) return Response.json({ error: "no-key" }, { status: 400 });
+          const rev = this.overlayCas(body.family, scope, body.k, body.v, body.rev);
+          return Response.json({ ok: rev !== null, rev });
         }
         case "/overlay/replace":
           return Response.json({ map: this.overlayReplace(body.family, scope, body.map) });

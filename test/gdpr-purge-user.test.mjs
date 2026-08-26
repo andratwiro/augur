@@ -14,6 +14,12 @@ import { __testables as W } from "../src/_worker.js";
 
 const { purgeThreads, purgeUser, personId, PURGED_AUTHOR } = W;
 
+// purgeUser sweeps through the overlay accessor now, not through a KV binding directly:
+// the workspace store answers the same question with a SELECT where KV needs a listing.
+// These fixtures are all KV, which is what every live instance is.
+const CTX = Object.freeze({ tenantId: "acme" });
+const purgeVia = (kv, users, email) => purgeUser(W.overlayFor({ COMMENTS: kv }, CTX), kv, users, email);
+
 const ME = "ada@example.test";
 const OTHER = "grace@example.test";
 
@@ -91,7 +97,7 @@ test("every comment path in the workspace is swept, and lastseen is deleted", as
     ["users:lastseen:" + ME]: "2026-01-01T00:00:00Z",
     ["users:lastseen:" + OTHER]: "2026-01-01T00:00:00Z",
   });
-  const r = await purgeUser(kv, [{ email: ME }, { email: OTHER }], ME);
+  const r = await purgeVia(kv, [{ email: ME }, { email: OTHER }], ME);
   assert.equal(r.ok, true, JSON.stringify(r));
   assert.equal(r.redacted, 2);
   assert.deepEqual(r.pathsTouched.sort(), ["/a/", "/b/"]);
@@ -108,7 +114,7 @@ test("every comment path in the workspace is swept, and lastseen is deleted", as
 
 test("the address is case-folded, so a differently-spelled request still erases", async () => {
   const kv = memKV({ "c:/a/": JSON.stringify([thread("t1", [msg(ME, "one")])]), ["users:lastseen:" + ME]: "x" });
-  const r = await purgeUser(kv, [{ email: ME }], "  Ada@Example.TEST  ");
+  const r = await purgeVia(kv, [{ email: ME }], "  Ada@Example.TEST  ");
   assert.equal(r.ok, true);
   assert.equal(r.redacted, 1);
   assert.equal(await kv.get("users:lastseen:" + ME), null);
@@ -140,7 +146,7 @@ test("A HASH COLLISION REFUSES rather than redacting an innocent third party", a
   assert.equal(personId(a), personId(b), "these addresses no longer collide — find a new pair rather than deleting the test");
 
   const kv = memKV({ "c:/a/": JSON.stringify([thread("t1", [msg(a, "one")])]) });
-  const r = await purgeUser(kv, [{ email: a }, { email: b }], a);
+  const r = await purgeVia(kv, [{ email: a }, { email: b }], a);
   assert.equal(r.ok, false, "the sweep proceeded despite a colliding roster member");
   assert.equal(r.reason, "id-collision");
   assert.equal(r.collidesWith, 1);
@@ -152,19 +158,19 @@ test("a roster with no collision proceeds normally", async () => {
   // The guard must not refuse every purge — that would be a denial of erasure wearing a
   // safety check's clothes.
   const kv = memKV({ "c:/a/": JSON.stringify([thread("t1", [msg(ME, "one")])]) });
-  const r = await purgeUser(kv, [{ email: ME }, { email: OTHER }], ME);
+  const r = await purgeVia(kv, [{ email: ME }, { email: OTHER }], ME);
   assert.equal(r.ok, true);
   assert.equal(r.redacted, 1);
 });
 
 test("a store with no list support refuses instead of reporting success", async () => {
-  const r = await purgeUser({ get: async () => null, put: async () => {}, delete: async () => {} }, [], ME);
+  const r = await purgeVia({ get: async () => null, put: async () => {}, delete: async () => {} }, [], ME);
   assert.equal(r.ok, false);
   assert.equal(r.reason, "kv-list-unsupported");
 });
 
 test("an empty address is refused", async () => {
-  assert.equal((await purgeUser(memKV(), [], "")).reason, "bad-address");
+  assert.equal((await purgeVia(memKV(), [], "")).reason, "bad-address");
 });
 
 // ── the wiring: removal is not erasure ───────────────────────────────────────
@@ -178,6 +184,6 @@ test("the admin remove op only purges when asked explicitly", async () => {
   const at = src.indexOf('shellDispatch(env, "roster-update", { action: "remove"');
   const block = src.slice(at, at + 1400);
   assert.match(block, /op\.purge === true/, "purge is not opt-in on the remove op");
-  assert.match(block, /purgeUser\(kv, users, email\)/);
+  assert.match(block, /purgeUser\(overlayFor\(env, tctx\), kv, users, email\)/);
   assert.match(block, /catch/, "a failing erasure would throw away a removal that already succeeded");
 });

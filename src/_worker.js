@@ -4720,8 +4720,14 @@ function purgeThreads(threads, id) {
  * Sweep every stored thread in this workspace, plus the lastseen stamp.
  * Returns {ok, redacted, pathsTouched, scanned} or {ok:false, reason, …}.
  */
-async function purgeUser(kv, users, email) {
-  if (!kv || typeof kv.list !== "function") return { ok: false, reason: "kv-list-unsupported" };
+async function purgeUser(store, kv, users, email) {
+  if (!store) return { ok: false, reason: "no-store" };
+  // The KV backing sweeps by LIST, which not every stub provides. The workspace store
+  // answers the same question with a SELECT and needs no such capability, so the check
+  // applies only to the backing that has it.
+  if (store.backing === "kv" && (!kv || typeof kv.list !== "function")) {
+    return { ok: false, reason: "kv-list-unsupported" };
+  }
   const addr = lcEmail(email);
   if (!addr) return { ok: false, reason: "bad-address" };
   const id = personId(addr);
@@ -4736,24 +4742,18 @@ async function purgeUser(kv, users, email) {
 
   let redacted = 0, scanned = 0;
   const pathsTouched = [];
-  let cursor;
-  do {
-    const list = await kv.list({ prefix: "c:", cursor });
-    for (const k of list.keys) {
-      scanned++;
-      const raw = await kv.get(k.name);
-      if (!raw) continue;
-      let threads;
-      try { threads = JSON.parse(raw); } catch (e) { continue; }
-      const res = purgeThreads(threads, id);
-      if (res.redacted) {
-        await kv.put(k.name, JSON.stringify(res.threads));
-        redacted += res.redacted;
-        pathsTouched.push(k.name.slice(2));
-      }
-    }
-    cursor = list.list_complete ? null : list.cursor;
-  } while (cursor);
+  const pages = await store.read("comments");
+  for (const [path, threads] of Object.entries(pages)) {
+    scanned++;
+    const res = purgeThreads(threads, id);
+    if (!res.redacted) continue;
+    // Written through `mutate`, so a comment posted between the read above and this write
+    // is redacted too rather than resurrecting the erasure it raced. On the KV backing
+    // that is the same read-modify-write it always was.
+    await store.mutate("comments", "", path, (cur) => purgeThreads(cur, id).threads);
+    redacted += res.redacted;
+    pathsTouched.push(path);
+  }
 
   // The lastseen stamp is an address in a KEY, so it is erased rather than redacted.
   try { await kv.delete(LASTSEEN_PREFIX + addr); } catch (e) {}
@@ -4843,14 +4843,12 @@ function mayRemoveThread(thread, me) {
 // Fully OPEN, reads AND writes (see router): reviewers with only a public
 // prototype link must be able to comment. applyOp clamps/caps every field.
 async function reviewApi(tctx, request, url, env, authed) {
-  const kv = kvFor(env);
+  const store = overlayFor(env, tctx);
   const path = clamp(url.searchParams.get("path") || "/", 600);
-  if (!kv) return jsonResponse({ threads: [], warning: "no-kv-binding" });
-  const key = "c:" + path;
+  if (!store) return jsonResponse({ threads: [], warning: "no-kv-binding" });
 
   if (request.method === "GET") {
-    const raw = await kv.get(key);
-    return jsonResponse({ threads: raw ? JSON.parse(raw) : [] });
+    return jsonResponse({ threads: (await store.readKey("comments", "", path)) || [] });
   }
   if (request.method === "POST") {
     let op;
@@ -4866,8 +4864,11 @@ async function reviewApi(tctx, request, url, env, authed) {
     // body. Reads/writes stay open (public reviewers carry no login) — this only fixes
     // WHO a message is attributed to, so a forged trusted name can't slip in.
     const me = await identify(request, env, tctx.USERS);
-    const raw = await kv.get(key);
-    let threads = raw ? JSON.parse(raw) : [];
+    // The permission check below reads the CURRENT threads; the mutate re-reads them and
+    // may run again on a retry. Both see the same document because both go through the
+    // store, and the check is about who owns a root message — a fact that does not change
+    // under a concurrent add.
+    let threads = (await store.readKey("comments", "", path)) || [];
     // Removing a thread erases someone else's words, so "is anyone signed in" is not a
     // strong enough gate on an instance with a roster: it let any teammate — or anyone
     // holding a shared viewer login — wipe a colleague's thread. Both ops that FULLY
@@ -4880,8 +4881,13 @@ async function reviewApi(tctx, request, url, env, authed) {
       const t = threads.find((x) => x.id === op.id);
       if (t && !mayRemoveThread(t, me)) return jsonResponse({ error: "forbidden" }, 403);
     }
-    threads = applyOp(tctx.USERS, threads, op, me);
-    await kv.put(key, JSON.stringify(threads));
+    // Read, apply, write back — retrying if somebody else wrote in between, which is the
+    // whole reason a page's threads live in a row with a revision. Two reviewers on one
+    // public link is the ordinary case, not the exotic one: without this, an add landing at
+    // the same moment as a delete loses one of the two, and the reviewer whose comment
+    // vanished has no way to know it ever existed.
+    threads = await store.mutate("comments", "", path,
+      (cur) => applyOp(tctx.USERS, Array.isArray(cur) ? cur : [], op, me));
     return jsonResponse({ threads });
   }
   return jsonResponse({ error: "method-not-allowed" }, 405);
@@ -4921,7 +4927,15 @@ const OVERLAY_KV_KEYS = Object.freeze({
   canvases: Object.freeze({ doc: "canvases", layout: "map" }),
   pins: Object.freeze({ doc: "pins", layout: "map" }),
   piti: Object.freeze({ doc: "pt", layout: "keyed" }),
+  // One document per PAGE. Both hold a document the worker reads, changes and writes back
+  // whole — a page's comment threads, a board's nodes — which is why `mutate` below exists
+  // and why the row carries a revision.
+  comments: Object.freeze({ doc: "c", layout: "keyed" }),
+  boards: Object.freeze({ doc: "board", layout: "keyed" }),
 });
+
+/** How many times a compare-and-swap retries before giving up. */
+const OVERLAY_CAS_ATTEMPTS = 5;
 
 /**
  * The KV key a family+scope+key lives under, exactly as every live instance already
@@ -4955,12 +4969,40 @@ function kvOverlay(kv) {
   };
   const read = async (family, scope = "") => {
     if (overlayLayout(family) !== "keyed") return readMapDoc(family, scope);
-    throw new Error(`${family} is stored one document per key; read its keys individually`);
+    // A keyed family's whole set is a LIST, which is the expensive call this codebase
+    // otherwise avoids. Two callers need it — the review export and the purge sweep — and
+    // both were hand-rolling this cursor loop; on the workspace store it is one SELECT.
+    const spec = OVERLAY_KV_KEYS[family];
+    const prefix = `${spec.doc}:`;
+    const out = {};
+    let cursor;
+    do {
+      const page = await kv.list({ prefix, cursor });
+      for (const entry of page.keys) {
+        const raw = await kv.get(entry.name);
+        if (raw === null || raw === undefined) continue;
+        try { out[entry.name.slice(prefix.length)] = JSON.parse(raw); } catch (e) { /* skip a corrupt document */ }
+      }
+      cursor = page.list_complete ? null : page.cursor;
+    } while (cursor);
+    return out;
   };
   return {
     backing: "kv",
     read,
     readKey: readOne,
+    /**
+     * Read, change, write back. On KV that is exactly what it has always been — there is
+     * no conditional put, so two edits to one key can still lose each other, and pretending
+     * otherwise here would be the dishonest half of a straddle.
+     */
+    async mutate(family, scope, k, fn) {
+      const before = await readOne(family, scope, k);
+      const after = fn(before);
+      if (after === undefined) return before;
+      await this.set(family, scope, k, after);
+      return after;
+    },
     async set(family, scope, k, v) {
       if (overlayLayout(family) === "keyed") {
         const key = overlayKvKey(family, scope, k);
@@ -5003,9 +5045,29 @@ function doOverlay(stub, tenantId) {
   return {
     backing: "do",
     read: async (family, scope = "") => (await call("read", { family, scope })).map,
-    readKey: async (family, scope, k) => {
-      const { map } = await call("read", { family, scope });
-      return Object.prototype.hasOwnProperty.call(map, k) ? map[k] : null;
+    readKey: async (family, scope, k) => (await call("read-rev", { family, scope, k })).v,
+    /**
+     * Read, change, write back — and RETRY when somebody else wrote in between.
+     *
+     * Per-key rows fix two edits to two keys. They do nothing for two edits to ONE key,
+     * which is what a comment thread and a board document are: the worker reads the whole
+     * document, changes part of it and puts it back. Matching on the revision turns "one of
+     * these two ops vanished" into "one of them retried", which is the difference between a
+     * comment that never appeared and a comment that appeared.
+     *
+     * `fn` may return `undefined` to mean "nothing to write", and it runs again on each
+     * attempt against a fresh read — so it must be a function OF the value, not a closure
+     * over a value read earlier.
+     */
+    async mutate(family, scope, k, fn) {
+      for (let attempt = 0; attempt < OVERLAY_CAS_ATTEMPTS; attempt++) {
+        const { v, rev } = await call("read-rev", { family, scope, k });
+        const after = fn(v);
+        if (after === undefined) return v;
+        const res = await call("cas", { family, scope, k, v: after, rev });
+        if (res.ok) return after;
+      }
+      throw new Error(`overlay: ${family}/${k} kept changing under ${OVERLAY_CAS_ATTEMPTS} attempts`);
     },
     set: async (family, scope, k, v) => (await call("set", { family, scope, k, v })).map,
     insert: async (family, scope, k, v) => {
@@ -5427,16 +5489,14 @@ async function virtualCanvas(tctx, request, env, url) {
 const BOARD_PREFIX = "board:";
 const BOARD_MAX_BYTES = 20 * 1024 * 1024; // under KV's 25MB per-value ceiling (inline images)
 
-async function boardApi(request, url, env) {
-  const kv = kvFor(env);
-  if (!kv) return jsonResponse({ doc: null, warning: "no-kv-binding" });
+async function boardApi(tctx, request, url, env) {
+  const store = overlayFor(env, tctx);
+  if (!store) return jsonResponse({ doc: null, warning: "no-kv-binding" });
   const path = clamp(url.searchParams.get("path"), 600);
   if (!path) return jsonResponse({ error: "bad-input" }, 400);
-  const key = BOARD_PREFIX + path;
 
   if (request.method === "GET") {
-    const raw = await kv.get(key);
-    return jsonResponse({ doc: raw ? JSON.parse(raw) : null });
+    return jsonResponse({ doc: (await store.readKey("boards", "", path)) || null });
   }
   if (request.method === "POST" || request.method === "PUT") {
     const body = await request.text();
@@ -5445,7 +5505,11 @@ async function boardApi(request, url, env) {
     try { op = JSON.parse(body); } catch (e) { return jsonResponse({ error: "bad-json" }, 400); }
     const doc = op && op.doc;
     if (typeof doc !== "object" || doc === null || !Array.isArray(doc.nodes)) return jsonResponse({ error: "bad-input" }, 400);
-    await kv.put(key, JSON.stringify(doc));
+    // LAST WRITE WINS, deliberately and unchanged. A board document is the client's whole
+    // canvas, reconciled in the realtime room before it ever gets here; two PUTs merged
+    // server-side would produce a canvas neither person drew. The revision machinery the
+    // comment threads use is exactly what must NOT be applied to this.
+    await store.set("boards", "", path, doc);
     return jsonResponse({ ok: true });
   }
   return jsonResponse({ error: "method-not-allowed" }, 405);
@@ -5844,7 +5908,7 @@ async function adminUsersApi(tctx, request, url, env, me, users = tctx.USERS, co
       // erasure that could not complete must be visible rather than swallowed.
       let purge;
       if (op && op.purge === true) {
-        try { purge = await purgeUser(kv, users, email); }
+        try { purge = await purgeUser(overlayFor(env, tctx), kv, users, email); }
         catch (e) { purge = { ok: false, reason: "failed", detail: String((e && e.message) || e).slice(0, 200) }; }
         // Publish history is the OTHER place an address is stored, and it is the one that
         // is readable before the gate: /_build.json is public, and it derives what it
@@ -5880,32 +5944,23 @@ async function reviewExport(tctx, request, url, env) {
   if (given.length !== secret.length || given !== secret) {
     return jsonResponse({ error: "forbidden" }, 403);
   }
-  const kv = kvFor(env);
-  if (!kv) return jsonResponse({ pages: {}, warning: "no-kv-binding" });
+  const store = overlayFor(env, tctx);
+  if (!store) return jsonResponse({ pages: {}, warning: "no-kv-binding" });
 
   if (request.method === "POST") {
     let op;
     try { op = await request.json(); } catch (e) { return jsonResponse({ error: "bad-json" }, 400); }
     const path = clamp(op && op.path, 600);
     if (!path) return jsonResponse({ error: "missing-path" }, 400);
-    const key = "c:" + path;
-    const raw = await kv.get(key);
-    let threads = raw ? JSON.parse(raw) : [];
-    threads = applyOp(tctx.USERS, threads, op);
-    await kv.put(key, JSON.stringify(threads));
+    const threads = await store.mutate("comments", "", path,
+      (cur) => applyOp(tctx.USERS, Array.isArray(cur) ? cur : [], op));
     return jsonResponse({ path, threads });
   }
 
-  const pages = {};
-  let cursor;
-  do {
-    const list = await kv.list({ prefix: "c:", cursor });
-    for (const k of list.keys) {
-      const raw = await kv.get(k.name);
-      pages[k.name.slice(2)] = raw ? JSON.parse(raw) : [];
-    }
-    cursor = list.list_complete ? null : list.cursor;
-  } while (cursor);
+  // Every page's threads, in one call. It was a hand-rolled cursor loop here and another
+  // in the purge sweep; the accessor owns the shape now, and on the workspace store it is
+  // one SELECT rather than a listing.
+  const pages = await store.read("comments");
   return jsonResponse({ pages, generatedAt: new Date().toISOString() });
 }
 
@@ -6482,7 +6537,7 @@ async function handleRequest(request, env, ctx, url, trace) {
     // Canvas board docs follow the COMMENTS model, not the status/pins model: a canvas is a
     // PUBLISHED prototype (public, obscure share link), so its board must load & save without a
     // login, exactly like /__review/api. Writes are full-state but size-capped in boardApi.
-    if (url.pathname === "/__board") return boardApi(request, url, env);
+    if (url.pathname === "/__board") return boardApi(tctx, request, url, env);
     // Board images live OUTSIDE the doc (content-hashed, immutable) — same public model as
     // /__board: the hash is the credential. Reads stay public (a public board renders its
     // images for anyone); UPLOADS require a signed-in user in identity mode, so the KV
@@ -6602,7 +6657,7 @@ async function handleRequest(request, env, ctx, url, trace) {
 export const __testables = Object.freeze({
   applyInstance,
   hashPassword, verifyPassword, isPassHash, safeEqual, userByEmail,
-  personId, avatarKey, publicUser, stampAuthor, sanitizeMsg, applyOp, reviewApi,
+  personId, avatarKey, publicUser, stampAuthor, sanitizeMsg, applyOp, reviewApi, reviewExport,
   purgeThreads, purgeUser, PURGED_AUTHOR,
   redactPublishedBy, redactProvenance, PURGED_PUBLISHER,
   peopleApi,

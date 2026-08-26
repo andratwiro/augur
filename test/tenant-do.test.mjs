@@ -185,7 +185,8 @@ test("the store exposes no read or write verb it does not yet need", () => {
   const names = Object.getOwnPropertyNames(TenantStore.prototype).filter((n) => n !== "constructor");
   assert.deepEqual(names.sort(), [
     "fetch", "init", "isProvisioned", "members", "nextPublishVersion",
-    "overlayInsert", "overlayRead", "overlayReplace", "overlaySet", "provision",
+    "overlayCas", "overlayInsert", "overlayRead", "overlayReadRev", "overlayReplace",
+    "overlaySet", "provision",
     "quotas", "schemaVersion", "sessionKey", "sql", "usersActive", "workspaceId",
   ]);
 });

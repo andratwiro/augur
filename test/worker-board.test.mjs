@@ -46,18 +46,18 @@ test("a board doc round-trips through KV under board:<path>", async () => {
   const env = envWith(kv);
   const doc = { nodes: [{ id: "n1", t: "text", v: "hello" }], view: { x: 0, y: 0, z: 1 }, name: "Board" };
 
-  const write = await W.boardApi(post(boardUrl("/playground/b/"), { doc }), boardUrl("/playground/b/"), env);
+  const write = await W.boardApi(TENANT_CTX, post(boardUrl("/playground/b/"), { doc }), boardUrl("/playground/b/"), env);
   assert.equal(write.status, 200);
   assert.deepEqual(await write.json(), { ok: true });
   assert.deepEqual([...kv.store.keys()], ["board:/playground/b/"], "one key, prefixed by path");
 
-  const read = await W.boardApi(new Request(boardUrl("/playground/b/")), boardUrl("/playground/b/"), env);
+  const read = await W.boardApi(TENANT_CTX, new Request(boardUrl("/playground/b/")), boardUrl("/playground/b/"), env);
   assert.deepEqual((await read.json()).doc, doc, "exactly what the client POSTed comes back");
 });
 
 test("a board that was never saved reads as null, not as an error", async () => {
   const env = envWith(memKV());
-  const res = await W.boardApi(new Request(boardUrl("/nope/")), boardUrl("/nope/"), env);
+  const res = await W.boardApi(TENANT_CTX, new Request(boardUrl("/nope/")), boardUrl("/nope/"), env);
   assert.equal(res.status, 200);
   assert.deepEqual(await res.json(), { doc: null });
 });
@@ -66,8 +66,8 @@ test("the write is authoritative full-state — a second POST replaces, never me
   const kv = memKV();
   const env = envWith(kv);
   const u = boardUrl("/b/");
-  await W.boardApi(post(u, { doc: { nodes: [{ id: "a" }, { id: "b" }] } }), u, env);
-  await W.boardApi(post(u, { doc: { nodes: [{ id: "c" }] } }), u, env);
+  await W.boardApi(TENANT_CTX, post(u, { doc: { nodes: [{ id: "a" }, { id: "b" }] } }), u, env);
+  await W.boardApi(TENANT_CTX, post(u, { doc: { nodes: [{ id: "c" }] } }), u, env);
   const doc = JSON.parse(kv.store.get("board:/b/"));
   assert.deepEqual(doc.nodes, [{ id: "c" }], "no server-side merge — KV eventual consistency would race it");
 });
@@ -77,7 +77,7 @@ test("boardApi rejects a doc that is not a node list", async () => {
   const env = envWith(kv);
   const u = boardUrl("/b/");
   for (const bad of [{ doc: null }, { doc: "x" }, { doc: {} }, { doc: { nodes: "no" } }, {}]) {
-    const res = await W.boardApi(post(u, bad), u, env);
+    const res = await W.boardApi(TENANT_CTX, post(u, bad), u, env);
     assert.equal(res.status, 400, `${JSON.stringify(bad)} must be refused`);
   }
   assert.equal(kv.store.size, 0, "nothing was written");
@@ -86,14 +86,14 @@ test("boardApi rejects a doc that is not a node list", async () => {
 test("boardApi needs a path, refuses bad JSON, and answers 405 to other methods", async () => {
   const env = envWith(memKV());
   const noPath = new URL("https://example.test/__board");
-  assert.equal((await W.boardApi(new Request(noPath), noPath, env)).status, 400);
+  assert.equal((await W.boardApi(TENANT_CTX, new Request(noPath), noPath, env)).status, 400);
 
   const u = boardUrl("/b/");
   const badJson = new Request(u, { method: "POST", body: "{not json" });
-  assert.equal((await W.boardApi(badJson, u, env)).status, 400);
+  assert.equal((await W.boardApi(TENANT_CTX, badJson, u, env)).status, 400);
 
   const del = new Request(u, { method: "DELETE" });
-  assert.equal((await W.boardApi(del, u, env)).status, 405);
+  assert.equal((await W.boardApi(TENANT_CTX, del, u, env)).status, 405);
 });
 
 test("a doc over the size ceiling is refused before it reaches KV", async () => {
@@ -101,7 +101,7 @@ test("a doc over the size ceiling is refused before it reaches KV", async () => 
   const env = envWith(kv);
   const u = boardUrl("/b/");
   const huge = new Request(u, { method: "POST", body: "x".repeat(W.BOARD_MAX_BYTES + 1) });
-  const res = await W.boardApi(huge, u, env);
+  const res = await W.boardApi(TENANT_CTX, huge, u, env);
   assert.equal(res.status, 413);
   assert.equal(kv.store.size, 0);
 });
@@ -111,12 +111,12 @@ test("PUT is accepted alongside POST", async () => {
   const env = envWith(kv);
   const u = boardUrl("/b/");
   const put = new Request(u, { method: "PUT", body: JSON.stringify({ doc: { nodes: [] } }) });
-  assert.equal((await W.boardApi(put, u, env)).status, 200);
+  assert.equal((await W.boardApi(TENANT_CTX, put, u, env)).status, 200);
   assert.equal(kv.store.size, 1);
 });
 
 test("with no KV binding the board answers a warning rather than throwing", async () => {
-  const res = await W.boardApi(new Request(boardUrl("/b/")), boardUrl("/b/"), {});
+  const res = await W.boardApi(TENANT_CTX, new Request(boardUrl("/b/")), boardUrl("/b/"), {});
   assert.deepEqual(await res.json(), { doc: null, warning: "no-kv-binding" });
 });
 
@@ -212,7 +212,7 @@ test("remove drops the registry entry but deliberately LEAVES the board doc", as
   const kv = memKV();
   await create(kv, { dir: "/x/", name: "Board" });
   const u = boardUrl("/x/board/");
-  await W.boardApi(post(u, { doc: { nodes: [{ id: "keep" }] } }), u, envWith(kv));
+  await W.boardApi(TENANT_CTX, post(u, { doc: { nodes: [{ id: "keep" }] } }), u, envWith(kv));
 
   const res = await create(kv, { remove: true, path: "/x/board/" });
   assert.equal(res.status, 200);

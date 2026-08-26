@@ -28,6 +28,13 @@ function slowKV(initial = {}) {
     async get(k) { await tick(); return store.has(k) ? store.get(k) : null; },
     async put(k, v) { await tick(); store.set(k, v); },
     async delete(k) { await tick(); store.delete(k); },
+    // The listing the keyed families' whole-set read needs. Real KV pages; one page here
+    // is enough, because what is being tested is that the accessor asks for the set at all
+    // rather than that it walks a cursor.
+    async list({ prefix = "" } = {}) {
+      await tick();
+      return { keys: [...store.keys()].filter((k) => k.startsWith(prefix)).map((name) => ({ name })), list_complete: true };
+    },
   };
 }
 
@@ -271,4 +278,98 @@ test("the piti documents an instance already holds are read as they are", async 
   const u = new URL("https://x.test/__piti?path=/p/");
   const got = await (await W.pitiApi(ctx, new Request(u), u, env)).json();
   assert.equal(got.remarks[0].text, "from before");
+});
+
+// ── the two families whose VALUE is a document ───────────────────────────────
+//
+// `B-do-schema-comments-boards`. Per-key rows fix two edits to two keys. They do nothing
+// for two edits to ONE key, which is what a page's comment threads and a board's nodes
+// are: the worker reads the whole document, changes part of it and puts it back. So those
+// rows carry a REVISION, and the write matches on it — a mismatch is a retry rather than a
+// silent overwrite.
+//
+// The two want OPPOSITE things and that is the point of testing them together. A comment
+// add and a comment delete must BOTH land. Two board PUTs must NOT merge: a board document
+// is the client's whole canvas, reconciled in the realtime room before it ever gets here,
+// and a server-side merge would produce a canvas neither person drew.
+
+const reviewUrl = (p) => new URL(`https://x.test/__review/api?path=${encodeURIComponent(p)}`);
+const reviewPost = (env, path, op, ctx = CTX) => W.reviewApi(
+  Object.freeze({ USERS: [], ...ctx }),
+  new Request(reviewUrl(path), { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(op) }),
+  reviewUrl(path), env, undefined);
+const reviewRead = async (env, path, ctx = CTX) => (await (await W.reviewApi(
+  Object.freeze({ USERS: [], ...ctx }), new Request(reviewUrl(path)), reviewUrl(path), env, undefined)).json()).threads;
+
+const thread = (id, body) => ({
+  op: "add",
+  thread: { id, sel: "h1", messages: [{ author: "R", body }] },
+});
+
+test("A CONCURRENT ADD AND DELETE ON ONE THREAD BOTH LAND", async () => {
+  // The VERIFY. Two reviewers on one public link is the ordinary case, not the exotic one.
+  const ctx = Object.freeze({ tenantId: "threads-do" });
+  const env = { COMMENTS: slowKV(), TENANTS: namespace() };
+  await reviewPost(env, "/p/", thread("keep", "one"), ctx);
+  await reviewPost(env, "/p/", thread("doomed", "two"), ctx);
+
+  await Promise.all([
+    reviewPost(env, "/p/", thread("fresh", "three"), ctx),
+    reviewPost(env, "/p/", { op: "delete", id: "doomed" }, ctx),
+  ]);
+
+  const ids = (await reviewRead(env, "/p/", ctx)).map((t) => t.id).sort();
+  assert.deepEqual(ids, ["fresh", "keep"],
+    "one of the two concurrent ops was lost — the revision check is not doing its job");
+});
+
+test("and on KV the same pair loses one, which is why the revision exists", async () => {
+  const ctx = Object.freeze({ tenantId: "threads-kv" });
+  const env = { COMMENTS: slowKV() };
+  await reviewPost(env, "/p/", thread("keep", "one"), ctx);
+  await reviewPost(env, "/p/", thread("doomed", "two"), ctx);
+  await Promise.all([
+    reviewPost(env, "/p/", thread("fresh", "three"), ctx),
+    reviewPost(env, "/p/", { op: "delete", id: "doomed" }, ctx),
+  ]);
+  const ids = (await reviewRead(env, "/p/", ctx)).map((t) => t.id).sort();
+  assert.notDeepEqual(ids, ["fresh", "keep"],
+    "the KV race did not reproduce; the fixture is not interleaving, so the test above proves nothing");
+});
+
+test("TWO BOARD PUTS ARE LAST-WRITE-WINS, never a merge", async () => {
+  // The other half of the VERIFY, and the opposite requirement. A board document is the
+  // whole canvas; merging two of them produces one neither person drew.
+  const url = new URL("https://x.test/__board?path=/b/one/");
+  const put = (env, nodes) => W.boardApi(CTX, new Request(url, {
+    method: "PUT", headers: { "content-type": "application/json" }, body: JSON.stringify({ doc: { nodes } }),
+  }), url, env);
+  for (const [name, base] of backings()) {
+    const env = { ...base };
+    await Promise.all([put(env, [{ id: "a" }, { id: "b" }]), put(env, [{ id: "c" }])]);
+    const doc = (await (await W.boardApi(CTX, new Request(url), url, env)).json()).doc;
+    const ids = doc.nodes.map((n) => n.id).sort().join(",");
+    assert.ok(ids === "a,b" || ids === "c", `${name}: the two boards were merged into ${ids}`);
+  }
+});
+
+test("a page's threads and a board live under the keys a live instance already holds", async () => {
+  const env = { COMMENTS: slowKV() };
+  await reviewPost(env, "/p/", thread("t1", "hello"), Object.freeze({ tenantId: "keys" }));
+  assert.ok(env.COMMENTS.store.has("c:/p/"), `wrote ${[...env.COMMENTS.store.keys()]}`);
+  assert.equal(W.overlayKvKey("comments", "", "/p/"), "c:/p/");
+  assert.equal(W.overlayKvKey("boards", "", "/b/"), "board:/b/");
+});
+
+test("the review export reads every page in one call, on both backings", async () => {
+  for (const [name, base] of backings()) {
+    const ctx = Object.freeze({ tenantId: `export-${name}`, USERS: [] });
+    const env = { ...base, REVIEW_EXPORT_KEY: "s3cret" };
+    await reviewPost(env, "/one/", thread("a", "x"), ctx);
+    await reviewPost(env, "/two/", thread("b", "y"), ctx);
+    const u = new URL("https://x.test/__review/export?key=s3cret");
+    const out = await (await W.reviewExport(ctx, new Request(u), u, env)).json();
+    assert.deepEqual(Object.keys(out.pages).sort(), ["/one/", "/two/"], name);
+    assert.equal(out.pages["/one/"][0].id, "a", name);
+  }
 });
