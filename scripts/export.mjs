@@ -33,7 +33,17 @@
 // NOT included even with `--full`: config/instance.json (reproducible from the deploy
 // shell, and not something to scatter extra copies of) and the password hashes, which the
 // export endpoint cannot reach — a credential is account-level and belongs to the account
-// store. See `docs/2026-08-09-bundle-store-recovery.md`.
+// store.
+//
+// SO HOW DOES ANYBODY SIGN IN TO A RESTORED INSTANCE? With the SEED password from the
+// deploy shell's identity.json. `effectiveSecret` falls back to the roster's baked hash
+// when the KV key is absent, and after a restore into a fresh instance it is absent — so
+// the first admin gets in the same way they did on day one, and resets everybody from
+// there. Nothing has to be carried and no KV surgery is needed. The nuance, because it is
+// the difference between a promise kept and a promise nearly kept: that is the SEED
+// password, not whatever they had changed it to. See test/restore-login.test.mjs.
+//
+// See `docs/2026-08-09-bundle-store-recovery.md`.
 
 import { mkdir, writeFile, readdir } from "node:fs/promises";
 import path from "node:path";
