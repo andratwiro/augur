@@ -4115,6 +4115,90 @@ function sanitizeMsg(users, m, me) {
   };
 }
 
+// ---- Erasure: redact a purged person from stored publish provenance -----------------
+//
+// `E-gdpr-provenance-redact`. Every published version records who committed it, and the
+// label on a publish token IS an address. Three write sites, in two shapes:
+//
+//   publishedBy: who.label                          a clean field
+//   publishedBy: `rollback to v3 by <label>`        an address inside a sentence
+//   publishedBy: `delete by <label>`                the same
+//
+// The two sentences are why this is string surgery rather than a value swap, and why it
+// could not simply reuse the comment sweep.
+//
+// WHY THE LOCAL-PART TAKES CARE OF ITSELF. `/_build.json` is served BEFORE the gate, and
+// `synthBuildStamp`'s `byName` maps a stored label to the roster display name, falling
+// back to `label.split("@")[0]` — the local-part — for a label it does not recognise. So a
+// leftover address would surface publicly as a bare local-part. It cannot: every write
+// site above stores the FULL address, so removing the full address removes the only thing
+// the local-part could be derived from. A test asserts that, because it is the property
+// the VERIFY actually checks and it is not obvious from the sweep alone.
+//
+// The sweep is bounded to the workspace's own R2 prefix, because that is how versions are
+// keyed. There is no global scan and no way for one workspace's erasure to touch another's
+// history.
+const PURGED_PUBLISHER = "Deleted user";
+
+/** Redact one stored `publishedBy` value. Returns the new string, or null if unchanged. */
+function redactPublishedBy(value, email) {
+  if (typeof value !== "string" || !value) return null;
+  const addr = lcEmail(email);
+  if (!addr) return null;
+  if (lcEmail(value) === addr) return PURGED_PUBLISHER;      // the clean-field shape
+  if (!value.toLowerCase().includes(addr)) return null;       // nothing of theirs here
+  // The sentence shapes. Replace every occurrence, case-insensitively, without a regex
+  // built from user input — an address can contain regex metacharacters.
+  let out = "", rest = value;
+  for (;;) {
+    const at = rest.toLowerCase().indexOf(addr);
+    if (at < 0) { out += rest; break; }
+    out += rest.slice(0, at) + PURGED_PUBLISHER;
+    rest = rest.slice(at + addr.length);
+  }
+  return out;
+}
+
+/**
+ * Sweep this workspace's stored publish history. Bounded to `spaces/<id>/`.
+ * Returns {ok, redacted, versions, manifest} or {ok:false, reason}.
+ */
+async function redactProvenance(env, spaceId, email) {
+  const r2 = env && env.BUNDLES;
+  if (!r2 || typeof r2.list !== "function") return { ok: false, reason: "no-bundle-store" };
+  const addr = lcEmail(email);
+  if (!addr) return { ok: false, reason: "bad-address" };
+
+  let redacted = 0;
+  const versions = [];
+  const rewrite = async (key) => {
+    const obj = await r2.get(key);
+    if (!obj) return false;
+    let doc;
+    try { doc = JSON.parse(await obj.text()); } catch (e) { return false; }
+    const next = redactPublishedBy(doc && doc.publishedBy, addr);
+    if (next === null) return false;
+    doc.publishedBy = next;
+    await r2.put(key, JSON.stringify(doc));
+    redacted++;
+    return true;
+  };
+
+  let cursor;
+  do {
+    const page = await r2.list({ prefix: `spaces/${spaceId}/versions/`, cursor, limit: 1000 });
+    for (const o of page.objects || []) {
+      if (await rewrite(o.key)) versions.push(o.key.split("/").pop().replace(/\.json$/, ""));
+    }
+    cursor = page.truncated ? page.cursor : null;
+  } while (cursor);
+
+  // The live manifest carries the same field and is what /_build.json reads.
+  const manifest = await rewrite(`spaces/${spaceId}/manifest.json`);
+
+  return { ok: true, redacted, versions, manifest };
+}
+
 // ---- Erasure: purge one person from a workspace's stored comments -------------------
 //
 // `E-gdpr-purge-user`. The existing `remove` op revokes the credential, the invites and
@@ -5154,6 +5238,17 @@ async function adminUsersApi(tctx, request, url, env, me, users = tctx.USERS, co
       if (op && op.purge === true) {
         try { purge = await purgeUser(kv, users, email); }
         catch (e) { purge = { ok: false, reason: "failed", detail: String((e && e.message) || e).slice(0, 200) }; }
+        // Publish history is the OTHER place an address is stored, and it is the one that
+        // is readable before the gate: /_build.json is public, and it derives what it
+        // shows from these records. Reported separately because the two sweeps touch
+        // different stores and either can fail on its own — an erasure that half happened
+        // has to say which half.
+        try {
+          const sid = (tctx.SPACES.find((sp) => sp.default) || tctx.SPACES[0] || {}).id;
+          purge.provenance = sid ? await redactProvenance(env, sid, email) : { ok: false, reason: "no-space" };
+        } catch (e) {
+          purge.provenance = { ok: false, reason: "failed", detail: String((e && e.message) || e).slice(0, 200) };
+        }
       }
       return jsonResponse({ ok: true, email, fileSync, ...(purge ? { purge } : {}) });
     }
@@ -5870,6 +5965,7 @@ export const __testables = Object.freeze({
   hashPassword, verifyPassword, isPassHash, safeEqual, userByEmail,
   personId, avatarKey, publicUser, stampAuthor, sanitizeMsg, applyOp, reviewApi,
   purgeThreads, purgeUser, PURGED_AUTHOR,
+  redactPublishedBy, redactProvenance, PURGED_PUBLISHER,
   peopleApi,
   tokenFor, hmacToken, userToken, identify, effectiveSecret,
   mintInvite, readInvite, consumeInvite,
