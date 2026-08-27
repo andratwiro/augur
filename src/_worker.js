@@ -1575,6 +1575,11 @@ async function revokeSecret(env, email) {
   const ov = raw ? JSON.parse(raw) : {};
   ov[email] = null;
   await kv.put(USER_SECRETS_KEY, JSON.stringify(ov));
+  // ⚠️ AND THE SESSION KEY, or this reset stops ending sessions the day SESSION_KEYS is
+  // turned on. A stored key WINS over the credential in sessionBinding, so a tombstone
+  // alone would leave every cookie this person holds still verifying. The tombstone is
+  // still what identify() refuses on — this is the belt beside that brace.
+  await clearSessionKey(env, email);
 }
 
 // Drop every outstanding invite for one address (mintInvite does this for the address it
@@ -1794,6 +1799,108 @@ async function effectiveSecret(env, u) {
   return u.passHash || u.pass || "";
 }
 
+// ---- The session binding, which used to be the same value as the credential ----------
+//
+// ⚠️ READ THIS BEFORE CHANGING ANYTHING BELOW IT.
+//
+// `effectiveSecret` above does TWO jobs, and until this seam existed they were the same
+// value:
+//
+//   1. THE AUTHENTICATOR — what `verifyPassword` checks a typed password against. Three
+//      call sites, all on a login path.
+//   2. THE SESSION BINDING — what `userToken` HMACs, so that changing or clearing a
+//      credential invalidates that person's cookies "for free".
+//
+// Job 2 is the one nobody notices until it is gone. Any passwordless design removes the
+// hash, and with it the value the cookie was bound to — after which the obvious fix, binding
+// to the address alone, collapses `userToken` to the publicly computable
+// `tokenFor("<email>:")`. That is precisely the forgery the guard in identify() exists to
+// stop. So the two jobs get separated FIRST, while passwords still exist and the change can
+// be proved to do nothing.
+//
+// ⚠️ WITH SESSION_KEYS OFF — every instance today — THIS RETURNS THE AUTHENTICATOR AND
+// READS NOTHING. Not "behaves similarly": the same value, no extra KV read, no new failure
+// surface. That is what makes this landable without a flag day.
+//
+// ⚠️ IT FAILS CLOSED, and it has to, for the same reason effectiveSecret does. An empty
+// return here is refused by identify(); anything else would let a transient KV error
+// collapse the derivation. "No binding" must mean "no session", never "bind to nothing".
+//
+// ⚠️ A STORED KEY WINS OVER THE AUTHENTICATOR, so once one exists, changing the password
+// no longer ends that person's sessions by itself. That is not a regression as long as
+// every credential change ALSO rotates the key — which is why `clearSessionKey` is called
+// beside every write to users:secrets, and why a test asserts a reset still ends a session.
+const SESSION_KEYS_KEY = "users:sessionkeys";
+
+async function readSessionKeys(kv) {
+  try {
+    const raw = await kv.get(SESSION_KEYS_KEY);
+    const parsed = raw ? JSON.parse(raw) : {};
+    // Same shape guard, same reason as effectiveSecret: an array passes `typeof === object`
+    // and would then miss every address, silently sending everyone to the fallback at once.
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return null;
+    return parsed;
+  } catch (e) {
+    return null; // the caller turns this into a refusal, never into a fallback
+  }
+}
+
+async function sessionBinding(env, u, authenticator, enabled) {
+  if (!u) return "";
+  // OFF: today's derivation exactly, and no read.
+  if (!enabled) return authenticator;
+  const kv = kvFor(env);
+  // No binding at all is the offline/raw-build case, as it is for effectiveSecret: there
+  // is no store to hold a key, so the authenticator is the whole story. Not a failure.
+  if (!kv) return authenticator;
+  const keys = await readSessionKeys(kv);
+  if (keys === null) return ""; // bound but unreadable — FAIL CLOSED
+  // Present-and-falsy is a revocation, exactly as in users:secrets: "signed out
+  // everywhere, and not yet signed back in" must not fall through to the credential.
+  if (Object.prototype.hasOwnProperty.call(keys, u.email)) return keys[u.email] || "";
+  return authenticator;
+}
+
+/**
+ * End every session this person holds, without touching their credential.
+ *
+ * This is the verb the split buys. Today a session ends only as a side effect of the
+ * credential hash changing, which means enrolling a device, redeeming a recovery link and
+ * "sign me out everywhere" all end nothing. Writing a fresh key here ends all of them.
+ *
+ * Best-effort by design: it is called beside credential writes that have already
+ * succeeded, and a failure to rotate must not undo one. It says so rather than throwing.
+ */
+async function rotateSessionKey(env, email) {
+  const kv = kvFor(env);
+  if (!kv || !email) return { ok: false, why: "no store" };
+  const keys = (await readSessionKeys(kv)) || {};
+  const bytes = new Uint8Array(32);
+  crypto.getRandomValues(bytes);
+  keys[email] = [...bytes].map((b) => b.toString(16).padStart(2, "0")).join("");
+  try { await kv.put(SESSION_KEYS_KEY, JSON.stringify(keys)); return { ok: true }; }
+  catch (e) { return { ok: false, why: String((e && e.message) || e).slice(0, 120) }; }
+}
+
+/**
+ * Forget this person's session key, so their binding falls back to their credential again.
+ *
+ * Called beside every write to users:secrets. With a key stored, a credential change would
+ * otherwise leave old cookies working — the one regression this seam could introduce.
+ * Clearing rather than rotating is deliberate: the credential just changed, so the
+ * authenticator it falls back to is already a value nobody's old cookie was built on.
+ */
+async function clearSessionKey(env, email) {
+  const kv = kvFor(env);
+  if (!kv || !email) return;
+  try {
+    const keys = await readSessionKeys(kv);
+    if (!keys || !Object.prototype.hasOwnProperty.call(keys, email)) return;
+    delete keys[email];
+    await kv.put(SESSION_KEYS_KEY, JSON.stringify(keys));
+  } catch (e) { /* see rotateSessionKey: this must never undo a credential write */ }
+}
+
 // ---- Invite / reset tokens ---------------------------------------------------
 // One mechanism serves account setup and password recovery — they differ only in
 // wording. A token is single-use (consumed when a password is set), expires on its
@@ -1878,6 +1985,11 @@ async function setUserSecret(env, email, hash) {
   const ov = raw ? JSON.parse(raw) : {};
   ov[email] = hash;
   await kv.put(USER_SECRETS_KEY, JSON.stringify(ov));
+  // Same reason as revokeSecret: with a key stored, changing the credential would not end
+  // the old sessions by itself. Clearing rather than rotating is deliberate — the
+  // credential just changed, so the value the binding falls back to is already one no old
+  // cookie was built on.
+  await clearSessionKey(env, email);
 }
 
 // The engine's own mark — the fallback brand on the front-door pages, and the mark the
@@ -2116,7 +2228,10 @@ async function invitePost(tctx, request, url, env, users = tctx.USERS) {
   // an unhandled exception (dead link, no explanation) but fail cleanly instead.
   try {
     await setUserSecret(env, u.email, hash);
-    const token2 = await userToken(env, u);
+    // ⚠️ THE FLAG MUST REACH EVERY ISSUER. A cookie minted without it binds to the
+    // credential while identify() checks against the session key, and the person is
+    // signed out on their very next request — with nothing saying why.
+    const token2 = await userToken(env, u, undefined, tctx.SESSION_KEYS);
     return new Response(null, {
       status: 303,
       headers: {
@@ -2138,8 +2253,23 @@ async function invitePost(tctx, request, url, env, users = tctx.USERS) {
 // `resolved` is an OPTIONAL pre-resolved effective secret. identify() passes the one
 // value it guarded on so the guard and the derivation cannot disagree; every other
 // caller omits it and this resolves its own, unchanged.
-async function userToken(env, u, resolved) {
-  const secret = resolved === undefined ? await effectiveSecret(env, u) : resolved;
+/**
+ * ⚠️ `resolved` IS THE SESSION BINDING, not the credential.
+ *
+ * With SESSION_KEYS off the two are the same value and this is unchanged in every respect.
+ * With it on, the binding is a per-person key and the credential is not part of the
+ * derivation at all — which is the point of the split, and the reason this parameter's
+ * meaning is stated here rather than inferred from the one call site that passes it.
+ *
+ * The resolve-once discipline is unchanged and still load-bearing: identify() resolves the
+ * binding ONCE and hands it here. Re-resolving inside this function would not be atomic
+ * with identify()'s guard — a truthy first read passing the guard and an empty second read
+ * reaching this line collapses the derivation to a publicly computable digest.
+ */
+async function userToken(env, u, resolved, enabled) {
+  const secret = resolved === undefined
+    ? await sessionBinding(env, u, await effectiveSecret(env, u), enabled)
+    : resolved;
   const sessionSecret = env && env.SESSION_SECRET;
   if (sessionSecret) return hmacToken(sessionSecret, u.email + ":" + secret);
   return tokenFor(u.email + ":" + secret);
@@ -2161,7 +2291,7 @@ function cookieValue(cookies, name) {
 // caller that omitted the workspace would, the day an isolate serves two, resolve a
 // cookie against a NEIGHBOUR's roster — matching a stranger's admin by address. No
 // default means such a caller cannot exist.
-async function identify(request, env, users) {
+async function identify(request, env, users, { sessionKeys = false } = {}) {
   if (!users.length) return null;
   const cookies = request.headers.get("Cookie") || "";
   // ⏳ MIGRATION WINDOW — the current name first, then each older name in turn, so a
@@ -2196,8 +2326,16 @@ async function identify(request, env, users) {
   // cuts 2 KV reads per cookie-bearing request to one.
   const secret = await effectiveSecret(env, u);
   if (!secret) return null;
+  // THE SECOND RESOLVE, and it is a DIFFERENT value rather than a re-read of the first.
+  // The guard above is on the credential — "no effective secret ⇒ no session" — and this
+  // one is on what the cookie is actually bound to. Both are resolved exactly once and
+  // both must be truthy: a binding that could not be read is a refusal, never a fallback,
+  // because an empty binding reduces the derivation below to a publicly computable digest.
+  // With SESSION_KEYS off this returns `secret` itself and costs nothing.
+  const binding = await sessionBinding(env, u, secret, sessionKeys);
+  if (!binding) return null;
   const token = val.slice(dot + 1);
-  if (safeEqual(token, await userToken(env, u, secret))) return u;
+  if (safeEqual(token, await userToken(env, u, binding))) return u;
   return null;
 }
 
@@ -5478,7 +5616,7 @@ async function reviewApi(tctx, request, url, env, authed) {
     // Resolve the caller's session so authorship is stamped from the cookie, not the
     // body. Reads/writes stay open (public reviewers carry no login) — this only fixes
     // WHO a message is attributed to, so a forged trusted name can't slip in.
-    const me = await identify(request, env, tctx.USERS);
+    const me = await identify(request, env, tctx.USERS, { sessionKeys: tctx.SESSION_KEYS });
     // The permission check below reads the CURRENT threads; the mutate re-reads them and
     // may run again on a retry. Both see the same document because both go through the
     // store, and the check is about who owns a root message — a fact that does not change
@@ -6411,7 +6549,7 @@ async function isPausedWorkspaceMember(request, env, tenantId) {
   try {
     const tctx = await loadConfig(tenantId, env);
     if (!tctx || !tctx.USERS.length) return false;
-    return !!(await identify(request, env, tctx.USERS));
+    return !!(await identify(request, env, tctx.USERS, { sessionKeys: tctx.SESSION_KEYS }));
   } catch (e) {
     return false;
   }
@@ -8537,7 +8675,7 @@ async function handleRequest(request, env, ctx, url, trace) {
     // The approval page. Gated like any other page — this is the one place the flow WANTS
     // an authenticated browser — and absent entirely when the instance has not opted in.
     if (url.pathname === "/__connect" && tctx.DEVICE_PAIRING) {
-      const who = tctx.USERS.length ? await identify(request, env, tctx.USERS) : null;
+      const who = tctx.USERS.length ? await identify(request, env, tctx.USERS, { sessionKeys: tctx.SESSION_KEYS }) : null;
       if (!who && tctx.USERS.length) return htmlResponse(loginPage(tctx, "/__connect", false, url.href), 200);
       return htmlResponse(connectPage(tctx, who), 200);
     }
@@ -8546,7 +8684,7 @@ async function handleRequest(request, env, ctx, url, trace) {
       // route runs BEFORE the gate — the same early-exit shape /__version and the review
       // export use. `usersActive` is not in scope yet either; on an instance with no
       // roster there is nobody to approve, and approve is the only step that needs one.
-      const who = tctx.USERS.length ? await identify(request, env, tctx.USERS) : null;
+      const who = tctx.USERS.length ? await identify(request, env, tctx.USERS, { sessionKeys: tctx.SESSION_KEYS }) : null;
       const paired = await pairApi(tctx, request, url, env, who);
       if (paired) return paired;
     }
@@ -8601,7 +8739,7 @@ async function handleRequest(request, env, ctx, url, trace) {
     const expected = env.SITE_PASSWORD;
     const usersActive = tctx.USERS.length > 0;
     // Resolve identity once (identity mode); null in legacy/open mode.
-    const me = usersActive ? await identify(request, env, tctx.USERS) : null;
+    const me = usersActive ? await identify(request, env, tctx.USERS, { sessionKeys: tctx.SESSION_KEYS }) : null;
     // Is this request past the gate? identity mode → a known user; legacy → the
     // shared-password cookie; neither configured → open (raw/local build, no gate).
     let authed;
@@ -8770,7 +8908,7 @@ async function handleRequest(request, env, ctx, url, trace) {
         // costs the same as a known one (no timing enumeration).
         const ok = await verifyPassword(pass, real || DUMMY_HASH);
         if (u && real && ok) {
-          const token = await userToken(env, u);
+          const token = await userToken(env, u, undefined, tctx.SESSION_KEYS);
           if (ctx && ctx.waitUntil) ctx.waitUntil(touchLastSeen(env, u));
           touchWorkspaceActivity(env, tctx, ctx);
           // ⚠️ INSIDE THE SUCCESS BRANCH, WHICH IS THE POINT. A wrong password falls through
@@ -9021,6 +9159,7 @@ export const __testables = Object.freeze({
   redactPublishedBy, redactProvenance, PURGED_PUBLISHER,
   peopleApi,
   tokenFor, hmacToken, userToken, identify, effectiveSecret,
+  sessionBinding, rotateSessionKey, clearSessionKey, SESSION_KEYS_KEY,
   mintInvite, readInvite, consumeInvite,
   invitePost, inviteGet, invitePage, setUserSecret, MIN_PASSWORD_LENGTH,
   loginPage, RESET_NOTICE, previewHead, ENGINE_TAGLINE, notFoundPage,
