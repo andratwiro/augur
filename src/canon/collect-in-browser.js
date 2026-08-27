@@ -36,6 +36,7 @@
   var BORDER_SIDE = {
     borderTopColor: "borderTop", borderRightColor: "borderRight",
     borderBottomColor: "borderBottom", borderLeftColor: "borderLeft",
+    outlineColor: "outline",
   };
   var SPACE_PROPS = ["paddingTop", "paddingRight", "paddingBottom", "paddingLeft",
     "marginTop", "marginRight", "marginBottom", "marginLeft", "rowGap", "columnGap"];
@@ -90,8 +91,13 @@
     for (var n = 0; n < el.childNodes.length; n++) {
       if (el.childNodes[n].nodeType === 3 && el.childNodes[n].nodeValue.trim()) { hasText = true; break; }
     }
+    /* `fill` and `stroke` are inherited SVG properties, so getComputedStyle answers for a
+       <div> too — and its answer is the initial `rgb(0, 0, 0)`. Counting those puts a
+       black nothing at the top of the evidence on any page with a few large containers. */
+    var isSvg = el.namespaceURI === "http://www.w3.org/2000/svg";
     for (var c = 0; c < COLOR_PROPS.length; c++) {
       var prop = COLOR_PROPS[c];
+      if ((prop === "fill" || prop === "stroke") && !isSvg) continue;
       var side = BORDER_SIDE[prop];
       if (side && (cs[side + "Style"] === "none" || parseFloat(cs[side + "Width"]) === 0)) continue;
       /* Text colour is weighted by the ink it puts on the page, not by the box: a huge

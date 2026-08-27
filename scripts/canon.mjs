@@ -35,7 +35,7 @@ import {
   ROLES, ROLE_BY_NAME, OBSERVED_ROLES, COMPONENT_TYPES, CANON_VERSION,
   blankCanon, validateCanon, parseTokensCss,
 } from "../src/canon/schema.mjs";
-import { planApply } from "../src/canon/emit.mjs";
+import { planApply, classNamesIn } from "../src/canon/emit.mjs";
 
 const ENGINE = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const argv = process.argv.slice(2);
@@ -153,10 +153,6 @@ const guessPrefix = (url) => {
     return /^[a-z][a-z0-9-]*$/.test(host) ? host : "canon";
   } catch { return "canon"; }
 };
-/** Every class a stylesheet defines — what `apply` will refuse to redefine. */
-const classNamesIn = (css) =>
-  [...new Set([...String(css).matchAll(/\.([a-zA-Z][\w-]*)/g)].map((m) => m[1]))].sort();
-
 const skillClassPrefix = (skill) => {
   const manifest = readJson(path.join(skill.abs, "skill.json"), {}) || {};
   const list = Array.isArray(manifest.cssPrefixes) ? manifest.cssPrefixes : [];

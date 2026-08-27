@@ -169,6 +169,17 @@ export function renderCanonMd({ prefix, classPrefix, tokens, derived, components
 }
 
 /**
+ * Every class a stylesheet defines. Comments are stripped first, or a `/* see foo.css *​/`
+ * lands `.css` in the list — which the brief then hands a person as a name they may not
+ * use. ONE function, exported, because the brief promises exactly what `apply` refuses
+ * and two regexes would eventually promise something else.
+ */
+export function classNamesIn(css) {
+  const bare = String(css).replace(/\/\*[\s\S]*?\*\//g, "");
+  return [...new Set([...bare.matchAll(/\.(-?[a-zA-Z_][\w-]*)/g)].map((m) => m[1]))].sort();
+}
+
+/**
  * Everything `augur canon apply` would write, as `{path, text}` — plus the refusals.
  * Pure: the caller does the IO, which is what lets `--dry-run` be the same code path.
  *
@@ -193,7 +204,7 @@ export function planApply({ canon, skillDir, skillPrefix, existingSkillJson, exi
   }
 
   const components = Array.isArray(canon.components) ? canon.components : [];
-  const taken = new Set([...String(existingComponentCss).matchAll(/\.([a-zA-Z][\w-]*)/g)].map((m) => m[1]));
+  const taken = new Set(classNamesIn(existingComponentCss));
   for (const c of components) {
     for (const cl of c.classes || []) {
       if (taken.has(cl)) errors.push(`components (${c.name}): .${cl} is already defined in this workspace's own stylesheet — rename it, or the two rules will fight on one screen`);

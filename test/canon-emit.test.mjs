@@ -14,7 +14,7 @@ import path from "node:path";
 import os from "node:os";
 import { execFileSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
-import { planApply, mergeRegistry, mergeSkillJson, renderTokensCss } from "../src/canon/emit.mjs";
+import { planApply, mergeRegistry, mergeSkillJson, renderTokensCss, classNamesIn } from "../src/canon/emit.mjs";
 import { parseTokensCss, ROLE_NAMES, validateCanon } from "../src/canon/schema.mjs";
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
@@ -85,6 +85,14 @@ test("an x- token emits as a real token the components may read", () => {
   assert.deepEqual(plan.errors, []);
   const tokensText = plan.writes.find((w) => w.path.endsWith("starter-tokens.css")).text;
   assert.match(tokensText, /--starter-brand-navy:\s*#0b2545;/);
+});
+
+test("the list of spent class names is the same list apply refuses, comments and all", () => {
+  // The brief prints this list; apply refuses against it. Two regexes would eventually
+  // promise something apply does not refuse, or forbid a name it would have allowed —
+  // and a filename inside a comment is enough to do it.
+  assert.deepEqual(classNamesIn("/* see foo.css and .not-a-class */ .a-card { } .a-card--tight {}"),
+    ["a-card", "a-card--tight"]);
 });
 
 test("a class the workspace already defines is a refusal, not a second rule", () => {

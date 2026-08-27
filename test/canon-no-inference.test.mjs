@@ -97,9 +97,16 @@ test("the only thing the canon flow fetches is a URL the person named", () => {
     assert.ok(/^https?:\/\/(?:app\.)?example\.(?:com|test)/.test(u),
       `scripts/canon.mjs names ${u} — the only URLs in here may be the documented placeholders`);
   }
-  const browser = fs.readFileSync(path.join(ROOT, "src", "canon", "collect-in-browser.js"), "utf8");
-  assert.equal(/https?:\/\//.test(browser.replace(/^\s*\*.*$/gm, "")), false,
-    "the browser collector names a URL — it must make no request at all");
+  // The browser collector may name no address at all, with one exception: the SVG
+  // namespace URI, which is an identifier the DOM compares against and not somewhere a
+  // request can go. It is allowed BY VALUE rather than by pattern, so a second address
+  // cannot arrive under the same excuse.
+  const SVG_NS = ["http://www.w3", ".org/2000/svg"].join("");
+  const browser = fs.readFileSync(path.join(ROOT, "src", "canon", "collect-in-browser.js"), "utf8")
+    .replace(/^\s*\*.*$/gm, "")
+    .split(SVG_NS).join("");
+  assert.equal(/https?:\/\//.test(browser), false,
+    "the browser collector names an address — it must make no request at all");
 });
 
 test("the brief tells the person whose agent is doing the work", () => {
