@@ -208,6 +208,9 @@ test("THE COMMAND REFUSES rather than writing a copy that phones home", () => {
     assert.equal(r.status, 1, `expected a refusal, got ${r.status}:\n${r.stdout}${r.stderr}`);
     assert.match(r.stdout, /engine/, "the refusal did not say what was wrong");
     assert.match(r.stdout, /comments\.js/, "the refusal did not name the reference");
+    // And it refuses BEFORE writing: a folder that phones home must not exist on disk to
+    // be copied somewhere by mistake. --dry-run is how you look at one without making it.
+    assert.equal(fs.existsSync(out), false, "a copy that still fetches from the engine was written anyway");
   } finally {
     fs.rmSync(root, { recursive: true, force: true });
     fs.rmSync(out, { recursive: true, force: true });

@@ -234,6 +234,16 @@ async function graduate() {
   // quiet. Silence is what a broken checker also produces.
   log(`checked ${texts.length} text file(s) of ${files.length}: ${fatal.length} engine, ${suspect.length} mention, ${dangling.length} dangling, ${external.length} external`);
 
+  // Refuse BEFORE writing. A folder that still fetches from the instance looks perfect on
+  // the old origin, and the person moving it has usually pointed a domain at it before
+  // anyone finds out — so it must not exist on disk to be copied somewhere by mistake.
+  // --dry-run is how you look at one without producing it.
+  if (fatal.length) {
+    log(`${C.bad}${fatal.length} reference(s) still reach this engine — nothing was written.${C.off}`);
+    console.log(`${C.dim}Each one is listed above with its file and line. They are the whole difference between a copy that serves anywhere and one that quietly needs this instance to stay up.${C.off}`);
+    process.exit(1);
+  }
+
   if (DRY) {
     log(`${C.dim}dry run — would write ${files.length} file(s) to ${out}${C.off}`);
   } else {
@@ -248,11 +258,6 @@ async function graduate() {
     log(`${C.ok}graduated ${files.length} file(s) → ${out}${C.off}`);
   }
 
-  if (fatal.length) {
-    log(`${C.bad}${fatal.length} reference(s) still reach this engine — that copy is not standalone yet.${C.off}`);
-    console.log(`${C.dim}Each one is listed above with its file and line. They are the whole difference between a copy that serves anywhere and one that quietly needs this instance to stay up.${C.off}`);
-    process.exit(1);
-  }
   if (dangling.length) {
     log(`${C.warn}${dangling.length} reference(s) resolve to nothing in the folder.${C.off} ${C.dim}The old site answered them; a domain serving only this folder will 404 them. Links to sibling prototypes are the usual cause — they did not come along.${C.off}`);
   }
