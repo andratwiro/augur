@@ -6071,7 +6071,10 @@ async function readSuspension(tenantId, env, now = Date.now()) {
     try {
       const res = await stub.fetch("https://workspace/suspension");
       const body = await res.json();
-      cur.doc = body && body.suspended ? body : null;
+      // `moved` counts as an answer worth keeping for the same reason `suspended` does: a
+      // workspace whose address has been changed away must not be served here, and dropping
+      // the doc because it is not *paused* would cache "fine" for an address that is gone.
+      cur.doc = body && (body.suspended || body.moved) ? body : null;
       cur.at = now;
     } catch (e) { /* keep the last answer, whatever it was — including "never read" */ }
   }
@@ -7905,6 +7908,23 @@ async function handleRequest(request, env, ctx, url, trace) {
     // instance nothing: no TENANTS binding, no question.
     if (env && env.TENANTS) {
       const paused = await readSuspension(tenantId, env);
+      // ── the address that is not this workspace's address any more ───────────
+      // A rename is a CUT-OVER, not a redirect: this hostname answers exactly what a
+      // hostname naming no workspace answers, byte for byte, and it never says where the
+      // workspace went. Three reasons it is this and not a 301-then-404, all of which the
+      // confirmation copy states before anybody presses the button:
+      //   · a workspace address is generated and unguessable, so the usual reason to change
+      //     one is that it reached somebody it should not have — a forwarder hands that
+      //     person the new one, which undoes the change for the only person it was made for;
+      //   · a redirect keeps the old address alive in links and search results for years, so
+      //     the address is never really given up and the retirement means less than it says;
+      //   · "clean redirect then 404 later" is two promises, and the second one is kept by a
+      //     future deploy nobody has scheduled. One promise, kept immediately, is smaller and
+      //     true.
+      // Before the suspension branch, because a moved address is not a pause and has no
+      // allow-list: nothing answers here, not sign-in and not the export. Both still run at
+      // the workspace's own address, which is where its members are.
+      if (paused && paused.moved) return unknownHostResponse();
       // `undefined` is "this isolate has never managed to read the flag". It refuses, and
       // that is the one degradation in this file that shuts a door instead of opening one.
       if (paused === undefined || paused) {

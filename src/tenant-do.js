@@ -344,7 +344,7 @@ export const DELETE_GRACE_MS = 30 * 24 * 60 * 60 * 1000;
  * else, so every control-plane call was a 404 that nothing was watching for.
  */
 export const CONTROL_VERBS = Object.freeze([
-  "provision", "status", "suspend", "resume", "rotate", "delete", "purge",
+  "provision", "status", "suspend", "resume", "rotate", "delete", "purge", "rename",
 ]);
 
 export function newSigningKey(random = (b) => crypto.getRandomValues(b)) {
@@ -735,6 +735,10 @@ export class TenantStore {
       deleted: !!meta.deleted_at,
       deletedAt: meta.deleted_at || null,
       purgeAfter: meta.purge_after || null,
+      // This address stopped being the workspace's address, and when. Reported here and not
+      // where the workspace went: see renameAway for why that pointer is not kept.
+      moved: !!meta.moved_at,
+      movedAt: meta.moved_at || null,
       createdAt: meta.created_at || null,
       lastActivityAt: meta.last_activity_at || null,
       plan: meta.plan || DEFAULT_PLAN,
@@ -896,6 +900,49 @@ export class TenantStore {
   }
 
   /**
+   * This address is not this workspace's address any more.
+   *
+   * A workspace's hostname is the FIRST LABEL of the Host header and the resolver turns that
+   * label straight into this object's name (`idFromName`), with no lookup in between and no
+   * round trip in front of every request. So a workspace cannot be given a second address:
+   * a different label is a different object. What "rename" means here is therefore the
+   * CUT-OVER and not the move — this object stops answering at this address, permanently —
+   * and moving a workspace's state to the object behind its new address is what the
+   * migration machinery already does (`augur migrate`, docs/migration-freeze.md). A second,
+   * silent copy of that inside a verb would be the worse of the two.
+   *
+   * ⚠️ IT DOES NOT RECORD WHERE THE WORKSPACE WENT, and that is the whole point rather than
+   * an omission. The most common honest reason to change an address that nobody chose and
+   * nobody can guess is that the current one reached somebody it should not have. A
+   * forwarding pointer stored here is one JSON field away from being served, and the day it
+   * is served the change has undone itself for exactly the person it was made to get away
+   * from. Which address replaced which is a fact the operator's registry keeps, where the
+   * people who can act on it are the only ones who can read it.
+   *
+   * ⚠️ IT REVOKES NOTHING. This object still holds the only copy of the workspace's roster,
+   * threads and boards until something moves them, so taking away the credential an export
+   * runs on at the moment the address goes dark is the trap `SUSPENDED_ALLOWED` exists to
+   * avoid, one step worse. The store is reachable by anything holding the namespace binding;
+   * only the public address is gone.
+   *
+   * ⚠️ A TOMBSTONE CANNOT BE RENAMED AWAY. A deleted workspace is already promising its
+   * members a page with an erasure date on it for thirty days, and a bare 404 in its place
+   * takes that page away from the people the grace window exists for.
+   *
+   * Idempotent: the same call twice reports the first move's timestamp and changes nothing,
+   * so a control plane retrying its own step cannot restate when the address went dark.
+   */
+  renameAway(at = new Date().toISOString()) {
+    if (!this.hasMeta()) return { ok: false, error: "not-provisioned" };
+    if (!this.isProvisioned()) return { ok: false, error: "not-provisioned" };
+    if (this.readMeta("deleted_at")) return { ok: false, error: "deleted" };
+    const already = this.readMeta("moved_at");
+    if (already) return { ok: true, changed: false, movedAt: already };
+    this.writeMeta("moved_at", at);
+    return { ok: true, changed: true, movedAt: at };
+  }
+
+  /**
    * A verb's answer, as HTTP.
    *
    * ⚠️ A REFUSAL IS A 4xx, NOT AN `ok: false` INSIDE A 200. The control plane logs a verb's
@@ -991,12 +1038,18 @@ export class TenantStore {
    * and it must not create the workspace to find out, so nothing here calls `init()`.
    */
   suspension() {
-    if (!this.hasMeta()) return { suspended: false, reason: null, at: null, deleted: false };
+    if (!this.hasMeta()) {
+      return { suspended: false, reason: null, at: null, deleted: false, moved: false };
+    }
     return {
       suspended: this.readMeta("suspended") === "1",
       reason: this.readMeta("suspended_reason"),
       at: this.readMeta("suspended_at"),
       deleted: !!this.readMeta("deleted_at"),
+      // ⚠️ A BOOLEAN, NOT THE NEW ADDRESS. This answer travels to the front door on every
+      // request; the new address must not, or the old hostname becomes the way to find it.
+      // See renameAway.
+      moved: !!this.readMeta("moved_at"),
     };
   }
 
@@ -1384,6 +1437,9 @@ export class TenantStore {
         case "resume": return this.controlResult(this.resume(at));
         case "rotate": return this.controlResult(this.rotate(at));
         case "delete": return this.controlResult(this.deleteWorkspace(at));
+        // No `to` is read off the body, and none may ever be: see renameAway. The caller
+        // knows the new address; this object must not.
+        case "rename": return this.controlResult(this.renameAway(at));
         case "purge": {
           if (!body || !body.email) return Response.json({ error: "bad-input" }, { status: 400 });
           const out = this.purgeAuthor(body.email, at);

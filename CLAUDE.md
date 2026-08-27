@@ -56,7 +56,8 @@ exists: that answer lives inside the object it would have to reach anyway, and a
 would put a round trip in front of every request.
 
 **What can be done TO a workspace from outside it is one list**: `CONTROL_VERBS` in
-`src/tenant-do.js` — `provision`, `status`, `suspend`, `resume`, `rotate`, `delete` — served
+`src/tenant-do.js` — `provision`, `status`, `suspend`, `resume`, `rotate`, `delete`,
+`purge`, `rename` — served
 under `/__control/<verb>` on the workspace object and reachable only by code holding the
 namespace binding. Two properties hold across all of them. **Only `provision` may create
 anything**: every other verb reads `meta` and refuses `not-provisioned` before `init()`,
@@ -73,7 +74,14 @@ says so. `purge` erases ONE PERSON from a workspace's record of itself — the s
 `src/purge.mjs` gives the admin route, reachable as a verb because an erasure has to happen
 in every workspace an account belongs to and only the control plane knows which those are;
 it REFUSES on an author-id collision rather than over-redacting, checking every member ever
-and not only the active ones. The list is written twice, here and as `TENANT_RPC` in the
+and not only the active ones. `rename` is the CUT-OVER and not a move: a workspace's address
+is the first Host label and the resolver turns that label straight into this object's name,
+so a workspace cannot hold two addresses and moving to one means moving its state to the
+object behind it (`augur migrate`). The verb marks THIS address dead — `moved_at`, refused on
+a tombstone, idempotent — and **records nowhere it went**, because a forwarding pointer is one
+field away from being served and the usual reason to change an unguessable address is that it
+reached the wrong person. It revokes nothing: this object still holds the only copy until
+something moves it. The list is written twice, here and as `TENANT_RPC` in the
 control plane, because the repos cannot import each other; both suites assert the other's
 copy.
 
@@ -97,6 +105,11 @@ on why it went. Proving membership costs a config read, so it is paid ONLY when 
 cookie is actually present, and the check fails to "stranger" on anything at all: it unlocks
 nothing, and a wrong answer costs a member a sentence.
 **A single-workspace instance pays nothing**: no `TENANTS` binding, no question asked.
+**An address a workspace has been renamed away from is not a pause and has no allow-list**:
+the same front-door read reports `moved`, and every request to it — sign-in and export
+included — gets `unknownHostResponse()`, byte-identical to the refusal a reserved hostname
+gets. Nothing is forwarded and the answer never names the workspace or its new address; the
+switcher is how a member finds it, and the confirmation copy says so before the button.
 
 **Nothing an isolate keeps may be shared between workspaces, and the proof of that is a
 TEST, not a lint.** `test/tenant-route-sweep.test.mjs` drives the real worker in BUNDLE

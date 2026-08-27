@@ -189,6 +189,9 @@ test("the store exposes no read or write verb it does not yet need", () => {
   // five counts and a page total — see B-suspend-check-in-resolver. `importAll` is
   // `importOverlay` plus the identity families, in one transaction, and `importOverlay` is
   // kept as the name its existing callers use — see test/kv-adopt-identity.test.mjs.
+  // `renameAway` is the CUT-OVER half of F-subdomain-rename-delete-ux: it marks THIS address
+  // dead and moves nothing, because a workspace's address is its object's name and moving is
+  // a migration — see test/workspace-rename.test.mjs.
   const names = Object.getOwnPropertyNames(TenantStore.prototype).filter((n) => n !== "constructor");
   assert.deepEqual(names.sort(), [
     "bumpCounter", "clearMeta", "controlResult", "deleteWorkspace", "destroy", "fetch",
@@ -196,7 +199,8 @@ test("the store exposes no read or write verb it does not yet need", () => {
     "nextPublishVersion",
     "overlayCas", "overlayInsert", "overlayOwner", "overlayRead", "overlayReadRev",
     "overlayReplace", "overlaySet", "provision",
-    "purgeAuthor", "quotas", "readCounter", "readMeta", "resume", "rotate", "schemaVersion",
+    "purgeAuthor", "quotas", "readCounter", "readMeta", "renameAway", "resume", "rotate",
+    "schemaVersion",
     "sessionKey",
     "sql", "status", "suspend", "suspension", "touchActivity",
     "usersActive", "workspaceId", "writeMeta",
