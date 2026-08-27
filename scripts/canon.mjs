@@ -145,6 +145,17 @@ async function cmdStart() {
   else say(`No space.json above ${rel(process.cwd())} — you can still build the canon here and apply it with --space later.`);
   say(``);
   say(`Next: hand ${rel(path.join(dir, "BRIEF.md"))} to your agent. It is written for one.`);
+  // `augur ship` commits everything, untracked included, so a working folder left inside a
+  // workspace goes into that workspace's repo — and the evidence names the product's
+  // internal screens and class names. It is the person's own product, so this is a
+  // surprise rather than a leak, but a surprise about where their product's internals
+  // went is not one to have quietly.
+  if (ws && dir.startsWith(ws + path.sep)) {
+    say(``);
+    say(`This folder holds evidence about ${(() => { try { return new URL(url).hostname; } catch { return "your product"; } })()} — screen names, class`);
+    say(`names, the URLs you collected. It sits inside the workspace, so \`augur ship\` will`);
+    say(`commit it. Move it outside, or add "${path.basename(dir)}/" to .gitignore, if that is not what you want.`);
+  }
 }
 
 const guessPrefix = (url) => {
