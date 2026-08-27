@@ -29,6 +29,14 @@
 
   var COLOR_PROPS = ["color", "backgroundColor", "borderTopColor", "borderRightColor",
     "borderBottomColor", "borderLeftColor", "outlineColor", "fill", "stroke"];
+  /* A border colour on an edge that draws no border is the browser's default, not the
+     product's decision. Counting it puts the user-agent grey of every <table> near the
+     top of the evidence, wearing exactly the profile a hairline colour has — seen on
+     border properties and nothing else — which is the one tell the mapping relies on. */
+  var BORDER_SIDE = {
+    borderTopColor: "borderTop", borderRightColor: "borderRight",
+    borderBottomColor: "borderBottom", borderLeftColor: "borderLeft",
+  };
   var SPACE_PROPS = ["paddingTop", "paddingRight", "paddingBottom", "paddingLeft",
     "marginTop", "marginRight", "marginBottom", "marginLeft", "rowGap", "columnGap"];
 
@@ -84,6 +92,8 @@
     }
     for (var c = 0; c < COLOR_PROPS.length; c++) {
       var prop = COLOR_PROPS[c];
+      var side = BORDER_SIDE[prop];
+      if (side && (cs[side + "Style"] === "none" || parseFloat(cs[side + "Width"]) === 0)) continue;
       /* Text colour is weighted by the ink it puts on the page, not by the box: a huge
          container inheriting a colour it never paints would otherwise outrank the body. */
       var weight = prop === "color" ? (hasText ? Math.min(area, 40000) : 0) : area;

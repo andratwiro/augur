@@ -151,9 +151,12 @@ export function renderCanonMd({ prefix, classPrefix, tokens, derived, components
   if (components.length) {
     out.push(`## The vocabulary`);
     out.push(``);
-    out.push(`| Name | Class | What it is |`);
+    out.push(`| Name | Classes | What it is |`);
     out.push(`| --- | --- | --- |`);
-    for (const c of components) out.push(`| ${c.name} | \`.${c.classes[0]}\` | ${c.description} |`);
+    // Every class, not only the first: the modifiers are most of a vocabulary, and a
+    // table that hides them is a document that tells you the parts exist and not how to
+    // ask for the one you want.
+    for (const c of components) out.push(`| ${c.name} | ${c.classes.map((cl) => `\`.${cl}\``).join(" ")} | ${c.description} |`);
     out.push(``);
   }
   out.push(`## Re-running it`);

@@ -129,7 +129,11 @@ async function cmdStart() {
   write(path.join(dir, "canon.json"), JSON.stringify(blankCanon({ url, prefix, classPrefix }), null, 2) + "\n");
   write(path.join(dir, "schema.json"), JSON.stringify(schemaDoc(), null, 2) + "\n");
   write(path.join(dir, "collect-in-browser.js"), fs.readFileSync(path.join(ENGINE, "src/canon/collect-in-browser.js"), "utf8"));
-  write(path.join(dir, "BRIEF.md"), brief({ url, prefix, classPrefix, dir, workspace: ws, skill }));
+  // The class names the workspace's own stylesheet has already spent. Handed to the agent
+  // up front, because `apply` refuses a collision and the candidates the evidence offers
+  // (a card, a chip, a button) are exactly the ones a starter design system already owns.
+  const taken = skill ? classNamesIn(readSafe(path.join(skill.abs, `${skill.dirName}.css`))) : [];
+  write(path.join(dir, "BRIEF.md"), brief({ url, prefix, classPrefix, dir, workspace: ws, skill, taken }));
 
   say(`canon: working folder ready at ${rel(dir)}`);
   say(`  BRIEF.md              what your agent does, start to finish`);
@@ -137,7 +141,7 @@ async function cmdStart() {
   say(`  canon.json            the answer — every observed role still null`);
   say(`  collect-in-browser.js paste into your browser, signed in`);
   say(``);
-  if (ws) say(`Workspace: ${rel(ws)}${skill ? ` (design system "${skill.dirName}", tokens --${skill.prefix}-*)` : " (no design system yet)"}`);
+  if (ws) say(`Workspace: ${rel(ws)}${skill ? ` (design system "${skill.dirName}", tokens --${skill.prefix}-*, ${taken.length} class names already spent)` : " (no design system yet)"}`);
   else say(`No space.json above ${rel(process.cwd())} — you can still build the canon here and apply it with --space later.`);
   say(``);
   say(`Next: hand ${rel(path.join(dir, "BRIEF.md"))} to your agent. It is written for one.`);
@@ -149,6 +153,10 @@ const guessPrefix = (url) => {
     return /^[a-z][a-z0-9-]*$/.test(host) ? host : "canon";
   } catch { return "canon"; }
 };
+/** Every class a stylesheet defines — what `apply` will refuse to redefine. */
+const classNamesIn = (css) =>
+  [...new Set([...String(css).matchAll(/\.([a-zA-Z][\w-]*)/g)].map((m) => m[1]))].sort();
+
 const skillClassPrefix = (skill) => {
   const manifest = readJson(path.join(skill.abs, "skill.json"), {}) || {};
   const list = Array.isArray(manifest.cssPrefixes) ? manifest.cssPrefixes : [];
@@ -170,9 +178,22 @@ function schemaDoc() {
 
 /* ── The brief the user's own agent reads ──────────────────────────────────── */
 
-function brief({ url, prefix, classPrefix, dir, workspace, skill }) {
+function brief({ url, prefix, classPrefix, dir, workspace, skill, taken = [] }) {
   const here = path.basename(dir);
   const roleTable = ROLES.map((r) => `| \`${r.role}\` | ${r.kind} | ${r.derived ? "computed if omitted" : "**you answer**"} | ${r.what} |`).join("\n");
+  // An example whose class name this workspace has NOT already spent. The obvious one
+  // (`btn`) is exactly what a starter design system owns, so an agent following the
+  // example literally would meet a refusal at the last step.
+  const exampleName = ["navlink", "tile", "banner", "rail", "unit"].find((n) => !taken.includes(`${classPrefix}-${n}`)) || "extracted";
+  const takenNote = taken.length
+    ? `**Check this list before you name anything.** \`apply\` REFUSES a class this workspace's
+own stylesheet already defines, and the candidates the evidence hands you — a card, a chip,
+a button — are exactly the ones a starter design system already owns. Spent already:
+
+${taken.map((t) => `\`.${t}\``).join(" ")}
+
+Name your part after what the PRODUCT calls it and add a word if you have to.`
+    : `Nothing is named in this workspace yet, so every class name is free.`;
   return `# Extract this product's design system
 
 You are doing this for the person who owns ${url}. They have a login to it; they do not
@@ -217,44 +238,65 @@ ${roleTable}
 
 Reading the evidence:
 
+- **The product's own custom properties beat every heuristic below.** If
+  \`customProperties\` in the observation holds \`--brand-primary\` or \`--x-paper\`, that
+  IS the answer and the frequency ranking is only how you confirm it. A product that
+  already has tokens has done half this job. Where a declared token and a heuristic
+  disagree, the declared token wins — and say so in \`notes\`.
 - **\`sheet\` and \`paper\`** are the two most-covering background colours. \`sheet\` is
-  the one text sits on; \`paper\` is what is behind the sheet. On a product with no
-  distinction, make \`paper\` a hair darker than \`sheet\` and say so in \`notes\`.
+  the one text sits on; \`paper\` is what is behind the sheet. Beware the inversion: on a
+  busy product the page background barely registers, because cards cover it. On a product
+  with no distinction, make \`paper\` a hair darker than \`sheet\` and say so in \`notes\`.
 - **\`ink\`** is the highest-area \`color\` value, near-black on light products.
 - **\`rule\`** is the colour that appears on \`borderColor\` far more than on anything
-  else. It is usually a grey that is nearly invisible, and it is easy to mistake for
-  \`ink-3\`; the tell is the property it was seen on.
+  else, and it is easy to mistake for \`ink-3\`; the tell is the property it was seen on.
+  Two traps. A plain grey seen ONLY on the border properties of \`table\`/\`tr\`/\`td\` is
+  the browser's own default, not a decision — ignore it. And a product with a heavy
+  drawn line may have no faint hairline at all: \`rule\` equal to \`ink\` is a legitimate
+  answer, and softening it would delete the product's whole hand.
 - **\`mark\` is the single most important decision here.** It is the colour the product
   uses for the thing you are meant to act on: the primary button, the active tab, the
   link. It is almost never the most COMMON colour — it is the most SATURATED one with a
-  meaningful count. If two candidates tie, take the one seen on a button.
+  meaningful count. If two candidates tie, take the one seen on a button. A palette of
+  equally-saturated colours used to tell CATEGORIES apart is not the mark; those are
+  \`x-\` tokens.
 - **The type scale** is the distinct \`font-size\` values, largest to smallest, thinned
   to seven. Products carry more than seven; pick the ones that carry real weight and drop
   near-duplicates (15px and 15.5px are one step). It has to climb — the grader checks.
 - **The space ramp** is the distinct paddings and gaps, thinned to eight, climbing.
-- **If the product already declares custom properties** (\`customProperties\` in the
-  observation), read them first. A product with \`--brand-primary\` has already done half
-  of this job and you should take its answer, not re-derive one.
 - Leave a **computed** role \`null\` unless the product genuinely has its own. The
   computed ones are derived from what you did answer, and they are derived to be legible
-  — a \`mark-ink\` computed from \`mark\` is guaranteed to pass contrast as text, which a
-  colour picked by eye often does not.
-- A value the roles have no slot for goes under an \`x-\` name (\`"x-brand-navy": "#0b2545"\`).
-  It emits as a real token and components may use it.
+  — a \`mark-ink\` computed from \`mark\` is guaranteed to pass contrast as text, and a
+  \`mark-on\` computed from it is guaranteed to be readable on a primary button. A colour
+  picked by eye frequently is neither.
+- A value the roles have no slot for goes under an \`x-\` name:
+  \`"x-brand-navy": "#0b2545"\` emits as the real token \`--${prefix}-brand-navy\`.
+  **The \`x-\` is bookkeeping on the answer and is NOT part of the variable name** — write
+  \`var(--${prefix}-brand-navy)\`, never \`var(--${prefix}-x-brand-navy)\`.
+- A role typed \`length\` holds one length. A product whose corners are a \`border-radius\`
+  SHORTHAND (four values, or a slash) cannot put that in \`radius-1\`: put a single
+  representative length in the role so the scale still works, and carry the real shorthand
+  as an \`x-\` token your components use.
+- \`font-display\` and \`font-body\` are **stacks, not files**. The canon carries no
+  \`@font-face\` and downloads nothing, so a stack naming a face the workspace does not
+  have will quietly fall back. Either name a face that is already installed or self-hosted,
+  or add the \`@font-face\` to a component's \`css\` yourself.
 
 ## 3 — Name the components
 
-Fill \`components\` with the parts the product is actually made of — the button, the
-card, the field, the table row, the nav item. Take the class families from the evidence
-as your candidates and take the sizes and colours from the roles you just filled.
+Fill \`components\` with the parts the product is actually made of — the panel, the field,
+the table row, the nav item. Take the class families from the evidence as your candidates
+and take the sizes and colours from the roles you just filled.
+
+${takenNote}
 
     {
-      "name": "button",
+      "name": "${exampleName}",
       "type": "primitive",
-      "label": "Button",
-      "description": "One hot-ink button per screen; everything else is quiet.",
-      "classes": ["${classPrefix}-btn"],
-      "css": ".${classPrefix}-btn { font: var(--${prefix}-text-md)/1 var(--${prefix}-font-display); padding: var(--${prefix}-s2) var(--${prefix}-s4); border: var(--${prefix}-hair); border-radius: var(--${prefix}-radius-1); background: var(--${prefix}-sheet); color: var(--${prefix}-ink); }\\n.${classPrefix}-btn--mark { background: var(--${prefix}-mark); color: var(--${prefix}-sheet); border-color: transparent; }"
+      "label": "Nav link",
+      "description": "A row in the sidebar; the current one wears the hot ink.",
+      "classes": ["${classPrefix}-${exampleName}", "${classPrefix}-${exampleName}--on"],
+      "css": ".${classPrefix}-${exampleName} { display: block; font: var(--${prefix}-text-md)/1.4 var(--${prefix}-font-display); padding: var(--${prefix}-s2) var(--${prefix}-s4); border-radius: var(--${prefix}-radius-1); color: var(--${prefix}-ink-2); }\\n.${classPrefix}-${exampleName}--on { background: var(--${prefix}-mark); color: var(--${prefix}-mark-on); }"
     }
 
 Three rules the grader enforces, all for the same reason — a component that hard-codes a
@@ -262,7 +304,8 @@ value stops moving when a token changes, and then the design system is decoratio
 
 1. **No literal colours in \`css\`.** Every colour is \`var(--${prefix}-…)\`. If you need
    one the roles do not name, add an \`x-\` token and use that.
-2. **Every \`var()\` must name a token this canon defines.** Inventing one fails.
+2. **Every \`var()\` must name a token this canon defines** — and remember the \`x-\` is
+   dropped from the emitted name. Inventing one fails.
 3. **Every class starts \`${classPrefix}-\`**, and the CSS defines every class it lists.
 
 Six to twelve components is a design system. Forty is a copy of a stylesheet.
@@ -272,8 +315,11 @@ Six to twelve components is a design system. Forty is a copy of a stylesheet.
     augur canon check --dir ${here}
 
 It names every unanswered role, every scale that does not climb, every component that
-hard-codes a colour, and it computes the contrast ratios. **Do not stop until it passes.**
-It is arithmetic, not taste, and it is the same check the person will run.
+hard-codes a colour, and it prints every contrast ratio it computed — passing ones
+included, on the \`contrast\` line, so you can see the numbers rather than trust them.
+**Do not stop until it passes.** It is arithmetic, not taste, and it is the same check the
+person will run. \`--strict\` turns the notes into failures too; a canon worth keeping
+passes that as well.
 
 ## 5 — Apply it${workspace ? "" : " (needs a workspace)"}
 
@@ -291,9 +337,20 @@ That writes${skill ? ` into \`${skill.relPath}/\`` : " the workspace's design sy
 ## 6 — Prove it, do not claim it
 
 Open a prototype in this workspace and LOOK at it — \`npm run offline\` from the
-workspace's parent folder, or just open a prototype's \`index.html\` from disk. The
-screens should be wearing the product's colours. If they are not, the prototype is not
-linking the tokens file, and nothing you write in a report changes that.
+workspace's parent folder, or just open a prototype's \`index.html\` from disk. Read the
+computed value of \`--${prefix}-mark\` on the page, not the file. The screens should be
+wearing the product's colours, and nothing you write in a report changes it if they are
+not.
+
+A screen that did not move has exactly three causes, in the order worth checking:
+
+1. **The page hard-codes the value.** A prototype is allowed to; it is somebody's HTML.
+   Find the literal and make it read the token instead. This is the commonest cause and
+   the one that looks most like a bug in the extraction.
+2. **The page overwrites the token in script on load** — a default written into a
+   \`const\` and applied on start. Same fix.
+3. **The page does not link \`${prefix}-tokens.css\`** at all. Rarest, and the only one
+   that is a wiring problem.
 
 Then write one new screen using only \`.${classPrefix}-*\` classes and the tokens. If you
 reach for a value that is not a token, that is the canon telling you it is missing a
@@ -425,6 +482,11 @@ function report(graded, what) {
   say(`canon: ${what}`);
   say(`  roles      ${ROLES.length} total, ${OBSERVED_ROLES.length} to answer, ${graded.derived.length} computed`);
   say(`  components ${graded.componentCount || 0}`);
+  // Printed whether they pass or fail. A ratio nobody can see is a claim, and the one
+  // that passes today is what a person checks against when they change a value tomorrow.
+  if (graded.ratios?.length) {
+    say(`  contrast   ${graded.ratios.map((r) => `${r.fg}/${r.bg} ${r.ratio.toFixed(2)}${r.ok ? "" : ` (<${r.floor})`}`).join("   ")}`);
+  }
   if (graded.warnings.length) { say(``); for (const w of graded.warnings) say(`  note   ${w}`); }
   if (graded.errors.length) {
     say(``);
@@ -455,6 +517,19 @@ function cmdApply() {
     say(`canon: this workspace has no design system — creating ${skill.relPath}/`);
   }
 
+  // Where the canon came from is recorded from the EVIDENCE, not from a field the person
+  // has to remember to fill: the provenance in CANON.md is worthless if it is blank
+  // because nobody was told to type it.
+  const observation = readJson(path.join(dir, "observation.json"), null);
+  canon.source = canon.source && typeof canon.source === "object" ? canon.source : {};
+  if (observation?.source) {
+    const pages = observation.source.pages || [];
+    if (!canon.source.url) canon.source.url = pages[0] || observation.source.url || "";
+    if (!canon.source.collectedAt) canon.source.collectedAt = observation.source.collectedAt || null;
+    if (!canon.source.how) canon.source.how = observation.source.how || "";
+    if (!canon.source.pages && pages.length > 1) canon.source.pages = pages;
+  }
+
   const plan = planApply({
     canon,
     skillDir: skill.relPath,
@@ -462,7 +537,7 @@ function cmdApply() {
     existingSkillJson: readJson(path.join(skill.abs, "skill.json"), null),
     existingRegistry: readJson(path.join(root, "registry.json"), null),
     existingComponentCss: readSafe(path.join(skill.abs, `${skill.dirName}.css`)),
-    observation: readJson(path.join(dir, "observation.json"), null),
+    observation,
   });
 
   for (const n of plan.notes) say(`  note   ${n}`);
