@@ -1,0 +1,20 @@
+{
+  "runtime": "local wrangler dev (workerd)",
+  "origin": "ws://127.0.0.1:8809",
+  "at": "2026-08-27T02:23:32.866Z",
+  "scenario": "grace",
+  "question": "how long does the runtime keep a Durable Object resident after its last event?",
+  "probes": [
+    {
+      "gapSec": 4,
+      "woke": true
+    },
+    {
+      "gapSec": 2,
+      "woke": false
+    }
+  ],
+  "graceLowerBoundSec": 2,
+  "graceUpperBoundSec": 4,
+  "verdict": "eviction happens between 2s and 4s of idleness"
+}

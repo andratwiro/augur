@@ -1,0 +1,82 @@
+{
+  "runtime": "a throwaway deployed worker, read back from the object's own wake log",
+  "at": "2026-08-27T02:54:05.774Z",
+  "scenario": "grace",
+  "question": "how long does the PRODUCTION runtime keep a hibernatable Durable Object resident after its last event?",
+  "ladderSec": [
+    4,
+    8,
+    12,
+    16,
+    20,
+    25,
+    30,
+    45,
+    60,
+    90,
+    150
+  ],
+  "probes": [
+    {
+      "gapSec": 4,
+      "woke": false
+    },
+    {
+      "gapSec": 8,
+      "woke": false
+    },
+    {
+      "gapSec": 12,
+      "woke": false
+    },
+    {
+      "gapSec": 16,
+      "woke": false
+    },
+    {
+      "gapSec": 20,
+      "woke": false
+    },
+    {
+      "gapSec": 25,
+      "woke": false
+    },
+    {
+      "gapSec": 30,
+      "woke": false
+    },
+    {
+      "gapSec": 45,
+      "woke": false
+    },
+    {
+      "gapSec": 60,
+      "woke": false
+    },
+    {
+      "gapSec": 90,
+      "woke": false
+    },
+    {
+      "gapSec": 150,
+      "woke": false
+    }
+  ],
+  "wakesRecorded": 2,
+  "wakeLog": [
+    {
+      "at": 1787798720295,
+      "inst": "t87qje",
+      "sockets": 0
+    },
+    {
+      "at": 1787798765427,
+      "inst": "abta2h",
+      "sockets": 1
+    }
+  ],
+  "wakesAfterTheLastProbe": 0,
+  "graceLowerBoundSec": 150,
+  "graceUpperBoundSec": null,
+  "verdict": "no probe up to 150s forced a reconstruction: this runtime keeps a hibernatable object resident at least that long"
+}

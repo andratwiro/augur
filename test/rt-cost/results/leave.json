@@ -1,0 +1,60 @@
+{
+  "runtime": "local wrangler dev (workerd)",
+  "origin": "ws://127.0.0.1:8809",
+  "at": "2026-08-27T02:22:08.709Z",
+  "scenario": "leave",
+  "question": "what does a room cost between the last person leaving and the object going quiet?",
+  "graceMsApplied": 3000,
+  "flushWorkMs": 11,
+  "flushAwakeMs": 3011,
+  "stragglerWakes": 1,
+  "stragglerAwakeMs": 3000,
+  "totalAwakeMs": 6011,
+  "events": 7,
+  "kinds": {
+    "close:in": 1,
+    "close:out": 1,
+    "mirror:in": 1,
+    "mirror:out": 1,
+    "ctor": 1,
+    "alarm:in": 1,
+    "alarm:out": 1
+  },
+  "trace": [
+    {
+      "dtMs": 1,
+      "ev": "close:in",
+      "inst": "2k72hd"
+    },
+    {
+      "dtMs": 1,
+      "ev": "close:out",
+      "inst": "2k72hd"
+    },
+    {
+      "dtMs": 2,
+      "ev": "mirror:in",
+      "inst": "2k72hd"
+    },
+    {
+      "dtMs": 11,
+      "ev": "mirror:out",
+      "inst": "2k72hd"
+    },
+    {
+      "dtMs": 37976,
+      "ev": "ctor",
+      "inst": "csegzv"
+    },
+    {
+      "dtMs": 37979,
+      "ev": "alarm:in",
+      "inst": "csegzv"
+    },
+    {
+      "dtMs": 37979,
+      "ev": "alarm:out",
+      "inst": "csegzv"
+    }
+  ]
+}

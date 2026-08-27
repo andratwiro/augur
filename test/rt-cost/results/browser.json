@@ -1,0 +1,82 @@
+{
+  "runtime": "local wrangler dev (workerd), driven by two real Chromium tabs running src/canvas/canvas.js",
+  "at": "2026-08-27T02:29:49.049Z",
+  "scenario": "browser",
+  "question": "does a real client cost what the replayed one costs?",
+  "board": "/board/rt-cost-1787797479617",
+  "people": 2,
+  "wallClockMs": 302438,
+  "framesSentByTheRealClient": {
+    "Ana": {
+      "total": 1197,
+      "ping": 12,
+      "cursor": 726,
+      "ops": 446,
+      "view": 1,
+      "other": 12,
+      "perSecond": 3.96
+    },
+    "Ben": {
+      "total": 224,
+      "ping": 12,
+      "cursor": 210,
+      "ops": 1,
+      "view": 1,
+      "other": 0,
+      "perSecond": 0.74
+    }
+  },
+  "events": 3261,
+  "kinds": {
+    "msg:in:ops": 447,
+    "apply": 449,
+    "msg:out:ops": 447,
+    "msg:in:cursor": 936,
+    "msg:out:cursor": 936,
+    "msg:in:sel": 1,
+    "msg:out:sel": 1,
+    "msg:in:focus": 10,
+    "msg:out:focus": 10,
+    "alarm:in": 4,
+    "mirror:in": 4,
+    "mirror:out": 4,
+    "alarm:out": 4,
+    "arm": 5,
+    "ctor": 3
+  },
+  "wakes": 4,
+  "observedSpanMs": 252988,
+  "graceMs": 3000,
+  "awakeMs": 264988,
+  "handlerMs": 702,
+  "invocations": 1402,
+  "windows": [
+    {
+      "from": 1787797486647,
+      "to": 1787797561684,
+      "events": 814,
+      "inst": "k0z871"
+    },
+    {
+      "from": 1787797576275,
+      "to": 1787797624392,
+      "events": 683,
+      "inst": "yuybmn"
+    },
+    {
+      "from": 1787797638846,
+      "to": 1787797733337,
+      "events": 1479,
+      "inst": "q1kw0o"
+    },
+    {
+      "from": 1787797749182,
+      "to": 1787797784525,
+      "events": 285,
+      "inst": "jukpf3"
+    }
+  ],
+  "awakeMinPerRoomHour": 52.57,
+  "awakeMinPerPersonHour": 26.29,
+  "awakeFraction": 0.876
+}

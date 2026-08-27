@@ -1,0 +1,66 @@
+{
+  "runtime": "local wrangler dev (workerd)",
+  "origin": "ws://127.0.0.1:8809",
+  "at": "2026-08-27T02:20:01.650Z",
+  "scenario": "alarm",
+  "question": "does the 45s mirror alarm wake a room whose people have stopped touching it?",
+  "watchedMs": 106507,
+  "armed": 0,
+  "fired": 1,
+  "firstFireAtMs": 43509,
+  "kinds": {
+    "msg:in:ops": 1,
+    "apply": 1,
+    "msg:out:ops": 1,
+    "ctor": 1,
+    "alarm:in": 1,
+    "mirror:in": 1,
+    "mirror:out": 1,
+    "alarm:out": 1
+  },
+  "verdict": "fired 1× — an edit and then walking away costs that many extra wakes",
+  "trace": [
+    {
+      "dtMs": 77,
+      "ev": "msg:in",
+      "k": "ops",
+      "inst": "m11au0"
+    },
+    {
+      "dtMs": 79,
+      "ev": "apply",
+      "inst": "m11au0"
+    },
+    {
+      "dtMs": 80,
+      "ev": "msg:out",
+      "k": "ops",
+      "inst": "m11au0"
+    },
+    {
+      "dtMs": 43505,
+      "ev": "ctor",
+      "inst": "mja1lp"
+    },
+    {
+      "dtMs": 43509,
+      "ev": "alarm:in",
+      "inst": "mja1lp"
+    },
+    {
+      "dtMs": 43514,
+      "ev": "mirror:in",
+      "inst": "mja1lp"
+    },
+    {
+      "dtMs": 43520,
+      "ev": "mirror:out",
+      "inst": "mja1lp"
+    },
+    {
+      "dtMs": 43520,
+      "ev": "alarm:out",
+      "inst": "mja1lp"
+    }
+  ]
+}

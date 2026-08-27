@@ -14,9 +14,11 @@
 // ⚠️ THE NUMBERS BELOW ARE A STARTING POSITION, NOT A PRICE. The plan item defines the
 // SHAPE and says the values are the operator's call. Each one has its reasoning written
 // beside it so changing it is an argument with a stated position rather than a guess at
-// what the last person meant. The one that is not a guess is `editorSeatLimit`: the free
-// tier is one editor because the paywall is the SECOND editor, which is the whole business
-// model and not a tuning knob.
+// what the last person meant. TWO of them are not guesses. `editorSeatLimit`: the free tier
+// is one editor because the paywall is the SECOND editor, which is the whole business model
+// and not a tuning knob. And `rtMonthlyDoMinutes` was MEASURED — a real room, instrumented
+// from the inside, driven by two real browser tabs; the note beside it says what the
+// measurement was and what it cost.
 
 /**
  * R2's free tier is 10 GB for the WHOLE ACCOUNT, not per workspace. A per-workspace cap
@@ -30,6 +32,13 @@ const ACCOUNT_R2_FREE_BYTES = 10 * 1024 * 1024 * 1024;
  * costs money"), and the byte cap falls out of it.
  */
 const FREE_WORKSPACES_PER_ACCOUNT = 40;
+
+/**
+ * A working month in minutes — 22 days of 8 hours. The realtime cap below is written in
+ * board time rather than in a bare number because "how long boards may be live" is a
+ * sentence somebody can check against their own week, and 10560 is not.
+ */
+const WORKING_MINUTES_PER_MONTH = 22 * 8 * 60;
 
 /**
  * The quota shape. Every field is a number, and every enforcement point reads its ceiling
@@ -66,17 +75,40 @@ export const PLANS = Object.freeze({
     // a minute. This is loose enough that nobody drawing hits it and tight enough that a
     // loop does.
     boardWritesPerMinute: 300,
-    // Concurrent multiplayer rooms. A room is a Durable Object that stays awake while
-    // somebody is in it, which is the realtime bill in one sentence.
+    // Concurrent multiplayer rooms. This used to say a room "stays awake while somebody is
+    // in it, which is the realtime bill in one sentence", and the measurement below refutes
+    // that: a room with people in it and nobody touching it is hibernated and costs nothing.
+    // What this stops is a workspace holding hundreds of rooms open at once, which the
+    // monthly cap alone would allow right up to the moment it is spent.
     rtConcurrentRooms: 5,
-    // Wall-clock minutes those rooms may stay awake in a month. The cap that actually
-    // corresponds to money; the concurrency one above just stops a single burst.
-    // ⚠️ 1000 IS A PLACEHOLDER STANDING IN FOR A MEASUREMENT, not a number anybody
-    // chose. Nobody knows what a canvas session costs in Durable Object wall-clock, so
-    // this one is a guess wearing a round number: read it as unknown rather than as
-    // agreed. B-rt-do-minutes-measure instruments a real board and sets it from the
-    // result.
-    rtMonthlyDoMinutes: 1000,
+    // Minutes those rooms may stay awake in a month. ONE BOARD LIVE EVERY WORKING HOUR OF
+    // THE MONTH — which one editor cannot reach, and that is the point: this is a runaway
+    // stop, not a ration.
+    //
+    // It is set from a measurement, not chosen. test/rt-cost/ instruments a real room from
+    // the inside and test/rt-cost/results/ is the recording; a room was driven both by a
+    // replay of the client's own cadence and by two browser tabs running the real client.
+    // An hour of editing keeps the room awake 32.7 minutes with one person in it and 54.7 with
+    // two — the same object either way, so a second person is nearly free and a cap on room
+    // minutes is a cap on how long boards are LIVE, never on head count. A heavy month for
+    // one editor is therefore around 1300 awake minutes, and the 1000 that stood here would
+    // have cut that person off.
+    //
+    // ⚠️ AWAKE IS NOT BILLED, AND THE GAP IS TWO ORDERS OF MAGNITUDE. Duration is charged
+    // while the object is running or idle-but-unable-to-hibernate, and a room whose sockets
+    // all went through the hibernation API is eligible in every gap between messages. The
+    // same recording puts the object's actual handler occupancy under one per cent of its
+    // awake time, so this cap corresponds to at most a couple of minutes of charged
+    // duration — a fairness limit long before it is a cost one. On the deployed runtime the
+    // object was never evicted at all across 150 seconds of silence, so residency there is
+    // nearer "a socket is open" than "somebody is working", and it still costs nothing.
+    //
+    // Two cases are deliberately NOT averaged into the number above. An idle tab costs
+    // NOTHING: five minutes, two tabs, 52 keepalives, zero events reached the object,
+    // because the runtime answers them from the auto-response pair without waking it. And
+    // the tail after the last person leaves is one flush of about 11ms, plus one already-
+    // armed alarm that fires later into an empty room and returns.
+    rtMonthlyDoMinutes: WORKING_MINUTES_PER_MONTH,
   }),
   paid: Object.freeze({
     // The only difference that is a PRODUCT difference. The rest are raised because a
@@ -86,7 +118,12 @@ export const PLANS = Object.freeze({
     assetUploadDailyBytes: 2 * 1024 * 1024 * 1024,
     boardWritesPerMinute: 3000,
     rtConcurrentRooms: 100,
-    rtMonthlyDoMinutes: 100000,
+    // Ten boards live every working hour of the month, at the measured cost of a room with
+    // more than one person on it. Ten because that is what a hundred seats spread over
+    // shared boards looks like when the whole team is working, and because the measurement
+    // says the ceiling costs about a thousand minutes of charged duration a month — inside
+    // the account's included allowance on its own.
+    rtMonthlyDoMinutes: 10 * WORKING_MINUTES_PER_MONTH,
   }),
 });
 

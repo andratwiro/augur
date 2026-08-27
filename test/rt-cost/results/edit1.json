@@ -1,0 +1,148 @@
+{
+  "runtime": "local wrangler dev (workerd)",
+  "origin": "ws://127.0.0.1:8809",
+  "at": "2026-08-27T02:07:07.823Z",
+  "scenario": "edit1",
+  "question": "how many minutes does an hour of editing keep the room's Durable Object awake?",
+  "profile": {
+    "gestureSecMin": 2,
+    "gestureSecMax": 6,
+    "thinkSecMin": 3,
+    "thinkSecMax": 20,
+    "typeShare": 0.4,
+    "panShare": 0.15
+  },
+  "people": 1,
+  "wallClockMs": 301878,
+  "activity": {
+    "Ana": {
+      "gestures": 20,
+      "drag": 32476.848266087472,
+      "type": 36343.818159773946,
+      "pan": 9684.776998125017,
+      "think": 233140.94339800067
+    }
+  },
+  "messages": {
+    "Ana": {
+      "cursor": 630,
+      "ops": 580,
+      "ping": 12,
+      "doc": 1,
+      "other": 96
+    }
+  },
+  "bytes": 160575,
+  "events": 3225,
+  "kinds": {
+    "msg:in:ops": 580,
+    "apply": 589,
+    "msg:out:ops": 580,
+    "ctor": 13,
+    "msg:in:cursor": 630,
+    "msg:out:cursor": 630,
+    "arm": 3,
+    "alarm:in": 2,
+    "mirror:in": 2,
+    "mirror:out": 2,
+    "alarm:out": 2,
+    "msg:in:view": 96,
+    "msg:out:view": 96
+  },
+  "wakes": 14,
+  "observedSpanMs": 122528,
+  "graceMs": 3000,
+  "awakeMs": 164528,
+  "handlerMs": 659,
+  "invocations": 1310,
+  "windows": [
+    {
+      "from": 1787796126008,
+      "to": 1787796130018,
+      "events": 102,
+      "inst": "0bdhab"
+    },
+    {
+      "from": 1787796143377,
+      "to": 1787796147758,
+      "events": 283,
+      "inst": "3whp36"
+    },
+    {
+      "from": 1787796160040,
+      "to": 1787796162226,
+      "events": 58,
+      "inst": "8vjoac"
+    },
+    {
+      "from": 1787796175617,
+      "to": 1787796179373,
+      "events": 97,
+      "inst": "hy2dfm"
+    },
+    {
+      "from": 1787796192396,
+      "to": 1787796200402,
+      "events": 240,
+      "inst": "941g2a"
+    },
+    {
+      "from": 1787796215096,
+      "to": 1787796228952,
+      "events": 161,
+      "inst": "fn2rw9"
+    },
+    {
+      "from": 1787796241900,
+      "to": 1787796244387,
+      "events": 163,
+      "inst": "vz7bhw"
+    },
+    {
+      "from": 1787796257236,
+      "to": 1787796260915,
+      "events": 237,
+      "inst": "m2ooxm"
+    },
+    {
+      "from": 1787796277695,
+      "to": 1787796282681,
+      "events": 129,
+      "inst": "z547fi"
+    },
+    {
+      "from": 1787796296313,
+      "to": 1787796299259,
+      "events": 65,
+      "inst": "paayv4"
+    },
+    {
+      "from": 1787796315019,
+      "to": 1787796331428,
+      "events": 276,
+      "inst": "utmsgh"
+    },
+    {
+      "from": 1787796343827,
+      "to": 1787796370589,
+      "events": 670,
+      "inst": "9cycd0"
+    },
+    {
+      "from": 1787796388076,
+      "to": 1787796412614,
+      "events": 452,
+      "inst": "0koajf"
+    },
+    {
+      "from": 1787796423277,
+      "to": 1787796427803,
+      "events": 292,
+      "inst": "n0etxj"
+    }
+  ],
+  "awakeMinPerRoomHour": 32.7,
+  "awakeMinPerPersonHour": 32.7,
+  "handlerMinPerRoomHour": 0.131,
+  "awakeFraction": 0.545
+}

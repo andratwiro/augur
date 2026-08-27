@@ -1,0 +1,17 @@
+{"meta":{"runtime":"local wrangler dev (workerd)","origin":"ws://127.0.0.1:8809","at":"2026-08-27T02:23:32.869Z","scenarios":["grace"],"graceMs":3000}}
+{"seq":1,"t":1787797340840,"ev":"ctor","inst":"yj2fkk","sockets":0,"host":1787797340846}
+{"seq":2,"t":1787797340842,"ev":"fetch:in","inst":"yj2fkk","host":1787797340846}
+{"seq":3,"t":1787797340847,"ev":"fetch:out","inst":"yj2fkk","sockets":1,"host":1787797340847}
+{"seq":4,"t":1787797340851,"ev":"msg:in","inst":"yj2fkk","k":"doc","n":81,"host":1787797340851}
+{"seq":5,"t":1787797340852,"ev":"arm","inst":"yj2fkk","alarmSet":true,"host":1787797340853}
+{"seq":6,"t":1787797340853,"ev":"msg:out","inst":"yj2fkk","k":"doc","host":1787797340853}
+{"seq":7,"t":1787797385855,"ev":"ctor","inst":"bgk100","sockets":1,"host":1787797385857}
+{"seq":8,"t":1787797385859,"ev":"alarm:in","inst":"bgk100","host":1787797385860}
+{"seq":9,"t":1787797385864,"ev":"mirror:in","inst":"bgk100","host":1787797385865}
+{"seq":10,"t":1787797385870,"ev":"mirror:out","inst":"bgk100","host":1787797385871}
+{"seq":11,"t":1787797385871,"ev":"alarm:out","inst":"bgk100","host":1787797385871}
+{"seq":12,"t":1787797406859,"ev":"ctor","inst":"plnhmc","sockets":1,"host":1787797406860}
+{"seq":13,"t":1787797406861,"ev":"msg:in","inst":"plnhmc","k":"cursor","n":26,"host":1787797406863}
+{"seq":14,"t":1787797406861,"ev":"msg:out","inst":"plnhmc","k":"cursor","host":1787797406863}
+{"seq":15,"t":1787797410862,"ev":"msg:in","inst":"plnhmc","k":"cursor","n":26,"host":1787797410863}
+{"seq":16,"t":1787797410863,"ev":"msg:out","inst":"plnhmc","k":"cursor","host":1787797410864}

@@ -1,0 +1,48 @@
+{
+  "runtime": "local wrangler dev (workerd)",
+  "origin": "ws://127.0.0.1:8809",
+  "at": "2026-08-27T01:56:59.757Z",
+  "scenario": "idle",
+  "question": "does an idle tab cost anything under the WebSocket Hibernation API?",
+  "graceMsApplied": 3000,
+  "clean": {
+    "wallClockMs": 300002,
+    "events": 0,
+    "kinds": {},
+    "wakes": 0,
+    "observedSpanMs": 0,
+    "graceMs": 3000,
+    "awakeMs": 0,
+    "handlerMs": 0,
+    "invocations": 0,
+    "windows": []
+  },
+  "afterAnEdit": {
+    "wallClockMs": 300002,
+    "events": 6,
+    "kinds": {
+      "ctor": 1,
+      "alarm:in": 1,
+      "apply": 1,
+      "mirror:in": 1,
+      "mirror:out": 1,
+      "alarm:out": 1
+    },
+    "wakes": 1,
+    "observedSpanMs": 16,
+    "graceMs": 3000,
+    "awakeMs": 3016,
+    "handlerMs": 17,
+    "invocations": 2,
+    "windows": [
+      {
+        "from": 1787795557752,
+        "to": 1787795557768,
+        "events": 6,
+        "inst": "2pvz5b"
+      }
+    ]
+  },
+  "pingsSent": 52,
+  "pingReachedHandler": false
+}

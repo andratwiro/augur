@@ -1,0 +1,33 @@
+# Measurement harness — LOCAL ONLY. Never deployed under this name.
+#
+# It names no account, no zone and no instance, and it binds a KV namespace id that only
+# means something to the local simulator, so `wrangler deploy` against it would fail on
+# the namespace before it could collide with anything live.
+#
+#   npx wrangler dev -c test/rt-cost/wrangler.toml --port 8809
+#
+# `measure.mjs` starts this itself; running it by hand is for watching the RTCOST lines.
+
+name = "augur-rt-cost-harness-local"
+main = "worker.js"
+compatibility_date = "2026-07-01"
+workers_dev = false
+
+[vars]
+# The shared secret the realtime front door requires. A literal in a local fixture: the
+# real one is a deployment secret and never enters this repo.
+RT_SHARED_SECRET = "rt-cost-harness"
+
+# The board mirror. Present on purpose — the 45s dirty alarm and the flush-on-empty are
+# part of what a room costs, and without a KV binding both paths short-circuit.
+[[kv_namespaces]]
+binding = "BOARD_KV"
+id = "rt_cost_harness_local"
+
+[[durable_objects.bindings]]
+name = "ROOMS"
+class_name = "MeasuredRoom"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["MeasuredRoom"]

@@ -1,0 +1,102 @@
+{
+  "runtime": "local wrangler dev (workerd)",
+  "origin": "ws://127.0.0.1:8809",
+  "at": "2026-08-27T02:02:03.924Z",
+  "scenario": "edit",
+  "question": "how many minutes does an hour of editing keep the room's Durable Object awake?",
+  "profile": {
+    "gestureSecMin": 2,
+    "gestureSecMax": 6,
+    "thinkSecMin": 3,
+    "thinkSecMax": 20,
+    "typeShare": 0.4,
+    "panShare": 0.15
+  },
+  "people": 2,
+  "wallClockMs": 302123,
+  "activity": {
+    "Ana": {
+      "gestures": 20,
+      "drag": 32476.848266087472,
+      "type": 36343.818159773946,
+      "pan": 9684.776998125017,
+      "think": 233140.94339800067
+    },
+    "Ben": {
+      "gestures": 22,
+      "drag": 33996.959460899234,
+      "type": 36367.48975049704,
+      "pan": 7493.7024200335145,
+      "think": 230076.74115453847
+    }
+  },
+  "messages": {
+    "Ana": {
+      "cursor": 631,
+      "ops": 587,
+      "ping": 12,
+      "doc": 1,
+      "other": 97
+    },
+    "Ben": {
+      "cursor": 660,
+      "ops": 598,
+      "ping": 12,
+      "doc": 0,
+      "other": 73
+    }
+  },
+  "bytes": 325722,
+  "events": 6497,
+  "kinds": {
+    "msg:in:ops": 1185,
+    "apply": 1188,
+    "msg:out:ops": 1185,
+    "msg:in:cursor": 1291,
+    "msg:out:cursor": 1291,
+    "alarm:in": 3,
+    "mirror:in": 3,
+    "mirror:out": 3,
+    "alarm:out": 3,
+    "arm": 2,
+    "ctor": 3,
+    "msg:in:view": 170,
+    "msg:out:view": 170
+  },
+  "wakes": 4,
+  "observedSpanMs": 263401,
+  "graceMs": 3000,
+  "awakeMs": 275401,
+  "handlerMs": 1185,
+  "invocations": 2652,
+  "windows": [
+    {
+      "from": 1787795821852,
+      "to": 1787795898279,
+      "events": 2055,
+      "inst": "ux6c1a"
+    },
+    {
+      "from": 1787795909867,
+      "to": 1787795962180,
+      "events": 1223,
+      "inst": "thn4bn"
+    },
+    {
+      "from": 1787795973477,
+      "to": 1787796068034,
+      "events": 2047,
+      "inst": "vebfh2"
+    },
+    {
+      "from": 1787796083757,
+      "to": 1787796123861,
+      "events": 1172,
+      "inst": "lh6urk"
+    }
+  ],
+  "awakeMinPerRoomHour": 54.69,
+  "awakeMinPerPersonHour": 27.35,
+  "handlerMinPerRoomHour": 0.235,
+  "awakeFraction": 0.912
+}
