@@ -61,8 +61,15 @@ augur clone --prototype <name> --space <id> --out <dir>
 
 `<name>` is whatever you know it by: the URL (`/garden/seed-swap/`), the repo path
 (`garden/prototypes/seed-swap`), or the bare name (`seed-swap`). An ambiguous bare name
-lists the candidates instead of picking one. Add `--dry-run` to get the entire verdict —
-file list, design system, every finding below — without writing anything.
+lists the candidates instead of picking one. **Leave the name off entirely and it lists
+everything there is to graduate** — that is where to start if you do not know it:
+
+```sh
+augur clone --prototype --from <space-dir>
+```
+
+Add `--dry-run` to any of it: the design system it would bring, the file and byte count,
+the verdict below, and every finding — with nothing written.
 
 **What lands in `<dir>`:**
 
@@ -81,16 +88,23 @@ the emoji stamped on the `<title>`.
 ## The proof is part of the command
 
 "No dependency on the engine" is not something to establish by reading the diff. Every file
-that is about to be written is scanned first, and the command reports three things:
+that is about to be written is scanned first, and the command states its verdict out loud
+even when the verdict is all zeroes — because silence is also what a checker that never ran
+produces.
 
 | | what it means | what to do |
 |---|---|---|
-| `engine` | An injected marker, an engine route (`/__…`), a page global, or an absolute link back to the instance survived. | **Stop.** The copy would call home from somebody else's domain. This is a bug — report it with the file and line printed. |
+| `engine` | Something the page **fetches** is an engine route (`/__…`), the instance's own host, or an injected marker or page global that survived the peel. | **Stop.** The command already refused. The copy would call home from somebody else's domain; this is a bug — report it with the file and line printed. |
+| `mention` | An engine-shaped string in the text that nothing fetches. | Usually nothing. A page whose *subject* is the platform produces these by the hundred. But a request assembled inside a script looks identical from here, so glance at them. |
 | `dangling` | A reference that resolves to nothing in the folder. Links to sibling prototypes are the usual cause: they did not come along. | Decide per link — point it at the old site, bring the sibling too, or delete it. |
 | `external` | A request to another origin. | Nothing, unless you did not know it was there. It will follow this copy wherever it goes. |
 
-Exit codes: `0` clean · `1` an engine reference remains, so the copy is not standalone ·
-`3` clean of the engine, with dangling references listed.
+The line between `engine` and `mention` is deliberate and it is the difference between a
+doorway and a wall: a documentation-shaped tool names engine routes in running prose and
+depends on none of them. A **reference** is decided; loose text is **reported**.
+
+Exit codes: `0` clean · `1` the copy still fetches from the engine, so nothing was
+graduated · `3` written and free of the engine, with dangling references or mentions listed.
 
 ## Serving it on its own domain
 

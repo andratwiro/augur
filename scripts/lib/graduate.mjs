@@ -147,16 +147,32 @@ export function rerootHtml(text, outPath) {
 // ── the proof ────────────────────────────────────────────────────────────────
 
 /**
- * What this engine leaves behind if the peel misses. Every one of these is a request back
- * to the instance the prototype came from, or a script that expects it to be there. A
- * graduated copy carrying any of them is not graduated — it is a page that will look fine
- * on the old origin and break, or leak, on the new one.
+ * What this engine leaves behind if the peel misses, in the two shapes that cannot be
+ * anything else. A marker is the peel's own output — one surviving means the peel failed.
+ * A page global is state this engine assigns; a graduated page has no business holding one.
  */
 const ENGINE_TRACES = [
   [/<!--gv-[a-z0-9-]+-(?:start|end)/i, "an injected-chrome marker the peel should have removed"],
   [/window\.__GV_[A-Z_]+/, "a page global this engine sets"],
-  [/["'(\s]\/__[a-z][a-z0-9-]*\//i, "a request back to an engine route"],
 ];
+
+/** A path only this engine serves. As a REFERENCE it is a request home; as prose it is prose. */
+const ENGINE_PATH = /^\/(?:__|piti\.js|sw\.js|_chrome\.|_build\.json)/i;
+
+/**
+ * The same shape found loose in the text — a fetch inside a script, or a sentence about
+ * how publishing works. ⚠️ THE SCANNER CANNOT TELL THOSE APART, and it must not pretend to.
+ *
+ * The first version of this failed the command on any line containing them, which read
+ * correctly against a prototype full of markup and refused outright the first real
+ * documentation-shaped one it met — a page whose PROSE names engine routes and the
+ * instance's own hostname, dozens of times, and which depends on neither. A doorway that
+ * is a wall for a whole class of artifact is not a doorway, and "add an override flag"
+ * would have made the refusal meaningless for the case it exists for.
+ *
+ * So: a reference is decided, loose text is REPORTED. The report says which it might be.
+ */
+const ENGINE_MENTION = /[/"'(\s]\/__[a-z][a-z0-9-]*\//i;
 
 const SKIP_REF = /^(?:#|data:|mailto:|tel:|javascript:|blob:|about:)/i;
 const ABSOLUTE_REF = /^(?:[a-z][a-z0-9+.-]*:)?\/\//i;
@@ -192,34 +208,43 @@ export function referencesIn(text, ext) {
  * Scan the whole written folder. `files` is [{path, text}] for text files plus the set of
  * every path present, so a reference can be resolved against what is actually there.
  *
- * Returns findings, each `{level, path, line, ref, why}`. `level: "fatal"` means the copy
- * still depends on the engine — the command refuses on those, because a graduation that
- * silently keeps calling home is the failure this whole item exists to prevent.
+ * Returns findings, each `{level, path, line, ref, why}`:
+ *
+ *   fatal     the copy still depends on this engine. The command refuses — a graduation
+ *             that silently keeps calling home is the failure this item exists to prevent.
+ *   suspect   an engine-shaped string that is not a reference. Could be a fetch in a
+ *             script; could be a sentence. Reported, never refused. See ENGINE_MENTION.
+ *   dangling  a reference that resolves to nothing here. The old origin answered it.
+ *   external  a request to another origin. Reported so nobody is surprised by it later.
  */
 export function residualFindings(files, present, { sourceHost = "" } = {}) {
   const have = present instanceof Set ? present : new Set(present || []);
   const findings = [];
 
   for (const f of files) {
-    const lines = String(f.text).split("\n");
-    lines.forEach((line, i) => {
-      for (const [re, why] of ENGINE_TRACES) {
-        if (re.test(line)) findings.push({ level: "fatal", path: f.path, line: i + 1, ref: line.trim().slice(0, 120), why });
-      }
-      if (sourceHost && line.includes(sourceHost)) {
-        findings.push({ level: "fatal", path: f.path, line: i + 1, ref: line.trim().slice(0, 120), why: `an absolute link back to ${sourceHost}` });
-      }
-    });
-
     const ext = path.posix.extname(f.path).toLowerCase();
+    const decided = new Set(); // lines a reference already settled, so prose is not double-reported
+
     for (const { ref, line } of referencesIn(f.text, ext)) {
       if (!ref || SKIP_REF.test(ref)) continue;
       if (ABSOLUTE_REF.test(ref)) {
-        findings.push({ level: "external", path: f.path, line, ref, why: "a request to another origin — it will follow this copy wherever it goes" });
+        let host = "";
+        try { host = new URL(ref, "https://placeholder.invalid").host; } catch (e) {}
+        if (sourceHost && host === sourceHost) {
+          decided.add(line);
+          findings.push({ level: "fatal", path: f.path, line, ref, why: `a request back to ${sourceHost}, the instance this came from` });
+        } else {
+          findings.push({ level: "external", path: f.path, line, ref, why: "a request to another origin — it will follow this copy wherever it goes" });
+        }
         continue;
       }
       const clean = ref.split("#")[0].split("?")[0];
       if (!clean) continue;
+      if (ENGINE_PATH.test(clean)) {
+        decided.add(line);
+        findings.push({ level: "fatal", path: f.path, line, ref, why: "a request to a route only this engine serves" });
+        continue;
+      }
       const dir = path.posix.dirname(f.path);
       let resolved = clean.startsWith("/")
         ? clean.replace(/^\/+/, "")
@@ -233,6 +258,19 @@ export function residualFindings(files, present, { sourceHost = "" } = {}) {
         findings.push({ level: "dangling", path: f.path, line, ref, why: "nothing in the folder answers this" });
       }
     }
+
+    String(f.text).split("\n").forEach((line, i) => {
+      const n = i + 1;
+      for (const [re, why] of ENGINE_TRACES) {
+        if (re.test(line)) findings.push({ level: "fatal", path: f.path, line: n, ref: line.trim().slice(0, 120), why });
+      }
+      if (decided.has(n)) return;
+      if (ENGINE_MENTION.test(line)) {
+        findings.push({ level: "suspect", path: f.path, line: n, ref: line.trim().slice(0, 120), why: "an engine route in the text — prose about it is fine, a request to it is not" });
+      } else if (sourceHost && line.includes(sourceHost)) {
+        findings.push({ level: "suspect", path: f.path, line: n, ref: line.trim().slice(0, 120), why: `names ${sourceHost} in the text — prose about it is fine, a request to it is not` });
+      }
+    });
   }
   return findings.sort((a, b) => (a.path === b.path ? a.line - b.line : a.path < b.path ? -1 : 1));
 }

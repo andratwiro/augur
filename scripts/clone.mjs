@@ -67,7 +67,14 @@ const die = (m) => { console.error(`\x1b[31m[clone] ${m}\x1b[0m`); process.exit(
 
 const argv = process.argv.slice(2);
 const flag = (n) => argv.includes(n);
-const opt = (n, d = null) => { const i = argv.indexOf(n); return i > -1 && argv[i + 1] ? argv[i + 1] : d; };
+// A flag never eats the NEXT flag as its value: `--prototype --from x` means "--prototype
+// with no value", which is the shape a person types when they do not yet know the name.
+// Reading `--from` as the prototype's name answers a question nobody asked.
+const opt = (n, d = null) => {
+  const i = argv.indexOf(n);
+  const v = i > -1 ? argv[i + 1] : null;
+  return v && !v.startsWith("--") ? v : d;
+};
 const MODE = process.env.AUGUR_CLONE_MODE || "clone"; // set by cli.mjs for `pull`
 const DRY = flag("--dry-run");
 
@@ -143,6 +150,18 @@ async function graduate() {
     };
   }
 
+  // `--prototype` with nothing after it asks the question a person actually starts with:
+  // which ones are there? Nothing else lists them — the first cold run of this command
+  // went and read the directory tree by hand to pick one, which is a doorway with no sign
+  // on it.
+  if (!unitArg) {
+    if (!prefixes.length) die("this workspace publishes no prototypes.");
+    log(`${prefixes.length} prototype(s) to graduate from:`);
+    for (const p of prefixes) console.log(`  ${p}`);
+    console.log(`\n${C.dim}Take one out with --prototype <name>. Add --dry-run to see what would come with it.${C.off}`);
+    process.exit(0);
+  }
+
   let unit;
   try { unit = resolveUnit(unitArg, prefixes); } catch (e) { die(e.message); }
   const segs = unit.prefix.replace(/^\/+|\/+$/g, "").split("/");
@@ -194,6 +213,7 @@ async function graduate() {
   const texts = files.filter((f) => isText(f.out)).map((f) => ({ path: f.out, text: f.body.toString("utf8") }));
   const findings = residualFindings(texts, present, { sourceHost });
   const fatal = findings.filter((f) => f.level === "fatal");
+  const suspect = findings.filter((f) => f.level === "suspect");
   const dangling = findings.filter((f) => f.level === "dangling");
   const external = findings.filter((f) => f.level === "external");
 
@@ -202,7 +222,17 @@ async function graduate() {
 
   for (const f of fatal) console.log(`  ${C.bad}engine${C.off}    ${f.path}:${f.line}  ${f.why}\n            ${C.dim}${f.ref}${C.off}`);
   for (const f of dangling) console.log(`  ${C.warn}dangling${C.off}  ${f.path}:${f.line}  ${f.ref}  ${C.dim}${f.why}${C.off}`);
+  // Capped: the case that produces these produces them in bulk (a page whose subject IS
+  // the platform), and a thousand lines of prose scrolled past is the same as none.
+  for (const f of suspect.slice(0, 12)) console.log(`  ${C.warn}mention${C.off}   ${f.path}:${f.line}  ${C.dim}${f.ref}${C.off}`);
+  if (suspect.length > 12) console.log(`  ${C.dim}… and ${suspect.length - 12} more mention(s)${C.off}`);
   for (const f of external) console.log(`  ${C.dim}external  ${f.path}:${f.line}  ${f.ref}${C.off}`);
+
+  // Say the verdict out loud, including when it is all zeroes. The first cold run of this
+  // read a clean result as "the tool printed nothing" and said so: a person checking
+  // "carries no dependency on the engine" needs the check to have SPOKEN, not to have been
+  // quiet. Silence is what a broken checker also produces.
+  log(`checked ${texts.length} text file(s) of ${files.length}: ${fatal.length} engine, ${suspect.length} mention, ${dangling.length} dangling, ${external.length} external`);
 
   if (DRY) {
     log(`${C.dim}dry run — would write ${files.length} file(s) to ${out}${C.off}`);
@@ -226,12 +256,15 @@ async function graduate() {
   if (dangling.length) {
     log(`${C.warn}${dangling.length} reference(s) resolve to nothing in the folder.${C.off} ${C.dim}The old site answered them; a domain serving only this folder will 404 them. Links to sibling prototypes are the usual cause — they did not come along.${C.off}`);
   }
+  if (suspect.length) {
+    log(`${C.warn}${suspect.length} engine-shaped mention(s) in the text.${C.off} ${C.dim}Nothing fetches them or they would be listed above as engine. A page whose SUBJECT is the platform produces these by the hundred and depends on none of them — but a request built inside a script looks the same from here, so they are yours to glance at.${C.off}`);
+  }
   console.log(
-    `\n${C.dim}Nothing in this folder references Augur. Serve it with any static file server:\n` +
+    `\n${C.dim}Nothing in this folder fetches anything from Augur. Serve it with any static file server:\n` +
     `  cd ${out} && python3 -m http.server 8080\n` +
     `Putting it on a domain, and when a tool is ready to leave at all: docs/graduation.md${C.off}`
   );
-  process.exit(dangling.length ? 3 : 0);
+  process.exit(dangling.length || suspect.length ? 3 : 0);
 }
 
 async function main() {

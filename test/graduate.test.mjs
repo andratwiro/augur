@@ -147,6 +147,30 @@ test("a reference that DOES resolve is not reported, including a directory index
   assert.deepEqual(residualFindings([{ path: "index.html", text }], present), []);
 });
 
+test("⚠️ PROSE ABOUT THE ENGINE IS NOT A DEPENDENCY ON IT", () => {
+  // The severity model's whole point, and it was learned the hard way: the first version
+  // failed on any LINE containing an engine-shaped string, which read fine against markup
+  // and refused outright the first documentation-shaped prototype it met — a page whose
+  // subject IS the platform, naming its routes and its hostname dozens of times in running
+  // text, and depending on neither. A doorway that is a wall for a whole class of artifact
+  // is not a doorway.
+  const text = [
+    "<p>A publish goes to /__publish/&lt;space&gt;/commit and the store answers.</p>",
+    "<p>It is served at example.invalid today.</p>",
+  ].join("\n");
+  const f = residualFindings([{ path: "index.html", text }], new Set(["index.html"]), { sourceHost: "example.invalid" });
+  assert.deepEqual(f.filter((x) => x.level === "fatal"), [], "prose was treated as a dependency");
+  assert.deepEqual(f.map((x) => x.level), ["suspect", "suspect"], "and it is not silently dropped either");
+});
+
+test("the same string as an actual REQUEST is still fatal, on the same line as prose", () => {
+  // The other half: demoting prose must not demote a request that happens to sit beside it.
+  const text = '<p>see /__publish/</p><script src="/__review/comments.js"></script>';
+  const f = residualFindings([{ path: "index.html", text }], new Set(["index.html"]));
+  assert.equal(f.filter((x) => x.level === "fatal").length, 1);
+  assert.equal(f.filter((x) => x.level === "suspect").length, 0, "the line was already decided by the reference on it");
+});
+
 test("another origin is reported without being refused", () => {
   const f = residualFindings([{ path: "index.html", text: '<script src="https://cdn.example.com/x.js"></script>' }], new Set(["index.html"]));
   assert.deepEqual(f.map((x) => x.level), ["external"]);
@@ -155,6 +179,81 @@ test("another origin is reported without being refused", () => {
 test("references are read out of stylesheets too, inline and standalone", () => {
   assert.deepEqual(referencesIn('@import "a.css";\nbody{background:url(b.png)}', ".css").map((r) => r.ref), ["a.css", "b.png"]);
   assert.ok(referencesIn('<style>body{background:url("c.png")}</style>', ".html").some((r) => r.ref === "c.png"));
+});
+
+// ── what the command actually does with a verdict ────────────────────────────
+
+/** A one-prototype workspace on disk, with whatever page body the case needs. */
+function tinySpace(body, { siteOrigin = "https://example.invalid" } = {}) {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "grad-tiny-"));
+  fs.writeFileSync(path.join(root, "space.json"), JSON.stringify({ id: "tiny", default: true, siteOrigin }));
+  const dir = path.join(root, "tools", "prototypes", "planner");
+  fs.mkdirSync(dir, { recursive: true });
+  fs.writeFileSync(path.join(dir, "index.html"), `<!doctype html><html><head><title>Planner</title></head><body>\n${body}\n</body></html>\n`);
+  return root;
+}
+
+const runClone = (args, cwd) => spawnSync(process.execPath, [path.join(ENGINE, "scripts", "clone.mjs"), ...args], {
+  cwd, encoding: "utf8", env: { ...process.env, AUGUR_CLONE_MODE: "clone", NO_COLOR: "1" },
+});
+
+test("THE COMMAND REFUSES rather than writing a copy that phones home", () => {
+  // The load-bearing behaviour. A "standalone" folder that still fetches from the instance
+  // looks perfect on the old origin and is broken, or leaking, on the new one — and the
+  // person who moved it has already pointed a domain at it by the time anyone finds out.
+  const root = tinySpace('<script src="/__review/comments.js"></script>');
+  const out = path.join(root, "..", path.basename(root) + "-out");
+  try {
+    const r = runClone(["--prototype", "planner", "--from", root, "--out", out], root);
+    assert.equal(r.status, 1, `expected a refusal, got ${r.status}:\n${r.stdout}${r.stderr}`);
+    assert.match(r.stdout, /engine/, "the refusal did not say what was wrong");
+    assert.match(r.stdout, /comments\.js/, "the refusal did not name the reference");
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+    fs.rmSync(out, { recursive: true, force: true });
+  }
+});
+
+test("a link to a sibling prototype is reported, not refused — it is the author's call", () => {
+  const root = tinySpace('<a href="/tools/rota/">the rota</a>');
+  const out = path.join(root, "..", path.basename(root) + "-out");
+  try {
+    const r = runClone(["--prototype", "planner", "--from", root, "--out", out], root);
+    assert.equal(r.status, 3, `expected the dangling exit code, got ${r.status}:\n${r.stdout}${r.stderr}`);
+    assert.match(r.stdout, /dangling.*\/tools\/rota\//s);
+    assert.ok(fs.existsSync(path.join(out, "index.html")), "the copy was not written");
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+    fs.rmSync(out, { recursive: true, force: true });
+  }
+});
+
+test("the verdict is stated even when it is all zeroes", () => {
+  // A clean run used to print nothing at all, and a cold reader read that as the checker
+  // not having run. Silence is what a broken checker produces too.
+  const root = tinySpace("<p>nothing but a page</p>");
+  const out = path.join(root, "..", path.basename(root) + "-out");
+  try {
+    const r = runClone(["--prototype", "planner", "--from", root, "--out", out, "--dry-run"], root);
+    assert.equal(r.status, 0, r.stdout + r.stderr);
+    assert.match(r.stdout, /0 engine, 0 mention, 0 dangling, 0 external/);
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+    fs.rmSync(out, { recursive: true, force: true });
+  }
+});
+
+test("naming no prototype lists them instead of failing", () => {
+  // Nothing else in the CLI answers "which ones are there?", and the first cold run of
+  // this command went and read the directory tree by hand to find out.
+  const root = tinySpace("<p>hi</p>");
+  try {
+    const r = runClone(["--prototype", "--from", root], root);
+    assert.equal(r.status, 0, r.stdout + r.stderr);
+    assert.match(r.stdout, /\/tools\/planner\//);
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
 });
 
 // ── the decisive pair, against a real build ──────────────────────────────────
