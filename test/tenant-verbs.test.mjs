@@ -34,7 +34,9 @@
 //   · provision → suspend → re-suspend → resume → delete → resume: 200, 200 unchanged with
 //     the first reason and date kept, 200 with `suspendedMs: 5400000`, 200 with a
 //     `purgeAfter` thirty days out, then 409 `deleted`.
-//   · an unknown verb → 404 `tenant-verb-not-allowed`; a GET on a write verb → 405.
+//   · an unknown verb → 404 `tenant-verb-not-allowed`; a GET on a write verb → 405. (`delete`
+//     is the one exception now, and it arrived after this drill: a GET there is the
+//     confirmation read — see src/delete-confirmation.mjs and test/delete-confirmation.test.mjs.)
 //   · two rotates in a row, each answering `sessionsEnded: false`.
 //
 // The transaction ROLLBACK is covered here rather than there — injecting a throw needs a
