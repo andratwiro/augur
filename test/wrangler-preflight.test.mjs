@@ -144,6 +144,54 @@ test("a single-workspace config is not asked for any of this", () => {
   accepts(GOOD);
 });
 
+// ── where the workspace objects live ─────────────────────────────────────────
+// A jurisdiction is applied at ADDRESSING time, so it is not a thing wrangler validates
+// and not a thing the platform can be asked about here. It is one variable, and the wrong
+// value in it puts every workspace at an address nothing else looks at — which cannot be
+// corrected afterwards, because a Durable Object's storage belongs to its id.
+
+const TENANTS_BINDING = '\n[[durable_objects.bindings]]\nname = "TENANTS"\nclass_name = "TenantStore"\n'
+  + '\n[[migrations]]\ntag = "v1"\nnew_sqlite_classes = ["TenantStore"]\n';
+
+test("a jurisdiction the platform does not accept is refused HERE, not by an outage", () => {
+  // The typo is the whole point. It is one transposition away from the right answer, it
+  // is lowercase and the right length, and nothing downstream reads it back to anybody:
+  // the deploy succeeds, and then every request fails.
+  const out = rejects(GOOD + TENANTS_BINDING + '\n[vars]\nTENANT_JURISDICTION = "ue"\n');
+  assert.match(out, /tenants-jurisdiction-unknown/);
+  assert.match(out, /case-sensitive/);
+});
+
+test("case is not a detail — the platform refuses \"EU\" and so does this", () => {
+  assert.match(rejects(GOOD + TENANTS_BINDING + '\n[vars]\nTENANT_JURISDICTION = "EU"\n'),
+    /tenants-jurisdiction-unknown/);
+});
+
+test("every jurisdiction the platform accepts passes", () => {
+  for (const j of ["eu", "fedramp", "fedramp-high", "us"]) {
+    accepts(GOOD + TENANTS_BINDING + `\n[vars]\nTENANT_JURISDICTION = "${j}"\n`);
+  }
+});
+
+test("a jurisdiction with no TENANTS binding is refused", () => {
+  // The variable does nothing without the binding, and that is the dangerous kind of
+  // nothing: adding the binding later would look like the restriction had been in force
+  // from the start, and the workspaces created before it would be somewhere else.
+  const out = rejects(GOOD + '\n[vars]\nTENANT_JURISDICTION = "eu"\n');
+  assert.match(out, /tenants-jurisdiction-binding/);
+});
+
+test("an EMPTY jurisdiction is refused, for the same reason an empty suffix is", () => {
+  assert.match(rejects(GOOD + TENANTS_BINDING + '\n[vars]\nTENANT_JURISDICTION = ""\n'),
+    /tenants-jurisdiction-empty/);
+});
+
+test("no jurisdiction at all is a valid answer and is not asked about", () => {
+  // Unset means unrestricted, which is what every deployment does today and what a
+  // self-hoster who has not chosen is entitled to. It must not be nagged into a choice.
+  accepts(GOOD + TENANTS_BINDING + '\n[vars]\nTENANT_HOST_SUFFIX = ".example.com"\n');
+});
+
 // ── the shipped template and fixture are themselves valid ────────────────────
 
 test("the shell template declares the gate and every binding", () => {

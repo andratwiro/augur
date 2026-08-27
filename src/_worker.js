@@ -801,6 +801,53 @@ async function readInstanceTenantId(env) {
   } catch (e) { return null; }
 }
 
+// The namespace every workspace object on this deployment is addressed through, or null
+// on a deployment that binds none.
+//
+// ⚠️ A JURISDICTION IS PART OF THE ADDRESS, NOT A SETTING ON THE BINDING. There is no
+// config file entry for it anywhere: `ns.idFromName(x)` and
+// `ns.jurisdiction("eu").idFromName(x)` produce two DIFFERENT ids, which are two different
+// objects, held in two different sets of locations. A Durable Object's storage belongs to
+// its id, so an object created on one side of that line cannot be moved to the other
+// afterwards — it can only be exported and replayed into a new one. That makes this the
+// rare piece of configuration that has to be right BEFORE the first workspace exists, and
+// it makes it something anything else addressing the same workspaces has to be told, not
+// something it can discover. Measured against a live namespace for the name `acme`:
+// `7c2aaffc…21a9` unrestricted against `61395e58…51d9` under `eu`.
+//
+// UNSET OR BLANK MEANS NO JURISDICTION. That is what every deployment in existence does
+// today and what this function did before the variable existed, and it is a real answer
+// rather than a missing one: a self-hoster picks where their own data lives, and an engine
+// that defaulted to somebody's regulatory preference would be choosing for them.
+//
+// A VALUE THE PLATFORM DOES NOT ACCEPT THROWS — and it throws from the platform, not from
+// a list kept here. Deliberate: a copy of the accepted set in the request path would be a
+// second authority, and a second authority is wrong in one of two directions forever —
+// refusing a jurisdiction added after this line was written, or accepting a typo the
+// platform then refuses anyway. The place a list belongs is the deploy gate, where it
+// catches the typo before a single request reaches this code and where whoever hits a
+// stale entry can edit it: `scripts/wrangler-preflight.mjs`.
+//
+// What must never happen is the third option — an unrecognised value quietly falling back
+// to an unrestricted address. That reads as success everywhere, addresses an object nobody
+// else is addressing, and is invisible until a workspace answers as though it were empty.
+function tenantNamespace(env) {
+  const ns = env && env.TENANTS;
+  if (!ns) return null; // nothing to address; the variable is moot and never consulted
+  const j = env && typeof env.TENANT_JURISDICTION === "string" ? env.TENANT_JURISDICTION.trim() : "";
+  if (!j) return ns;
+  if (typeof ns.jurisdiction !== "function") {
+    throw new Error(`TENANT_JURISDICTION is "${j}", but the TENANTS binding cannot be restricted to a jurisdiction. `
+      + "Addressing without it would reach a different object, so this refuses instead: unset the variable, or fix the binding.");
+  }
+  try {
+    return ns.jurisdiction(j);
+  } catch (e) {
+    throw new Error(`TENANT_JURISDICTION = "${j}" is not a jurisdiction this platform accepts (${(e && e.message) || e}). `
+      + "Falling back to an unrestricted address would put every workspace somewhere nothing else is looking, so this refuses instead.");
+  }
+}
+
 // The workspace's own Durable Object, or null on a deployment that binds none.
 //
 // `idFromName` is a hash, not a lookup: it does no I/O, it cannot fail, and the same name
@@ -811,8 +858,15 @@ async function readInstanceTenantId(env) {
 // It is deliberately NOT an existence check. Whether a workspace has been provisioned is a
 // question with an answer inside the object, and asking it here would put a round trip in
 // front of every request including the ones that never touch the store.
+//
+// ⚠️ EVERY WORKSPACE ADDRESS IN THIS ENGINE IS COMPUTED HERE, AND THAT IS THE PROPERTY,
+// not a tidiness. A second `TENANTS.idFromName` anywhere is a second answer to "which
+// object is this workspace", and on a deployment with no jurisdiction set the two agree —
+// so the duplicate is invisible until the day one is set, at which point half the engine
+// is talking to objects the other half cannot see. `test/tenant-resolver-host.test.mjs`
+// reads the source and fails on a second site.
 function tenantStub(env, tenantId) {
-  const ns = env && env.TENANTS;
+  const ns = tenantNamespace(env);
   if (!ns || !tenantId) return null;
   return ns.get(ns.idFromName(tenantId));
 }
@@ -9346,4 +9400,5 @@ export const __testables = Object.freeze({
   loadConfig, loadTenantContext, __setConfigTestState, __usersNow, pitiApi,
   CONFIG_STALE_CEILING_MS,
   resolveTenant, DEFAULT_TENANT_ID, TENANT_MEMO_TTL_MS, __setTenantTestState, tenantStub,
+  tenantNamespace,
 });

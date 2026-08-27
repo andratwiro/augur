@@ -152,6 +152,41 @@ if (suffix !== null && suffix.trim() === "") {
     'TENANT_HOST_SUFFIX is set to an empty string. That reads as "multi-workspace" to a person and as "single workspace" to the resolver. Delete the line, or give it the real suffix.');
 }
 
+// ── the jurisdiction a workspace object is addressed in ──────────────────────
+// A Durable Object's jurisdiction is chosen when the object is ADDRESSED, not when the
+// namespace is declared, so there is nothing in this file for the platform to check and
+// nothing in the platform for this file to read: `ns.idFromName(x)` and
+// `ns.jurisdiction("eu").idFromName(x)` are two different objects and a deployment picks
+// which by setting this variable or not. Storage belongs to an id, so the wrong choice is
+// not a bug that gets fixed later — it is a migration, and one nobody can do for a
+// workspace they cannot find.
+//
+// THIS LIST IS THE ENGINE'S COPY OF SOMEBODY ELSE'S, and it exists HERE and not in the
+// request path on purpose. In the worker the value is handed straight to the platform,
+// which is the only authority on what it accepts — a copy running on every request would
+// eventually refuse a jurisdiction that was added after it was written. A copy in a deploy
+// gate has the opposite failure: whoever hits a stale entry is a person, holding the repo,
+// one line from adding it, and in exchange a typo is caught before a single request rather
+// than by an outage. Measured against the platform: it accepts these four and refuses
+// everything else, case-sensitively, including the empty string.
+const JURISDICTIONS = ["eu", "fedramp", "fedramp-high", "us"];
+const jurisdiction = valueOf("TENANT_JURISDICTION", "vars");
+if (jurisdiction !== null && jurisdiction.trim() === "") {
+  fail("tenants-jurisdiction-empty",
+    'TENANT_JURISDICTION is set to an empty string, which the engine reads as "no jurisdiction" and a person reads as "restricted". Delete the line if this deployment places no restriction, or name the jurisdiction.');
+}
+if (jurisdiction !== null && jurisdiction.trim() !== "") {
+  const j = jurisdiction.trim();
+  if (!JURISDICTIONS.includes(j)) {
+    fail("tenants-jurisdiction-unknown",
+      `TENANT_JURISDICTION = "${j}" is not a jurisdiction the platform accepts (${JURISDICTIONS.join(", ")}) — and it is case-sensitive, so "EU" is not "eu". A value it refuses fails every request; a value it accepts but nothing else uses creates every workspace where nothing else is looking. If the platform has added one since this list was written, add it here.`);
+  }
+  if (!dos.includes("TENANTS")) {
+    fail("tenants-jurisdiction-binding",
+      `TENANT_JURISDICTION = "${j}" says where this deployment's workspace objects live, but there is no TENANTS Durable Object binding for them to live in. The variable does nothing here, which is the dangerous kind of nothing: adding the binding later would look like the jurisdiction had been in force all along.`);
+  }
+}
+
 // ── the entry ────────────────────────────────────────────────────────────────
 const main = valueOf("main");
 if (!main) fail("main", "no `main`. wrangler has no entry to bundle.");

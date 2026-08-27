@@ -167,6 +167,32 @@ GV_ASSET_SOURCE = "r2"
 # Set it ONLY together with the TENANTS binding above. Without it there is nowhere for a
 # workspace's own state to live, and the deployment would resolve names it cannot serve.
 #
+# ── TENANT_JURISDICTION — WHERE those workspace objects are, and it is part of their
+# address ──────────────────────────────────────────────────────────────────────────────
+#
+# Leave it unset and workspace objects carry no jurisdictional restriction, which is what
+# every deployment does today. Set it — `TENANT_JURISDICTION = "eu"` — and the platform
+# keeps each workspace's storage inside that jurisdiction and runs it there.
+#
+# ⚠️ IT IS NOT A SETTING ON THE BINDING ABOVE, AND THAT IS THE TRAP. There is no wrangler
+# key for it: the restriction is applied when an object is ADDRESSED, so
+# `idFromName("acme")` and `jurisdiction("eu").idFromName("acme")` are two different ids —
+# two different objects, in two different places, that know nothing about each other. A
+# Durable Object's storage belongs to its id, so this cannot be changed after a workspace
+# exists: it is not a setting you flip, it is an export and a replay into a new object.
+# DECIDE BEFORE THE FIRST WORKSPACE IS CREATED.
+#
+# ⚠️ AND EVERYTHING ELSE THAT ADDRESSES THESE WORKSPACES HAS TO BE TOLD THE SAME VALUE.
+# Anything holding this namespace binding — a provisioning worker, an operator tool —
+# resolves a DIFFERENT object if it applies a different jurisdiction, or none. The symptom
+# is not an error: one side creates a workspace, the other resolves an empty one.
+#
+# The value is handed to the platform as written. It is case-sensitive, `"EU"` is not
+# `"eu"`, and a value the platform does not accept fails EVERY request rather than quietly
+# addressing without a restriction — engine/scripts/wrangler-preflight.mjs refuses the
+# unknown value and the missing binding before the deploy, so the typo costs a re-run
+# rather than an outage.
+#
 # NO SECRETS HERE EITHER — [vars] is plaintext in the repo. These go in with
 # `npx wrangler secret put <NAME> -c wrangler.toml`:
 #

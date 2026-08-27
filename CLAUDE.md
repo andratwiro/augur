@@ -44,8 +44,11 @@ notice.
 `TENANT_HOST_SUFFIX` (every self-hosted instance) → the `tenantId` the build stamped into
 `instance.json`, read once per isolate. Set it → the workspace is the first label of the
 Host header (`acme.example.com` with suffix `.example.com` is `acme`), parsed by
-`src/tenant-host.mjs`, plus that workspace's Durable Object stub via
-`env.TENANTS.idFromName`. The suffix is LITERAL, so `-team.example.com` keeps every
+`src/tenant-host.mjs`, plus that workspace's Durable Object stub via `tenantStub()` — the
+one place in the engine a workspace address is computed, and where `TENANT_JURISDICTION`
+is applied if the deployment sets one (see the env reference; a jurisdiction is part of
+the address, so a second addressing site would agree with this one right up until the day
+somebody set it). The suffix is LITERAL, so `-team.example.com` keeps every
 workspace on a first-level hostname a universal certificate already covers.
 **The dynamic branch never falls back to the static one**: a hostname that names no
 workspace — the apex, a deeper name, a malformed label, or one of the RESERVED_LABELS
@@ -458,6 +461,23 @@ workspace named by the build; set means the workspace comes from the Host header
 only together with a `TENANTS` Durable Object binding — `scripts/wrangler-preflight.mjs`
 refuses a config with one half and not the other, and refuses an empty-string suffix,
 which reads as multi-workspace to a person and single-workspace to the resolver.
+`TENANT_JURISDICTION` — the jurisdictional restriction those workspace objects are
+addressed in (`eu`, `fedramp`, `fedramp-high`, `us`), or unset for none, which is what
+every deployment does today and the only default the engine may have: where a
+self-hoster's data lives is theirs to choose. **It is part of the ADDRESS, not a setting
+on the binding** — there is no config key for it, `idFromName(x)` and
+`jurisdiction("eu").idFromName(x)` are two different objects, and a Durable Object's
+storage belongs to its id, so it cannot be changed once a workspace exists. Anything else
+holding the same namespace binding has to be given the same value or it resolves a
+different object and finds it empty. `tenantNamespace()` in `src/_worker.js` applies it,
+`tenantStub()` is the ONE place a workspace address is computed
+(`test/tenant-jurisdiction.test.mjs` reads the source and fails on a second site), and the
+value goes to the platform verbatim: an unaccepted one throws rather than falling back to
+an unrestricted address, since a silent fall-back is the exact failure this exists to
+remove. The list of accepted values lives only in `scripts/wrangler-preflight.mjs`, which
+refuses a typo, an empty string and a jurisdiction with no binding before the deploy —
+in the request path the platform is the only authority, so a second copy there could only
+go stale.
 `DELETE_DISPATCH_URL` + `DELETE_DISPATCH_TOKEN` — the shell-dispatch channel
 (`shellDispatch`): the one way a worker action changes a REPO rather than only live
 state. Two event types ride it: `prototype-delete` (the admin-only `/__delete` route;
