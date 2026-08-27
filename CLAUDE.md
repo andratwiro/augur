@@ -308,6 +308,13 @@ engine/worker verification; content goes out with `ship`/`publish` ·
 `augur publish [--space <id>|--all] [--dry-run] [--allow-unpublish]`
 (publish only; `AUGUR_TOKEN` + `AUGUR_ORIGIN`) · `augur status`
 (live vs clones vs `origin/main`; exit 1 on drift) ·
+`augur canon <start|collect|snippet|check|apply>` (build this workspace's design system
+out of a live product — see [agents/canon-extract.md](agents/canon-extract.md); the
+evidence collector runs in the browser the person is already signed in to, and **the
+engine does none of the deciding**: the user's own agent maps evidence onto the roles in
+`src/canon/schema.mjs`, which are exactly the tokens the seed workspace is born with, so
+an extracted canon and a day-one one are one format. No inference dependency, held shut
+by `test/canon-no-inference.test.mjs`) ·
 `augur export --out <dir> [--full]` / `augur restore <dir> [--state]`
 (store backup; `--full`/`--state` cover everything that is not published content) ·
 `augur freeze [--reason …] [--status]` / `augur thaw` (read-only while a workspace is

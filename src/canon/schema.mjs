@@ -32,6 +32,7 @@ export const ROLES = [
   { role: "sheet", group: "paper", kind: "color", what: "the sheet itself: cards, panels, the surface text sits on" },
   { role: "inset", group: "paper", kind: "color", what: "a pressed, quieter fill — table stripes, wells, disabled surfaces", derived: "inset" },
   { role: "stage", group: "paper", kind: "color", what: "the dark inset media sits in: video, 3D, a terminal", derived: "stage" },
+  { role: "stage-on", group: "paper", kind: "color", what: "what is written ON the stage", derived: "stage-on" },
 
   // ── Ink: everything written on the paper ───────────────────────────────────
   { role: "ink", group: "ink", kind: "color", what: "every word that matters — body and heading text on the sheet" },
@@ -43,6 +44,10 @@ export const ROLES = [
   { role: "mark", group: "mark", kind: "color", what: "the one colour that marks the thing a person is meant to act on — primary buttons, the current step, a pin" },
   { role: "mark-ink", group: "mark", kind: "color", what: "the mark, darkened until it is readable as TEXT on the sheet", derived: "mark-ink" },
   { role: "wash", group: "mark", kind: "color", what: "the mark's quietest form: highlights, selected rows, chips", derived: "wash" },
+  // Text ON the mark is a separate job from the mark as text, and forgetting it is how an
+  // extraction produces an illegible primary button: a product whose hot ink is a pale
+  // yellow gets white-on-yellow the moment a component writes `color: #fff`.
+  { role: "mark-on", group: "mark", kind: "color", what: "what is written ON the mark — the label of a primary button", derived: "mark-on" },
 
   // ── States ─────────────────────────────────────────────────────────────────
   { role: "ok", group: "state", kind: "color", what: "the success/positive colour", derived: "ok" },
@@ -208,6 +213,16 @@ export function deriveTokens(given) {
 
   need("inset", () => mix(sheet, ink, 0.05));
   need("stage", () => (paperDark ? mix(sheet, "#000000", 0.4) : mix(ink, "#000000", 0.15)));
+  need("stage-on", () => readableOn(sheet, toHex(t.stage) || "#000000", 4.5));
+  need("mark-on", () => {
+    // Whichever of the two colours already in the system reads on the mark, preferring
+    // the sheet so a primary button still looks like it belongs to the page. Only when
+    // neither clears 4.5:1 does this reach for a colour the system does not own.
+    const m = toHex(t.mark);
+    if (!m) return null;
+    for (const c of [sheet, ink]) if (contrast(c, m) >= 4.5) return c;
+    return contrast("#ffffff", m) >= contrast("#000000", m) ? "#ffffff" : "#000000";
+  });
   need("ink-2", () => readableOn(mix(ink, sheet, 0.35), sheet, 4.5));
   need("ink-3", () => readableOn(mix(ink, sheet, 0.55), sheet, 3));
   need("mark-ink", () => (t.mark ? readableOn(toHex(t.mark) || ink, sheet, 4.5) : null));
@@ -304,21 +319,29 @@ export function validateCanon(canon, { strict = false } = {}) {
     }
   }
 
-  // Legibility. These are the two ratios that decide whether the extracted system is
-  // usable at all, so they are errors, not notes.
-  const sheet = toHex(tokens.sheet), ink = toHex(tokens.ink);
-  if (sheet && ink) {
-    const c = contrast(ink, sheet);
-    if (c < 4.5) err(`contrast: ink on sheet is ${c.toFixed(2)}:1 — under 4.5:1 body text is not readable`);
-  }
-  if (sheet && toHex(tokens["mark-ink"])) {
-    const c = contrast(toHex(tokens["mark-ink"]), sheet);
-    if (c < 4.5) err(`contrast: mark-ink on sheet is ${c.toFixed(2)}:1 — leave mark-ink out and it is computed from mark to clear 4.5:1`);
-  }
-  if (sheet && toHex(tokens["ink-2"]) && contrast(toHex(tokens["ink-2"]), sheet) < 4.5)
-    warn(`contrast: ink-2 on sheet is ${contrast(toHex(tokens["ink-2"]), sheet).toFixed(2)}:1 — secondary text under 4.5:1`);
-  if (sheet && toHex(tokens.mark) && contrast(toHex(tokens.mark), sheet) < 1.6)
-    warn(`contrast: mark barely separates from sheet (${contrast(toHex(tokens.mark), sheet).toFixed(2)}:1) — the hot ink has to be visible as a fill`);
+  // Legibility, computed and REPORTED. Every pair below is a place a real screen puts
+  // one of these colours on another; the grader prints all of them whether they pass or
+  // fail, because "it computes the contrast ratios" is only believable if you can see
+  // the numbers, and a ratio that passes today is what a person checks against when they
+  // change a value tomorrow.
+  const ratios = [];
+  const pair = (fg, bg, floor, level, why) => {
+    const a = toHex(tokens[fg]), b = toHex(tokens[bg]);
+    if (!a || !b) return;
+    const c = contrast(a, b);
+    ratios.push({ fg, bg, ratio: Math.round(c * 100) / 100, floor, ok: c >= floor });
+    if (c >= floor) return;
+    const msg = `contrast: ${fg} on ${bg} is ${c.toFixed(2)}:1, under ${floor}:1 — ${why}`;
+    if (level === "error") err(msg); else warn(msg);
+  };
+  pair("ink", "sheet", 4.5, "error", "body text is not readable");
+  pair("mark-ink", "sheet", 4.5, "error", "leave mark-ink out and it is computed from mark to clear it");
+  pair("mark-on", "mark", 4.5, "error", "the label of a primary button is not readable — leave mark-on out and it is computed");
+  pair("ink-2", "sheet", 4.5, "warn", "secondary text is thin");
+  pair("ink-3", "sheet", 3, "warn", "placeholders and disabled text disappear");
+  pair("stage-on", "stage", 4.5, "warn", "text on the dark inset is thin");
+  pair("mark", "sheet", 1.6, "warn", "the hot ink has to be visible as a fill");
+  const sheet = toHex(tokens.sheet);
   if (toHex(tokens.mark) && toHex(tokens.ink) && contrast(toHex(tokens.mark), toHex(tokens.ink)) < 1.35)
     warn(`mark and ink are nearly the same colour — nothing on a screen will read as "act on this"`);
 
@@ -344,7 +367,15 @@ export function validateCanon(canon, { strict = false } = {}) {
     const lit = LITERAL_COLOR.exec(stripVarFallbacks(css));
     if (lit) err(`${at}: css hard-codes a colour (${lit[0]}) — a component drinks from tokens, or the whole system stops moving when a token changes. Add an x- token and use var(--${prefix}-…).`);
     for (const m of css.matchAll(/var\(\s*(--[a-zA-Z0-9-]+)/g)) {
-      if (!known.has(m[1])) err(`${at}: css reads ${m[1]}, which this canon does not define`);
+      if (known.has(m[1])) continue;
+      // The commonest way to get this wrong is to write the `x-` into the variable name.
+      // It is a bookkeeping mark on the ANSWER, not part of the token, so say the real
+      // name rather than only that this one is unknown.
+      const unprefixed = m[1].replace(new RegExp(`^--${prefix}-x-`), `--${prefix}-`);
+      const hint = unprefixed !== m[1] && known.has(unprefixed)
+        ? ` — an "x-" token emits WITHOUT the x-, so that one is ${unprefixed}`
+        : "";
+      err(`${at}: css reads ${m[1]}, which this canon does not define${hint}`);
     }
     for (const m of css.matchAll(/\.([a-zA-Z][\w-]*)/g)) {
       if (!m[1].startsWith(`${classPrefix}-`) && !classes.includes(m[1])) warn(`${at}: css styles .${m[1]}, outside its own family`);
@@ -355,12 +386,23 @@ export function validateCanon(canon, { strict = false } = {}) {
   const src = canon.source && typeof canon.source === "object" ? canon.source : {};
   if (!src.url) warn("source.url: not recorded — a canon should say what it was taken from");
 
-  return { ok: errors.length === 0, errors, warnings, tokens, derived, prefix, classPrefix, componentCount: comps.length };
+  return { ok: errors.length === 0, errors, warnings, tokens, derived, prefix, classPrefix, ratios, componentCount: comps.length };
 }
 
 /** `rgba(…)` inside a var() fallback is the one honest place a literal colour appears. */
 function stripVarFallbacks(css) {
   return css.replace(/var\(\s*--[a-zA-Z0-9-]+\s*,[^)]*\)/g, "var(--x)");
+}
+
+/**
+ * The first hard-coded colour in a stylesheet, or null. Exported because the rule the
+ * grader holds an EXTRACTED component to is the same rule the workspace's own stylesheets
+ * have to obey — a shipped file that hard-codes the ink it was born with stays that
+ * colour after an extraction, on a page where everything around it moved.
+ */
+export function literalColorIn(css) {
+  const m = LITERAL_COLOR.exec(stripVarFallbacks(String(css)));
+  return m ? m[0] : null;
 }
 
 /* ── Reading a token stylesheet back ───────────────────────────────────────── */

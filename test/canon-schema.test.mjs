@@ -19,7 +19,7 @@ import { fileURLToPath } from "node:url";
 import {
   ROLES, ROLE_NAMES, ROLE_BY_NAME, OBSERVED_ROLES,
   validateCanon, deriveTokens, parseTokensCss, blankCanon,
-  toHex, toPx, contrast, readableOn,
+  toHex, toPx, contrast, readableOn, literalColorIn,
 } from "../src/canon/schema.mjs";
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
@@ -85,13 +85,65 @@ test("the page that teaches the system reads only roles the extractor guarantees
   assert.equal(ROLE_BY_NAME.get("wash").derived, "wash");
 });
 
+test("the seed's own stylesheets obey the rule the grader holds components to", () => {
+  // Found by a stranger's agent driving the real flow against a real product: after a
+  // clean extraction the workspace's desk rules were still drawn in the ink the seed
+  // shipped with, because one `rgba(29, 27, 36, .03)` sat in a file `apply` deliberately
+  // never touches. Nothing catches that in a diff — the page looks fine until the day
+  // somebody changes the ink, and then it looks like a rendering bug.
+  const css = fs.readFileSync(path.join(SEED, "skills", "starter-ui", "starter-ui.css"), "utf8");
+  assert.equal(literalColorIn(css), null,
+    "the seed's component stylesheet hard-codes a colour — it will not move when the tokens do");
+});
+
+test("the page that teaches the system takes its starting point from the token", () => {
+  // The other half of the same finding: the design-system page painted a hard-coded hot
+  // ink over the token on load, so the ONE screen whose whole job is to show the system
+  // was the only screen not showing an extracted one.
+  const page = fs.readFileSync(path.join(SEED, "start-here", "prototypes", "set-up-your-design-system", "index.html"), "utf8");
+  assert.match(page, /var DEFAULT_INK = css\("--starter-mark"\)/);
+});
+
 test("a computed mark-ink is legible by construction, wherever the mark starts", () => {
   const sheet = "#fbfaf6";
   for (const mark of ["#cf4224", "#2f4bd8", "#3d7a4a", "#7b3fa0", "#c98a0e", "#ffee00", "#111111", "#f0f0f0"]) {
     const { tokens } = deriveTokens({ sheet, ink: "#1d1b24", mark });
     assert.ok(contrast(toHex(tokens["mark-ink"]), sheet) >= 4.5,
       `mark ${mark} computed a mark-ink that fails contrast — a picked colour may fail, a computed one may not`);
+    // And what is written ON the mark, which is the other half and the one that produces
+    // an illegible primary button when a product's hot ink is pale.
+    assert.ok(contrast(toHex(tokens["mark-on"]), toHex(mark)) >= 4.5,
+      `mark ${mark} computed a mark-on that fails contrast`);
   }
+});
+
+test("the grader prints the ratios it computed, passing ones included", () => {
+  const graded = validateCanon(seedAnswer());
+  const pairs = graded.ratios.map((r) => `${r.fg}/${r.bg}`);
+  for (const want of ["ink/sheet", "mark-ink/sheet", "mark-on/mark", "ink-2/sheet", "ink-3/sheet"]) {
+    assert.ok(pairs.includes(want), `no ratio reported for ${want} — "it computes the contrast ratios" has to be showable`);
+  }
+  assert.ok(graded.ratios.every((r) => typeof r.ratio === "number" && r.ratio >= 1));
+});
+
+test("a thin ink-3 is reported rather than passing in silence", () => {
+  const base = seedAnswer();
+  base.tokens["ink-3"] = "#8d998f"; // 2.91:1 on the seed's sheet — what a real product had
+  const graded = validateCanon(base);
+  assert.deepEqual(graded.errors, []);
+  assert.ok(graded.warnings.some((w) => /ink-3 on sheet/.test(w)), graded.warnings.join("\n"));
+});
+
+test("writing the x- into a var() name says what the real name is", () => {
+  const base = seedAnswer();
+  base.tokens["x-brand-navy"] = "#0b2545";
+  base.components = [{
+    name: "banner", type: "component", label: "Banner", description: "A strip.",
+    classes: ["s-banner"], css: ".s-banner { background: var(--starter-x-brand-navy); }",
+  }];
+  const graded = validateCanon(base);
+  assert.ok(graded.errors.some((e) => /emits WITHOUT the x-, so that one is --starter-brand-navy/.test(e)),
+    graded.errors.join("\n"));
 });
 
 test("computing fills every optional role from the four a product always shows you", () => {

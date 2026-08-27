@@ -12,6 +12,7 @@
   --starter-sheet:    #fbfaf6;   /* the sheet itself: cards, panels, surfaces */
   --starter-inset:    #f2f0e9;   /* pressed, quiet fills, table stripes */
   --starter-stage:    #201e28;   /* dark inset for media and terminals */
+  --starter-stage-on: #f4f1ea;   /* what is written on the stage */
 
   /* ── Ink ───────────────────────────────────────────────────────────── */
   --starter-ink:      #1d1b24;   /* every word that matters */
@@ -23,6 +24,7 @@
   --starter-mark:     #cf4224;   /* fills: primary buttons, step markers, pins */
   --starter-mark-ink: #aa361e;   /* the same ink, darkened until it passes as text */
   --starter-wash:     #f5e0d9;   /* its quietest form: highlights, chips */
+  --starter-mark-on:  #ffffff;   /* what is written ON the mark — a primary button's label */
 
   /* ── States ────────────────────────────────────────────────────────── */
   --starter-ok:       #2c7a51;

@@ -125,8 +125,13 @@
   var HOURS = 24 * 7;
   var DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
+  /* The first series wears the workspace's own hot ink, read from the token rather than
+     written down here — otherwise a workspace that changes its design system gets a
+     chart still drawn in the colour it used to have. The other two are this prototype's
+     own choice: a categorical chart palette is not something the design system names. */
+  var MARK = getComputedStyle(document.documentElement).getPropertyValue("--starter-mark").trim() || "#cf4224";
   var SERIES = [
-    { name: "Temperature", unit: "°C", colour: "#cf4224", dp: 1, data: [] },
+    { name: "Temperature", unit: "°C", colour: MARK, dp: 1, data: [] },
     { name: "Humidity", unit: "%", colour: "#2f6db5", dp: 0, data: [] },
     { name: "Light", unit: " lx", colour: "#b58200", dp: 0, data: [] }
   ];

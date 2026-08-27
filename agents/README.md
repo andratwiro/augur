@@ -23,6 +23,7 @@ Read them by trigger, not up front:
 | building a prototype folder | [prototype-contract.md](./prototype-contract.md) |
 | editing `space.json` | [space-json.md](./space-json.md) |
 | building or forking a design system (`skills/<x>-ui/`) | [ui-skill.md](./ui-skill.md) |
+| asked to copy a design system out of a live product | [canon-extract.md](./canon-extract.md) |
 | adding users / avatars / login questions | [identity.md](./identity.md) |
 | a board-shaped ask (brainstorm, compare, map a flow) or canvas work | [canvas.md](./canvas.md) — includes WHEN to suggest a canvas |
 
