@@ -42,7 +42,7 @@
   "publish-fork.mjs": "sha256:fbaa8ddcac244fab",
   "publish-units.mjs": "sha256:5dc770ed37332a65",
   "purge.mjs": "sha256:272239e7b2e381d2",
-  "state-inventory.mjs": "sha256:bcd1844590bfc64b",
+  "state-inventory.mjs": "sha256:72deab8a38a03cff",
   "sw.js": "sha256:9f7de50053876ae1",
   "tenant-cache.mjs": "sha256:6a7991286698f966",
   "tenant-context.mjs": "sha256:b35341ec6af2bc85",

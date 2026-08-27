@@ -74,7 +74,10 @@ function json(data, status) {
 // request is served at all (501), so an instance cannot quietly launch open. Provision
 // it on both sides — the realtime worker and the site — before pointing traffic here.
 
-const RT_SECRET_HEADER = "x-augur-rt";
+// EXPORTED so nothing spells it twice. `scripts/board-snapshot.mjs` has to send this header
+// when it reads a room through this worker's own URL instead of through a site's `/__rt`,
+// and a second declaration of a header name is the shape every drift in this pair has taken.
+export const RT_SECRET_HEADER = "x-augur-rt";
 function rtSecretOk(given, want) {
   given = String(given == null ? "" : given);
   if (given.length !== want.length) return false;

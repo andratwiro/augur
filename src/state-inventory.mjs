@@ -109,7 +109,7 @@ export const STATE_INVENTORY = Object.freeze([
   },
   {
     id: "board:", store: "kv", kind: "prefix", to: "workspace",
-    why: "A canvas board document, spelled `board:<path>` or `board:<workspace>:<path>` where the deployment serves its own rooms (src/board-key.mjs). Same table. NOTE this is a MIRROR: while the realtime worker is separate, the authoritative copy is that worker's own BoardRoom storage, and a DO's storage belongs to the script that created it — so boards do not travel by being migrated here.",
+    why: "A canvas board document, spelled `board:<path>` or `board:<workspace>:<path>` where the deployment serves its own rooms (src/board-key.mjs). Same table. NOTE this is a MIRROR: while the realtime worker is separate, the authoritative copy is that worker's own BoardRoom storage, and a DO's storage belongs to the script that created it — so a board carried by an export is carried as of the last mirror write, which lags the room and can lag it by a great deal more than the write cadence alone. What travels the whole board is `scripts/board-snapshot.mjs`, which reads the room over a WebSocket join and seeds the new one; run it per board AFTER a move, and take its lag report rather than a clock as the sign that a board is quiet enough to have been copied correctly.",
   },
   {
     id: "marks", store: "kv", kind: "key", to: "drop",
