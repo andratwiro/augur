@@ -31,7 +31,8 @@
  */
 import fs from "node:fs";
 import path from "node:path";
-import { pathToFileURL } from "node:url";
+import { spawnSync } from "node:child_process";
+import { pathToFileURL, fileURLToPath } from "node:url";
 
 const C = { dim: "\x1b[2m", warn: "\x1b[33m", bad: "\x1b[31m", ok: "\x1b[32m", off: "\x1b[0m" };
 const log = (m) => console.log(`\x1b[35m[canon]\x1b[0m ${m}`);
@@ -550,16 +551,48 @@ function cmdCheck() {
   if (errors.length) process.exit(1);
 }
 
+// `augur canon` is ONE surface over two scripts, because it is one job: the extractor
+// gets a design system INTO the workspace, and the verbs in this file keep it findable
+// and let it grow. Splitting them into two commands would put the two halves of that job
+// behind different words, which is the exact failure the naming scheme exists to prevent.
+//
+// The extractor lives in canon-extract.mjs and is SPAWNED rather than imported — the same
+// router shape cli.mjs uses, so `node scripts/canon-extract.mjs grade` keeps working and
+// its exit code is this command's exit code.
+//
+// ⚠️ ITS GRADE VERB IS `grade`, NOT `check`, AND THE SPLIT IS DELIBERATE. Both scripts
+// arrived with a `check` meaning different things — here, "do the directory names obey
+// the scheme"; there, "grade this design system's tokens". `check` stayed with the names
+// because that word is already load-bearing: agents/canon.md documents it, init.mjs bakes
+// it into the CANON.md every scaffolded space is born with, and test/canon-naming.test.mjs
+// asserts the seed copy has not drifted from the NOTE string here. `grade` is the
+// extractor's own word — its help says "Grade the answer" and its reporter takes `graded`.
+const EXTRACT_VERBS = ["start", "collect", "snippet", "grade", "apply"];
+
 // Only when this file IS the command. Imported (for NOTE), it must do nothing.
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   const sub = argv[0];
+  if (EXTRACT_VERBS.includes(sub)) {
+    const here = path.dirname(fileURLToPath(import.meta.url));
+    const r = spawnSync(process.execPath, [path.join(here, "canon-extract.mjs"), ...argv], { stdio: "inherit" });
+    process.exit(r.status === null ? 1 : r.status);
+  }
   const run = { list: cmdList, find: cmdFind, save: cmdSave, check: cmdCheck }[sub];
   if (!run) {
-    console.error("usage: augur canon <list|find|save|check> [options]");
+    console.error("usage: augur canon <list|find|save|check|start|collect|snippet|grade|apply> [options]");
+    console.error("");
+    console.error("  the canon you have — resolve a name, and grow the canon as a side effect of working");
     console.error("  augur canon find  <name>…                     resolve a canonical name to files");
     console.error("  augur canon list  [--tier <t>] [--json]       every canonical name and what it shows");
     console.error("  augur canon save  <path> [--as <name>] [--tier <t>] [--desc \"…\"] [--replace] [--dry-run]");
     console.error("  augur canon check                             names that will not be found the same way twice");
+    console.error("");
+    console.error("  the canon you do not have yet — copy it out of a product you have a login for");
+    console.error("  augur canon start <url>                       make the working folder and your agent's brief");
+    console.error("  augur canon collect <url>                     read a PUBLIC page into evidence");
+    console.error("  augur canon snippet                           the collector to paste into your own browser");
+    console.error("  augur canon grade [--space <workspace>]       grade the answer, or a live design system");
+    console.error("  augur canon apply [--space <workspace>]       write it into the design system");
     process.exit(sub ? 1 : 0);
   }
   run();

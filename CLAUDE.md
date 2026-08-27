@@ -405,6 +405,21 @@ no way for the thing being measured to assert its own result. See
 `augur mark [<path>] [--ttl <s>] [--clear]` (say what you are about to work on, read
 what everyone else is — a TTL'd note that refuses nothing; see
 [agents/working-marks.md](agents/working-marks.md)) ·
+`augur canon <list|find|save|check|start|collect|snippet|grade|apply>` — ONE surface over
+two scripts, because it is one job. `list|find|save|check` are the canon you HAVE:
+resolve a canonical name to files cold, and promote a working screen into the canon so it
+grows as a side effect of working ([agents/canon.md](agents/canon.md), `scripts/canon.mjs`).
+`start|collect|snippet|grade|apply` are the canon you do not have YET: copy it out of a
+live product you have a login for ([agents/canon-extract.md](agents/canon-extract.md),
+`scripts/canon-extract.mjs`, which the first script spawns). The evidence collector runs
+in the browser the person is already signed in to, and **the engine does none of the
+deciding**: the user's own agent maps evidence onto the roles in `src/canon/schema.mjs`,
+which are exactly the tokens the seed workspace is born with, so an extracted canon and a
+day-one one are one format. No inference dependency, held shut by
+`test/canon-no-inference.test.mjs`. ⚠️ The extractor's grade verb is `grade`, not `check` —
+both halves arrived with a `check` meaning different things, and `check` stayed with the
+NAMES because `agents/canon.md` documents it and `init.mjs` bakes it into the `CANON.md`
+every scaffolded space is born with. ·
 `augur export --out <dir> [--full]` / `augur restore <dir> [--state]`
 (store backup; `--full`/`--state` cover everything that is not published content) ·
 `augur freeze [--reason …] [--status]` / `augur thaw` (read-only while a workspace is

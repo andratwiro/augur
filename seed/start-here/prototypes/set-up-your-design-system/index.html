@@ -240,7 +240,11 @@
     return out;
   }
 
-  var DEFAULT_INK = "#cf4224";
+  /* The page's starting point is the TOKEN, never a value written down here. A workspace
+     whose design system was extracted from its own product has a hot ink of its own, and
+     a hard-coded default would paint the shipped one over it on load — the one screen
+     whose whole job is to show the system would be the only screen not showing it. */
+  var DEFAULT_INK = css("--starter-mark") || "#cf4224";
   var sheet = css("--starter-sheet") || "#fbfaf6";
 
   function applyInk(hex) {

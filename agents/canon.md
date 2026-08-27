@@ -24,6 +24,15 @@ nothing to regenerate and nothing that can be stale — the directory names ARE 
 That holds only while they obey the scheme below, which is what `augur canon check` is
 for.
 
+**If the workspace has no canon yet, this file is the second thing to read.** A team that
+would benefit from a canon usually already has one — their live product — and
+`augur canon <start|collect|snippet|grade|apply>` copies it out of there into this
+workspace's design system: see [canon-extract.md](canon-extract.md). Same command, same
+`canon` word, because it is the same job at a different stage; the scheme below is what
+the extracted result then gets named by. Note that the extractor's grading verb is
+`grade` rather than `check` — `check` is this file's verb, and it answers a different
+question (do the NAMES resolve, not do the TOKENS pass).
+
 ## Where the canon lives
 
 Four directories at the workspace root. Each is published and gets its own tab on the

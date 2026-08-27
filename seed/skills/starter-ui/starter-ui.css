@@ -13,7 +13,7 @@ body.s-page {
   background-image:
     repeating-linear-gradient(
       to bottom,
-      rgba(29, 27, 36, .030) 0 1px,
+      color-mix(in srgb, var(--starter-ink) 3%, transparent) 0 1px,
       transparent 1px 28px
     );
   font-family: var(--starter-font-body);
@@ -180,7 +180,7 @@ body.s-page {
   transition: background var(--starter-fast), border-color var(--starter-fast), color var(--starter-fast);
 }
 .s-btn:hover { border-color: var(--starter-ink-3); background: var(--starter-inset); }
-.s-btn--mark { background: var(--starter-mark); border-color: var(--starter-mark); color: #fff; }
+.s-btn--mark { background: var(--starter-mark); border-color: var(--starter-mark); color: var(--starter-mark-on); }
 .s-btn--mark:hover { background: var(--starter-mark-ink); border-color: var(--starter-mark-ink); }
 .s-btn--quiet { border-color: transparent; background: transparent; color: var(--starter-ink-2); }
 .s-btn--quiet:hover { background: var(--starter-inset); border-color: transparent; color: var(--starter-ink); }
@@ -222,7 +222,7 @@ body.s-page {
   flex: 1; min-width: 0;
   padding: .7rem .9rem;
   font: var(--starter-text-md)/1.5 var(--starter-font-display);
-  color: #f4f1ea;
+  color: var(--starter-stage-on);
   overflow-x: auto;
   white-space: pre;
 }
@@ -234,18 +234,18 @@ body.s-page {
   padding: 0 .9rem;
   font: 600 var(--starter-text-xs)/1 var(--starter-font-display);
   letter-spacing: .1em; text-transform: uppercase;
-  color: #f4f1ea;
-  background: rgba(255, 255, 255, .09);
-  border: 0; border-left: 1px solid rgba(255, 255, 255, .16);
+  color: var(--starter-stage-on);
+  background: color-mix(in srgb, var(--starter-stage-on) 9%, transparent);
+  border: 0; border-left: 1px solid color-mix(in srgb, var(--starter-stage-on) 16%, transparent);
   cursor: pointer;
   transition: background var(--starter-fast), color var(--starter-fast);
 }
-.s-cmd__btn:hover { background: var(--starter-mark); }
+.s-cmd__btn:hover { background: var(--starter-mark); color: var(--starter-mark-on); }
 .s-cmd__btn[data-copied] { background: var(--starter-ok); }
 .s-cmd--paste { border-color: var(--starter-rule); background: var(--starter-inset); }
 .s-cmd--paste .s-cmd__text { color: var(--starter-ink); }
 .s-cmd--paste .s-cmd__btn { color: var(--starter-ink-2); background: transparent; border-left-color: var(--starter-rule); }
-.s-cmd--paste .s-cmd__btn:hover { background: var(--starter-mark); color: #fff; }
+.s-cmd--paste .s-cmd__btn:hover { background: var(--starter-mark); color: var(--starter-mark-on); }
 
 /* ── Steps ─────────────────────────────────────────────────────────────── */
 
@@ -256,7 +256,7 @@ body.s-page {
   width: 2rem; height: 2rem;
   display: grid; place-items: center;
   font: 600 var(--starter-text-sm)/1 var(--starter-font-display);
-  color: #fff; background: var(--starter-mark);
+  color: var(--starter-mark-on); background: var(--starter-mark);
   border-radius: 50%;
 }
 .s-step__head { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--starter-s3); margin-bottom: var(--starter-s3); }
@@ -285,13 +285,13 @@ body.s-page {
   background: var(--starter-stage);
   border-radius: var(--starter-radius-2);
   overflow: hidden;
-  color: #f4f1ea;
+  color: var(--starter-stage-on);
 }
 .s-stage__caption {
   position: absolute; left: var(--starter-s4); bottom: var(--starter-s3);
   font: var(--starter-text-xs)/1.5 var(--starter-font-display);
   letter-spacing: .12em; text-transform: uppercase;
-  color: rgba(244, 241, 234, .6);
+  color: color-mix(in srgb, var(--starter-stage-on) 60%, transparent);
 }
 
 /* ── Table ─────────────────────────────────────────────────────────────── */
