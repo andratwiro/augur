@@ -47,6 +47,7 @@
 
 import { PLANS, DEFAULT_PLAN, QUOTA_FIELDS, quotasForPlan } from "./tenant-quotas.mjs";
 import { purgeThreads, personIdFor, idCollisions } from "./purge.mjs";
+import { deleteConfirmation, backupRetentionFromEnv } from "./delete-confirmation.mjs";
 
 export const TENANT_SCHEMA_VERSION = 1;
 
@@ -327,10 +328,15 @@ export function setWorkspacePlan(sql, plan, plans = PLANS) {
  *
  * ⚠️ THIS NUMBER IS PUBLISHED, so it is not a tuning knob. The hosted lifecycle page tells
  * customers "gone from the service in 30 days, gone from the backups within 70", the
- * delete-confirmation screen has to say the same thing (`F-tenant-delete-ux`), and the
- * backup rotation is what makes the second number true (`D-2-nightly-backup-worm`, 30 kept
- * plus 40). Change this and all three change the same day, or the platform is promising
+ * delete-confirmation screen says the same thing (`F-tenant-delete-ux`), and the backup
+ * rotation is what makes the second number true (`D-2-nightly-backup-worm`, 30 kept plus
+ * 40). Change this and all three change the same day, or the platform is promising
  * something it does not do.
+ *
+ * The screen is the one of the three that CANNOT fall behind: `src/delete-confirmation.mjs`
+ * derives every number it shows from this constant, and `GET /__control/delete` serves that
+ * to whatever renders the confirmation, so no surface holds a second copy of "30". The page
+ * and the rotation are still hand-kept, and still have to move on the same day.
  */
 export const DELETE_GRACE_MS = 30 * 24 * 60 * 60 * 1000;
 
@@ -1531,6 +1537,38 @@ export class TenantStore {
         return Response.json({ error: "tenant-verb-not-allowed", verb }, { status: 404 });
       }
       if (verb === "status") return Response.json(this.status());
+      // ── The confirmation, as a READ on the verb that performs it ──────────────────
+      //
+      // `F-tenant-delete-ux`. Delete is the one verb no rollback reaches, so what a person
+      // is shown before they confirm is part of the verb rather than a screen beside it.
+      // Serving it from HERE is what stops the copy drifting: the two surfaces that show a
+      // confirmation — a workspace's own settings and an operator console in the control
+      // plane — are in different repos and cannot import this module, so a rendered-in-both
+      // design means the retention window is typed twice and corrected once. This is the
+      // same seam `CONTROL_VERBS` and the control plane's `TENANT_RPC` sit on, and the same
+      // answer: one side owns it and the other reads it.
+      //
+      // ⚠️ THE DATE ON THE SCREEN AND THE DATE THE DELETE WRITES ARE ONE ARITHMETIC on one
+      // instant, which is why `at` rides the query string exactly as it rides the POST body.
+      // A screen that computed its own clock would agree with the delete every day except
+      // the one where the reading straddled midnight.
+      //
+      // GET, and no init() — for `status()`'s reason. Somebody typing a workspace name to
+      // see what deleting it would cost must not bring one into being by asking.
+      if (verb === "delete" && request.method === "GET") {
+        const s = this.status();
+        if (!s.provisioned) {
+          return Response.json({ ok: false, error: "not-provisioned" }, { status: 404 });
+        }
+        const at = Date.parse(url.searchParams.get("at") || "");
+        return Response.json(deleteConfirmation({
+          workspaceId: this.workspaceId() || "",
+          graceMs: DELETE_GRACE_MS,
+          at: Number.isFinite(at) ? at : Date.now(),
+          backupRetentionMs: backupRetentionFromEnv(this.env),
+          status: s,
+        }));
+      }
       if (request.method !== "POST") {
         return Response.json({ error: "method-not-allowed" }, { status: 405 });
       }

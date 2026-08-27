@@ -66,7 +66,17 @@ provisioned would leave a workspace nobody knows exists. And **a refusal is a 4x
 an `ok: false` inside a 200 — the control plane logs a verb's verdict from the status line,
 so a refusal wearing a 200 is a suspension written into the audit log as having happened.
 `delete` is a TOMBSTONE (`DELETE_GRACE_MS`, the 30 days the hosted lifecycle page promises
-customers) and erases nothing; `destroy()` is the separate primitive that does. `rotate`
+customers) and erases nothing; `destroy()` is the separate primitive that does. It is also
+the one verb with a READ on it: `GET /__control/delete` is the CONFIRMATION a person is
+shown first — the export-before-you-confirm step, what the workspace holds as counts, and
+the retention window, every number of it DERIVED from `DELETE_GRACE_MS` by
+`src/delete-confirmation.mjs` rather than typed. That derivation is the whole item
+(`F-tenant-delete-ux`): a confirmation screen is the last surface anyone re-checks when the
+constant moves, and the two things that render one — a workspace's settings and an operator
+console in the other repo — cannot import this module, so the copy crosses the wire instead
+of being written twice. The backup half of the promise is NOT invented: the deployment
+declares its rotation in `BACKUP_RETENTION_DAYS` and, with none declared, the copy says a
+backup copy outlives the erasure without naming a period. `rotate`
 really revokes publish tokens and ⏳ does NOT yet end sessions, because `userToken()` still
 HMACs on the Worker-wide `SESSION_SECRET` rather than the workspace's own signing key —
 `test/tenant-verbs.test.mjs` pins that gap so the day the read swaps over, a failing test
@@ -441,6 +451,12 @@ invite/remove; the shell's `roster-update.yml` — see `templates/shell/` — co
 person to `identity.json`, so the file stays the one durable roster record). Unset →
 `/__delete` answers 501 and reports deletion unconfigured; invites still work but
 answer `fileSync: "unconfigured"` and the person lives in the KV overlay only.
+`BACKUP_RETENTION_DAYS` — how long this deployment's off-site backup copies live after the
+day they are taken, in whole days. Read ONLY by the delete confirmation, which adds the
+grace to it to say when the last copy anywhere expires. Unset (and anything that is not a
+non-negative number) means "not declared", and the confirmation then states that a backup
+copy outlives the erasure without naming a period — never a default, because a default here
+is a retention promise nothing is running.
 `MAIL_PROVIDER` + `MAIL_FROM` + `MAIL_API_KEY` (+ `MAIL_REGION`/`MAIL_PROJECT_ID`, or
 `MAIL_API_URL`) — the mail transport (`src/mail.mjs`, see Email below). The local
 deploy scripts read `.env.deploy` for the rest (`PAGES_PROJECT`, `REALTIME_CONFIG`, the
