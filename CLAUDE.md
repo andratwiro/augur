@@ -386,7 +386,26 @@ being moved — writes refused with a 503 that says why, reads and sign-in unaff
 `thaw` prints the duration a migration has to publish) ·
 `augur migrate --from <origin> --to <origin> [--freeze]` (freeze → export → restore →
 VERIFY the far side family by family; safe to re-run after any failure, and it touches
-neither DNS nor the thaw, which both need a person). See `docs/migration-freeze.md`.
+neither DNS nor the thaw, which both need a person). See `docs/migration-freeze.md` ·
+`augur clone --space <id>` / `augur pull` (a live publish back into an editable tree; a
+clone is the SOURCE, `export` is the backup).
+
+**Leaving is free at two granularities, and the second one is the one usage asks for.**
+`migrate` moves a whole workspace between instances; `augur clone --prototype <name>
+[--from <space-dir> | --space <id>]` takes ONE artifact out and leaves the engine behind
+entirely — the prototype re-rooted so its index is a domain's index, the design-system
+folders it references beside it, and nothing else. The peel is the same
+`stripBuildDecorations` the adopt path uses, aimed at the standalone folder instead of at
+a repo. **The claim is verified, not asserted**: every file about to be written is
+scanned, and an injected marker, an engine `/__…` route, a page global or an absolute
+link back to the instance FAILS the command rather than shipping a copy that phones home
+from somebody else's domain (`scripts/lib/graduate.mjs`; exit `1` engine trace, `3`
+dangling reference). Both sources produce byte-identical output — a workspace with a repo
+and a hosted one that never had one get the same folder, which
+`test/graduate.test.mjs` pins against a real build. WHEN to use it is the harder half and
+lives in `docs/graduation.md`: the moment a tool has a stable audience that is not the
+team. The alternative being declined is a research workspace quietly becoming the
+production host for somebody's customer-facing tool.
 
 Env reference: `GV_SPACES_ROOT` (spaces location) · `GV_ENGINE_ONLY` (=1: chrome
 only, no space discovery — what a shell's CI runs) · `GV_ONLY_SPACE` (build one
