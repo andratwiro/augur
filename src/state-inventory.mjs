@@ -109,7 +109,7 @@ export const STATE_INVENTORY = Object.freeze([
   },
   {
     id: "board:", store: "kv", kind: "prefix", to: "workspace",
-    why: "A canvas board document. Same table. NOTE this is a MIRROR: while the realtime worker is separate, the authoritative copy is that worker's own BoardRoom storage, and a DO's storage belongs to the script that created it — so boards do not travel by being migrated here.",
+    why: "A canvas board document, spelled `board:<path>` or `board:<workspace>:<path>` where the deployment serves its own rooms (src/board-key.mjs). Same table. NOTE this is a MIRROR: while the realtime worker is separate, the authoritative copy is that worker's own BoardRoom storage, and a DO's storage belongs to the script that created it — so boards do not travel by being migrated here.",
   },
   {
     id: "marks", store: "kv", kind: "key", to: "drop",

@@ -101,6 +101,9 @@ import { composePublish } from "./publish-compose.mjs";
 // moved — plus the rule that keeps a fork's lineage and owner alive across every later
 // publish. Both are pure, and both are the CLI's too if it ever needs them.
 import { composeFork, carriedLineage, assertedLineage } from "./publish-fork.mjs";
+// The board document's KV key, shared VERBATIM with the room that mirrors into it
+// (src/board-room.mjs). Two writers, one spelling — see the module header.
+import { BOARD_PREFIX, boardKvKey, RT_WORKSPACE_HEADER } from "./board-key.mjs";
 
 const COOKIE = "gv_auth";
 const MAX_AGE = 60 * 60 * 24 * 7; // 7 days
@@ -5684,7 +5687,17 @@ const OVERLAY_KV_KEYS = Object.freeze({
   // whole — a page's comment threads, a board's nodes — which is why `mutate` below exists
   // and why the row carries a revision.
   comments: Object.freeze({ doc: "c", layout: "keyed" }),
-  boards: Object.freeze({ doc: "board", layout: "keyed" }),
+  // `workspaceScoped` — the key may carry the workspace it belongs to, as a segment
+  // between the document name and the key (`board:<workspace>:<path>`). Boards are the one
+  // family with it, because boards are the one family with a SECOND writer outside this
+  // module: the room mirrors the same document from src/board-room.mjs. Both build the key
+  // through one function (src/board-key.mjs), and test/board-key.test.mjs asserts the two
+  // produce the same string, so the spelling here cannot drift away from the mirror.
+  //
+  // The segment is opt-in per REQUEST, not per family — see `kvWorkspaceSegment`. A
+  // deployment that does not serve its own rooms passes nothing and writes the key it has
+  // always written.
+  boards: Object.freeze({ doc: "board", layout: "keyed", workspaceScoped: true }),
   // Canvas image METADATA — the bytes are in R2. See assetApi.
   assets: Object.freeze({ doc: "basset-meta", layout: "keyed" }),
   // WORKING MARKS — "something is editing here right now". One row per path, and the row
@@ -5706,12 +5719,18 @@ const OVERLAY_CAS_ATTEMPTS = 5;
  * The KV key a family+scope+key lives under, exactly as every live instance already
  * spells it. A `map` family's scope suffixes the document (`pins:<email>`); a `keyed`
  * family's key does (`pt:view`).
+ *
+ * `workspace` is the fourth argument and it DEFAULTS TO NONE, which is the whole of the
+ * straddle: every existing caller passes three arguments and gets back the string it has
+ * always got back. Only a `workspaceScoped` family reads it at all, and only when it is
+ * non-empty — see the boards entry above and `kvWorkspaceSegment` below.
  */
-function overlayKvKey(family, scope, k) {
+function overlayKvKey(family, scope, k, workspace = "") {
   const spec = OVERLAY_KV_KEYS[family];
   if (!spec) throw new Error(`unknown overlay family: ${family}`);
   if (spec.layout === "keyed") {
     if (!k) throw new Error(`${family} is stored one document per key; a key is required`);
+    if (spec.workspaceScoped && workspace) return `${spec.doc}:${workspace}:${k}`;
     return `${spec.doc}:${k}`;
   }
   return scope ? `${spec.doc}:${scope}` : spec.doc;
@@ -5719,15 +5738,63 @@ function overlayKvKey(family, scope, k) {
 
 const overlayLayout = (family) => (OVERLAY_KV_KEYS[family] || {}).layout;
 
-function kvOverlay(kv) {
+/**
+ * Which workspace segment this request's KV keys carry, and whether an UNSCOPED key in
+ * this namespace can be read as this workspace's.
+ *
+ * ⚠️ THE SEGMENT IS TIED TO THE ROOMS BINDING, AND NOT TO THE RESOLVED WORKSPACE ID.
+ * That looks like the wrong discriminator until you count the writers. A board document
+ * has two: this module's `/__board` rail, and the room's write-through mirror. They are
+ * ONE script only on a deployment that serves its own rooms. Everywhere else the mirror
+ * lives in a separate `augur-realtime-*` worker that has never heard of a workspace, and
+ * scoping only this half of the pair would leave `/__board` reading a key the room never
+ * writes — the board would freeze at the moment of the deploy while the room kept editing
+ * a document nothing served. So the key moves on exactly the deploy that brings the room
+ * in, which is what the plan item means by ONE CUTOVER.
+ *
+ * `legacyIsOurs` is the second half and it guards a different mistake. An unscoped key
+ * predates the segment, so it belongs to whichever workspace this deployment served at the
+ * time — a question with an answer only where a deployment serves ONE. Where the workspace
+ * comes from the Host header, an unscoped key is unattributable, and reading it would hand
+ * one workspace a board that may be another's. There, a miss is a miss.
+ */
+function kvWorkspaceSegment(env, tctx) {
+  const hostResolved = !!(env && typeof env.TENANT_HOST_SUFFIX === "string" && env.TENANT_HOST_SUFFIX.trim());
+  return {
+    workspace: env && env.ROOMS ? ((tctx && tctx.tenantId) || DEFAULT_TENANT_ID) : "",
+    legacyIsOurs: !hostResolved,
+  };
+}
+
+function kvOverlay(kv, { workspace = "", legacyIsOurs = true } = {}) {
+  // The unscoped key this family used before it gained a workspace segment, or null when
+  // there is nothing to fall back TO (an unscoped deployment, a family that never scopes,
+  // or a deployment that cannot attribute an unscoped key — see kvWorkspaceSegment).
+  const legacyKey = (family, scope, k) => {
+    if (!workspace || !legacyIsOurs) return null;
+    if (!(OVERLAY_KV_KEYS[family] || {}).workspaceScoped) return null;
+    return overlayKvKey(family, scope, k, "");
+  };
   const readMapDoc = async (family, scope) => {
     const raw = await kv.get(overlayKvKey(family, scope));
     return raw ? JSON.parse(raw) : {};
   };
   const readOne = async (family, scope, k) => {
     if (overlayLayout(family) === "keyed") {
-      const raw = await kv.get(overlayKvKey(family, scope, k));
-      return raw === null || raw === undefined ? null : JSON.parse(raw);
+      const key = overlayKvKey(family, scope, k, workspace);
+      const raw = await kv.get(key);
+      if (raw !== null && raw !== undefined) return JSON.parse(raw);
+      // READ-THROUGH. A document written before this family carried a workspace segment is
+      // still this workspace's document; it is served, and written back under the scoped
+      // key so the fallback is paid once per board rather than once per read.
+      // `scripts/migrate-board-keys.mjs` does the same thing in one pass — this is what
+      // makes the batch an optimisation rather than a prerequisite.
+      const old = legacyKey(family, scope, k);
+      if (!old) return null;
+      const raw2 = await kv.get(old);
+      if (raw2 === null || raw2 === undefined) return null;
+      await kv.put(key, raw2);
+      return JSON.parse(raw2);
     }
     const map = await readMapDoc(family, scope);
     return Object.prototype.hasOwnProperty.call(map, k) ? map[k] : null;
@@ -5738,18 +5805,38 @@ function kvOverlay(kv) {
     // otherwise avoids. Two callers need it — the review export and the purge sweep — and
     // both were hand-rolling this cursor loop; on the workspace store it is one SELECT.
     const spec = OVERLAY_KV_KEYS[family];
-    const prefix = `${spec.doc}:`;
+    const scoped = spec.workspaceScoped && workspace ? `${spec.doc}:${workspace}:` : `${spec.doc}:`;
     const out = {};
-    let cursor;
-    do {
-      const page = await kv.list({ prefix, cursor });
-      for (const entry of page.keys) {
-        const raw = await kv.get(entry.name);
-        if (raw === null || raw === undefined) continue;
-        try { out[entry.name.slice(prefix.length)] = JSON.parse(raw); } catch (e) { /* skip a corrupt document */ }
-      }
-      cursor = page.list_complete ? null : page.cursor;
-    } while (cursor);
+    const sweep = async (prefix, skipScoped) => {
+      let cursor;
+      do {
+        const page = await kv.list({ prefix, cursor });
+        for (const entry of page.keys) {
+          // The legacy sweep runs over a prefix the scoped keys also match, so it has to
+          // step over them; the scoped answer already holds those and is the newer one.
+          if (skipScoped && entry.name.startsWith(scoped)) continue;
+          const k = entry.name.slice(prefix.length);
+          if (Object.prototype.hasOwnProperty.call(out, k)) continue;
+          const raw = await kv.get(entry.name);
+          if (raw === null || raw === undefined) continue;
+          try { out[k] = JSON.parse(raw); } catch (e) { /* skip a corrupt document */ }
+        }
+        cursor = page.list_complete ? null : page.cursor;
+      } while (cursor);
+    };
+    await sweep(scoped, false);
+    // Boards that have not been through the read-through or the batch script yet are still
+    // this workspace's boards, and the two callers of this — the state export and the
+    // canvas-image garbage collection — are both WRONG if they miss one. The GC reads
+    // image references OFF the boards, so a board it cannot see is a set of images it
+    // deletes while somebody is looking at them.
+    //
+    // ⚠️ THE SWEEP CANNOT TELL A LEGACY KEY FROM A NEIGHBOUR'S SCOPED ONE — `board:/x/` and
+    // `board:other:/x/` differ by a segment whose whole purpose is to be added later. It
+    // does not have to: `legacyIsOurs` says this namespace holds ONE workspace's rows, so
+    // there is no neighbour in it. Widening that flag without changing this is how one
+    // workspace's export grows another's boards.
+    if (legacyIsOurs && spec.workspaceScoped && workspace) await sweep(`${spec.doc}:`, true);
     return out;
   };
   return {
@@ -5774,9 +5861,16 @@ function kvOverlay(kv) {
     // object, like every other new column in this phase.
     async set(family, scope, k, v, _owner) {
       if (overlayLayout(family) === "keyed") {
-        const key = overlayKvKey(family, scope, k);
-        if (v === null || v === undefined) await kv.delete(key);
-        else await kv.put(key, JSON.stringify(v));
+        const key = overlayKvKey(family, scope, k, workspace);
+        if (v === null || v === undefined) {
+          await kv.delete(key);
+          // A delete has to reach the legacy key too, or a board deleted after the segment
+          // arrived comes back at the next read-through. Nothing else about the fallback is
+          // destructive; this one has to be, and it deletes only the key THIS workspace
+          // would have served.
+          const old = legacyKey(family, scope, k);
+          if (old) await kv.delete(old);
+        } else await kv.put(key, JSON.stringify(v));
         return v === null || v === undefined ? null : v;
       }
       const map = await readMapDoc(family, scope);
@@ -5801,7 +5895,7 @@ function kvOverlay(kv) {
         // deleting what the document does not mention would make an incomplete backup
         // destructive rather than merely incomplete.
         for (const [k, v] of Object.entries(map || {})) {
-          await kv.put(overlayKvKey(family, scope, k), JSON.stringify(v));
+          await kv.put(overlayKvKey(family, scope, k, workspace), JSON.stringify(v));
         }
         return map || {};
       }
@@ -5868,7 +5962,10 @@ function overlayFor(env, tctx) {
   const stub = tenantStub(env, tctx && tctx.tenantId);
   if (stub) return doOverlay(stub, tctx.tenantId);
   const kv = kvFor(env);
-  return kv ? kvOverlay(kv) : null;
+  // The workspace object needs none of this — a row there belongs to the object that holds
+  // it, so there is no key to scope. It is the KV backing that has one flat namespace, and
+  // `kvWorkspaceSegment` is where the decision to use it lives.
+  return kv ? kvOverlay(kv, kvWorkspaceSegment(env, tctx)) : null;
 }
 
 // ---- Export and restore of everything that is NOT published content ---------
@@ -7677,7 +7774,11 @@ async function virtualCanvas(tctx, request, env, url) {
 // use, so it isolates per-space for free. The client owns the whole document, so we store
 // exactly what it POSTs (authoritative full-state write, like pins) — no server-side merge
 // that could race under KV eventual consistency. GET returns { doc } (null if never saved).
-const BOARD_PREFIX = "board:";
+// The key is NOT spelled here. `BOARD_PREFIX` is imported from src/board-key.mjs, which
+// src/board-room.mjs imports too, and `OVERLAY_KV_KEYS.boards` above derives its document
+// name from that same constant — so the rail and the room's mirror cannot name two
+// different documents. There used to be a third declaration on this line, exported for
+// tests and read by nothing, which is the state a drift starts from.
 const BOARD_MAX_BYTES = 20 * 1024 * 1024; // under KV's 25MB per-value ceiling (inline images)
 
 async function boardApi(tctx, request, url, env, me) {
@@ -7892,25 +7993,57 @@ async function assetApi(tctx, request, url, env) {
   return jsonResponse({ error: "method-not-allowed" }, 405);
 }
 
-// ---- Canvas multiplayer proxy (/__rt → the instance's realtime worker) ------
-// The BoardRoom Durable Objects live in a SEPARATE worker (Pages can't define DO
-// classes), deployed from realtime/ — one PER INSTANCE, each with its own name and
-// its own board KV binding, or rooms (keyed by board path) and board docs would be
-// shared across instances. Proxying keeps the client same-origin (no hardcoded
-// workers.dev URL in canvas.js, works offline too); fetch() with the Upgrade header
-// intact returns the 101 + socket, passed through. Injected at build from the deploy
-// config's `realtimeOrigin`; without one, boards run solo (the client's socket-down
-// fallback: it persists via /__board to this instance's own KV).
+// ---- Canvas multiplayer (/__rt) ---------------------------------------------
 //
-// The origin is `tctx.RT_ORIGIN` — the CALLING workspace's, read per request. Rooms are
-// keyed by board path inside the realtime worker, so a shared module binding would have
-// let one workspace's board join a neighbour's room under the same path, carrying this
-// worker's shared secret with it.
+// TWO PATHS, CHOSEN BY WHETHER THIS DEPLOYMENT BINDS `ROOMS`, and the straddle is the
+// same one deploy.yml already carries for the two front doors: a deployment moves on its
+// own schedule and rollback is removing a binding.
+//
+//   OWN ROOMS (`env.ROOMS` bound) — the BoardRoom Durable Objects are in THIS worker's
+//   module graph (src/entry.js exports the class), so the room is reached directly. No
+//   second worker, no second public URL, and no shared secret to protect one.
+//
+//   PROXY (no binding) — what every deployment does today. The rooms live in a SEPARATE
+//   worker (Pages cannot define a DO class), deployed from realtime/, one per instance.
+//   Proxying keeps the client same-origin (no hardcoded workers.dev URL in canvas.js,
+//   works offline too); fetch() with the Upgrade header intact returns the 101 + socket.
+//   The origin is `tctx.RT_ORIGIN` — the CALLING workspace's, read per request, injected
+//   at build from the deploy config's `realtimeOrigin`. Without one, boards run solo (the
+//   client's socket-down fallback: it persists via /__board to this instance's own KV).
+//
+// ⚠️ THE ROOM'S NAME IS COMPUTED HERE AND NOWHERE ELSE. `idFromName` hashes whatever
+// string it is handed, so that string IS the isolation boundary. The proxy path hands the
+// realtime worker a `?path=` and that worker names the room after it — a value taken
+// entirely from the query string, with nothing authenticating it, which is exactly why the
+// standalone worker needs a shared secret and a seal check in front of it. On the binding
+// path the name starts with the workspace `resolveTenant()` already resolved for this
+// request, so no query string can steer it: two workspaces with a board at the same path
+// are two rooms, structurally, and the computation is incapable of taking a workspace from
+// the client.
+function roomName(tctx, path) {
+  return workspaceOf(tctx) + ":" + path;
+}
+const workspaceOf = (tctx) => (tctx && tctx.tenantId) || DEFAULT_TENANT_ID;
+
 function rtProxy(tctx, request, url, env) {
   // Sandbox seal (offline mode without deploy creds): local KV alone is not a sandbox
   // if the canvas still joins the shared rooms — board ops would half-escape while
   // solo saves diverge locally. The flag beats a configured origin on purpose.
   if (env && env.GV_RT_DISABLE) return jsonResponse({ error: "realtime-disabled" }, 501);
+  if (env && env.ROOMS) {
+    if (request.headers.get("Upgrade") !== "websocket") return jsonResponse({ error: "expected-websocket" }, 426);
+    // The same clamp /__board applies, so the room the socket joins and the document the
+    // rail reads are named from one string.
+    const path = clamp(url.searchParams.get("path"), 600);
+    if (!path) return jsonResponse({ error: "bad-input" }, 400);
+    // Re-wrap so the workspace can be stamped on; the Upgrade header and the socket
+    // handling ride along, exactly as they do on the proxy path below. `set` OVERWRITES,
+    // which is what makes the header the worker's answer and not the caller's — a client
+    // may send this name and it is discarded.
+    const req = new Request(url.toString(), request);
+    req.headers.set(RT_WORKSPACE_HEADER, workspaceOf(tctx));
+    return env.ROOMS.get(env.ROOMS.idFromName(roomName(tctx, path))).fetch(req);
+  }
   if (!tctx.RT_ORIGIN) return jsonResponse({ error: "realtime-not-configured" }, 501);
   if (request.headers.get("Upgrade") !== "websocket") return jsonResponse({ error: "expected-websocket" }, 426);
   // Re-wrap so a header can be added; the Upgrade header and the socket handling ride
@@ -9206,7 +9339,8 @@ export const __testables = Object.freeze({
   isPrefixBacked, backedPublicPrefixes,
   composeFork, carriedLineage, assertedLineage, manifestCeiling, bytesReferencedOf,
   isPublicPath, isTrackPath, isRestrictedPath, versionFor, brandMark,
-  boardApi, canvasesApi, virtualCanvas, rtProxy, CANVASES_KEY, BOARD_PREFIX, BOARD_MAX_BYTES,
+  boardApi, canvasesApi, virtualCanvas, rtProxy, roomName, kvWorkspaceSegment,
+  CANVASES_KEY, BOARD_PREFIX, BOARD_MAX_BYTES,
   assetApi, ASSET_PREFIX, ASSET_R2_PREFIX, ASSET_MAX_BYTES, assetGc, ASSET_GC_GRACE_MS,
   composeChrome, renderAppChrome, renderSpaceContextScript, __setChromeTestState,
   loadConfig, loadTenantContext, __setConfigTestState, __usersNow, pitiApi,

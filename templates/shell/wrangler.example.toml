@@ -86,6 +86,26 @@ bucket_name = "<your-r2-bucket>"
 # migrate on first touch from the KV mirror, which lags by up to 45 seconds — so cut over
 # when boards are quiet, not mid-session.
 #
+# ⚠️ THE BINDING ALSO MOVES THE BOARD KEY, and that is one cutover, not two. With rooms
+# bound, `/__rt` names each room `<workspace>:<path>` and the board document is written to
+# `board:<workspace>:<path>`; without it, both keep the unscoped spelling they have always
+# had. The two ride together because the rail and the room's mirror are one script only
+# here — scoping one of them while the other is in a separate worker would leave the rail
+# reading a key nothing writes. A board written before the cutover is still found: both
+# readers fall back to the unscoped key, serve it, and write it back scoped.
+#
+# So the cutover, in order:
+#   1. deploy with the blocks below uncommented (the worker now serves its own rooms)
+#   2. CLOUDFLARE_API_TOKEN=… CLOUDFLARE_ACCOUNT_ID=… AUGUR_KV_NS=… \
+#        node engine/scripts/migrate-board-keys.mjs --workspace <id>
+#      — a DRY RUN, and it has to report `differing 0` before anything else happens
+#   3. the same command with --apply
+#   4. stop the standalone worker only after the boards look right
+# `<id>` is the `tenantId` the build stamped into __config/instance.json, which is the
+# deploy config's `tenantId` if it sets one and otherwise EMPTY — an empty one resolves to
+# the literal `default`, and that is what to pass. Guessing it wrong is silent: the site
+# keeps working on the read-through while a second, stale copy of every board accumulates.
+#
 # [[durable_objects.bindings]]
 # name = "ROOMS"
 # class_name = "BoardRoom"

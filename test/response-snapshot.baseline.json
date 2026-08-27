@@ -101,6 +101,28 @@
     },
     "bodyHash": "6e287a82412567136f9216cff630af24e10e7fb142dee19b89af365c909d15d2"
   },
+  "board-open": {
+    "status": 200,
+    "headers": {
+      "cache-control": "no-store",
+      "content-type": "application/json; charset=utf-8"
+    },
+    "bodyHash": "d24458485cc82ac837775449177044ac58838e51d2de575b34dd3e6fb176de7f"
+  },
+  "board-open-unsaved": {
+    "status": 200,
+    "headers": {
+      "cache-control": "no-store",
+      "content-type": "application/json; charset=utf-8"
+    },
+    "bodyHash": "48fd4ae1aba13fd7966814b382fe2f7e97a590175237318ca31ac1111f19169a"
+  },
+  "board-kv-after": {
+    "keys": [
+      "board:/prototypes/garden/"
+    ],
+    "doc": "{\"name\":\"Garden board\",\"nodes\":[{\"id\":\"n1\",\"t\":\"note\",\"x\":40,\"y\":40,\"w\":200,\"h\":120,\"text\":\"planted\",\"v\":1,\"vn\":7}],\"tombs\":{},\"clock\":3}"
+  },
   "cold-isolate-fail-closed": {
     "status": 503,
     "headers": {

@@ -167,8 +167,24 @@ function assetsStub(tree, { failConfig = false, absentConfig = false } = {}) {
   };
 }
 
+// A canvas board, in KV, under the key every live instance writes today. The corpus opens
+// it, so the board rail is inside the byte-diff rather than one of the surfaces the
+// harness's own status note names as blind.
+//
+// ⚠️ THE KEY IS SPELLED OUT HERE, not imported. `A-room-name-derivation` gives this key a
+// workspace segment on the deploy that moves the canvas rooms into the engine worker, and
+// the whole claim of that change is that a deployment which has NOT moved them writes
+// exactly this string. A literal is what makes the claim falsifiable: import the builder
+// and the fixture moves with the code it is supposed to be pinning.
+const BOARD_KEY = "board:/prototypes/garden/";
+const BOARD_DOC = {
+  name: "Garden board",
+  nodes: [{ id: "n1", t: "note", x: 40, y: 40, w: 200, h: 120, text: "planted", v: 1, vn: 7 }],
+  tombs: {}, clock: 3,
+};
+
 const baseEnv = (opts = {}) => ({
-  COMMENTS: memKV(),
+  COMMENTS: memKV({ [BOARD_KEY]: JSON.stringify(BOARD_DOC) }),
   ASSETS: assetsStub(TREE, opts),
   SESSION_SECRET,
 });
@@ -247,8 +263,21 @@ async function collectWarm() {
     ["review-overlay-asset", { path: "/__review/comments.js" }],           // /__review/* public overlay asset
     ["version-probe", { path: "/__version?path=/prototypes/garden/" }],    // deterministic versionFor token
     ["me-signed-out", { path: "/__me" }],                                  // profile chip JSON, signed out
+    // The board rail, over a document seeded under the legacy key. Public by design (the
+    // board is the credential), so it is recorded signed out — which is also the request a
+    // stranger with a share link makes. A change to how the key is spelled turns this into
+    // `{doc:null}` and moves the body hash.
+    ["board-open", { path: "/__board?path=%2Fprototypes%2Fgarden%2F" }],
+    ["board-open-unsaved", { path: "/__board?path=%2Fprototypes%2Fnothing%2F" }], // the never-saved answer
   ];
   for (const [name, opts] of cases) snap[name] = await record(worker.fetch, env, ctx, opts);
+  // The corpus must not have MOVED the board it read. A GET is a read, and the one thing
+  // `A-room-name-derivation` adds to this path — a write-back under a scoped key — must not
+  // fire on a deployment that binds no rooms.
+  snap["board-kv-after"] = {
+    keys: [...env.COMMENTS.store.keys()].sort(),
+    doc: env.COMMENTS.store.get(BOARD_KEY),
+  };
   return snap;
 }
 

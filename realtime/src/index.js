@@ -101,6 +101,15 @@ export default {
     if (request.headers.get("Upgrade") !== "websocket") return json({ error: "expected-websocket" }, 426);
     const path = (url.searchParams.get("path") || "").slice(0, 600);
     if (!path) return json({ error: "bad-input" }, 400);
+    // ⚠️ THE ROOM NAME STAYS THE BARE PATH HERE, and that is not an oversight this file is
+    // waiting to have corrected. A different name is a different Durable Object, and a
+    // Durable Object's storage belongs to the script that created it — so renaming the
+    // rooms of a LIVE standalone worker orphans every board it holds, for no gain: this
+    // worker serves exactly one instance, so a workspace segment would distinguish nothing.
+    // The engine worker's /__rt names its rooms `<workspace>:<path>` because there the
+    // rooms are new and empty anyway, which is what makes the segment free exactly once.
+    // Nothing forwards a workspace to this worker either, so the mirror keys it writes stay
+    // unscoped to match — one cutover, both halves, and this worker is on neither side of it.
     const id = env.ROOMS.idFromName(path);
     return env.ROOMS.get(id).fetch(request);
   },

@@ -24,10 +24,18 @@
  * (`n:<id>`), one meta row (`m` — name, tombstones, clock). DO storage is strongly
  * consistent and survives hibernation, so the old stash/docreq/cold-alarm dances are
  * gone with the failure modes they papered over. Workers KV keeps the SAME doc under the
- * SAME key (`board:<path>`) but demoted to a WRITE-THROUGH MIRROR: it serves the public
- * GET /__board and the solo fallback, and the room writes it on the old cadence (45s
+ * SAME key (`board:<path>`, or `board:<workspace>:<path>` where the engine worker names
+ * the workspace — src/board-key.mjs) but demoted to a WRITE-THROUGH MIRROR: it serves the
+ * public GET /__board and the solo fallback, and the room writes it on the old cadence (45s
  * dirty-alarm + flush on empty) — never reads it back except once, to migrate a
  * pre-existing board into storage (lazy, first touch, per board).
+ *
+ * WHOSE BOARD IT IS arrives in a header, from the worker that owns the room binding, and
+ * is remembered durably (`ws`). A room reached through the standalone realtime worker gets
+ * no header and keeps the unscoped key — the deployment that has not moved its rooms has
+ * not moved its keys either, and those two halves are one cutover on purpose. On a miss
+ * the scoped read falls through to the unscoped key and the next mirror write lands it
+ * scoped, so a board that predates the segment is picked up by being opened.
  *
  * VERSIONED NODES (per-node last-writer-wins on a version int, not a CRDT). Every node carries
  * `v` (int, bumped by whoever mutates it) and `vn` (random tiebreak). The room applies
@@ -71,6 +79,10 @@
  * per-user viewport — never synced (a fossil in old mirrors; clients use localStorage).
  */
 
+// The mirror's key, built by the SAME function the /__board rail builds it with. Two
+// writers, one spelling — see src/board-key.mjs.
+import { boardKvKey, RT_WORKSPACE_HEADER } from "./board-key.mjs";
+
 const MAX_MSG = 8 * 1024 * 1024; // a node op can carry an inlined image; KV caps the doc at 20MB
 // Frozen: a fixed palette, read by index and never written. Freezing at the declaration
 // is what makes it provably not per-isolate state rather than a promise that it is not.
@@ -86,7 +98,6 @@ const COLORS = Object.freeze(["#e8590c", "#1971c2", "#2f9e44", "#9c36b5", "#e649
 // deployments exist. COMMENTS wins where both are present, which is the engine worker.
 const boardKv = (env) => (env && (env.COMMENTS || env.BOARD_KV)) || null;
 
-const BOARD_PREFIX = "board:";   // same key scheme as the Pages worker's /__board rail
 const PERSIST_MS = 45000;        // dirty → alarm → KV mirror write; ≤ ~80 writes/hour per hot board
 const RETRY_MS = 5000;           // re-arm delay after a FAILED mirror write (KV hiccup — retry soon)
 const MAX_TIMER_MS = 99 * 60000 + 59000; // 99:59 — a session timer, not a scheduler
@@ -120,6 +131,7 @@ export class BoardRoom {
     this.chunked = new Set(); // node ids stored as N:<id>:<i> overflow chunks (JSON > 1.8MB)
     this.loadP = null;    // in-flight load, so concurrent messages share one storage read
     this.path = null;     // board path cache (durable under "path")
+    this.workspace = null; // whose board this is, or "" for none (durable under "ws"); null = not read yet
     this.ephemeral = false; // /__test/ room: RAM only, never storage, never KV
     this.wantDoc = false; // test rooms only: a docreq is in flight, don't spam
     this.dirty = false;   // KV mirror is behind storage (mirrored durably — see markDirty)
@@ -131,6 +143,43 @@ export class BoardRoom {
     // socket, so sweep() can spot zombies (dropped transports whose close never fired —
     // sends to them "succeed" into the void, so send-failure reaping can't catch them)
     this.ctx.setWebSocketAutoResponse(new WebSocketRequestResponsePair("ping", "pong"));
+  }
+
+  // ---- the mirror's key ------------------------------------------------------
+  // Three reads and one write name this document, and they all come through here so the
+  // read-through and the scoped write cannot be applied to three of the four.
+
+  /** This board's workspace, "" for none. Durable, so an alarm wake knows it. */
+  async workspaceId() {
+    if (this.workspace === null) this.workspace = (await this.ctx.storage.get("ws")) || "";
+    return this.workspace;
+  }
+
+  /**
+   * The mirror as it stands in KV, or null.
+   *
+   * READ-THROUGH: a scoped miss falls back to the unscoped key, because a board written
+   * before the segment existed is still this board. The fallback is not a merge — the
+   * scoped document, once it exists, is the only one read — and the next mirror write
+   * lands scoped, so a board pays it once. It is skipped entirely where there is no
+   * workspace, which is every deployment that has not moved its rooms in here.
+   */
+  async kvGet() {
+    const kv = boardKv(this.env);
+    if (!kv || !this.path) return null;
+    const ws = await this.workspaceId();
+    if (ws) {
+      const scoped = await kv.get(boardKvKey(ws, this.path));
+      if (scoped !== null && scoped !== undefined) return scoped;
+    }
+    return await kv.get(boardKvKey("", this.path));
+  }
+
+  /** Write the mirror, under this board's own key. */
+  async kvPut(value) {
+    const kv = boardKv(this.env);
+    if (!kv || !this.path) return;
+    await kv.put(boardKvKey(await this.workspaceId(), this.path), value);
   }
 
   sweep() {
@@ -170,6 +219,11 @@ export class BoardRoom {
     const url = new URL(request.url);
     const path = (url.searchParams.get("path") || "").slice(0, 600);
     if (path) { this.path = path; this.ephemeral = path.indexOf("/__test/") === 0; this.ctx.storage.put("path", path); }
+    // The workspace, from the worker that holds the room binding. Remembered durably for
+    // the same reason `path` is: the alarm that mirrors this board can fire long after
+    // every socket has gone, with no request to read it from.
+    const ws = (request.headers.get(RT_WORKSPACE_HEADER) || "").slice(0, 128);
+    if (ws && ws !== this.workspace) { this.workspace = ws; this.ctx.storage.put("ws", ws); }
     const name = (url.searchParams.get("name") || "Guest").slice(0, 60);
     const sid = "p" + Math.random().toString(36).slice(2, 10);
     // `kind=agent` marks a Claude collaboration client — clients render it as Clawd, not the
@@ -486,7 +540,7 @@ export class BoardRoom {
       // solo clients and terminal scripts legitimately write /__board while the room is
       // empty, and waking up storage-only would erase their work at the next mirror write.
       try {
-        const raw = boardKv(this.env) && this.path ? await boardKv(this.env).get(BOARD_PREFIX + this.path) : null;
+        const raw = await this.kvGet();
         const kv = raw ? JSON.parse(raw) : null;
         if (kv && Array.isArray(kv.nodes)) this.reconcileSeed(kv); // no sender — corrections go nowhere, accepted ops are already durable
       } catch (e) {}
@@ -503,7 +557,7 @@ export class BoardRoom {
     const wasDirty = !!(await this.ctx.storage.get("dirty"));
     let kvDoc = null;
     try {
-      const raw = boardKv(this.env) && this.path ? await boardKv(this.env).get(BOARD_PREFIX + this.path) : null;
+      const raw = await this.kvGet();
       kvDoc = raw ? JSON.parse(raw) : null;
     } catch (e) {}
     let src = null;
@@ -760,7 +814,7 @@ export class BoardRoom {
       // permanently (close-the-laptop-after-a-blip). If KV moved since OUR last mirror,
       // reconcile it in (version-ruled, so a lagging copy merges to nothing) and let the
       // live clients hear whatever was genuinely new.
-      const kvRaw = await boardKv(this.env).get(BOARD_PREFIX + this.path);
+      const kvRaw = await this.kvGet();
       if (kvRaw && hashStr(kvRaw) !== (await this.ctx.storage.get("mhash"))) {
         try {
           const kv = JSON.parse(kvRaw);
@@ -771,7 +825,7 @@ export class BoardRoom {
         } catch (e2) {}
       }
       const out = JSON.stringify(this.wireDoc());
-      await boardKv(this.env).put(BOARD_PREFIX + this.path, out);
+      await this.kvPut(out);
       this.ctx.storage.put("mhash", hashStr(out));
     } catch (e) {
       console.error("KV mirror write failed", e);
