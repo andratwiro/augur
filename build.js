@@ -1786,7 +1786,7 @@ const PAGE_CSS = `
     @media (prefers-reduced-motion: reduce) { .status-chip { transition: none; } }
     /* ---- Currency: current and abandoned must look different (F-currency-default) ----
        The state WORD next to the date, so a status is legible without hovering the glyph.
-       It never says "Ignore" — that is the default, and the dim above already says it. */
+       It never says "Ignore" — that is the default, and the dim above already says it.
        Each word takes the colour of the GLYPH it names, so the two readings of the same
        fact agree: the in-progress chip is a half-filled ink ring and the dev-ready chip is
        a green check. Amber is deliberately NOT used here — it is spent, below, on the one
@@ -1815,6 +1815,29 @@ const PAGE_CSS = `
       .card-proto.is-stale .preview :is(iframe, .preview-img, .preview-ph),
       .card-opp.is-stale .preview :is(iframe, .preview-img, .preview-ph) { transition: none; }
     }
+
+    /* ---- Working mark ("somebody is in here right now"; MARKS_JS stamps it) ----
+       The card-side face of an AGENT protocol: a tool leaves a mark before it starts
+       editing so the next tool reads it. This badge is the byproduct, and it is drawn
+       to be exactly that — it refuses nothing, covers nothing clickable, and takes
+       itself off the card the second the mark's TTL passes.
+       Top-RIGHT, because the status glyph owns bottom-left and the two must never
+       cover each other on a small card. */
+    .mark-badge {
+      position: absolute; right: 8px; top: 8px; z-index: 3;
+      display: inline-flex; align-items: center; gap: 6px; max-width: calc(100% - 16px);
+      padding: 3px 9px 3px 4px; border-radius: 999px;
+      background: #fff; box-shadow: 0 2px 8px -1px rgba(16,24,40,0.32);
+      font-size: 11.5px; font-weight: 600; letter-spacing: -0.005em; color: #101828;
+      pointer-events: none; /* a note is not a control */
+    }
+    .mark-badge__who {
+      flex: none; width: 16px; height: 16px; border-radius: 50%;
+      display: inline-grid; place-items: center;
+      font-size: 8px; font-weight: 700; letter-spacing: 0; color: #fff;
+      background: var(--faint);
+    }
+    .mark-badge__text { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     /* Status picker — opens on hover/click so a state is CHOSEN, not cycled into
        (each cycle step used to save and re-rank the card). Light, unlike the dark
        right-click menu: the state glyphs are the same ones on the cards, and they
@@ -2959,6 +2982,81 @@ const FACE_JS = `
     resolve([].slice.call(document.querySelectorAll('[data-person]')));
   }
   window.__gvFacesWire = wire;
+  wire();
+})();`;
+
+// Working marks, the card-side face of an AGENT protocol (`F-presence-marks`).
+//
+// A tool leaves a mark on a path before it starts editing so the next tool reads it; this
+// badge is the BYPRODUCT of that, not the point, and it is written to stay one. It reads
+// (`GET /__marks`) and never writes: a person with a tab open is not running a work-start
+// step, and inventing a mark for them would put a claim in the store nobody made.
+//
+// ⚠️ IT REFUSES NOTHING. It adds a note to a card. It does not disable the link, dim the
+// card, gate the menu or set anything another script could branch on to block — a mark
+// that stopped a click would be a lock, which is the one thing this feature is not.
+//
+// EXACT PATHS ONLY, deliberately. The CLI matches a mark against a path by containment,
+// because before you start work a mark on the folder above is the thing worth knowing. A
+// CARD is a published unit, so stamping a folder's mark onto each prototype inside it
+// would put "someone is working on this" on five cards nobody has touched. A folder has
+// its own card on the landing grid and gets the badge there.
+//
+// One fetch per page load, only on pages that have cards, and each badge takes itself off
+// at its own expiry — so a lapsed mark cannot outlive its meaning on an open tab, which
+// is the same guarantee the instance makes to every other reader.
+const MARKS_JS = `
+(function(){
+  function norm(p){
+    var s = String(p == null ? '' : p).trim();
+    if(!s) return '';
+    try { s = decodeURIComponent(s); } catch(e){}
+    s = s.replace(/^\\.\\//, '').replace(/\\/{2,}/g, '/');
+    if(!s || s === '/') return '/';
+    return '/' + s.replace(/^\\/+/, '').replace(/\\/+$/, '') + '/';
+  }
+  function pathOf(card){
+    var a = card.querySelector('a.preview-link[href], a[href]');
+    if(!a) return '';
+    try { return norm(new URL(a.getAttribute('href'), location.href).pathname); } catch(e){ return ''; }
+  }
+  function badge(card, m){
+    if(card.dataset.markDone) return;
+    card.dataset.markDone = '1';
+    var host = card.querySelector('.preview') || card;
+    var b = document.createElement('span');
+    b.className = 'mark-badge';
+    var who = document.createElement('span');
+    who.className = 'mark-badge__who';
+    who.textContent = m.initials || '?';
+    if(m.color) who.style.background = m.color;
+    var t = document.createElement('span');
+    t.className = 'mark-badge__text';
+    // "Someone" when the id behind the mark answers to nobody on the roster — a token
+    // labelled by hand, or a person who has since left. Never a guess at a name.
+    t.textContent = (m.by || 'Someone') + ' is working on this';
+    b.appendChild(who); b.appendChild(t);
+    host.appendChild(b);
+    var left = Math.max(0, +m.expiresIn || 0);
+    setTimeout(function(){ b.remove(); delete card.dataset.markDone; }, left);
+  }
+  function wire(){
+    var cards = [].slice.call(document.querySelectorAll('.card-proto, .card-opp'));
+    if(!cards.length) return;
+    fetch('/__marks', { credentials: 'same-origin', headers: { Accept: 'application/json' } })
+      .then(function(r){ return r.ok ? r.json() : null; })
+      .then(function(d){
+        if(!d || !d.marks || !d.marks.length) return;
+        var by = {};
+        d.marks.forEach(function(m){ if(m && m.path) by[norm(m.path)] = m; });
+        cards.forEach(function(card){
+          var m = by[pathOf(card)];
+          if(m) badge(card, m);
+        });
+      })
+      .catch(function(){ /* a note may never be the reason a gallery looks broken */ });
+  }
+  window.__gvMarksWire = wire;
   wire();
 })();`;
 
@@ -5787,7 +5885,7 @@ const CHROME_CSS_BODY = `${FONT_CSS}${PAGE_CSS}${NAV_CSS}${TABBAR_CSS}`;
 const CHROME_JS_BODY = [
   CAROUSEL_JS, chromeScript(), STATUS_JS, CURRENCY_JS, COMP_STATUS_JS, CARD_MENU_JS,
   PINS_JS, PROFILE_JS, SETTINGS_JS, NEWCANVAS_JS, SPACE_JS, TABBAR_JS(),
-  RESEARCH_JS, FACE_JS,
+  RESEARCH_JS, FACE_JS, MARKS_JS,
 ].join("\n;\n") + "\n;\n" +
   // Register the service worker (P0), shipped inside the already-cached bundle so
   // it costs pages zero inline bytes.

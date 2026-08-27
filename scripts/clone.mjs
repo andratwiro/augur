@@ -60,6 +60,7 @@ import {
   resolveUnit, unitFilesFromManifest, skillDirsReferenced, skillFilesFromManifest,
   rerootHtml, residualFindings, isText, isSkillInternal,
 } from "./lib/graduate.mjs";
+import { fetchMarks, marksOverlap, markLine } from "./lib/marks.mjs";
 
 const C = { dim: "\x1b[2m", warn: "\x1b[33m", bad: "\x1b[31m", ok: "\x1b[32m", off: "\x1b[0m" };
 const log = (m) => console.log(`\x1b[35m[clone]\x1b[0m ${m}`);
@@ -321,6 +322,26 @@ async function main() {
 
   for (const c of plan.conflict) {
     console.log(`  ${C.warn}conflict${C.off}  ${c.path}  ${C.dim}${c.why}${C.off}`);
+  }
+
+  // ── WHO IS ALREADY IN HERE (`F-presence-marks`) ───────────────────────────
+  //
+  // A pull is a work-start: files are about to be written into a tree somebody is about to
+  // edit. So the marks on the paths ABOUT TO BE TOUCHED are printed before the first byte
+  // lands, which is the only moment the information can still change what happens next.
+  //
+  // ⚠️ IT NEVER REFUSES AND NEVER CHANGES THE EXIT CODE. A mark is a note, not a lock, and
+  // a pull that stopped for one would be a lock with extra steps. Read on a URL rather than
+  // a source path: a mark names the published unit, which is what both sides can agree on.
+  const touching = [...plan.write, ...plan.conflict];
+  if (touching.length) {
+    const marks = (await fetchMarks(req))
+      .filter((m) => touching.some((f) => marksOverlap(f.url, m.path)));
+    if (marks.length) {
+      console.log(`\n  ${C.warn}somebody is working on paths this pull touches${C.off}`);
+      for (const m of marks) console.log(`    ${markLine(m)}`);
+      console.log(`  ${C.dim}Nothing here is blocked. It is worth knowing before you edit the same folder.${C.off}\n`);
+    }
   }
   if (DRY) {
     log(`${C.dim}dry run — would write ${plan.write.length}, leave ${plan.skip.length} identical, ${plan.conflict.length} conflict(s)${C.off}`);

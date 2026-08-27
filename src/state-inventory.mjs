@@ -108,6 +108,10 @@ export const STATE_INVENTORY = Object.freeze([
     why: "A canvas board document. Same table. NOTE this is a MIRROR: while the realtime worker is separate, the authoritative copy is that worker's own BoardRoom storage, and a DO's storage belongs to the script that created it — so boards do not travel by being migrated here.",
   },
   {
+    id: "marks", store: "kv", kind: "key", to: "drop",
+    why: "Working marks: one row per path saying something is editing there right now, holding the path, the one-way author id and the time, and good only until its own TTL runs out (ten minutes by default, an hour at the most). Transient by construction — a mark is not a promise to anybody, it grants nothing and refuses nothing, and the next work-start recreates it. DROPPED rather than carried, for the same reason `health:report` is: a mark restored onto a new home would say somebody is working somewhere at a moment that has passed, and a false claim is worse than a missing one. Nothing is lost: the marks a copy would have carried are all expired by the time anybody reads the copy.",
+  },
+  {
     id: "pt:view", store: "kv", kind: "key", to: "workspace",
     why: "What page the cursor companion's human is looking at. Same table.",
   },

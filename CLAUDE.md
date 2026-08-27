@@ -379,6 +379,9 @@ URL — see Forking below; the one publishing verb that needs no tree at all) ·
 the original, and report a pass-rate per component — resumable across nights, and with
 no way for the thing being measured to assert its own result. See
 `docs/canon-refine.md`.) ·
+`augur mark [<path>] [--ttl <s>] [--clear]` (say what you are about to work on, read
+what everyone else is — a TTL'd note that refuses nothing; see
+[agents/working-marks.md](agents/working-marks.md)) ·
 `augur export --out <dir> [--full]` / `augur restore <dir> [--state]`
 (store backup; `--full`/`--state` cover everything that is not published content) ·
 `augur freeze [--reason …] [--status]` / `augur thaw` (read-only while a workspace is
