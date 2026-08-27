@@ -6,6 +6,7 @@
 //   augur deploy    build + direct-upload the whole site (see deploy.mjs)
 //   augur ship      commit + publish + push — the default way a change goes out
 //   augur publish   publish only, without committing or pushing (see publish.mjs)
+//   augur fork      copy a published artifact to a new URL, moving no bytes (see fork.mjs)
 //   augur status    what is live vs what your clones hold (see status.mjs)
 //   augur refine    render every component, photograph it, measure it against the
 //                   original, and report a pass-rate nobody can assert (see refine.mjs)
@@ -32,6 +33,8 @@ const map = {
   deploy: "deploy.mjs",
   ship: "ship.mjs",
   publish: "publish.mjs",
+  // The one publishing verb that needs no tree: two paths and a token (see fork.mjs).
+  fork: "fork.mjs",
   status: "status.mjs",
   refine: "refine.mjs",
   export: "export.mjs",
@@ -55,7 +58,7 @@ const map = {
   build: path.join("..", "build.js"),
 };
 if (!map[sub]) {
-  console.error("usage: augur <init|ship|dev|offline|build|deploy|publish|status|canon|refine|clone|pull|export|restore|migrate|adopt|freeze|thaw|connect|login> [options]");
+  console.error("usage: augur <init|ship|dev|offline|build|deploy|publish|fork|status|canon|refine|clone|pull|export|restore|migrate|adopt|freeze|thaw|connect|login> [options]");
   process.exit(sub ? 1 : 0);
 }
 const child = spawn(process.execPath, [path.join(SCRIPTS, map[sub]), ...rest], {

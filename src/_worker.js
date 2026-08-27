@@ -97,6 +97,10 @@ import { PURGED_AUTHOR, purgeThreads, idCollisions } from "./purge.mjs";
 // The unit vocabulary and the composer, shared VERBATIM with the CLI — see resolveStaleBase.
 import { authoredUnits, unitOfPath, unitPaths } from "./publish-units.mjs";
 import { composePublish } from "./publish-compose.mjs";
+// `F-fork-verb`. Fork as a deliberate verb — one unit aliased to a new path, zero bytes
+// moved — plus the rule that keeps a fork's lineage and owner alive across every later
+// publish. Both are pure, and both are the CLI's too if it ever needs them.
+import { composeFork, carriedLineage, assertedLineage } from "./publish-fork.mjs";
 
 const COOKIE = "gv_auth";
 const MAX_AGE = 60 * 60 * 24 * 7; // 7 days
@@ -3360,6 +3364,52 @@ async function nextPublishVersion(env, tctx, spaceId, cur) {
   }
 }
 
+// ── Manifest ceilings: refuse instead of degrade. ─────────────────────────
+// An oversized manifest is not merely rude — every request on the instance pays for it (the
+// refresh tick re-parses it; 1102s on live within hours of the 2026-08-22 cascade doubling
+// one manifest), which multi-tenant means one space degrading everyone. And a manifest
+// sprouting -conflict- prefixes is the signature of that cascade itself: protocol-5 clients
+// cannot produce one (the litter filter), so arrival here means an old, patched, or hostile
+// client — the write is refused, the litter never goes live. Ceilings sit ~4-8x above the
+// reference instance's real size (3.8k files, 142 prefixes, 0.7MB manifest, 0 conflict
+// prefixes at v499): headroom for growth, a wall against runaway. `limit` names the failing
+// one so a legitimate giant space raises it deliberately, in code, not by quiet erosion.
+//
+// ⚠️ EVERY PATH THAT WRITES A LIVE MANIFEST GOES THROUGH THIS, not just `commit`. `fork`
+// aliases a whole unit into the manifest without uploading a byte, so it is the cheapest way
+// there has ever been to double a manifest's size — a ceiling it did not have to clear would
+// be a ceiling with a door beside it.
+function manifestCeiling(m) {
+  const files = Object.keys((m && m.files) || {}).length;
+  if (files > 30000) return { limit: "files", value: files, max: 30000 };
+  const prefixes = (((m || {}).routing || {}).publicPrefixes || []);
+  if (prefixes.length > 1000) return { limit: "prefixes", value: prefixes.length, max: 1000 };
+  const litter = prefixes.filter((p) => /-conflict-[a-z0-9][a-z0-9-]*\/?$/.test(String(p))).length;
+  if (litter > 20) return { limit: "conflict-prefixes", value: litter, max: 20 };
+  const bytes = JSON.stringify(m).length;
+  if (bytes > 8_000_000) return { limit: "manifest-bytes", value: bytes, max: 8_000_000 };
+  return null;
+}
+
+// `bytesReferenced` — what a person means by "my site is this big", DEDUPLICATED BY HASH,
+// which is the part that carries meaning: two URLs serving the same blob cost one blob. That
+// is also what makes a fork visible as free — aliasing a hundred files adds a hundred
+// manifest keys and does not move this number by a byte.
+//
+// ⚠️ IT IS NOT WHAT COSTS MONEY, and the gap is not small: measured on a live instance, the
+// tree references 1.94 MB across 54 blobs while the bucket holds 124 MB across 1371 objects,
+// because versions are never pruned and blobs are never collected. So roughly nine tenths of
+// a mature workspace's footprint is rollback history. A storage ceiling has to be defined
+// against RETAINED bytes or it will never fire. Hence the name: `bytesReferenced`, never
+// `size`. It is computed once, at write, rather than on every read of it — a status handler
+// re-parsing manifests to sum them would reproduce the CPU failure the etag guard in
+// loadManifests exists because of, with the whole fleet as the multiplier.
+function bytesReferencedOf(m) {
+  const byHash = {};
+  for (const f of Object.values((m && m.files) || {})) if (f && f.h) byHash[f.h] = Number(f.s) || 0;
+  return Object.values(byHash).reduce((n, b) => n + b, 0);
+}
+
 /** The refusal a caller returns when the counter could not answer. */
 const versionUnavailable = () => jsonResponse({
   error: "version-unavailable",
@@ -3789,29 +3839,8 @@ async function publishApi(tctx, request, url, env) {
     if (!m || m.id !== spaceId || !m.files || typeof m.files !== "object") {
       return jsonResponse({ error: "bad-manifest" }, 400);
     }
-    // ── Manifest ceilings: refuse instead of degrade. ─────────────────────────
-    // An oversized manifest is not merely rude — every request on the instance
-    // pays for it (the refresh tick re-parses it; 1102s on live within hours of
-    // the 2026-08-22 cascade doubling one manifest), which multi-tenant means one
-    // space degrading everyone. And a manifest sprouting -conflict- prefixes is
-    // the signature of that cascade itself: protocol-5 clients cannot produce one
-    // (the litter filter), so arrival here means an old, patched, or hostile
-    // client — the write is refused, the litter never goes live. Ceilings sit
-    // ~4-8x above the reference instance's real size (3.8k files, 142 prefixes,
-    // 0.7MB manifest, 0 conflict prefixes at v499): headroom for growth, a wall
-    // against runaway. `sanity` names the failing limit so a legitimate giant
-    // space raises the ceiling deliberately, in code, not by quiet erosion.
-    const ceiling = (() => {
-      const files = Object.keys(m.files).length;
-      if (files > 30000) return { limit: "files", value: files, max: 30000 };
-      const prefixes = ((m.routing || {}).publicPrefixes || []);
-      if (prefixes.length > 1000) return { limit: "prefixes", value: prefixes.length, max: 1000 };
-      const litter = prefixes.filter((p) => /-conflict-[a-z0-9][a-z0-9-]*\/?$/.test(String(p))).length;
-      if (litter > 20) return { limit: "conflict-prefixes", value: litter, max: 20 };
-      const bytes = JSON.stringify(m).length;
-      if (bytes > 8_000_000) return { limit: "manifest-bytes", value: bytes, max: 8_000_000 };
-      return null;
-    })();
+    // Manifest ceilings — see manifestCeiling. Refuse instead of degrade.
+    const ceiling = manifestCeiling(m);
     if (ceiling) {
       return jsonResponse({ error: "manifest-ceiling", ...ceiling }, 413);
     }
@@ -4066,26 +4095,9 @@ async function publishApi(tctx, request, url, env) {
     const issued = await nextPublishVersion(env, tctx, spaceId, cur);
     if (issued.error) return versionUnavailable();
     const version = issued.version;
-    // `bytesReferenced` — what a person means by "my site is this big", computed ONCE here
-    // rather than on every read of it.
-    //
-    // Two reasons it is a header field. A status handler that re-parsed manifests to sum
-    // them would reproduce the CPU failure the etag guard in loadManifests exists because
-    // of (a multi-MB manifest's JSON.parse blew the limit on the refresh tick) with the
-    // whole fleet as the multiplier. And it is a scalar a workspace can volunteer about
-    // itself without anything outside reaching into its bucket.
-    //
-    // ⚠️ IT IS NOT WHAT COSTS MONEY, and the gap is not small: measured on a live instance,
-    // the tree references 1.94 MB across 54 blobs while the bucket holds 124 MB across 1371
-    // objects, because versions are never pruned and blobs are never collected. So roughly
-    // nine tenths of a mature workspace's footprint is rollback history. A storage ceiling
-    // has to be defined against RETAINED bytes or it will never fire. Hence the name:
-    // `bytesReferenced`, never `size`.
-    const bytesReferenced = Object.values(
-      Object.fromEntries(Object.values(m.files || {})
-        .filter((f) => f && f.h)
-        .map((f) => [f.h, Number(f.s) || 0])),
-    ).reduce((n, b) => n + b, 0);
+    // A scalar a workspace can volunteer about itself without anything outside reaching into
+    // its bucket. See bytesReferencedOf for what it does and does not mean.
+    const bytesReferenced = bytesReferencedOf(m);
     // ── per-file provenance, recorded at the only moment it is true ────────────
     //
     // `C-manifest-provenance`. Who last changed each file and when, stamped HERE — at
@@ -4123,6 +4135,26 @@ async function publishApi(tctx, request, url, env) {
       stampedFiles[p2] = unchanged
         ? { ...f, ...(prior.by ? { by: prior.by } : {}), ...(prior.editedAt ? { editedAt: prior.editedAt } : {}) }
         : { ...f, ...(stampedBy ? { by: stampedBy } : {}), editedAt };
+    }
+    // ── unit lineage + ownership: carried by the server, never read from the body ───────
+    //
+    // `F-fork-verb`. `routing.forkedFrom` and `routing.unitOwners` are stamped by the fork
+    // verb and only by it. A publisher's manifest is built from their own tree, which knows
+    // nothing about a fork somebody else made — so taking `routing` verbatim would drop a
+    // fork's parentage and its owner while leaving its files serving, and the fork would
+    // quietly become an anonymous folder. Whatever the body claims is discarded first: an
+    // owner a request may assert is an ACL anybody can type. See carriedLineage.
+    //
+    // The ONE exception is trust-on-first-publish, the same shape `space.adminOnly` above
+    // gets: with no live manifest there is no prior value a claim could be overwriting, and
+    // the caller that needs it is `augur restore` replaying an export into an empty store —
+    // without it a migrated workspace arrives with its forks serving and their parentage
+    // gone. Even then the shapes are checked, so that path cannot put an address in either.
+    if (m.routing && typeof m.routing === "object") {
+      const asserted = cur ? null : assertedLineage(m.routing);
+      delete m.routing.forkedFrom;
+      delete m.routing.unitOwners;
+      Object.assign(m.routing, asserted || carriedLineage(cur, m.routing));
     }
     const out = {
       ...m, files: stampedFiles, version, bytesReferenced,
@@ -4177,6 +4209,98 @@ async function publishApi(tctx, request, url, env) {
       ok: true, version,
       ...(rebake ? { rebake } : {}),
       ...(serverForks && serverForks.length ? { forks: serverForks } : {}),
+    });
+  }
+
+  // ── fork: an artifact copied to a new path, with no bytes moved ────────────────────────
+  //
+  // `F-fork-verb`. `POST /__publish/<space>/fork  {from, to}` → the unit at `from` also
+  // serves at `to`, owned by whoever asked, remembering where it came from. See
+  // src/publish-fork.mjs for why this is a verb of its own and why it uploads nothing.
+  //
+  // ⚠️ IT IS A PUBLISH, deliberately: the same bearer token, the same freeze and suspension
+  // gates the whole `/__publish/` prefix sits behind, the same version counter and the same
+  // append-only history. So a fork is `rollback`-able like any other publish, shows up in
+  // `versions` as the thing it was, and an export picks it up without knowing forks exist.
+  //
+  // ⚠️ AND IT IS THE ONE PUBLISH THAT NEEDS NO TREE. That is the point of the verb for a
+  // hosted workspace: forking is two paths and a token, so a publisher with no repo, no
+  // checkout and no build can still say "give me my own copy of this".
+  if (op === "fork" && request.method === "POST") {
+    let body;
+    try { body = await request.json(); } catch (e) { return jsonResponse({ error: "bad-json" }, 400); }
+    const from = body && body.from, to = body && body.to;
+    if (typeof from !== "string" || typeof to !== "string") {
+      return jsonResponse({ error: "bad-fork-body", message: "fork needs a `from` and a `to` path" }, 400);
+    }
+    // Read live FRESH, not from the isolate cache: the whole content of a fork is hashes
+    // copied out of the live manifest, and a copy taken from a stale one would alias bytes
+    // that URL has stopped serving.
+    const curObj = await env.BUNDLES.get(`spaces/${spaceId}/manifest.json`);
+    const cur = curObj ? JSON.parse(await curObj.text()) : null;
+    if (!cur) return jsonResponse({ error: "unknown-space" }, 404);
+
+    // The target must be a path this space may publish AND open to anonymous visitors — the
+    // same rule the routing fragment is held to at commit, applied here because a fork adds
+    // a public prefix that no commit ever inspects. Unlike commit this is NOT waived for
+    // star scope: nothing legitimate forks onto engine chrome, and a new verb starts closed.
+    if (!isPublishablePublicPrefix(to, spaceId, tctx.SPACES)) {
+      return jsonResponse({ error: "bad-routing-prefix", path: to }, 400);
+    }
+
+    const forked = composeFork({
+      live: cur, from, to,
+      // A person is a personId here and everywhere else a manifest names one. `who.label` is
+      // an address; it goes no further than this line.
+      by: who.label ? personId(who.label) : null,
+    });
+    if (forked.error) {
+      const status = forked.error === "unknown-unit" ? 404
+        : forked.error === "fork-target-exists" ? 409 : 400;
+      return jsonResponse(forked, status);
+    }
+
+    // Never alias onto a path another live manifest — engine chrome included — is already
+    // serving. Same belt-and-suspenders the commit path applies to a whole file map.
+    const liveManifests = await loadManifests(tctx.tenantId, env, true);
+    for (const otherId in liveManifests) {
+      if (otherId === spaceId) continue;
+      const other = liveManifests[otherId].files || {};
+      for (const [q] of forked.aliased) {
+        if (other[q]) return jsonResponse({ error: "path-conflict", path: q, owner: otherId }, 409);
+      }
+    }
+
+    const m = forked.manifest;
+    const ceiling = manifestCeiling(m);
+    if (ceiling) return jsonResponse({ error: "manifest-ceiling", ...ceiling }, 413);
+
+    const issued = await nextPublishVersion(env, tctx, spaceId, cur);
+    if (issued.error) return versionUnavailable();
+    const version = issued.version;
+    // Recomputed rather than carried, and it is also the receipt: it deduplicates by hash,
+    // the fork references exactly the blobs the source does, so a fork that had moved bytes
+    // would move this number. It does not.
+    const bytesReferenced = bytesReferencedOf(m);
+    const out = {
+      ...m, version, bytesReferenced,
+      publishedAt: new Date().toISOString(), publishedBy: who.label || "",
+    };
+    await env.BUNDLES.put(`spaces/${spaceId}/versions/${version}.json`, JSON.stringify(out));
+    await env.BUNDLES.put(`spaces/${spaceId}/manifest.json`, JSON.stringify(out));
+    bustManifests(tctx.tenantId); cfgAt = 0; // this isolate flips immediately; others within ~1.5s
+    touchWorkspaceActivity(env, tctx, null);
+    // No stale-bake dispatch. The forked pages are byte-identical to pages already live, so
+    // whatever engine baked them baked the source too — the source's own publish already
+    // asked for whatever re-bake it needed, and asking again for a copy of it would spend a
+    // dispatch to change nothing.
+    return jsonResponse({
+      ok: true, version,
+      from: forked.from, to: forked.to,
+      files: forked.aliased.length,
+      forkedFrom: m.routing.forkedFrom[forked.to],
+      // Said out loud because it is the property that makes the verb worth having.
+      blobsUploaded: 0, bytesReferenced,
     });
   }
 
@@ -4256,6 +4380,14 @@ async function removeFromStore(tctx, env, spaceId, urlPrefix, by) {
   if (Array.isArray(routing.canvasCatalog)) {
     routing.canvasCatalog = routing.canvasCatalog.filter(
       (e) => !String((e && e.url) || "").startsWith(urlPrefix));
+  }
+  // The unit-keyed maps go the same way. A deleted unit that kept its `unitOwners` row would
+  // leave an owner behind for a resource that no longer exists — and the next thing published
+  // at that path would inherit an ACL nobody set on it.
+  for (const field of ["forkedFrom", "unitOwners"]) {
+    if (!routing[field]) continue;
+    routing[field] = Object.fromEntries(
+      Object.entries(routing[field]).filter(([u]) => !u.startsWith(urlPrefix)));
   }
   // The third mint, and the same counter. A delete commits as a normal new version so a
   // rollback undoes it like any other publish — which means it can collide with a publish
@@ -8621,6 +8753,7 @@ export const __testables = Object.freeze({
   publishAuthDetailed, publishRefusalBody,
   adminStorageApi,
   isPrefixBacked, backedPublicPrefixes,
+  composeFork, carriedLineage, assertedLineage, manifestCeiling, bytesReferencedOf,
   isPublicPath, isTrackPath, isRestrictedPath, versionFor, brandMark,
   boardApi, canvasesApi, virtualCanvas, rtProxy, CANVASES_KEY, BOARD_PREFIX, BOARD_MAX_BYTES,
   assetApi, ASSET_PREFIX, ASSET_R2_PREFIX, ASSET_MAX_BYTES, assetGc, ASSET_GC_GRACE_MS,

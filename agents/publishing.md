@@ -110,6 +110,28 @@ folders unstaged. Removing a live prototype needs the deletion committed AND
 `--allow-unpublish`. `augur publish --takeover` ships the whole tree under the
 old semantics — repo surgery and migrations only, never routine.
 
+## Taking your own copy of something — `augur fork`
+
+```
+augur fork /toolkit/map/ /toolkit/map-mine/
+```
+
+Deliberate forking, as opposed to the conflict kind above: the prototype at the first path
+also starts serving at the second one. The copy is made in the manifest, so a hundred-file
+prototype forks **without uploading, downloading or hashing a single byte** — the blobs
+already exist and the fork is new keys pointing at them. It is a normal publish underneath
+(same token, same version history, rollback-able), and it is the one publishing command that
+needs **no tree at all**: two paths and a credential, so it works in a workspace that has
+never had a repo.
+
+The copy is **yours**. It is stamped with you as the new prototype's owner rather than
+inheriting whatever the original was restricted to, and it remembers where it came from —
+the manifest records the source path and the exact version, which stays readable forever
+because versions are never pruned. Nothing renders that yet.
+
+Two refusals worth knowing: a target that already has anything at it is a `409` (a fork never
+overwrites), and a fork may not nest inside its own source or contain it.
+
 ## The URL is the contract — mechanics are yours, not the user's
 
 When someone asks for a change, they expect it live at the URL you hand back, with
