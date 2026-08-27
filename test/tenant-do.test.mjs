@@ -193,6 +193,9 @@ test("the store exposes no read or write verb it does not yet need", () => {
   // `CONTROL_VERBS`: it is the REQUEST PATH asking the workspace about itself, the side of
   // the line `suspension` and `touchActivity` are on, and nobody should be grantable it —
   // see E-dormancy-resume and test/dormancy-resume.test.mjs.
+  // `renameAway` is the CUT-OVER half of F-subdomain-rename-delete-ux: it marks THIS address
+  // dead and moves nothing, because a workspace's address is its object's name and moving is
+  // a migration — see test/workspace-rename.test.mjs.
   const names = Object.getOwnPropertyNames(TenantStore.prototype).filter((n) => n !== "constructor");
   assert.deepEqual(names.sort(), [
     "bumpCounter", "clearMeta", "controlResult", "deleteWorkspace", "destroy", "fetch",
@@ -200,8 +203,8 @@ test("the store exposes no read or write verb it does not yet need", () => {
     "nextPublishVersion",
     "overlayCas", "overlayInsert", "overlayOwner", "overlayRead", "overlayReadRev",
     "overlayReplace", "overlaySet", "provision",
-    "purgeAuthor", "quotas", "readCounter", "readMeta", "resume", "resumeOnSignIn",
-    "rotate", "schemaVersion",
+    "purgeAuthor", "quotas", "readCounter", "readMeta", "renameAway", "resume",
+    "resumeOnSignIn", "rotate", "schemaVersion",
     "sessionKey",
     "sql", "status", "suspend", "suspension", "touchActivity",
     "usersActive", "workspaceId", "writeMeta",
