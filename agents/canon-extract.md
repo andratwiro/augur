@@ -105,6 +105,13 @@ pass it.
   that matter, including the ugly ones.
 - It reads no images. A logo, an illustration style and a photographic treatment are design
   system and none of them are in here.
+- **`font-display` and `font-body` are stacks, not files.** Nothing downloads a face, so a
+  stack naming a face the workspace does not already have falls back silently — and a near
+  fallback looks intentional, which makes it harder to notice, not easier. Self-host the
+  face and add the `@font-face` yourself, or name one that is already there.
+- A role typed `length` holds one length, so a `border-radius` SHORTHAND (four values, or a
+  slash) has no role. Put a representative length in the role so the scale still works and
+  carry the real shorthand as an `x-` token.
 - Dark mode is a second canon, not a second column: collect it separately.
 - A cross-origin stylesheet cannot be read for custom properties. Computed styles still
   count, and the observation says how many sheets were unreadable.
