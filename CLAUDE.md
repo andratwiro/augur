@@ -69,7 +69,20 @@ provisioned would leave a workspace nobody knows exists. And **a refusal is a 4x
 an `ok: false` inside a 200 — the control plane logs a verb's verdict from the status line,
 so a refusal wearing a 200 is a suspension written into the audit log as having happened.
 `delete` is a TOMBSTONE (`DELETE_GRACE_MS`, the 30 days the hosted lifecycle page promises
-customers) and erases nothing; `destroy()` is the separate primitive that does. It is also
+customers) and erases nothing; `destroy()` is the separate primitive that does.
+**WHICH PUBLISHED CONTENT AN ERASURE MAY TAKE IS NOT A QUESTION THE STORE CAN ANSWER.**
+`spaces/<spaceId>/…` names a SPACE and carries no workspace segment, so `deleteWorkspace`
+asks `workspaceSpaces` instead of matching a prefix: with no workspace objects bound the
+deployment serves one workspace and every authored space is its own (`legacyIsOurs`, the
+same reading the KV overlay makes of an unprefixed key), and with them bound the answer is
+the workspace's own `publish_versions` — the counter every commit goes through, in storage
+that belongs to the object's id and so cannot name a neighbour's space. It is authoritative
+and NOT provably complete (a publish predating the binding left no row), so a workspace
+that can account for NOTHING while the store holds authored spaces is a refusal
+(`nothing-attributable`) rather than a clean delete of nothing. `_engine` is declined under
+both shapes: one build's chrome serves the whole deployment. This replaced a filter that
+matched SPACE ids against the WORKSPACE id — a prefix no key has ever carried — which
+deleted zero objects and answered `ok` on every deployment where the two names differ. It is also
 the one verb with a READ on it: `GET /__control/delete` is the CONFIRMATION a person is
 shown first — the export-before-you-confirm step, what the workspace holds as counts, and
 the retention window, every number of it DERIVED from `DELETE_GRACE_MS` by

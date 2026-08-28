@@ -6135,9 +6135,12 @@ function sanitizeMsg(users, m, me) {
 // the local-part could be derived from. A test asserts that, because it is the property
 // the VERIFY actually checks and it is not obvious from the sweep alone.
 //
-// The sweep is bounded to the workspace's own R2 prefix, because that is how versions are
-// keyed. There is no global scan and no way for one workspace's erasure to touch another's
-// history.
+// The sweep is bounded to ONE SPACE's prefix, because that is how versions are keyed —
+// `spaces/<spaceId>/versions/`. There is no global scan. ⚠️ A space is not a workspace and
+// that prefix is not a workspace's: on a deployment where the bucket is shared, which
+// spaces are a given workspace's is a question only that workspace's own object can answer
+// (`workspaceSpaces`), and the caller here sweeps the first space in the context rather
+// than every space the workspace owns.
 const PURGED_PUBLISHER = "Deleted user";
 
 /** Redact one stored `publishedBy` value. Returns the new string, or null if unchanged. */
@@ -7614,8 +7617,11 @@ async function setFreeze(tctx, env, { on, reason, by }) {
 // `E-gdpr-delete-tenant`. Two operations, deliberately separate, and the separation is the
 // safety property rather than a scheduling convenience.
 //
-// DELETING A WORKSPACE removes its own R2 prefix and destroys its Durable Object storage.
-// Both are bounded to that workspace and neither can reach a neighbour.
+// DELETING A WORKSPACE removes its published content and destroys its Durable Object
+// storage. The object half is bounded to that workspace by the platform and cannot reach a
+// neighbour. THE CONTENT HALF IS NOT BOUNDED BY ANYTHING IN THE KEY — `spaces/<spaceId>/…`
+// names a space, and there is no workspace prefix in that bucket at all — so which spaces
+// an erasure may touch is asked of the workspace itself. See `workspaceSpaces`.
 //
 // RECLAIMING BYTES IS A DIFFERENT JOB, because blobs are content-addressed and GLOBALLY
 // deduped: `blobs/<sha256>` is one object however many workspaces publish the same file.
@@ -7709,7 +7715,7 @@ async function storeWorkspaceIds(env) {
 }
 
 /**
- * Delete one workspace: its published prefix and its own object's storage.
+ * Delete one workspace: the spaces it owns, and its own object's storage.
  *
  * `confirm` must be the workspace's own id. Not ceremony — a star-scope token can already
  * overwrite everything a workspace has published, and rollback undoes that; this is the one
@@ -7752,6 +7758,80 @@ async function purgeDue(env, id) {
   return { due: true, checked: true, purgeAfter: s.purgeAfter };
 }
 
+/**
+ * WHICH SPACES AN ERASURE MAY TOUCH — asked of something that knows, never inferred.
+ *
+ * ⚠️ THE STORE CANNOT ANSWER THIS AND NEVER COULD. `spaces/<spaceId>/…` names a SPACE;
+ * there is no workspace segment anywhere in that bucket. This used to select with
+ * `ids.filter((s) => s === id || s.startsWith(id + "/"))` against the WORKSPACE id, which
+ * matches only where a workspace happens to share a string with its own space — so on
+ * every real deployment it selected nothing, deleted nothing, destroyed the workspace
+ * object anyway and answered `ok`. The control plane erases its own record on that `ok`,
+ * so a right-to-erasure request completed with the record gone and the content still
+ * served. The covering test was green because its fixture was the one arrangement where
+ * the two ids are the same string.
+ *
+ * There are two deployment shapes and they have different answers:
+ *
+ *   NO WORKSPACE OBJECTS BOUND — the deployment resolves exactly one workspace, the id its
+ *   own build stamped into `instance.json`. An unprefixed key therefore belongs to it by
+ *   construction: there is no neighbour for the selection to reach. This is the same
+ *   reading `kvWorkspaceSegment`'s `legacyIsOurs` makes of an unprefixed KV key, and it is
+ *   sound for exactly the reason that one is — the question "whose is this" has an answer
+ *   only where a deployment serves ONE.
+ *
+ *   WORKSPACE OBJECTS BOUND — several workspaces may share the bucket, so the answer comes
+ *   from the workspace's own object: `publish_versions`, the counter every commit,
+ *   rollback and prefix-removal goes through. A row lands there only via a publish
+ *   addressed to that object, and an object's storage belongs to its id, so it cannot name
+ *   a neighbour's space. It is authoritative for what it holds.
+ *
+ * ⚠️ IT IS NOT PROVABLY COMPLETE, and the caller must not treat it as if it were. A
+ * publish made before this deployment bound the objects left no row. So a workspace that
+ * claims NOTHING while the store holds authored spaces is indistinguishable from one whose
+ * record predates the counter — the two need opposite answers, and the erasing one is the
+ * one that cannot be taken back. `deleteWorkspace` refuses there rather than guessing.
+ *
+ * `_engine` is declined under both shapes and on purpose rather than by accident: one
+ * worker build's chrome serves every workspace on the deployment, CI pushes it through the
+ * same commit path so a workspace's own counter really does claim it, and erasing it would
+ * blank the deployment. It survived the broken filter by coincidence, which is not a
+ * property anything was keeping.
+ *
+ * ⏳ RETIRE THIS WITH THE KEY SHAPE. When the store carries a workspace segment, "which
+ * spaces are mine" is answered by the prefix, the unattributable case cannot arise, and
+ * this reduces to a listing again.
+ */
+async function workspaceSpaces(tctx, env, listed) {
+  const id = tctx && tctx.tenantId;
+  // `_engine` is never anybody's to erase — see the header.
+  const authored = listed.ids.filter((s) => s !== "_engine");
+  const stub = tenantStub(env, id);
+  if (!stub) return { ok: true, ids: authored, unattributed: 0, source: "single-workspace-deployment" };
+
+  let claimed;
+  try {
+    const res = await stub.fetch("https://workspace/publish-spaces");
+    const body = res.ok ? await res.json() : null;
+    if (!body || !Array.isArray(body.spaces)) throw new Error(`workspace answered ${res.status}`);
+    claimed = new Set(body.spaces.map(String));
+  } catch (e) {
+    // A transient error must not read as "this workspace owns nothing": that answer erases
+    // nothing and reports success, which is the failure this whole function exists to end.
+    return { ok: false, reason: "ownership-unreadable" };
+  }
+
+  const ids = authored.filter((s) => claimed.has(s));
+  return {
+    ok: true, ids, source: "workspace-publish-record",
+    // What is in the store that this workspace does not account for. On a deployment
+    // serving several workspaces this is normally the neighbours' and means nothing; it is
+    // reported so a caller can never mistake "erased nothing because it owns nothing" for
+    // "erased nothing because it could not tell".
+    unattributed: authored.length - ids.length,
+  };
+}
+
 async function deleteWorkspace(tctx, env, { confirm, dryRun = true } = {}) {
   const id = tctx && tctx.tenantId;
   if (!id) return { ok: false, reason: "no-workspace" };
@@ -7772,14 +7852,18 @@ async function deleteWorkspace(tctx, env, { confirm, dryRun = true } = {}) {
   const bundles = bundleStore(env, ws);
   const listed = await storeSpaceIds(env, ws);
   if (!listed.complete) return { ok: false, reason: "incomplete-listing" };
-  // ⏳ THIS FILTER IS STILL WRONG AND IS NOT THIS ITEM'S TO FIX — see
-  // `B-bundle-store-delete-scope`. `listed.ids` are SPACE ids and `id` is the WORKSPACE, so
-  // on any deployment where the two differ it selects nothing and the erasure deletes no
-  // object while answering ok. The prefix above narrows WHAT can be reached, which is what
-  // this item owes; deciding which of the reachable spaces are this workspace's is the
-  // other item, and it takes that answer from the workspace object rather than from a
-  // string comparison that was never written.
-  const mine = listed.ids.filter((s) => s === id || s.startsWith(`${id}/`));
+  const owned = await workspaceSpaces(tctx, env, listed);
+  if (!owned.ok) return { ok: false, reason: owned.reason };
+  const mine = owned.ids;
+  // NOTHING ATTRIBUTABLE, AND SOMETHING THERE. This is the exact shape the bug wore — a
+  // store holding authored content and a selection that comes back empty — and it cannot
+  // be told apart from a workspace that genuinely published nothing while the keys carry
+  // no workspace segment. So it refuses, and the caller's erasure stalls loudly rather
+  // than completing on a fiction. A workspace with nothing to erase and a store with
+  // nothing unaccounted for is a clean zero and passes straight through.
+  if (!mine.length && owned.unattributed) {
+    return { ok: false, reason: "nothing-attributable", unattributed: owned.unattributed };
+  }
   const maybeOrphaned = new Set();
   const keys = [];
   for (const s of mine) {
@@ -7795,7 +7879,13 @@ async function deleteWorkspace(tctx, env, { confirm, dryRun = true } = {}) {
   }
 
   if (dryRun) {
-    return { ok: true, dryRun: true, workspace: id, objects: keys.length, maybeOrphaned: maybeOrphaned.size };
+    // The spaces by name, not only the count: an operator checking the blast radius of an
+    // erasure they are considering needs to recognise what is about to go.
+    return {
+      ok: true, dryRun: true, workspace: id, objects: keys.length,
+      maybeOrphaned: maybeOrphaned.size,
+      spaces: mine, ownership: owned.source, unattributed: owned.unattributed,
+    };
   }
 
   // ⚠️ THROUGH THIS WORKSPACE'S VIEW, so a key collected above is deleted under the same
@@ -7817,6 +7907,10 @@ async function deleteWorkspace(tctx, env, { confirm, dryRun = true } = {}) {
   }
   return {
     ok: true, workspace: id, objects: keys.length, store,
+    // WHAT WAS ERASED AND ON WHOSE WORD. An erasure that removed nothing is a real answer
+    // and a wrong one wearing the same shape, so the result says which spaces went and
+    // where the ownership came from rather than leaving a count to be read as either.
+    spaces: mine, ownership: owned.source, unattributed: owned.unattributed,
     // Handed back rather than acted on: only the sweep can tell an orphan from a blob
     // another workspace is serving.
     maybeOrphaned: [...maybeOrphaned],

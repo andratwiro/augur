@@ -101,16 +101,30 @@ const manifest = (id, version = 3) => JSON.stringify({
 
 const ctxFor = (id) => Object.freeze({ ...W.applyInstance({ users: [] }), tenantId: id });
 
+// ⚠️ THE WORKSPACE IS "a" AND ITS SPACE IS NOT. A bundle-store key names a SPACE and
+// carries no workspace segment, so a fixture where the two ids are the same string cannot
+// tell an erasure that scoped itself correctly from one that matched by coincidence — which
+// is exactly how an erasure that deleted nothing stayed green for months.
+const SPACE = "site";
+
 function instance({ doEnv = {} } = {}) {
   return {
     BUNDLES: memR2({
-      "spaces/a/manifest.json": manifest("a"),
-      "spaces/a/versions/3.json": manifest("a"),
+      [`spaces/${SPACE}/manifest.json`]: manifest(SPACE),
+      [`spaces/${SPACE}/versions/3.json`]: manifest(SPACE),
       [`blobs/${"a".repeat(64)}`]: "page",
     }),
     TENANTS: namespace(doEnv),
   };
 }
+
+/**
+ * Record that this workspace published that space, the way a real publish records it: the
+ * counter in its own object, which is the only thing on the deployment that can say whose
+ * a space is.
+ */
+const published = (env, id, space = SPACE) =>
+  env.TENANTS.get(env.TENANTS.idFromName(id)).store.nextPublishVersion(space, 3);
 
 const control = (env, id, verb, init) =>
   env.TENANTS.get(env.TENANTS.idFromName(id)).fetch(`https://workspace/__control/${verb}`, init);
@@ -277,6 +291,7 @@ test("INSIDE THE STATED WINDOW: the erasure refuses, and the workspace is still 
   const ns = env.TENANTS;
   await ns.get(ns.idFromName("a")).store.provision({ workspaceId: "a", adminEmail: "a@x.test" });
   await ns.get(ns.idFromName("spare")).store.provision({ workspaceId: "spare", adminEmail: "s@x.test" });
+  published(env, "a");
   // Something a person made, so "restorable" is a claim about work rather than about an
   // empty schema.
   await W.importState(ctxFor("a"), env, {
@@ -297,9 +312,9 @@ test("INSIDE THE STATED WINDOW: the erasure refuses, and the workspace is still 
   assert.equal(erase.reason, "grace-window");
   assert.equal(erase.purgeAfter, done.purgeAfter);
 
-  // Nothing was taken: the published prefix and the object's own record are both intact.
-  assert.ok(env.BUNDLES.store.has("spaces/a/manifest.json"));
-  assert.ok(env.BUNDLES.store.has("spaces/a/versions/3.json"));
+  // Nothing was taken: the published content and the object's own record are both intact.
+  assert.ok(env.BUNDLES.store.has(`spaces/${SPACE}/manifest.json`));
+  assert.ok(env.BUNDLES.store.has(`spaces/${SPACE}/versions/3.json`));
   assert.equal(ns.get(ns.idFromName("a")).store.status().members, 1);
 
   // And a copy taken inside the window puts the workspace back. This is what "recoverable
@@ -320,6 +335,7 @@ test("PAST THE STATED DATE: the erasure runs, and every way back fails by name",
   const env = instance();
   const ns = env.TENANTS;
   await ns.get(ns.idFromName("a")).store.provision({ workspaceId: "a", adminEmail: "a@x.test" });
+  published(env, "a");
   await W.importState(ctxFor("a"), env, {
     format: 1,
     families: { statuses: { "/p/": "reviewed" }, "c:": { "/p/": [{ id: "t1", msgs: [{ id: "m1", text: "hi" }] }] } },
@@ -332,7 +348,7 @@ test("PAST THE STATED DATE: the erasure runs, and every way back fails by name",
 
   const erase = await W.deleteWorkspace(ctxFor("a"), env, { confirm: "a", dryRun: false });
   assert.equal(erase.ok, true, JSON.stringify(erase));
-  assert.deepEqual([...env.BUNDLES.store.keys()].filter((k) => k.startsWith("spaces/a/")), []);
+  assert.deepEqual([...env.BUNDLES.store.keys()].filter((k) => k.startsWith(`spaces/${SPACE}/`)), []);
   assert.deepEqual(ns.get(ns.idFromName("a")).store.status(),
     { provisioned: false, hasStoredData: false });
 

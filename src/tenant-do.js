@@ -1168,8 +1168,10 @@ export class TenantStore {
    *
    * ⚠️ IT DELETES NOTHING. That is the point of a tombstone: for the grace window the data
    * is all still here, so a delete somebody regrets is a support mail rather than a
-   * catastrophe. Actually erasing it — the R2 prefix, this object's storage, dedup-safely —
-   * is `E-gdpr-delete-tenant`, and `destroy()` is the primitive it will use.
+   * catastrophe. Actually erasing it — the spaces this workspace owns, this object's
+   * storage, dedup-safely — is `E-gdpr-delete-tenant`, and `destroy()` is the primitive it
+   * uses. Which spaces those are comes from `publishedSpaces()` below, because the store's
+   * keys name a space and no key in it names a workspace.
    *
    * ⚠️ A DELETE SUSPENDS, and it is the same flag rather than a second one. Otherwise
    * everything that has to refuse a dead workspace — the resolver, the publish endpoints,
@@ -1834,6 +1836,32 @@ export class TenantStore {
     return rows.length ? Number(rows[0].version) : null;
   }
 
+  /**
+   * WHICH SPACES ARE THIS WORKSPACE'S, and the only record of it that exists.
+   *
+   * `spaces/<spaceId>/…` in the bundle store names a SPACE. Nothing in that key names a
+   * workspace, and two workspaces may publish a space under the same id, so no listing of
+   * that bucket can say whose anything is. This table can: a row lands here only when a
+   * publish addressed to THIS object asked it for a version number, and a Durable Object's
+   * storage belongs to its id — there is no key constructible in one workspace that writes
+   * a row in another. That is the same reason the counter is here in the first place.
+   *
+   * ⚠️ IT IS AUTHORITATIVE, NOT PROVABLY COMPLETE. Content published before this
+   * deployment bound the workspace objects went through `nextPublishVersion`'s no-object
+   * branch and left no row, so an empty answer means "this workspace has issued no publish
+   * version", never "this workspace owns nothing". The caller has to treat those two
+   * differently, and `deleteWorkspace` does.
+   *
+   * NO init(), for `status()`'s reason: asking what a workspace holds must not bring one
+   * into being. A workspace with no schema answers with an empty list and says it is not
+   * provisioned, which is exactly what it can honestly say.
+   */
+  publishedSpaces() {
+    if (!this.hasMeta()) return { provisioned: false, spaces: [] };
+    const rows = [...this.sql.exec(`SELECT space FROM publish_versions ORDER BY space`)];
+    return { provisioned: this.isProvisioned(), spaces: rows.map((r) => String(r.space)) };
+  }
+
   // ── the content overlay ────────────────────────────────────────────────────
   // Four verbs, each the shape one of the four families actually needs. Reading them
   // together: `read` is what a page load does, `set` is a single edit, `insert` is a
@@ -2218,6 +2246,13 @@ export class TenantStore {
       await this.init(body.workspaceId);
       const version = this.nextPublishVersion(space, body.floor);
       return Response.json({ version });
+    }
+    // The workspace's own account of which spaces are its own. NOT a control verb: like
+    // `/status` and `/suspension` this is the request path asking the workspace about
+    // itself, and `CONTROL_VERBS` is what the OUTSIDE may do TO one. No init() either —
+    // asking what a workspace holds must not bring one into being.
+    if (url.pathname === "/publish-spaces" && request.method === "GET") {
+      return Response.json(this.publishedSpaces());
     }
     // NO init() ON THIS ONE. See status() — a call on a typo must not create a workspace.
     if (url.pathname === "/status" && request.method === "GET") {

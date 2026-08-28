@@ -260,6 +260,11 @@ test("the store exposes no read or write verb it does not yet need", () => {
   // `publishTokenRead` is separate from `publishTokenList` because the request path wants
   // one token and only the admin panel wants all of them, and a request-path read that had
   // to page the whole map would be the KV shape this move is getting away from.
+  // `publishedSpaces` is the read side of `nextPublishVersion` and the ONLY record of which
+  // spaces are a workspace's: the bundle store keys name a space and carry no workspace
+  // segment, so a listing of that bucket cannot say whose anything is. Without it the
+  // erasure inferred ownership from a string prefix no key has ever carried, matched
+  // nothing, and reported a clean delete of everything — see test/delete-workspace.test.mjs.
   const names = Object.getOwnPropertyNames(TenantStore.prototype).filter((n) => n !== "constructor");
   assert.deepEqual(names.sort(), [
     "bumpCounter", "clearMeta", "controlResult", "deleteWorkspace", "destroy", "fetch",
@@ -272,6 +277,7 @@ test("the store exposes no read or write verb it does not yet need", () => {
     "overlayCas", "overlayInsert", "overlayOwner", "overlayRead", "overlayReadRev",
     "overlayReplace", "overlayScopes", "overlaySet", "provision",
     "publishTokenList", "publishTokenMint", "publishTokenRead", "publishTokenRevoke",
+    "publishedSpaces",
     "purgeAuthor", "quotas", "readCounter", "readMeta", "renameAway", "resume",
     "resumeOnSignIn", "rosterRead", "rosterWrite", "rotate", "schemaVersion",
     "sessionKey",
