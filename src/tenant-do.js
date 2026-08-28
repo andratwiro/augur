@@ -456,14 +456,27 @@ const lcAddr = (s) => String(s == null ? "" : s).trim().toLowerCase();
  * strictly would have declared every invite carried across invalid, without a word, and the
  * first sign of it would be somebody clicking a link that has not expired.
  *
- * The all-digit branch is therefore a READ accommodation and never a writing style: nothing
+ * The numeric branch is therefore a READ accommodation and never a writing style: nothing
  * in this file produces one, and `src/kv-identity.mjs` no longer does either.
+ *
+ * ⚠️ AND IT HAS TO ACCEPT THE SPELLING SQLITE PRODUCES, WHICH IS NOT THE ONE JAVASCRIPT
+ * DOES. The pre-fix copy did not stringify the number; it BOUND it, and a JS number bound
+ * into a TEXT-affinity column is converted by SQLite from a double — which renders as
+ * `"1788484474092.0"`, with a trailing `.0` no `String(n)` ever writes. So `/^\d+$/` matches
+ * a fixture that spelled the row by hand and misses every row the copy actually wrote, and
+ * an accommodation that only covers the hand-spelled form covers nothing. Measured on
+ * workerd and on node:sqlite, which agree: `scripts/tenant-do-rehearsal.mjs` drives
+ * `/state/import` with the real numeric field and was the run that found it.
  */
 function stampMs(v) {
   if (typeof v === "number" && Number.isFinite(v)) return v;
   const s = String(v == null ? "" : v).trim();
   if (!s) return null;
-  if (/^\d+$/.test(s)) return Number(s);
+  // Digits, optionally with the fractional part SQLite's double rendering adds. Deliberately
+  // NOT a general numeric grammar: exponent notation and a leading sign are not shapes any
+  // producer of these rows emits, and widening this to "anything Number() likes" would start
+  // reading strings that are not timestamps as timestamps.
+  if (/^\d+(?:\.\d+)?$/.test(s)) return Number(s);
   const ms = Date.parse(s);
   return Number.isFinite(ms) ? ms : null;
 }

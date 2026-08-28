@@ -362,10 +362,20 @@ test("THE HASH CONTRACT — a link the COPY carried is redeemed off the object",
 test("A ROW AN OLDER COPY WROTE IS STILL REDEEMABLE — the epoch-vs-ISO expiry", async () => {
   // ⚠️ THE BUG THIS ITEM FOUND. KV stores an invite's expiry as epoch MILLISECONDS; every
   // timestamp column in the object's schema is an ISO-8601 string. The copy handed the
-  // number straight over, so the table held `"1788484474092"` where `Date.parse` answers
-  // `NaN`. Nothing read the table, so nothing noticed. `identityFromKv` now converts — and
-  // `stampMs` still accepts the number, or every row an earlier copy wrote would have gone
-  // dead on the day the reads moved. That accommodation is what this pins.
+  // number straight over, so the table held a number in a text column where `Date.parse`
+  // answers `NaN`. Nothing read the table, so nothing noticed. `identityFromKv` now
+  // converts — and `stampMs` still accepts the number, or every row an earlier copy wrote
+  // would have gone dead on the day the reads moved. That accommodation is what this pins.
+  //
+  // ⚠️ AND THE FIXTURE IS THE NUMBER, NOT A STRING OF IT. `mintInvite` writes
+  // `{expires: <number>}` into KV and the pre-fix `identityFromKv` passed that value
+  // through, so `writeIdentity` BOUND a number — which SQLite converts through TEXT
+  // affinity from a double, into `"…092.0"`. Writing `String(n)` here instead spells a row
+  // the copy has never produced: it holds `"…092"`, matches a digits-only accommodation,
+  // and passes while every real row is refused. That is exactly how this fixture read green
+  // against a shape that does not exist, so the stored value is asserted below rather than
+  // assumed — see `stampMs` in src/tenant-do.js, and the run that found it,
+  // `scripts/tenant-do-rehearsal.mjs`.
   const d = await deployment({ tenants: true });
   const token = "a-token-an-older-copy-carried";
   d.object.importAll({
@@ -374,35 +384,42 @@ test("A ROW AN OLDER COPY WROTE IS STILL REDEEMABLE — the epoch-vs-ISO expiry"
       invites: [{
         tokenHash: await W.inviteHash(token),
         email: GUEST,
-        createdAt: String(Date.now() - 1000),
-        expiresAt: String(Date.now() + 60_000),   // epoch ms, as the old copy wrote it
+        createdAt: Date.now() - 1000,
+        expiresAt: Date.now() + 60_000,   // epoch ms, AS A NUMBER, as the old copy wrote it
       }],
     },
   });
-  assert.equal(Number.isFinite(Date.parse(String(Date.now() + 60_000))), false,
-    "the fixture is not actually the broken shape, so this proves nothing");
+  const stored = [...d.object.sql.exec(
+    `SELECT expires_at FROM invites WHERE token_hash = ?`, await W.inviteHash(token))][0].expires_at;
+  assert.equal(Number.isFinite(Date.parse(String(stored))), false,
+    `the fixture is not actually the broken shape (${JSON.stringify(stored)}), so this proves nothing`);
 
   const res = await d.fire(`/__invite?t=${encodeURIComponent(token)}`);
-  assert.equal(res.status, 200, "a row an earlier copy wrote reads as invalid");
+  assert.equal(res.status, 200, `a row an earlier copy wrote reads as invalid (stored ${JSON.stringify(stored)})`);
   assert.match(await res.text(), new RegExp(GUEST.replace(".", "\\.")));
 });
 
 test("an expired row is still expired — the tolerant read did not make expiry optional", async () => {
-  const d = await deployment({ tenants: true });
-  const token = "a-token-that-has-run-out";
-  d.object.importAll({
-    overlay: {},
-    identity: [{}] && {
-      invites: [{
-        tokenHash: await W.inviteHash(token),
-        email: GUEST,
-        createdAt: new Date(Date.now() - 90_000).toISOString(),
-        expiresAt: String(Date.now() - 60_000),
-      }],
-    },
-  });
-  const res = await d.fire(`/__invite?t=${encodeURIComponent(token)}`);
-  assert.equal(res.status, 400);
+  // Both spellings of the number, because the accommodation now accepts both and "tolerant"
+  // must not have quietly become "unexpiring". The bound-number one is the shape the copy
+  // wrote; the string one is what a fixture writes by hand.
+  for (const expiresAt of [Date.now() - 60_000, String(Date.now() - 60_000)]) {
+    const d = await deployment({ tenants: true });
+    const token = `a-token-that-has-run-out-${typeof expiresAt}`;
+    d.object.importAll({
+      overlay: {},
+      identity: {
+        invites: [{
+          tokenHash: await W.inviteHash(token),
+          email: GUEST,
+          createdAt: new Date(Date.now() - 90_000).toISOString(),
+          expiresAt,
+        }],
+      },
+    });
+    const res = await d.fire(`/__invite?t=${encodeURIComponent(token)}`);
+    assert.equal(res.status, 400, `an expired row spelled as a ${typeof expiresAt} was accepted`);
+  }
 });
 
 test("REMOVING SOMEBODY KILLS THEIR OUTSTANDING LINK IN BOTH STORES", async () => {

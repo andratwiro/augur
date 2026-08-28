@@ -687,6 +687,17 @@ name, initials, colour and role. Passwords live in KV as PBKDF2 hashes under
   design exists to avoid. `test/kv-read-cutover.test.mjs` drives both backings over the same
   HTTP endpoints, breaks the object's read and asserts the refusal, and RUNS the revert
   against a modified copy of the worker rather than asserting about the diff.
+  **⚠️ THE SUITE'S STORE IS `node:sqlite` BEHIND A STUB, AND THAT IS NOT THE RUNTIME.**
+  `scripts/tenant-do-rehearsal.mjs` is the same clauses on real workerd, under `wrangler dev
+  --local`: the real deploy entry, a `new_sqlite_classes` `TENANTS` binding, a local KV, and
+  three deployments over one persisted store differing only in the binding and in the flag —
+  so bound-versus-unbound, the refusal, and the revert are RUN rather than simulated. The
+  break is a real one (the `invites` table renamed away, so the real SELECT throws inside the
+  real object), and it is what a stub cannot stage. Reach for it before moving another family:
+  the run found that `stampMs`'s tolerance for a pre-fix copy's expiry matched a shape only a
+  hand-written fixture produces — SQLite stores a BOUND number through TEXT affinity as a
+  double, `"…092.0"`, not `"…092"` — so the accommodation covered none of the rows it exists
+  for. It needs no account and must never be given one.
   **⛔ `users:secrets` is not in that list and must never be**: a credential is
   account-level, so `effectiveSecret` moving belongs with cross-workspace sign-in, and the
   two land independently — whichever is second reads the other's straddle.
