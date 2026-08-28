@@ -405,6 +405,29 @@ test("an expired row is still expired — the tolerant read did not make expiry 
   assert.equal(res.status, 400);
 });
 
+test("REMOVING SOMEBODY KILLS THEIR OUTSTANDING LINK IN BOTH STORES", async () => {
+  // ⚠️ Redeeming an invite calls `setUserSecret`, which REPLACES the `users:secrets`
+  // tombstone that removal writes. So a link that survives a removal is a way back in for
+  // the person who was just removed — and with the object as the read, a revocation that
+  // reached only KV would leave exactly that. Both are emptied; the link is dead either way
+  // the read goes.
+  const d = await deployment({ tenants: true });
+  const token = await inviteVia(d, GUEST);
+  const res = await d.fire("/__admin/users", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...(await d.cookieFor(ADMIN)) },
+    body: JSON.stringify({ op: "remove", email: GUEST }),
+  });
+  const text = await res.text();
+  assert.equal(res.status, 200, text);
+
+  const dead = await redeem(d, token);
+  assert.equal(dead.status, 400, "a removed person's outstanding link still redeemed");
+  assert.equal(dead.headers.get("Set-Cookie"), null);
+  // And not merely because one store forgot it: the fallback has nothing either.
+  assert.deepEqual(JSON.parse(d.kv.store.get(W.USER_INVITES_KEY) || "{}"), {});
+});
+
 // ═══ THE FAMILIES THAT DID NOT MOVE ══════════════════════════════════════════════════
 
 test("a publish token minted before the cut still publishes after it", async () => {
@@ -442,6 +465,60 @@ test("the roster still answers from KV — this item did not move it, and says s
   d.kv.gets.length = 0;
   await d.fire("/__people?names=Grace");
   assert.ok(d.kv.gets.includes("users:roster"), "the roster stopped reading KV without being cut over");
+});
+
+test("A PUBLISH TOKEN'S SCOPE DOES NOT SURVIVE THE COPY — the read cannot move until it does", async () => {
+  // ⚠️ THE OTHER BUG THIS ITEM FOUND, pinned so that cutting this family is a deliberate act
+  // rather than an afternoon's tidying. `space` is the authorization scope: `*` is
+  // admin-equivalent because a star token pushes the instance config, i.e. the roster. The
+  // object's table has no column for it, and `identityFromKv` drops it — so a read cut over
+  // to that table would have to invent every token's scope. This is the test that fails on
+  // the day somebody adds the column, which is exactly when they should be reading the note.
+  const { identity } = await identityFromKv({
+    "publish:tokens": {
+      "hash-one": { space: "one", label: "backup", createdAt: "2026-01-01T00:00:00.000Z" },
+      "hash-star": { space: "*", label: "ci", createdAt: "2026-01-01T00:00:00.000Z" },
+    },
+  }, { configUsers: ROSTER, hashInvite: W.inviteHash });
+
+  assert.equal(identity.publishTokens.length, 2, "the copy stopped carrying publish tokens at all");
+  for (const t of identity.publishTokens) {
+    assert.equal("space" in t, false,
+      "the copy now carries a token's SCOPE — add the column, then cut the read and delete this");
+  }
+  const db = new DatabaseSync(":memory:");
+  const store = new TenantStore({ storage: storage(db), blockConcurrencyWhile: async (f) => f() }, {});
+  await store.provision({ workspaceId: "scope-check", adminEmail: ADMIN });
+  const cols = db.prepare("PRAGMA table_info(publish_tokens)").all().map((c) => c.name);
+  assert.deepEqual(cols.sort(), ["created_at", "expires_at", "label", "token_hash"]);
+  assert.equal(W.KV_CUTOVER.publishTokens, undefined,
+    "publish tokens were cut over while their scope still cannot cross");
+});
+
+test("THE ROSTER'S COLUMN CANNOT TELL THE FILE FROM THE OVERLAY — why that read is blocked", async () => {
+  // The second blocker, also pinned. The copy MERGES the config roster into `members`, so
+  // `role` and `name` no longer say where they came from. The serving path needs that
+  // difference: `applyNames` drops a config-set `initials` when there IS an override and
+  // keeps it when there is not — one column cannot reproduce both. And `members` carries
+  // neither `initials` nor colour, which every chip renders.
+  const configUsers = [{ email: GUEST, name: "Grace", initials: "GX", color: "#123456", role: "editor" }];
+  const { identity } = await identityFromKv({ "users:roster": { add: {}, remove: [] } }, {
+    configUsers, hashInvite: W.inviteHash,
+  });
+  const row = identity.members.find((m) => m.email === GUEST);
+  assert.equal(row.name, "Grace", "the config name landed in the column — so it reads as an override");
+  assert.equal("initials" in row, false);
+  assert.equal("color" in row, false);
+
+  // And the divergence it would cause, demonstrated on the real functions rather than
+  // described: the same person, once with a real override and once without, is rendered
+  // differently — and the members row is identical in both cases.
+  const withOverride = W.applyNames(configUsers, { [GUEST]: { name: "Grace" } });
+  const without = W.applyNames(configUsers, {});
+  assert.equal(withOverride[0].initials, undefined);
+  assert.equal(without[0].initials, "GX");
+  assert.equal(W.KV_CUTOVER.roster, undefined,
+    "the roster was cut over while `members` still cannot tell an override from the file");
 });
 
 // ═══ THE READ VOLUME, MEASURED ═══════════════════════════════════════════════════════
