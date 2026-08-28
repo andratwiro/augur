@@ -21,6 +21,29 @@
 /** Lowercased address, the same normalisation the serving path uses as an identity. */
 const lc = (s) => String(s || "").trim().toLowerCase();
 
+/**
+ * A KV timestamp as the ISO string the object's columns hold.
+ *
+ * ⚠️ THE TWO STORES SPELL A MOMENT DIFFERENTLY AND THE COPY HAS TO TRANSLATE IT. KV records
+ * an invite's expiry as epoch MILLISECONDS (`mintInvite` writes `nowMs + INVITE_TTL_MS`);
+ * every timestamp column in the object's schema is an ISO-8601 string. Handing the number
+ * straight over put `"1788484474092"` in a text column, which `Date.parse` answers `NaN`
+ * for — so an invite carried across by a copy read as having no usable expiry at all, on a
+ * path where an unreadable expiry is the difference between a link working and a link
+ * quietly not. It cost nothing at the time because nothing read the table; `B-kv-read-cutover`
+ * is what reads it.
+ *
+ * Anything already unreadable is not made worse: `stampMs` in src/tenant-do.js still accepts
+ * the number, so rows an earlier copy wrote stay redeemable. This is what stops new ones.
+ */
+const isoStamp = (v, fallback) => {
+  if (typeof v === "number" && Number.isFinite(v)) return new Date(v).toISOString();
+  const s = typeof v === "string" ? v.trim() : "";
+  if (!s) return fallback;
+  if (/^\d+$/.test(s)) return new Date(Number(s)).toISOString();
+  return Number.isFinite(Date.parse(s)) ? s : fallback;
+};
+
 /** The roles `members.role` will accept. A value outside this set is the object's to refuse. */
 const FALLBACK_ROLE = "viewer";
 
@@ -136,8 +159,8 @@ export async function identityFromKv(families = {}, opts = {}) {
       invites.push({
         tokenHash: await hashInvite(token),
         email: lc(rec.email),
-        createdAt: rec.createdAt || now,
-        expiresAt: rec.expires || rec.expiresAt || now,
+        createdAt: isoStamp(rec.createdAt, now),
+        expiresAt: isoStamp(rec.expires ?? rec.expiresAt, now),
         // KV never recorded who sent an invite, and inventing a plausible author would be
         // read as a fact about who let somebody in.
         createdBy: null,
@@ -146,6 +169,17 @@ export async function identityFromKv(families = {}, opts = {}) {
   }
 
   // Publish tokens need no re-keying: KV already stores them under a hash.
+  //
+  // ⚠️ AND THE SCOPE DOES NOT COME ACROSS, WHICH IS WHY THE READ CANNOT MOVE YET. KV's
+  // record is `{space, label, createdAt, expiresAt?}`, and `space` is not a label — it is
+  // what `publishAuthDetailed` refuses `wrong-space` on, with `*` meaning admin-equivalent
+  // because a star token can push the instance config, i.e. the roster. There is no column
+  // for it in `publish_tokens`, so it is dropped here; a read cut over to that table would
+  // have to invent an answer, and both available inventions are wrong in a direction
+  // somebody would notice only afterwards. `scripts/state-inventory.mjs` cannot catch this:
+  // it asks whether a family has somewhere to land, and this family does. Named here so the
+  // next person to move the read finds the reason before the bug — see `KV_CUTOVER` in
+  // src/_worker.js.
   const publishTokens = [];
   if (has("publish:tokens")) {
     take("publish:tokens");

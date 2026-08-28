@@ -289,47 +289,47 @@ test("identify resolves the effective secret once, so a mid-request change canno
 
 test("mintInvite issues a token that reads back to its email", async () => {
   const kv = memKV(); const env = envWith(kv);
-  const t = await W.mintInvite(env, "a@example.test");
+  const t = await W.mintInvite(null, env, "a@example.test");
   assert.match(t, /^[A-Za-z0-9_-]{20,}$/, "url-safe, high entropy");
-  assert.equal(await W.readInvite(env, t), "a@example.test");
+  assert.equal(await W.readInvite(null, env, t), "a@example.test");
 });
 
 test("an invite is single-use", async () => {
   const kv = memKV(); const env = envWith(kv);
-  const t = await W.mintInvite(env, "a@example.test");
-  assert.equal(await W.consumeInvite(env, t), "a@example.test");
-  assert.equal(await W.consumeInvite(env, t), null, "second use fails");
-  assert.equal(await W.readInvite(env, t), null);
+  const t = await W.mintInvite(null, env, "a@example.test");
+  assert.equal(await W.consumeInvite(null, env, t), "a@example.test");
+  assert.equal(await W.consumeInvite(null, env, t), null, "second use fails");
+  assert.equal(await W.readInvite(null, env, t), null);
 });
 
 test("an invite expires after the TTL", async () => {
   const kv = memKV(); const env = envWith(kv);
   const t0 = 1_000_000_000_000;
-  const t = await W.mintInvite(env, "a@example.test", t0);
-  assert.equal(await W.readInvite(env, t, t0 + W.INVITE_TTL_MS - 1), "a@example.test");
-  assert.equal(await W.readInvite(env, t, t0 + W.INVITE_TTL_MS + 1), null, "expired");
-  assert.equal(await W.consumeInvite(env, t, t0 + W.INVITE_TTL_MS + 1), null);
+  const t = await W.mintInvite(null, env, "a@example.test", t0);
+  assert.equal(await W.readInvite(null, env, t, t0 + W.INVITE_TTL_MS - 1), "a@example.test");
+  assert.equal(await W.readInvite(null, env, t, t0 + W.INVITE_TTL_MS + 1), null, "expired");
+  assert.equal(await W.consumeInvite(null, env, t, t0 + W.INVITE_TTL_MS + 1), null);
 });
 
 test("minting a new invite invalidates that user's outstanding ones", async () => {
   const kv = memKV(); const env = envWith(kv);
-  const first = await W.mintInvite(env, "a@example.test");
-  const second = await W.mintInvite(env, "a@example.test");
-  assert.equal(await W.readInvite(env, first), null, "old link is dead");
-  assert.equal(await W.readInvite(env, second), "a@example.test");
+  const first = await W.mintInvite(null, env, "a@example.test");
+  const second = await W.mintInvite(null, env, "a@example.test");
+  assert.equal(await W.readInvite(null, env, first), null, "old link is dead");
+  assert.equal(await W.readInvite(null, env, second), "a@example.test");
 });
 
 test("minting for one user leaves another user's invite alone", async () => {
   const kv = memKV(); const env = envWith(kv);
-  const a = await W.mintInvite(env, "a@example.test");
-  await W.mintInvite(env, "b@example.test");
-  assert.equal(await W.readInvite(env, a), "a@example.test");
+  const a = await W.mintInvite(null, env, "a@example.test");
+  await W.mintInvite(null, env, "b@example.test");
+  assert.equal(await W.readInvite(null, env, a), "a@example.test");
 });
 
 test("unknown tokens read as null", async () => {
   const kv = memKV(); const env = envWith(kv);
-  assert.equal(await W.readInvite(env, "nope"), null);
-  assert.equal(await W.readInvite(env, ""), null);
+  assert.equal(await W.readInvite(null, env, "nope"), null);
+  assert.equal(await W.readInvite(null, env, ""), null);
 });
 
 // Wraps memKV() and counts get() calls per key, so a regression back to the
@@ -353,9 +353,9 @@ function countingKV(initial = {}) {
 test("consumeInvite performs exactly one KV get of users:invites", async () => {
   const kv = countingKV();
   const env = envWith(kv);
-  const t = await W.mintInvite(env, "a@example.test");
+  const t = await W.mintInvite(null, env, "a@example.test");
   kv.getCounts.clear(); // only count gets during consumeInvite itself
-  const email = await W.consumeInvite(env, t);
+  const email = await W.consumeInvite(null, env, t);
   assert.equal(email, "a@example.test");
   assert.equal(kv.getCounts.get("users:invites"), 1, "consumeInvite must do exactly one get of users:invites");
 });
@@ -364,23 +364,23 @@ test("a corrupt invites map degrades to no invites instead of throwing", async (
   const kv = memKV({ "users:invites": "{not json" });
   const env = envWith(kv);
   await assert.doesNotReject(async () => {
-    assert.equal(await W.readInvite(env, "anything"), null);
+    assert.equal(await W.readInvite(null, env, "anything"), null);
   });
   await assert.doesNotReject(async () => {
-    assert.equal(await W.consumeInvite(env, "anything"), null);
+    assert.equal(await W.consumeInvite(null, env, "anything"), null);
   });
   let token;
   await assert.doesNotReject(async () => {
-    token = await W.mintInvite(env, "a@example.test");
+    token = await W.mintInvite(null, env, "a@example.test");
   });
-  assert.equal(await W.readInvite(env, token), "a@example.test", "mintInvite still produces a usable token");
+  assert.equal(await W.readInvite(null, env, token), "a@example.test", "mintInvite still produces a usable token");
 });
 
 test("an invite is expired exactly at its boundary (nowMs === expires)", async () => {
   const kv = memKV(); const env = envWith(kv);
   const t0 = 1_000_000_000_000;
-  const t = await W.mintInvite(env, "a@example.test", t0);
-  assert.equal(await W.readInvite(env, t, t0 + W.INVITE_TTL_MS), null, "expires is exclusive: nowMs === expires reads as expired");
+  const t = await W.mintInvite(null, env, "a@example.test", t0);
+  assert.equal(await W.readInvite(null, env, t, t0 + W.INVITE_TTL_MS), null, "expires is exclusive: nowMs === expires reads as expired");
 });
 
 const ROSTER = [{ email: "a@example.test", name: "A" }];
@@ -401,7 +401,7 @@ function invitePostRequest(token, password) {
 
 test("redeeming an invite stores a hash and signs the user in", async () => {
   const kv = memKV(); const env = envWith(kv, { SESSION_SECRET: "s3cret" });
-  const t = await W.mintInvite(env, "a@example.test");
+  const t = await W.mintInvite(null, env, "a@example.test");
   const res = await W.invitePost(BARE, invitePostRequest(t, "a good long password"), new URL("https://example.test/__invite"), env, ROSTER);
   assert.equal(res.status, 303);
   const cookie = res.headers.get("Set-Cookie") || "";
@@ -413,7 +413,7 @@ test("redeeming an invite stores a hash and signs the user in", async () => {
 
 test("an invite cannot be redeemed twice", async () => {
   const kv = memKV(); const env = envWith(kv, { SESSION_SECRET: "s3cret" });
-  const t = await W.mintInvite(env, "a@example.test");
+  const t = await W.mintInvite(null, env, "a@example.test");
   await W.invitePost(BARE, invitePostRequest(t, "a good long password"), new URL("https://example.test/__invite"), env, ROSTER);
   const again = await W.invitePost(BARE, invitePostRequest(t, "another long password"), new URL("https://example.test/__invite"), env, ROSTER);
   assert.equal(again.status, 400);
@@ -422,16 +422,16 @@ test("an invite cannot be redeemed twice", async () => {
 
 test("a short password is rejected and nothing is stored", async () => {
   const kv = memKV(); const env = envWith(kv, { SESSION_SECRET: "s3cret" });
-  const t = await W.mintInvite(env, "a@example.test");
+  const t = await W.mintInvite(null, env, "a@example.test");
   const res = await W.invitePost(BARE, invitePostRequest(t, "short"), new URL("https://example.test/__invite"), env, ROSTER);
   assert.equal(res.status, 400);
   assert.equal(await kv.get("users:secrets"), null, "no secret written");
-  assert.equal(await W.readInvite(env, t), "a@example.test", "token survives a failed attempt");
+  assert.equal(await W.readInvite(null, env, t), "a@example.test", "token survives a failed attempt");
 });
 
 test("a token for an unknown roster entry is refused", async () => {
   const kv = memKV(); const env = envWith(kv, { SESSION_SECRET: "s3cret" });
-  const t = await W.mintInvite(env, "ghost@example.test");
+  const t = await W.mintInvite(null, env, "ghost@example.test");
   const res = await W.invitePost(BARE, invitePostRequest(t, "a good long password"), new URL("https://example.test/__invite"), env, ROSTER);
   assert.equal(res.status, 400);
 });
@@ -451,7 +451,7 @@ test("PBKDF2_ITERATIONS stays within the Workers WebCrypto ceiling (100k)", () =
 
 test("a hashing failure leaves the invite redeemable (hash before consume)", async () => {
   const kv = memKV(); const env = envWith(kv, { SESSION_SECRET: "s3cret" });
-  const t = await W.mintInvite(env, "a@example.test");
+  const t = await W.mintInvite(null, env, "a@example.test");
   // Stand in for what a rejected iteration count does inside WebCrypto.
   const realDeriveBits = crypto.subtle.deriveBits;
   crypto.subtle.deriveBits = () => { throw new Error("Not implemented: iterations too large"); };
@@ -463,7 +463,7 @@ test("a hashing failure leaves the invite redeemable (hash before consume)", asy
   }
   assert.equal(res.status, 500, "the attempt fails");
   assert.equal(await kv.get("users:secrets"), null, "no secret written");
-  assert.equal(await W.readInvite(env, t), "a@example.test", "the link SURVIVES — retrying once the cause is fixed works");
+  assert.equal(await W.readInvite(null, env, t), "a@example.test", "the link SURVIVES — retrying once the cause is fixed works");
   // And it really is still redeemable, not merely present.
   const ok = await W.invitePost(BARE, invitePostRequest(t, "a good long password"), new URL("https://example.test/__invite"), env, ROSTER);
   assert.equal(ok.status, 303, "same link redeems normally afterwards");
@@ -479,7 +479,7 @@ test("invitePost stores the secret under the roster's canonical email, not the i
   const kv = memKV(); const env = envWith(kv, { SESSION_SECRET: "s3cret" });
   const rosterUser = { email: "mixed@example.test", name: "Mixed", pass: "leaked-seed" };
   const roster = [rosterUser];
-  const t = await W.mintInvite(env, "Mixed@Example.test"); // invite minted with different case
+  const t = await W.mintInvite(null, env, "Mixed@Example.test"); // invite minted with different case
   const res = await W.invitePost(
     BARE,
     invitePostRequest(t, "a good long password"),
@@ -501,7 +501,7 @@ test("invitePost stores the secret under the roster's canonical email, not the i
 
 test("a KV failure after the token is consumed fails cleanly instead of throwing", async () => {
   const kv = memKV(); const env = envWith(kv, { SESSION_SECRET: "s3cret" });
-  const t = await W.mintInvite(env, "a@example.test");
+  const t = await W.mintInvite(null, env, "a@example.test");
   const realPut = kv.put.bind(kv);
   kv.put = async (k, v) => {
     if (k === "users:secrets") throw new Error("simulated KV outage");
@@ -509,7 +509,7 @@ test("a KV failure after the token is consumed fails cleanly instead of throwing
   };
   const res = await W.invitePost(BARE, invitePostRequest(t, "a good long password"), new URL("https://example.test/__invite"), env, ROSTER);
   assert.equal(res.status, 500);
-  assert.equal(await W.readInvite(env, t), null, "the token was already consumed and is not restored");
+  assert.equal(await W.readInvite(null, env, t), null, "the token was already consumed and is not restored");
 });
 
 // ---- Finding 3: the most exposed endpoint in the codebase — cookie hardening
@@ -517,7 +517,7 @@ test("a KV failure after the token is consumed fails cleanly instead of throwing
 
 test("invitePost success sets a hardened cookie: Path=/, HttpOnly, Secure, SameSite=Lax, <email>.<token> shape", async () => {
   const kv = memKV(); const env = envWith(kv, { SESSION_SECRET: "s3cret" });
-  const t = await W.mintInvite(env, "a@example.test");
+  const t = await W.mintInvite(null, env, "a@example.test");
   const res = await W.invitePost(BARE, invitePostRequest(t, "a good long password"), new URL("https://example.test/__invite"), env, ROSTER);
   const cookie = res.headers.get("Set-Cookie") || "";
   assert.match(cookie, /Path=\//, "Path=/ present");
@@ -590,7 +590,7 @@ test("reset clears the secret and returns a fresh invite link", async () => {
   const secrets = JSON.parse(await kv.get("users:secrets"));
   assert.ok(!secrets["u@example.test"], "old secret cleared — the password dies now");
   const token = new URL(body.url).searchParams.get("t");
-  assert.equal(await W.readInvite(env, token), "u@example.test");
+  assert.equal(await W.readInvite(null, env, token), "u@example.test");
 });
 
 test("the password-setting endpoint is gone", async () => {
@@ -715,7 +715,7 @@ test("invite adds the address to the overlay and returns its single-use link", a
   // come out admin.
   assert.equal(roster.add["new.person@example.test"].role, "editor", "no silent admin escalation");
   const token = new URL(body.url).searchParams.get("t");
-  assert.equal(await W.readInvite(env, token), "new.person@example.test");
+  assert.equal(await W.readInvite(null, env, token), "new.person@example.test");
 });
 
 test("invite refuses a malformed address and an existing user", async () => {
@@ -769,10 +769,10 @@ test("remove revokes an outstanding invite link", async () => {
   const env = envWith(kv);
   const invited = await (await callAdmin(adminPost({ op: "invite", email: "half@example.test" }), env, [ADMIN], [ADMIN])).json();
   const token = new URL(invited.url).searchParams.get("t");
-  assert.equal(await W.readInvite(env, token), "half@example.test");
+  assert.equal(await W.readInvite(null, env, token), "half@example.test");
   const list = W.mergeRoster([ADMIN], JSON.parse(await kv.get("users:roster")));
   await callAdmin(adminPost({ op: "remove", email: "half@example.test" }), env, list, [ADMIN]);
-  assert.equal(await W.readInvite(env, token), null, "the link they already hold stops working");
+  assert.equal(await W.readInvite(null, env, token), null, "the link they already hold stops working");
 });
 
 test("an admin cannot remove themselves", async () => {

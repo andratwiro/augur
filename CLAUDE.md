@@ -673,6 +673,27 @@ name, initials, colour and role. Passwords live in KV as PBKDF2 hashes under
   KV read leaves the roster as the config list, which would put a removed CONFIG user
   back in it — so removal ALSO writes the `users:secrets` tombstone, and that read fails
   closed. Never reduce removal to the list alone.
+- **⏳ Two identity families now answer from the WORKSPACE OBJECT, and the list is one
+  constant.** `KV_CUTOVER` in `src/_worker.js` — `invites` and `lastseen` today — is the
+  cut-over, family by family, with the KV path still live underneath. Reads take the object
+  first and KV as a FALLBACK, which is what carries an invite link somebody is already
+  holding across the cut; **writes go to BOTH stores**, which is what makes flipping one word
+  back a revert rather than a rollback (and what keeps `augur export --full`, which walks KV,
+  a complete copy). A deployment with no `TENANTS` binding — every self-hosted instance —
+  has no object, so `identityFor` answers null and nothing changes for it.
+  **An unreadable object is a REFUSAL and does not reach the fallback**: an ANSWER of "no
+  such invite" is a fact and an ERROR is the absence of one, and falling through on the
+  second would make a broken store fail OPEN onto KV, which is the shape the whole gate
+  design exists to avoid. `test/kv-read-cutover.test.mjs` drives both backings over the same
+  HTTP endpoints, breaks the object's read and asserts the refusal, and RUNS the revert
+  against a modified copy of the worker rather than asserting about the diff.
+  **⛔ `users:secrets` is not in that list and must never be**: a credential is
+  account-level, so `effectiveSecret` moving belongs with cross-workspace sign-in, and the
+  two land independently — whichever is second reads the other's straddle.
+  ⏳ **The roster documents and the publish-token map are BLOCKED, not skipped**, each on a
+  field the copy cannot carry: a token's `space` scope has no column, and `members` cannot
+  tell a config value from an overlay of it. Both reasons are written where the code is,
+  and pinned by tests that fail on the day the gap closes.
 
 ## Email
 

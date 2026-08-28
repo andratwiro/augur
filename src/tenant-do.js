@@ -442,6 +442,32 @@ export const SEEDABLE_FAMILIES = Object.freeze(["comments", "boards", "statuses"
 export const IDENTITY_FAMILIES = Object.freeze(["members", "invites", "publishTokens", "lastseen", "blobs"]);
 const MEMBER_ROLES = Object.freeze(["admin", "editor", "viewer"]);
 
+/** The address as an identity: lowercased and trimmed, the normalisation the gate uses. */
+const lcAddr = (s) => String(s == null ? "" : s).trim().toLowerCase();
+
+/**
+ * A stored timestamp as epoch milliseconds, or null if it is not one.
+ *
+ * ⚠️ IT ACCEPTS TWO SPELLINGS ON PURPOSE, and only one of them is written here. Every
+ * timestamp column in this schema is an ISO-8601 string, because these rows are read by
+ * people during incidents. But KV stored an invite's expiry as epoch milliseconds, and a
+ * copy carries what the source held — so a table filled by one holds rows whose
+ * `expires_at` is a number in a text column, which `Date.parse` answers `NaN` for. Reading
+ * strictly would have declared every invite carried across invalid, without a word, and the
+ * first sign of it would be somebody clicking a link that has not expired.
+ *
+ * The all-digit branch is therefore a READ accommodation and never a writing style: nothing
+ * in this file produces one, and `src/kv-identity.mjs` no longer does either.
+ */
+function stampMs(v) {
+  if (typeof v === "number" && Number.isFinite(v)) return v;
+  const s = String(v == null ? "" : v).trim();
+  if (!s) return null;
+  if (/^\d+$/.test(s)) return Number(s);
+  const ms = Date.parse(s);
+  return Number.isFinite(ms) ? ms : null;
+}
+
 /** How many rows a seed pack would write. Used to report, and to tell "none" from "empty". */
 function seedCount(seed) {
   if (!seed || typeof seed !== "object") return 0;
@@ -1216,6 +1242,122 @@ export class TenantStore {
     )];
   }
 
+  // ── the identity families the request path now READS from here ─────────────
+  //
+  // `B-kv-read-cutover`. `B-kv-to-do-migration-tool` gave these tables a write path and
+  // nothing that read it. These are the reads, and each is the shape ONE accessor in the
+  // worker wants — a verb no call site asks for is a verb whose semantics nobody has
+  // thought about, which is the rule the overlay verbs above already follow.
+  //
+  // ⚠️ AN INVITE'S EXPIRY IS READ TOLERANTLY AND WRITTEN STRICTLY. The column is TEXT
+  // holding an ISO stamp, and that is what everything here writes. But the COPY that
+  // filled this table from KV wrote what KV held, and KV holds epoch milliseconds — a
+  // number, stringified, which `Date.parse` answers `NaN` for. A strict read would
+  // therefore have called every invite carried across by a copy invalid, silently, and
+  // the first anyone would know is somebody clicking a link that has not expired. So
+  // `stampMs` accepts both, and `src/kv-identity.mjs` no longer produces the second.
+
+  /**
+   * An invite by its token HASH, or null if there is no live one.
+   *
+   * The raw token never reaches this object — see `inviteHash` in src/_worker.js. That is
+   * the same contract the copy hashes on, so a link minted before the reads moved resolves
+   * after them.
+   */
+  inviteRead(tokenHash, nowMs = Date.now()) {
+    if (!tokenHash) return null;
+    const rows = [...this.sql.exec(
+      `SELECT email, expires_at FROM invites WHERE token_hash = ?`, String(tokenHash),
+    )];
+    if (!rows.length) return null;
+    const exp = stampMs(rows[0].expires_at);
+    if (exp === null || exp <= nowMs) return null;
+    return rows[0].email;
+  }
+
+  /**
+   * Resolve and burn an invite in ONE act.
+   *
+   * KV could only narrow this race — it has no compare-and-swap, so two redemptions could
+   * both read before either wrote. A Durable Object is single-threaded, so the read and the
+   * delete here cannot interleave and the second caller gets null. The comment on
+   * `consumeInvite` in the worker describes the window this closes.
+   */
+  inviteConsume(tokenHash, nowMs = Date.now()) {
+    const email = this.inviteRead(tokenHash, nowMs);
+    if (email === null) return null;
+    this.sql.exec(`DELETE FROM invites WHERE token_hash = ?`, String(tokenHash));
+    return email;
+  }
+
+  /**
+   * Record an invitation, dropping every outstanding one for the same address first.
+   *
+   * Issuing invalidates a person's other links, so there is never more than one — the rule
+   * the KV path already holds, and for the same reason: two live links for one person is
+   * two ways in when somebody was handed one.
+   */
+  inviteMint({ tokenHash, email, createdAt, expiresAt, createdBy = null }, nowMs = Date.now()) {
+    if (!tokenHash || !email) return { ok: false };
+    const at = new Date(nowMs).toISOString();
+    this.inviteRevoke(email);
+    this.sql.exec(
+      `INSERT INTO invites (token_hash, email, created_at, expires_at, created_by)
+         VALUES (?1,?2,?3,?4,?5)
+         ON CONFLICT(token_hash) DO UPDATE SET email = ?2, created_at = ?3, expires_at = ?4, created_by = ?5`,
+      String(tokenHash), lcAddr(email), createdAt || at, expiresAt || at, createdBy ?? null,
+    );
+    return { ok: true };
+  }
+
+  /** Drop every outstanding invite for one address. Removal needs this without minting. */
+  inviteRevoke(email) {
+    if (!email) return { dropped: 0 };
+    const rows = [...this.sql.exec(
+      `DELETE FROM invites WHERE email = ? RETURNING token_hash`, lcAddr(email),
+    )];
+    return { dropped: rows.length };
+  }
+
+  /** Every last-connection stamp, as the `{address: iso}` map the admin list reads. */
+  lastseenRead() {
+    const out = {};
+    for (const row of this.sql.exec(`SELECT email, at FROM lastseen`)) out[row.email] = row.at;
+    return out;
+  }
+
+  /**
+   * Stamp a person as seen, unless the stored stamp is still fresh.
+   *
+   * The throttle lives HERE rather than at the call site, and that is the difference the
+   * move buys: KV had to read the stamp and then write it, two round trips and a race
+   * between them. One call now answers whether it wrote.
+   */
+  lastseenTouch(email, throttleMs = 15 * 60 * 1000, nowMs = Date.now()) {
+    if (!email) return { wrote: false };
+    const addr = lcAddr(email);
+    const rows = [...this.sql.exec(`SELECT at FROM lastseen WHERE email = ?`, addr)];
+    if (rows.length) {
+      const prev = stampMs(rows[0].at);
+      if (prev !== null && nowMs - prev < throttleMs) return { wrote: false };
+    }
+    const at = new Date(nowMs).toISOString();
+    this.sql.exec(
+      `INSERT INTO lastseen (email, at) VALUES (?1,?2) ON CONFLICT(email) DO UPDATE SET at = ?2`,
+      addr, at,
+    );
+    return { wrote: true, at };
+  }
+
+  /** Forget one person's last connection — what removal and purge do to their row. */
+  lastseenForget(email) {
+    if (!email) return { dropped: 0 };
+    const rows = [...this.sql.exec(
+      `DELETE FROM lastseen WHERE email = ? RETURNING email`, lcAddr(email),
+    )];
+    return { dropped: rows.length };
+  }
+
   /** Whether this workspace has anybody in it — the gate's "is the roster on" question. */
   usersActive() {
     return this.members().length > 0;
@@ -1689,6 +1831,40 @@ export class TenantStore {
       const out = this.bumpCounter(body.k, body.window || "", body.by, ceiling);
       return Response.json(out);
     }
+    // ── the identity families, read and written where they live ────────────────
+    //
+    // `B-kv-read-cutover`. Same shape as `/overlay/*` below, and deliberately so: that
+    // straddle is the one every other family in this phase came across on, so a reader who
+    // has understood one has understood both. `init()` for the same reason too — a
+    // workspace the request path has reached is a workspace, and refusing to build its
+    // tables here would make the first invite after a provision the one that fails.
+    if (url.pathname.startsWith("/identity/") && request.method === "POST") {
+      let body = null;
+      try { body = await request.json(); } catch (e) { /* handled per verb below */ }
+      if (!body) return Response.json({ error: "bad-input" }, { status: 400 });
+      await this.init(body.workspaceId);
+      const now = Number.isFinite(body.now) ? body.now : Date.now();
+      switch (url.pathname) {
+        // The raw token never crosses this wire — only its hash. See inviteRead.
+        case "/identity/invite/read":
+          return Response.json({ email: this.inviteRead(body.tokenHash, now) });
+        case "/identity/invite/consume":
+          return Response.json({ email: this.inviteConsume(body.tokenHash, now) });
+        case "/identity/invite/mint":
+          return Response.json(this.inviteMint(body, now));
+        case "/identity/invite/revoke":
+          return Response.json(this.inviteRevoke(body.email));
+        case "/identity/lastseen/read":
+          return Response.json({ map: this.lastseenRead() });
+        case "/identity/lastseen/touch":
+          return Response.json(this.lastseenTouch(body.email, body.throttleMs, now));
+        case "/identity/lastseen/forget":
+          return Response.json(this.lastseenForget(body.email));
+        default:
+          return Response.json({ error: "not-found" }, { status: 404 });
+      }
+    }
+
     if (url.pathname.startsWith("/overlay/") && request.method === "POST") {
       let body = null;
       try { body = await request.json(); } catch (e) { /* handled below */ }

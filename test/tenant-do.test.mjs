@@ -200,10 +200,23 @@ test("the store exposes no read or write verb it does not yet need", () => {
   // knows whose scope it is asking about, and a COPY is the caller that cannot. Without it an
   // export off this backing omitted every person's sidebar and called itself complete — see
   // test/state-export-absent.test.mjs.
+  // The `invite*` and `lastseen*` verbs are B-kv-read-cutover: two identity families whose
+  // reads now come from here, each with exactly the verbs its ONE accessor in the worker
+  // wants and no more. `inviteRead` and `inviteConsume` are separate because a page load
+  // must be able to ask without burning the link — `invitePost` validates the password
+  // first, so a typo does not cost somebody their only way in. `inviteRevoke` and
+  // `lastseenForget` exist because removal has to reach BOTH stores for as long as the
+  // family is straddled; see KV_CUTOVER in src/_worker.js. There is no `secrets*` verb and
+  // there must never be one — a credential is account-level, and `effectiveSecret` moving is
+  // B-cross-workspace-signin's, not this item's.
   const names = Object.getOwnPropertyNames(TenantStore.prototype).filter((n) => n !== "constructor");
   assert.deepEqual(names.sort(), [
     "bumpCounter", "clearMeta", "controlResult", "deleteWorkspace", "destroy", "fetch",
-    "hasMeta", "importAll", "importOverlay", "init", "isProvisioned", "members",
+    "hasMeta", "importAll", "importOverlay", "init",
+    "inviteConsume", "inviteMint", "inviteRead", "inviteRevoke",
+    "isProvisioned",
+    "lastseenForget", "lastseenRead", "lastseenTouch",
+    "members",
     "nextPublishVersion",
     "overlayCas", "overlayInsert", "overlayOwner", "overlayRead", "overlayReadRev",
     "overlayReplace", "overlayScopes", "overlaySet", "provision",

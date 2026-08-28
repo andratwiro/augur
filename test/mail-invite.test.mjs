@@ -85,7 +85,7 @@ test("with no provider configured a reset is a link too, and the link still work
     const body = await (await reset(env)).json();
     assert.equal(body.mail.reason, "unconfigured");
     const token = new URL(body.url).searchParams.get("t");
-    assert.equal(await W.readInvite(env, token), THEM.email, "the minted token resolves, mail or no mail");
+    assert.equal(await W.readInvite(null, env, token), THEM.email, "the minted token resolves, mail or no mail");
   } finally { restore(); }
 });
 
@@ -107,7 +107,7 @@ test("an invite is emailed, and the message carries the very link the panel show
     assert.ok(sent.text.includes("Ada Admin"), "the invite names the admin who sent it");
     // The token in the message is the one the invite flow will actually accept.
     const token = new URL(body.url).searchParams.get("t");
-    assert.equal(await W.readInvite(env, token), "new@x.test");
+    assert.equal(await W.readInvite(null, env, token), "new@x.test");
   } finally { restore(); }
 });
 
@@ -154,7 +154,7 @@ test("a provider outage degrades: the admin sees the error AND still gets the li
     assert.match(body.mail.note, /Couldn't email them/);
     assert.match(body.mail.note, /Send the link yourself/);
     const token = new URL(body.url).searchParams.get("t");
-    assert.equal(await W.readInvite(env, token), "new@x.test", "the invite itself completed");
+    assert.equal(await W.readInvite(null, env, token), "new@x.test", "the invite itself completed");
   } finally { restore(); }
 });
 
@@ -195,7 +195,7 @@ test("resetting the same person repeatedly caps the MAIL, never the reset", asyn
     assert.match(last.mail.note, /Send the link yourself/);
     assert.ok(calls.length < 5, "the provider stopped being called");
     const token = new URL(last.url).searchParams.get("t");
-    assert.equal(await W.readInvite(env, token), THEM.email, "and the link it hands back is live");
+    assert.equal(await W.readInvite(null, env, token), THEM.email, "and the link it hands back is live");
   } finally { restore(); }
 });
 

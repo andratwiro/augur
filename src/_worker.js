@@ -1641,7 +1641,18 @@ async function revokeSecret(env, email) {
 
 // Drop every outstanding invite for one address (mintInvite does this for the address it
 // is issuing; removal needs it without minting anything).
-async function revokeInvitesFor(env, email) {
+async function revokeInvitesFor(tctx, env, email) {
+  // Both stores, for consume's reason: a revocation that missed one would leave the link
+  // live on the fallback, which is the opposite of what a removal is for.
+  //
+  // ⚠️ A FAILURE HERE THROWS AND IS NOT SWALLOWED. Removal writes the `users:secrets`
+  // tombstone first, and redeeming an invite calls `setUserSecret`, which REPLACES a
+  // tombstone with a working credential — so an outstanding link that survives a removal is
+  // a way back in for the person who was just removed. The KV half has always failed loudly
+  // for the same reason (its `put` propagates); the object half must too, or the object
+  // being the read would make a caught error into a live link.
+  const ident = identityFor(env, tctx, "invites");
+  if (ident) await ident.inviteRevoke(email);
   const kv = kvFor(env);
   if (!kv) return;
   const map = await readInvites(kv);
@@ -1982,24 +1993,63 @@ function pruneInvites(map, nowMs) {
   return out;
 }
 
-async function mintInvite(env, email, nowMs = Date.now()) {
+// ⚠️ WRITES GO TO BOTH STORES WHILE `KV_CUTOVER.invites` IS ON. See that constant: the
+// object is where the read comes from, and KV is what makes flipping the word back a
+// revert instead of a data loss. A KV blip does not fail the mint once the object has it —
+// the link the admin is handed already works.
+async function mintInvite(tctx, env, email, nowMs = Date.now()) {
   const kv = kvFor(env);
-  if (!kv) throw new Error("no-kv-binding");
+  const ident = identityFor(env, tctx, "invites");
+  if (!kv && !ident) throw new Error("no-kv-binding");
   const token = toB64(crypto.getRandomValues(new Uint8Array(32)))
     .replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
-  const map = pruneInvites(await readInvites(kv), nowMs);
-  // Issuing invalidates this user's outstanding links, so there is never more than one.
-  // Case-insensitive, like every other email match — an exact compare let a reset (which
-  // mints under the roster's canonical case) miss an invite minted under the lowercased
-  // address, leaving two live links for one person.
-  for (const [tok, rec] of Object.entries(map)) if (rec && lcEmail(rec.email) === lcEmail(email)) delete map[tok];
-  map[token] = { email, expires: nowMs + INVITE_TTL_MS };
-  await kv.put(USER_INVITES_KEY, JSON.stringify(map));
+  if (ident) {
+    // The object drops this address's outstanding invites itself — same rule, one act,
+    // and no read-modify-write for two concurrent mints to lose each other in.
+    await ident.inviteMint({
+      tokenHash: await inviteHash(token),
+      email: lcEmail(email),
+      createdAt: new Date(nowMs).toISOString(),
+      expiresAt: new Date(nowMs + INVITE_TTL_MS).toISOString(),
+    }, nowMs);
+  }
+  if (kv) {
+    try {
+      const map = pruneInvites(await readInvites(kv), nowMs);
+      // Issuing invalidates this user's outstanding links, so there is never more than one.
+      // Case-insensitive, like every other email match — an exact compare let a reset (which
+      // mints under the roster's canonical case) miss an invite minted under the lowercased
+      // address, leaving two live links for one person.
+      for (const [tok, rec] of Object.entries(map)) if (rec && lcEmail(rec.email) === lcEmail(email)) delete map[tok];
+      map[token] = { email, expires: nowMs + INVITE_TTL_MS };
+      await kv.put(USER_INVITES_KEY, JSON.stringify(map));
+    } catch (e) {
+      if (!ident) throw e;
+    }
+  }
   return token;
 }
 
-async function readInvite(env, token, nowMs = Date.now()) {
+// The object first, KV as the fallback — and the fallback is not tidiness. A link minted
+// before the reads moved, or one the copy did not carry, exists only in KV; asking the
+// object alone would answer "no longer valid" to somebody holding a live invitation, and
+// nothing would say so.
+//
+// ⚠️ AN UNREADABLE STORE IS A REFUSAL, AND THE KV FALLBACK IS NOT REACHED. The two "the
+// object had nothing" cases look identical from here and are not: an ANSWER of "no such
+// invite" is a fact, and an ERROR is an absence of one. Falling through on the second would
+// make a broken workspace store fail OPEN onto KV — the exact shape the item warns about,
+// where the obvious fix is the one that admits people. `/__invite` is a session ISSUER, so
+// the cost of being wrong the other way is somebody clicking again in five minutes.
+async function readInvite(tctx, env, token, nowMs = Date.now()) {
   if (typeof token !== "string" || !token) return null;
+  const ident = identityFor(env, tctx, "invites");
+  if (ident) {
+    let email;
+    try { email = await ident.inviteRead(await inviteHash(token), nowMs); }
+    catch (e) { return null; }
+    if (email) return email;
+  }
   const kv = kvFor(env);
   if (!kv) return null;
   const rec = (await readInvites(kv))[token];
@@ -2016,16 +2066,40 @@ async function readInvite(env, token, nowMs = Date.now()) {
 // writes. Accepted: an attacker racing a redemption must already hold the token,
 // so double-redemption grants no access they didn't already have; the last write
 // wins and the user ends up with one password, same as a plain double-submit.
-async function consumeInvite(env, token, nowMs = Date.now()) {
+//
+// ⚠️ BOTH STORES ARE BURNED, whichever answered. A consume that only deleted the row it
+// resolved would leave the other copy live, and the second click would then be answered by
+// the fallback — a single-use link used twice, which is the one thing this function is for.
+// The object's answer wins the RETURN and the KV delete runs regardless.
+async function consumeInvite(tctx, env, token, nowMs = Date.now()) {
   if (typeof token !== "string" || !token) return null;
+  const ident = identityFor(env, tctx, "invites");
   const kv = kvFor(env);
-  if (!kv) return null;
-  const map = pruneInvites(await readInvites(kv), nowMs);
-  const rec = map[token];
-  if (!rec || typeof rec.expires !== "number" || rec.expires <= nowMs) return null;
-  const email = rec.email;
-  delete map[token];
-  await kv.put(USER_INVITES_KEY, JSON.stringify(map));
+  let email = null;
+  if (ident) {
+    // On the object this is ONE act: single-threaded storage means the read and the delete
+    // cannot interleave, so the second of two concurrent redemptions gets null rather than
+    // the same address. KV could only ever narrow that window — see the note above.
+    //
+    // An ERROR refuses outright and never reaches KV, for readInvite's reason: burning a
+    // link out of the fallback while the store that was supposed to burn it is unreachable
+    // would leave the object's row live and the link redeemable a second time.
+    try { email = await ident.inviteConsume(await inviteHash(token), nowMs); }
+    catch (e) { return null; }
+  }
+  if (kv) {
+    try {
+      const map = pruneInvites(await readInvites(kv), nowMs);
+      const rec = map[token];
+      if (rec && typeof rec.expires === "number" && rec.expires > nowMs) {
+        if (!email) email = rec.email;
+        delete map[token];
+        await kv.put(USER_INVITES_KEY, JSON.stringify(map));
+      }
+    } catch (e) {
+      if (!ident) throw e;
+    }
+  }
   return email;
 }
 
@@ -2243,7 +2317,7 @@ function invitePage(tctx, token, error, email) {
 
 async function inviteGet(tctx, url, env) {
   const token = url.searchParams.get("t") || "";
-  const email = await readInvite(env, token);
+  const email = await readInvite(tctx, env, token);
   if (!email) return htmlResponse(invitePage(tctx, "", "This link is no longer valid. Ask for a new one."), 400);
   // Show WHOSE account this link sets — a wrong recipient sees an address that isn't
   // theirs and stops, and no one can quietly claim a different identity (it's read-only).
@@ -2256,7 +2330,7 @@ async function invitePost(tctx, request, url, env, users = tctx.USERS) {
   const password = (form.get("password") || "").toString();
 
   // Validate the password BEFORE consuming the token, so a typo doesn't burn the link.
-  const email = await readInvite(env, token);
+  const email = await readInvite(tctx, env, token);
   if (!email) return htmlResponse(invitePage(tctx, "", "This link is no longer valid. Ask for a new one."), 400);
   if (password.length < MIN_PASSWORD_LENGTH) {
     return htmlResponse(invitePage(tctx, token, `Use at least ${MIN_PASSWORD_LENGTH} characters.`, email), 400);
@@ -2278,7 +2352,7 @@ async function invitePost(tctx, request, url, env, users = tctx.USERS) {
     return htmlResponse(invitePage(tctx, token, "Something went wrong setting your password. Try again.", email), 500);
   }
 
-  const consumed = await consumeInvite(env, token);
+  const consumed = await consumeInvite(tctx, env, token);
   if (!consumed) return htmlResponse(invitePage(tctx, "", "This link is no longer valid. Ask for a new one."), 400);
 
   // From here on the token is already burned — a thrown error must not escape as
@@ -2402,10 +2476,27 @@ async function identify(request, env, users, { sessionKeys = false } = {}) {
 // fresh (<15 min) a browsing burst costs one KV read and zero writes (KV allows ~1
 // write/sec/key). Fire-and-forget via ctx.waitUntil; telemetry must never break a
 // request, hence the blanket catch.
-async function touchLastSeen(env, u) {
+//
+// ⚠️ ON THE OBJECT THE THROTTLE IS THE OBJECT'S, AND THAT IS WHAT MAKES THE MIRROR FREE.
+// KV needs a get and then a put, with a race between them; the object answers "did it
+// write" in one call. So when the object decides, the KV copy is written from ITS verdict
+// and never re-read — a browsing burst costs zero KV gets rather than one per page view,
+// and the mirror stays within the same fifteen minutes it always was. The mirror is what
+// makes flipping `KV_CUTOVER.lastseen` back a revert; see that constant.
+async function touchLastSeen(tctx, env, u) {
   try {
+    if (!u) return;
     const kv = kvFor(env);
-    if (!kv || !u) return;
+    const ident = identityFor(env, tctx, "lastseen");
+    if (ident) {
+      let out = null;
+      try { out = await ident.lastseenTouch(u.email); } catch (e) { /* telemetry, never a failure */ }
+      if (out) {
+        if (out.wrote && kv) await kv.put(LASTSEEN_PREFIX + u.email, out.at);
+        return;
+      }
+    }
+    if (!kv) return;
     const key = LASTSEEN_PREFIX + u.email;
     const prev = await kv.get(key);
     if (prev && Date.now() - Date.parse(prev) < 15 * 60 * 1000) return;
@@ -5532,7 +5623,7 @@ async function redactProvenance(env, spaceId, email) {
  * Sweep every stored thread in this workspace, plus the lastseen stamp.
  * Returns {ok, redacted, pathsTouched, scanned} or {ok:false, reason, …}.
  */
-async function purgeUser(store, kv, users, email) {
+async function purgeUser(store, ident, kv, users, email) {
   if (!store) return { ok: false, reason: "no-store" };
   // The KV backing sweeps by LIST, which not every stub provides. The workspace store
   // answers the same question with a SELECT and needs no such capability, so the check
@@ -5565,8 +5656,11 @@ async function purgeUser(store, kv, users, email) {
     pathsTouched.push(path);
   }
 
-  // The lastseen stamp is an address in a KEY, so it is erased rather than redacted.
-  try { await kv.delete(LASTSEEN_PREFIX + addr); } catch (e) {}
+  // The lastseen stamp is an address in a KEY, so it is erased rather than redacted — and
+  // from BOTH stores while the family is straddled, or the erasure undoes itself the moment
+  // the other one is the answer.
+  try { if (ident) await ident.lastseenForget(addr); } catch (e) {}
+  try { if (kv) await kv.delete(LASTSEEN_PREFIX + addr); } catch (e) {}
 
   return { ok: true, id, redacted, pathsTouched, scanned };
 }
@@ -6027,6 +6121,109 @@ function overlayFor(env, tctx) {
   // it, so there is no key to scope. It is the KV backing that has one flat namespace, and
   // `kvWorkspaceSegment` is where the decision to use it lives.
   return kv ? kvOverlay(kv, kvWorkspaceSegment(env, tctx)) : null;
+}
+
+// ---- The identity families, one cut at a time -------------------------------
+//
+// `B-kv-read-cutover`. The content overlay above came across as one move because it is one
+// accessor. The identity families are not: each has its own accessor, its own failure mode
+// and its own way of being wrong, so each moves on its own and each has to be revertible on
+// its own — the property that kept every earlier family in this phase from being able to
+// take an instance down.
+//
+// ⚠️ REVERTING ONE FAMILY IS FLIPPING ONE WORD HERE. That is the whole of it: `false` sends
+// that family's reads and writes back down the KV path with nothing else touched, and it is
+// safe at any moment because the WRITES go to BOTH stores for as long as the flag is on.
+// A straddle where only the object is written is a straddle you cannot come back from —
+// the revert would silently lose everything minted since the cut — so dual-write is not
+// belt-and-braces here, it is what makes the word a revert rather than a rollback.
+//
+// The reads are the other way round: the object first, KV as the FALLBACK. That is what
+// carries an invite link somebody is already holding across the cut — the link predates the
+// copy or the copy missed it, the object has never heard of it, and KV still has it.
+//
+// ⛔ `users:secrets` IS NOT HERE AND MUST NOT BE. A credential is account-level — one
+// address, one password, several workspaces — so it goes to the control plane's account
+// store and not to any workspace's. `effectiveSecret` moving belongs to
+// `B-cross-workspace-signin`, which lands independently; whichever of the two is second
+// reads the other's straddle rather than replacing it.
+const KV_CUTOVER = Object.freeze({
+  // `users:invites` → the object's `invites` table. Hash-keyed on both sides, and the hash
+  // is the contract: `inviteHash` is `tokenFor("inv:" + token)` here, in the copy, and in
+  // the redemption path, or every link already sitting in somebody's inbox dies quietly.
+  invites: true,
+  // `users:lastseen:<address>` → the object's `lastseen` table. The safest family in the
+  // set: it grants nothing and refuses nothing, so a wrong answer costs a column in the
+  // admin list and never a session.
+  lastseen: true,
+  //
+  // ⏳ WHAT IS NOT HERE, AND WHY EACH ONE IS BLOCKED RATHER THAN SKIPPED.
+  //
+  // `publish:tokens` → `publish_tokens`. BLOCKED, and this is the sharp one. KV records a
+  // token as `{space, label, createdAt, expiresAt?}` and `space` is the AUTHORIZATION
+  // SCOPE — `publishAuthDetailed` refuses `wrong-space` on it, and `*` is admin-equivalent
+  // because a star token pushes instance config, which is the user list. The object's
+  // `publish_tokens` table has no column for it and `identityFromKv` does not carry it, so
+  // cutting this read today would either widen every space-scoped token to star or refuse
+  // every token, and the state-inventory check cannot see it: that guard works at FAMILY
+  // granularity, and this family is mapped. It needs a column and a copy that fills it —
+  // one schema version, in the item that owns the copy — before the read can move.
+  //
+  // `users:roster` / `users:roles` / `users:names` / `users:avatars` → `members`. BLOCKED
+  // on the same kind of loss, one layer up. The copy MERGES the config roster into
+  // `members`, so the column no longer says whether a value came from `identity.json` or
+  // from the overlay on top of it — and the serving path needs that difference: `applyNames`
+  // DROPS a config-set `initials` when there is a name override and keeps it when there is
+  // not, so one column cannot reproduce both answers. `members` also has no `initials` or
+  // colour, which the roster serves on every chip. Reconstructing the four documents from
+  // the table is possible for every value except the aliasing case, and a login-gate cut
+  // with a known divergence is not a cut. The fix is a schema that keeps overlay and config
+  // apart, which is a decision for the item that owns the table.
+  //
+  // ⛔ `users:secrets` is not a gap and never becomes one here: see the header above.
+});
+
+/**
+ * This workspace's identity store for ONE family, or null when that family has not been
+ * cut over or the deployment has no workspace object at all.
+ *
+ * Null is the KV path — the answer every self-hosted instance gets, because a deployment
+ * with no `TENANTS` binding has no object to read from and never will.
+ */
+function identityFor(env, tctx, family) {
+  if (!KV_CUTOVER[family]) return null;
+  const stub = tenantStub(env, tctx && tctx.tenantId);
+  return stub ? doIdentity(stub, tctx.tenantId) : null;
+}
+
+/**
+ * The identity verbs on a workspace object, as the accessor the worker calls.
+ *
+ * ⚠️ ONLY THE HASH TRAVELS. A raw invite token never leaves the worker: the object stores
+ * hashes so that a read of its storage — a backup, an export, an operator looking — cannot
+ * redeem anybody's invitation, and sending the raw token over this wire to be hashed there
+ * would put it in a request body for no gain.
+ */
+function doIdentity(stub, tenantId) {
+  const call = async (op, body) => {
+    const res = await stub.fetch(`https://workspace/identity/${op}`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ ...body, workspaceId: tenantId }),
+    });
+    if (!res.ok) throw new Error(`workspace store answered ${res.status}`);
+    return res.json();
+  };
+  return {
+    backing: "do",
+    inviteRead: async (tokenHash, now) => (await call("invite/read", { tokenHash, now })).email,
+    inviteConsume: async (tokenHash, now) => (await call("invite/consume", { tokenHash, now })).email,
+    inviteMint: (rec, now) => call("invite/mint", { ...rec, now }),
+    inviteRevoke: (email) => call("invite/revoke", { email }),
+    lastseenRead: async () => (await call("lastseen/read", {})).map || {},
+    lastseenTouch: (email, throttleMs, now) => call("lastseen/touch", { email, throttleMs, now }),
+    lastseenForget: (email) => call("lastseen/forget", { email }),
+  };
 }
 
 // ---- Export and restore of everything that is NOT published content ---------
@@ -8200,10 +8397,25 @@ async function adminUsersApi(tctx, request, url, env, me, users = tctx.USERS, co
     // make per-space roles decorative.
     if (scope && roleIn(me, scope) !== "admin") return jsonResponse({ error: "forbidden" }, 403);
     const inScope = scope ? users.filter((u) => isMemberOf(u, scope)) : users;
+    // ONE read for the whole column where the family has been cut over, against one KV get
+    // per person before it. The stamps are a table there, so asking for them one at a time
+    // would be paying the round trip the move was for — and a per-person KV fallback
+    // BEHIND it would pay it anyway for everybody the object has no row for, which on a
+    // fresh workspace is everybody. So the object's answer is the whole column when the
+    // object answers; KV is reached only when it could not, which is a degradation and not
+    // a merge. The copy carries `users:lastseen:`, so nothing predating the cut is lost —
+    // and what a stamp written between the copy and the cut costs is one column value that
+    // this person's next page view rewrites.
+    const ident = identityFor(env, tctx, "lastseen");
+    let seenMap = null;
+    if (ident) { try { seenMap = await ident.lastseenRead(); } catch (e) { /* KV below */ } }
     const out = [];
     for (const u of inScope) {
       let lastSeen = null;
-      try { lastSeen = kv ? await kv.get(LASTSEEN_PREFIX + u.email) : null; } catch (e) {}
+      if (seenMap) lastSeen = seenMap[lcEmail(u.email)] || null;
+      else {
+        try { lastSeen = kv ? await kv.get(LASTSEEN_PREFIX + u.email) : null; } catch (e) {}
+      }
       const secret = await effectiveSecret(env, u);
       out.push({
         email: u.email, name: u.name, role: scope ? roleIn(u, scope) : roleOf(u),
@@ -8266,7 +8478,7 @@ async function adminUsersApi(tctx, request, url, env, me, users = tctx.USERS, co
       // where a known password is still live alongside a pending invite.
       await revokeSecret(env, u.email);
       await revokePublishTokens(env, u.email); // a reset password must not leave a live publish token
-      const token = await mintInvite(env, u.email);
+      const token = await mintInvite(tctx, env, u.email);
       const mail = await mailLink(u.email, "credential-reset", token);
       return jsonResponse({ ok: true, email: u.email, url: link(token), mail });
     }
@@ -8295,7 +8507,7 @@ async function adminUsersApi(tctx, request, url, env, me, users = tctx.USERS, co
       // A stale hash under this address (a previous member of the same name) would make
       // the new invitee "accepted" on arrival, holding someone else's old password.
       await revokeSecret(env, email);
-      const token = await mintInvite(env, email);
+      const token = await mintInvite(tctx, env, email);
       commitRoster();
       // One record, not two: ask the deploy shell to commit this person to the
       // identity file. The overlay entry above made them live NOW; the file commit
@@ -8448,7 +8660,7 @@ async function adminUsersApi(tctx, request, url, env, me, users = tctx.USERS, co
       // through to the config roster's legacy `pass`.
       await revokeSecret(env, u.email);     // kills their session too (cookies bind to it)
       await revokePublishTokens(env, email); // and any publish token they minted via `augur login`
-      await revokeInvitesFor(env, email);   // an outstanding link must not let them back in
+      await revokeInvitesFor(tctx, env, email);   // an outstanding link must not let them back in
       try { await clearAvatar(env, email); } catch (e) {} // their face leaves the index too
       try { await clearName(env, email); } catch (e) {}   // …and so does their chosen name
       // A re-invited address must not inherit the last person's role — least of all admin.
@@ -8456,6 +8668,12 @@ async function adminUsersApi(tctx, request, url, env, me, users = tctx.USERS, co
       // …nor their spaces, least of all one they administered.
       try { await clearSpaces(env, email); } catch (e) {}
       try { await kv.delete(LASTSEEN_PREFIX + u.email); } catch (e) {}
+      // …and from the object, where the family is now read. Both, for revokeInvitesFor's
+      // reason: a stamp left in one store comes back the moment the other is the answer.
+      try {
+        const identLs = identityFor(env, tctx, "lastseen");
+        if (identLs) await identLs.lastseenForget(u.email);
+      } catch (e) {}
       commitRoster();
       // Symmetric to invite: the identity file should stop naming them too. The
       // tombstone above is the security boundary either way — this only keeps the
@@ -8473,7 +8691,7 @@ async function adminUsersApi(tctx, request, url, env, me, users = tctx.USERS, co
       // erasure that could not complete must be visible rather than swallowed.
       let purge;
       if (op && op.purge === true) {
-        try { purge = await purgeUser(overlayFor(env, tctx), kv, users, email); }
+        try { purge = await purgeUser(overlayFor(env, tctx), identityFor(env, tctx, "lastseen"), kv, users, email); }
         catch (e) { purge = { ok: false, reason: "failed", detail: String((e && e.message) || e).slice(0, 200) }; }
         // Publish history is the OTHER place an address is stored, and it is the one that
         // is readable before the gate: /_build.json is public, and it derives what it
@@ -9005,7 +9223,7 @@ async function handleRequest(request, env, ctx, url, trace) {
     // {user:null} can be read correctly: signed out (accounts:true) vs an instance
     // with no user list, where everyone is the operator (accounts:false).
     if (url.pathname === "/__me") {
-      if (me && ctx && ctx.waitUntil) ctx.waitUntil(touchLastSeen(env, me));
+      if (me && ctx && ctx.waitUntil) ctx.waitUntil(touchLastSeen(tctx, env, me));
       // The workspace's own activity clock, which is a different question from the
       // person's: the dormancy policy asks whether the WORKSPACE is being used, and this is
       // half of that answer (the other half is a publish, below).
@@ -9138,7 +9356,7 @@ async function handleRequest(request, env, ctx, url, trace) {
         const ok = await verifyPassword(pass, real || DUMMY_HASH);
         if (u && real && ok) {
           const token = await userToken(env, u, undefined, tctx.SESSION_KEYS);
-          if (ctx && ctx.waitUntil) ctx.waitUntil(touchLastSeen(env, u));
+          if (ctx && ctx.waitUntil) ctx.waitUntil(touchLastSeen(tctx, env, u));
           touchWorkspaceActivity(env, tctx, ctx);
           // ⚠️ INSIDE THE SUCCESS BRANCH, WHICH IS THE POINT. A wrong password falls through
           // to loginFail below and never reaches this line, so a dormant workspace cannot be
@@ -9389,7 +9607,11 @@ export const __testables = Object.freeze({
   peopleApi,
   tokenFor, hmacToken, userToken, identify, effectiveSecret,
   sessionBinding, rotateSessionKey, clearSessionKey, SESSION_KEYS_KEY,
-  mintInvite, readInvite, consumeInvite,
+  mintInvite, readInvite, consumeInvite, touchLastSeen,
+  // B-kv-read-cutover: which identity families read from the workspace object, and the
+  // accessor that answers. Exported so test/kv-read-cutover.test.mjs can assert the
+  // straddle from both sides rather than describe it.
+  KV_CUTOVER, identityFor, inviteHash, LASTSEEN_PREFIX, USER_INVITES_KEY,
   invitePost, inviteGet, invitePage, setUserSecret, MIN_PASSWORD_LENGTH,
   loginPage, RESET_NOTICE, previewHead, ENGINE_TAGLINE, notFoundPage,
   PBKDF2_ITERATIONS,

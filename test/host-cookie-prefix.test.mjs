@@ -181,7 +181,7 @@ test("POST /__auth issues the session under the prefixed name, and only that nam
 
 test("redeeming an invite issues the session under the prefixed name, and only that name", async () => {
   const inviteEnv = { ...env, COMMENTS: memKV() };
-  const t = await W.mintInvite(inviteEnv, OTHER.email);
+  const t = await W.mintInvite(null, inviteEnv, OTHER.email);
   const res = await W.invitePost(W.applyDerivedRouting({}), new Request(`${ORIGIN}/__invite`, {
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },

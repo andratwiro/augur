@@ -18,7 +18,10 @@ const { purgeThreads, purgeUser, personId, PURGED_AUTHOR } = W;
 // the workspace store answers the same question with a SELECT where KV needs a listing.
 // These fixtures are all KV, which is what every live instance is.
 const CTX = Object.freeze({ tenantId: "acme" });
-const purgeVia = (kv, users, email) => purgeUser(W.overlayFor({ COMMENTS: kv }, CTX), kv, users, email);
+// `null` for the identity accessor is the KV side of B-kv-read-cutover's straddle — a
+// deployment with no TENANTS binding, which is every self-hosted instance. The erasure has
+// to reach both stores where there are two; here there is one.
+const purgeVia = (kv, users, email) => purgeUser(W.overlayFor({ COMMENTS: kv }, CTX), null, kv, users, email);
 
 const ME = "ada@example.test";
 const OTHER = "grace@example.test";
@@ -184,6 +187,6 @@ test("the admin remove op only purges when asked explicitly", async () => {
   const at = src.indexOf('shellDispatch(env, "roster-update", { action: "remove"');
   const block = src.slice(at, at + 1400);
   assert.match(block, /op\.purge === true/, "purge is not opt-in on the remove op");
-  assert.match(block, /purgeUser\(overlayFor\(env, tctx\), kv, users, email\)/);
+  assert.match(block, /purgeUser\(overlayFor\(env, tctx\), identityFor\(env, tctx, "lastseen"\), kv, users, email\)/);
   assert.match(block, /catch/, "a failing erasure would throw away a removal that already succeeded");
 });
