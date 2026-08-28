@@ -823,20 +823,31 @@ test("the state export is byte-identical with TENANTS bound and unbound", async 
  * copied, so the reverted worker runs against the same tenant-do.js and the same everything
  * else — exactly one file differs.
  */
-async function revertedWorker(family) {
+async function revertedWorker(family, table = "KV_CUTOVER") {
   const src = fileURLToPath(new URL("../src/_worker.js", import.meta.url));
   const text = fs.readFileSync(src, "utf8");
+  // ⚠️ THE TABLE IS NAMED, AND IT HAS TO BE. Three constants now carry per-family flags
+  // under the SAME family names — `KV_CUTOVER` (which store answers a read),
+  // `BUNDLE_TENANCY` and `IDENTITY_TENANCY` (which keys carry a workspace) — and the
+  // shared vocabulary is deliberate. So the edit is anchored inside ONE declaration, or
+  // a revert aimed at one of them silently reverts another.
+  const start = text.indexOf(`const ${table} = Object.freeze({`);
+  assert.ok(start >= 0, `no such flag table: ${table}`);
+  const end = text.indexOf("\n});", start);
+  assert.ok(end > start, `${table} does not close where a flag table should`);
+  const block = text.slice(start, end);
   const needle = `\n  ${family}: true,`;
-  assert.equal(text.split(needle).length, 2, `the flag this revert edits has moved: ${family}`);
+  assert.equal(block.split(needle).length, 2, `the flag this revert edits has moved: ${table}.${family}`);
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), `augur-cutover-revert-${family}-`));
   try {
     for (const entry of fs.readdirSync(path.dirname(src))) {
       if (entry === "_worker.js") continue;
       fs.symlinkSync(path.join(path.dirname(src), entry), path.join(dir, entry));
     }
-    fs.writeFileSync(path.join(dir, "_worker.js"), text.replace(needle, `\n  ${family}: false,`));
+    fs.writeFileSync(path.join(dir, "_worker.js"),
+      text.slice(0, start) + block.replace(needle, `\n  ${family}: false,`) + text.slice(start + block.length));
     const mod = await import(pathToFileURL(path.join(dir, "_worker.js")).href);
-    const flags = mod.__testables.KV_CUTOVER;
+    const flags = mod.__testables[table];
     assert.equal(flags[family], false, "the edit did not take");
     for (const other of Object.keys(flags)) {
       if (other !== family) assert.equal(flags[other], true, `the revert reached ${other}, which it was not for`);

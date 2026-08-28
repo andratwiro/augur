@@ -948,8 +948,8 @@ const lcEmail = (e) => String(e == null ? "" : e).trim().toLowerCase();
 // invite scribble on every later read.
 const emptyRoster = () => ({ add: {}, remove: [] });
 
-async function readRoster(env) {
-  const kv = kvFor(env);
+async function readRoster(env, tctx) {
+  const kv = kvFor(env, tctx);
   if (!kv) return emptyRoster();
   try {
     const doc = JSON.parse((await kv.get(USER_ROSTER_KEY)) || "null");
@@ -1082,20 +1082,20 @@ async function readRosterDocs(ctx, env) {
   const ident = identityFor(env, ctx, "roster");
   if (ident) {
     const [docs, spaces, icons] = await Promise.all([
-      ident.rosterRead(), readSpaces(env), readSpaceIcons(env),
+      ident.rosterRead(), readSpaces(env, ctx), readSpaceIcons(env, ctx),
     ]);
     if (docs && docs.seeded) {
       return [docs.roster, docs.avatars, docs.names, docs.roles, spaces, icons];
     }
     // Unseeded: KV still holds this workspace's overlay, and it is the answer.
     const [roster, avatars, names, roles] = await Promise.all([
-      readRoster(env), readAvatars(env), readNames(env), readRoles(env),
+      readRoster(env, ctx), readAvatars(env, ctx), readNames(env, ctx), readRoles(env, ctx),
     ]);
     return [roster, avatars, names, roles, spaces, icons];
   }
   return Promise.all([
-    readRoster(env), readAvatars(env), readNames(env), readRoles(env), readSpaces(env),
-    readSpaceIcons(env),
+    readRoster(env, ctx), readAvatars(env, ctx), readNames(env, ctx), readRoles(env, ctx),
+    readSpaces(env, ctx), readSpaceIcons(env, ctx),
   ]);
 }
 
@@ -1164,8 +1164,8 @@ async function rosterFields(ctx, env) {
 // ---- Self-set display names -------------------------------------------------
 // Same bargain as the photo below: who you are is a deploy decision, what you are
 // CALLED is yours. A config-baked name is the seed someone sees until they change it.
-async function readNames(env) {
-  const kv = kvFor(env);
+async function readNames(env, tctx) {
+  const kv = kvFor(env, tctx);
   if (!kv) return {};
   try {
     const doc = JSON.parse((await kv.get(USER_NAMES_KEY)) || "null");
@@ -1192,8 +1192,8 @@ function cleanName(s) {
 // name (they show wherever there's no photo), so keeping "RA" against a name changed
 // to "Bee" would make one person read as two. Dropping it lets initialsFor derive
 // from the new name; publicUser and peopleApi already fall back that way.
-async function readRoles(env) {
-  const kv = kvFor(env);
+async function readRoles(env, tctx) {
+  const kv = kvFor(env, tctx);
   if (!kv) return {};
   try {
     const doc = JSON.parse((await kv.get(USER_ROLES_KEY)) || "null");
@@ -1217,10 +1217,10 @@ function applyRoles(users, index) {
 // and when an address is removed — a re-invited address must not inherit the last
 // person's role, least of all `admin`.
 async function clearRole(tctx, env, email) {
-  const kv = kvFor(env);
+  const kv = kvFor(env, tctx);
   if (!kv) return;
   try {
-    const index = await readRoles(env);
+    const index = await readRoles(env, tctx);
     if (!(lcEmail(email) in index)) return;
     delete index[lcEmail(email)];
     await kv.put(USER_ROLES_KEY, JSON.stringify(index));
@@ -1230,8 +1230,8 @@ async function clearRole(tctx, env, email) {
 
 // ---- Per-space membership ---------------------------------------------------
 // See USER_SPACES_KEY for the absent-vs-empty rule these all turn on.
-async function readSpaces(env) {
-  const kv = kvFor(env);
+async function readSpaces(env, tctx) {
+  const kv = kvFor(env, tctx);
   if (!kv) return {};
   try {
     const doc = JSON.parse((await kv.get(USER_SPACES_KEY)) || "null");
@@ -1299,8 +1299,8 @@ function viewerWriteRefusal(request, url, me, what, spaces) {
 }
 
 // ---- Workspace icons --------------------------------------------------------
-async function readSpaceIcons(env) {
-  const kv = kvFor(env);
+async function readSpaceIcons(env, tctx) {
+  const kv = kvFor(env, tctx);
   if (!kv) return {};
   try {
     const doc = JSON.parse((await kv.get(SPACE_ICONS_KEY)) || "null");
@@ -1334,7 +1334,7 @@ function applySpaceIcons(spaces, index) {
 // only ever served by the workspace whose index vouches for it.
 async function serveSpaceIcon(tctx, env, k) {
   if (!tctx.SPACE_ICON_KEYS.has(k)) return new Response("Not found", { status: 404 });
-  const kv = kvFor(env);
+  const kv = kvFor(env, tctx);
   const raw = kv ? await kv.get(SPACE_ICON_BLOB_PREFIX + k) : null;
   const parsed = raw && parseAvatarDataUri(raw);
   if (!parsed) return new Response("Not found", { status: 404 });
@@ -1353,9 +1353,9 @@ async function serveSpaceIcon(tctx, env, k) {
 // `tenantId` is carried for the roster overlay's cache and nothing else: the KV keys are
 // the instance's, but which workspace's icon index this isolate is holding is not
 // something the binding can answer.
-async function spaceIconApi(tenantId, request, env, me, spaces) {
+async function spaceIconApi(tenantId, request, env, me, spaces, tctx) {
   if (!me) return jsonResponse({ error: "unauthorized" }, 401);
-  const kv = kvFor(env);
+  const kv = kvFor(env, tctx);
   if (!kv) return jsonResponse({ error: "no-kv-binding" }, 500);
   let body;
   try { body = await request.json(); } catch (e) { return jsonResponse({ error: "bad-json" }, 400); }
@@ -1367,7 +1367,7 @@ async function spaceIconApi(tenantId, request, env, me, spaces) {
   if (roleIn(me, sid) !== "admin") return jsonResponse({ error: "forbidden" }, 403);
 
   if (request.method === "DELETE") {
-    const index = await readSpaceIcons(env);
+    const index = await readSpaceIcons(env, tctx);
     if (sid in index) { delete index[sid]; await kv.put(SPACE_ICONS_KEY, JSON.stringify(index)); }
     bustRosterOverlay(tenantId); cfgAt = 0;
     return jsonResponse({ ok: true, icon: null });
@@ -1379,7 +1379,7 @@ async function spaceIconApi(tenantId, request, env, me, spaces) {
     // Blob first: an index entry pointing at a missing blob serves a broken icon,
     // whereas a blob no index names is just an orphan.
     await kv.put(SPACE_ICON_BLOB_PREFIX + k, body.icon);
-    const index = await readSpaceIcons(env);
+    const index = await readSpaceIcons(env, tctx);
     index[sid] = { k, mime: parsed.mime, at: new Date().toISOString() };
     await kv.put(SPACE_ICONS_KEY, JSON.stringify(index));
     bustRosterOverlay(tenantId); cfgAt = 0;
@@ -1447,11 +1447,11 @@ const meSpaces = (u, spaces) =>
 // Drop someone's membership entry. Called when an address is removed, for the same
 // reason clearRole and clearName are: a re-invited address must not inherit the last
 // person's spaces, least of all one they administered.
-async function clearSpaces(env, email) {
-  const kv = kvFor(env);
+async function clearSpaces(env, email, tctx) {
+  const kv = kvFor(env, tctx);
   if (!kv) return;
   try {
-    const index = await readSpaces(env);
+    const index = await readSpaces(env, tctx);
     if (!(lcEmail(email) in index)) return;
     delete index[lcEmail(email)];
     await kv.put(USER_SPACES_KEY, JSON.stringify(index));
@@ -1472,9 +1472,9 @@ function applyNames(users, index) {
 // when an admin removes them: a re-invited address must not inherit the last person's
 // chosen name, and there is no UI for clearing it yourself.
 async function clearName(tctx, env, email) {
-  const kv = kvFor(env);
+  const kv = kvFor(env, tctx);
   if (!kv) return false;
-  const index = await readNames(env);
+  const index = await readNames(env, tctx);
   const key = lcEmail(email);
   if (!index[key]) return false;
   delete index[key];
@@ -1492,13 +1492,13 @@ async function clearName(tctx, env, email) {
 async function meNameApi(tenantId, request, env, me, tctx) {
   if (!me) return jsonResponse({ error: "unauthorized" }, 401);
   if (request.method !== "POST") return jsonResponse({ error: "method-not-allowed" }, 405);
-  const kv = kvFor(env);
+  const kv = kvFor(env, tctx);
   if (!kv) return jsonResponse({ error: "no-kv-binding" }, 500);
   let body;
   try { body = await request.json(); } catch (e) { return jsonResponse({ error: "bad-json" }, 400); }
   const name = cleanName(body && body.name);
   if (!name) return jsonResponse({ error: "bad-name" }, 400);
-  const index = await readNames(env);
+  const index = await readNames(env, tctx);
   index[lcEmail(me.email)] = { name, at: new Date().toISOString() };
   await kv.put(USER_NAMES_KEY, JSON.stringify(index));
   await mirrorRosterDocs(tctx, env, { names: index });
@@ -1515,8 +1515,8 @@ async function meNameApi(tenantId, request, env, me, tctx) {
 // change it — which is what lets an instance carrying baked photos take this feature
 // by pin bump with nothing to migrate.
 
-async function readAvatars(env) {
-  const kv = kvFor(env);
+async function readAvatars(env, tctx) {
+  const kv = kvFor(env, tctx);
   if (!kv) return {};
   try {
     const doc = JSON.parse((await kv.get(USER_AVATARS_KEY)) || "null");
@@ -1566,9 +1566,9 @@ async function avatarHash(dataUri) {
 // Drop someone's photo from the index. Blobs are deliberately left behind: two people
 // may share a hash, and an orphan is a few KB — the same trade the bundle store makes.
 async function clearAvatar(tctx, env, email) {
-  const kv = kvFor(env);
+  const kv = kvFor(env, tctx);
   if (!kv) return false;
-  const index = await readAvatars(env);
+  const index = await readAvatars(env, tctx);
   const key = lcEmail(email);
   if (!index[key]) return false;
   delete index[key];
@@ -1624,7 +1624,7 @@ async function meAvatarApi(tenantId, request, env, me, tctx) {
     const off = imagesDisabledRefusal(tctx);
     if (off) return off;
   }
-  const kv = kvFor(env);
+  const kv = kvFor(env, tctx);
   if (!kv) return jsonResponse({ error: "no-kv-binding" }, 500);
 
   if (request.method === "DELETE") {
@@ -1643,7 +1643,7 @@ async function meAvatarApi(tenantId, request, env, me, tctx) {
     // Blob first: an index entry pointing at a missing blob would serve a broken face,
     // whereas a blob no index names is just an orphan.
     await kv.put(AVATAR_BLOB_PREFIX + k, body.avatar);
-    const index = await readAvatars(env);
+    const index = await readAvatars(env, tctx);
     index[lcEmail(me.email)] = { k, mime: parsed.mime, at: new Date().toISOString() };
     await kv.put(USER_AVATARS_KEY, JSON.stringify(index));
     await mirrorRosterDocs(tctx, env, { avatars: index });
@@ -1660,7 +1660,7 @@ async function meAvatarApi(tenantId, request, env, me, tctx) {
 // workspace whose index vouches for it — same rule as serveSpaceIcon.
 async function serveKvAvatar(tctx, env, k) {
   if (!tctx.AVATAR_KEYS.has(k)) return new Response("Not found", { status: 404 });
-  const kv = kvFor(env);
+  const kv = kvFor(env, tctx);
   const raw = kv ? await kv.get(AVATAR_BLOB_PREFIX + k) : null;
   const parsed = raw && parseAvatarDataUri(raw);
   if (!parsed) return new Response("Not found", { status: 404 });
@@ -1711,7 +1711,7 @@ function personId(email) {
 // back to the config roster's legacy `pass` only when the key is ABSENT, so deleting
 // here would put an old password back in service. A present-but-null entry reads as
 // "no secret", which identify() refuses — that is what ends the session.
-async function revokeSecret(env, email) {
+async function revokeSecret(env, email, tctx) {
   const kv = kvFor(env);
   if (!kv) throw new Error("no-kv-binding");
   const raw = await kv.get(USER_SECRETS_KEY);
@@ -1722,7 +1722,7 @@ async function revokeSecret(env, email) {
   // turned on. A stored key WINS over the credential in sessionBinding, so a tombstone
   // alone would leave every cookie this person holds still verifying. The tombstone is
   // still what identify() refuses on — this is the belt beside that brace.
-  await clearSessionKey(env, email);
+  await clearSessionKey(env, email, tctx);
 }
 
 // Drop every outstanding invite for one address (mintInvite does this for the address it
@@ -1739,7 +1739,7 @@ async function revokeInvitesFor(tctx, env, email) {
   // being the read would make a caught error into a live link.
   const ident = identityFor(env, tctx, "invites");
   if (ident) await ident.inviteRevoke(email);
-  const kv = kvFor(env);
+  const kv = kvFor(env, tctx);
   if (!kv) return;
   const map = await readInvites(kv);
   let hit = false;
@@ -1762,7 +1762,7 @@ async function revokePublishTokens(tctx, env, email) {
     const ident = identityFor(env, tctx, "publishTokens");
     if (ident) await ident.tokenRevoke({ label: email });
   } catch (e) {}
-  const kv = kvFor(env);
+  const kv = kvFor(env, tctx);
   if (!kv) return;
   try {
     const raw = await kv.get(PUBLISH_TOKENS_KEY);
@@ -2008,11 +2008,11 @@ async function readSessionKeys(kv) {
   }
 }
 
-async function sessionBinding(env, u, authenticator, enabled) {
+async function sessionBinding(env, u, authenticator, enabled, tctx) {
   if (!u) return "";
   // OFF: today's derivation exactly, and no read.
   if (!enabled) return authenticator;
-  const kv = kvFor(env);
+  const kv = kvFor(env, tctx);
   // No binding at all is the offline/raw-build case, as it is for effectiveSecret: there
   // is no store to hold a key, so the authenticator is the whole story. Not a failure.
   if (!kv) return authenticator;
@@ -2034,8 +2034,8 @@ async function sessionBinding(env, u, authenticator, enabled) {
  * Best-effort by design: it is called beside credential writes that have already
  * succeeded, and a failure to rotate must not undo one. It says so rather than throwing.
  */
-async function rotateSessionKey(env, email) {
-  const kv = kvFor(env);
+async function rotateSessionKey(env, email, tctx) {
+  const kv = kvFor(env, tctx);
   if (!kv || !email) return { ok: false, why: "no store" };
   const keys = (await readSessionKeys(kv)) || {};
   const bytes = new Uint8Array(32);
@@ -2053,8 +2053,8 @@ async function rotateSessionKey(env, email) {
  * Clearing rather than rotating is deliberate: the credential just changed, so the
  * authenticator it falls back to is already a value nobody's old cookie was built on.
  */
-async function clearSessionKey(env, email) {
-  const kv = kvFor(env);
+async function clearSessionKey(env, email, tctx) {
+  const kv = kvFor(env, tctx);
   if (!kv || !email) return;
   try {
     const keys = await readSessionKeys(kv);
@@ -2093,7 +2093,7 @@ function pruneInvites(map, nowMs) {
 // revert instead of a data loss. A KV blip does not fail the mint once the object has it —
 // the link the admin is handed already works.
 async function mintInvite(tctx, env, email, nowMs = Date.now()) {
-  const kv = kvFor(env);
+  const kv = kvFor(env, tctx);
   const ident = identityFor(env, tctx, "invites");
   if (!kv && !ident) throw new Error("no-kv-binding");
   const token = toB64(crypto.getRandomValues(new Uint8Array(32)))
@@ -2145,7 +2145,7 @@ async function readInvite(tctx, env, token, nowMs = Date.now()) {
     catch (e) { return null; }
     if (email) return email;
   }
-  const kv = kvFor(env);
+  const kv = kvFor(env, tctx);
   if (!kv) return null;
   const rec = (await readInvites(kv))[token];
   if (!rec || typeof rec.expires !== "number" || rec.expires <= nowMs) return null;
@@ -2169,7 +2169,7 @@ async function readInvite(tctx, env, token, nowMs = Date.now()) {
 async function consumeInvite(tctx, env, token, nowMs = Date.now()) {
   if (typeof token !== "string" || !token) return null;
   const ident = identityFor(env, tctx, "invites");
-  const kv = kvFor(env);
+  const kv = kvFor(env, tctx);
   let email = null;
   if (ident) {
     // On the object this is ONE act: single-threaded storage means the read and the delete
@@ -2204,7 +2204,7 @@ const MIN_PASSWORD_LENGTH = 10;
 // one string so the web gate and the CLI say the same thing.
 const RESET_NOTICE = "This account was reset. Ask for a new invite link — your old password no longer exists.";
 
-async function setUserSecret(env, email, hash) {
+async function setUserSecret(env, email, hash, tctx) {
   const kv = kvFor(env);
   if (!kv) throw new Error("no-kv-binding");
   const raw = await kv.get(USER_SECRETS_KEY);
@@ -2215,7 +2215,7 @@ async function setUserSecret(env, email, hash) {
   // the old sessions by itself. Clearing rather than rotating is deliberate — the
   // credential just changed, so the value the binding falls back to is already one no old
   // cookie was built on.
-  await clearSessionKey(env, email);
+  await clearSessionKey(env, email, tctx);
 }
 
 // The engine's own mark — the fallback brand on the front-door pages, and the mark the
@@ -2453,11 +2453,11 @@ async function invitePost(tctx, request, url, env, users = tctx.USERS) {
   // From here on the token is already burned — a thrown error must not escape as
   // an unhandled exception (dead link, no explanation) but fail cleanly instead.
   try {
-    await setUserSecret(env, u.email, hash);
+    await setUserSecret(env, u.email, hash, tctx);
     // ⚠️ THE FLAG MUST REACH EVERY ISSUER. A cookie minted without it binds to the
     // credential while identify() checks against the session key, and the person is
     // signed out on their very next request — with nothing saying why.
-    const token2 = await userToken(env, u, undefined, tctx.SESSION_KEYS);
+    const token2 = await userToken(env, u, undefined, tctx.SESSION_KEYS, tctx);
     return new Response(null, {
       status: 303,
       headers: {
@@ -2492,9 +2492,9 @@ async function invitePost(tctx, request, url, env, users = tctx.USERS) {
  * with identify()'s guard — a truthy first read passing the guard and an empty second read
  * reaching this line collapses the derivation to a publicly computable digest.
  */
-async function userToken(env, u, resolved, enabled) {
+async function userToken(env, u, resolved, enabled, tctx) {
   const secret = resolved === undefined
-    ? await sessionBinding(env, u, await effectiveSecret(env, u), enabled)
+    ? await sessionBinding(env, u, await effectiveSecret(env, u), enabled, tctx)
     : resolved;
   const sessionSecret = env && env.SESSION_SECRET;
   if (sessionSecret) return hmacToken(sessionSecret, u.email + ":" + secret);
@@ -2517,7 +2517,7 @@ function cookieValue(cookies, name) {
 // caller that omitted the workspace would, the day an isolate serves two, resolve a
 // cookie against a NEIGHBOUR's roster — matching a stranger's admin by address. No
 // default means such a caller cannot exist.
-async function identify(request, env, users, { sessionKeys = false } = {}) {
+async function identify(request, env, users, { sessionKeys = false, tctx } = {}) {
   if (!users.length) return null;
   const cookies = request.headers.get("Cookie") || "";
   // ⏳ MIGRATION WINDOW — the current name first, then each older name in turn, so a
@@ -2558,10 +2558,10 @@ async function identify(request, env, users, { sessionKeys = false } = {}) {
   // both must be truthy: a binding that could not be read is a refusal, never a fallback,
   // because an empty binding reduces the derivation below to a publicly computable digest.
   // With SESSION_KEYS off this returns `secret` itself and costs nothing.
-  const binding = await sessionBinding(env, u, secret, sessionKeys);
+  const binding = await sessionBinding(env, u, secret, sessionKeys, tctx);
   if (!binding) return null;
   const token = val.slice(dot + 1);
-  if (safeEqual(token, await userToken(env, u, binding))) return u;
+  if (safeEqual(token, await userToken(env, u, binding, sessionKeys, tctx))) return u;
   return null;
 }
 
@@ -2581,7 +2581,7 @@ async function identify(request, env, users, { sessionKeys = false } = {}) {
 async function touchLastSeen(tctx, env, u) {
   try {
     if (!u) return;
-    const kv = kvFor(env);
+    const kv = kvFor(env, tctx);
     const ident = identityFor(env, tctx, "lastseen");
     if (ident) {
       let out = null;
@@ -2607,7 +2607,19 @@ async function touchLastSeen(tctx, env, u) {
 // API.) Active ONLY when GV_KV_TOKEN is present; in prod it's unset → the normal
 // env.COMMENTS binding is returned and nothing changes. The shim mirrors the subset of
 // the KV API the worker uses: get / put / list.
-function kvFor(env) {
+//
+// ⚠️ `tctx` IS THE SECOND ARGUMENT AND IT IS OPTIONAL. Passing it asks for THIS
+// WORKSPACE's view of the namespace — see `identityKvView`, which segments the identity
+// documents and leaves every other key exactly where it was. Omitting it returns the raw
+// namespace, which is what every non-identity caller wants and what this has always
+// returned. On a deployment that resolves no workspace from the Host the two are the same
+// object, so the argument costs nothing there.
+function kvFor(env, tctx) {
+  const raw = kvForRaw(env);
+  return tctx === undefined ? raw : identityKvView(env, raw, tctx);
+}
+
+function kvForRaw(env) {
   if (!env || !env.GV_KV_TOKEN) return env && env.COMMENTS;
   const base = `https://api.cloudflare.com/client/v4/accounts/${env.GV_KV_ACCOUNT}/storage/kv/namespaces/${env.GV_KV_NS}`;
   const auth = { Authorization: `Bearer ${env.GV_KV_TOKEN}` };
@@ -2657,6 +2669,215 @@ function kvFor(env) {
       const d = await r.json();
       const ri = d.result_info || {};
       return { keys: (d.result || []).map((k) => ({ name: k.name })), list_complete: !ri.cursor, cursor: ri.cursor || undefined };
+    },
+  };
+}
+
+// ---- The workspace segment on an identity KV key ----------------------------
+//
+// `B-identity-kv-write-segmentation`. FOUND BY DOING IT, ON A LIVE WORKSPACE. The content
+// half was closed by `BUNDLE_TENANCY` and the identity READS were moved to the workspace
+// object by `KV_CUTOVER` — and the identity WRITES still landed in one deployment-wide KV
+// document each. `augur restore --state` into a second workspace therefore overwrote the
+// first one's `publish:tokens`, roster, roles, names, avatars and icons, and the first
+// workspace's publish token started answering 403 with nothing at all having gone wrong
+// with it. Any ordinary rename, role change or token mint did the same thing more quietly,
+// and a nightly reset that CLEARS those families cleared them for every workspace at once.
+//
+// THE ASYMMETRY NAMED THE FIX. `board:<workspace>:<path>` already carried the workspace
+// (src/board-key.mjs); these did not. So they take the same treatment, in the same shape
+// the bundle store took: a segment on the key, applied on the way in and stripped on the
+// way out, with the deployment's own shape deciding whether there is a segment at all.
+//
+// ⚠️ WHY THIS IS THE WHOLE LIST AND NOT A SUBSET OF IT. `src/state-inventory.mjs` is the
+// authority on what belongs to one workspace, and its `to: "workspace"` entries are the
+// set that must not be deployment-wide. Most of them are ALREADY not: `statuses`, `names`,
+// `canvases`, `pins`, `c:`, `board:`, `pt:*` and `basset-meta:` all go through
+// `overlayFor`, which on a deployment holding a `TENANTS` binding is the workspace's own
+// Durable Object and never touches KV at all. What is left is exactly the families below —
+// the ones reached through a raw namespace handle rather than through the overlay — and
+// they are enumerated here rather than derived, because a family that grows a KV write
+// later must be added on purpose. `test/identity-kv-tenancy.test.mjs` asserts this list
+// against the inventory in both directions, so an inventory entry with no home here fails.
+//
+// ⛔ `users:secrets` IS NOT HERE AND MUST NOT BE. A credential is account-level — one
+// address, one password, several workspaces — and it is `to: "account"` in the inventory
+// for that reason. It moves with `B-cross-workspace-signin`, never with this.
+//
+// ⛔ `rl:*`, `freeze`, `marks`, `pair:`, `rebake:sent:`, `engine:update-check` and
+// `health:report` are NOT here either, and they are `to: "drop"`: instance-global or
+// transient. Segmenting a rate-limit counter would give every workspace its own allowance
+// of somebody else's failed logins, and segmenting the freeze would make a deployment-wide
+// pause invisible to all but one workspace.
+const IDENTITY_TENANT_PREFIX = "t/";
+
+// The KV documents each family owns. A name ending in `:` is a PREFIX (one document per
+// address or per hash); everything else is one document. Longest match wins, so
+// `users:roster` and `users:roles` cannot be confused with each other.
+const IDENTITY_KV_FAMILIES = Object.freeze({
+  // The four documents the roster pipeline reads as one. They move together because
+  // `mergeRoster`/`applyRoles`/`applyNames`/`applyAvatars` is one pipeline and a workspace
+  // holding three of the four is a workspace whose gate disagrees with its own admin list.
+  roster: Object.freeze(["users:roster", "users:roles", "users:names", "users:avatars"]),
+  // A role per address PER SPACE. Inventoried `to: "drop"` and still written by the admin
+  // membership route, so it is segmented rather than left shared: dropping it is
+  // `A-retire-space-tier`'s to do, and until then a shared copy hands one workspace's
+  // membership decisions to another.
+  spaces: Object.freeze(["users:spaces"]),
+  invites: Object.freeze(["users:invites"]),
+  lastseen: Object.freeze(["users:lastseen:"]),
+  // The one whose sharing was a live cross-workspace credential: a `*`-scope token minted
+  // anywhere authenticated at every hostname on the deployment.
+  publishTokens: Object.freeze(["publish:tokens"]),
+  // ⚠️ THE BLOBS ARE SEGMENTED AND THE R2 ONES ARE NOT, AND THAT IS NOT AN INCONSISTENCY.
+  // `blobs/<sha256>` in R2 is left shared because the digest is verified against the key,
+  // so a workspace can only write bytes that hash to the name it used. These two are the
+  // same in that respect — and different in one that decides it: a RESET clears them by
+  // PREFIX (`kv.list({prefix: "avatar:"})`, which is what the demo's nightly job runs), so
+  // one workspace's housekeeping would delete every workspace's photos. A prefix sweep is
+  // the destruction a content-addressed key cannot protect against.
+  avatars: Object.freeze(["avatar:"]),
+  icons: Object.freeze(["spaces:icons", "spaceicon:"]),
+  // Per-person session-binding keys. Inert on a deployment that has not turned
+  // `SESSION_KEYS` on — `sessionBinding` reads nothing at all there.
+  sessionkeys: Object.freeze(["users:sessionkeys"]),
+  // Addresses a provider told us to stop mailing. `to: "workspace"` in the inventory, and
+  // it is a promise not to mail somebody again rather than a cache.
+  mail: Object.freeze(["mail:suppressed"]),
+});
+
+// Which families take the segment. One word each, and flipping one back is the revert for
+// that family alone — the shape `KV_CUTOVER` and `BUNDLE_TENANCY` both use, for the reason
+// all three share: the reads for several of these families already answer from the
+// workspace object, so a write that changes shape without a revert path is a login gate
+// nobody can put back.
+const IDENTITY_TENANCY = Object.freeze({
+  roster: true,
+  spaces: true,
+  invites: true,
+  lastseen: true,
+  publishTokens: true,
+  avatars: true,
+  icons: true,
+  sessionkeys: true,
+  mail: true,
+});
+
+/** Which identity family a KV key belongs to, or "" for a key this scheme does not name. */
+function identityFamily(key) {
+  const k = String(key || "");
+  let best = "";
+  let bestLen = -1;
+  for (const [family, docs] of Object.entries(IDENTITY_KV_FAMILIES)) {
+    for (const doc of docs) {
+      const hit = doc.endsWith(":") ? k.startsWith(doc) : k === doc;
+      if (hit && doc.length > bestLen) { best = family; bestLen = doc.length; }
+    }
+  }
+  return best;
+}
+
+/**
+ * The physical KV key for a logical one.
+ *
+ * `workspace` is the second argument and it DEFAULTS TO NONE, which is the whole of the
+ * straddle: a deployment that serves one workspace passes nothing and gets back the string
+ * it has always got back, byte for byte.
+ */
+function identityKey(key, workspace = "") {
+  if (!workspace) return key;
+  const family = identityFamily(key);
+  if (!family || !IDENTITY_TENANCY[family]) return key;
+  return IDENTITY_TENANT_PREFIX + workspace + "/" + key;
+}
+
+/**
+ * Which workspace segment this request's identity keys carry.
+ *
+ * ⚠️ TIED TO `TENANT_HOST_SUFFIX`, exactly as `bundleWorkspaceSegment` is, and for the
+ * same reason: that variable is the only thing that says "more than one workspace shares
+ * this namespace". Unset — every self-hosted instance, and every instance running today —
+ * an unsegmented key is unambiguously this deployment's one workspace's, and this returns
+ * no segment at all.
+ *
+ * `legacyIsOurs` is the second half. An unsegmented key predates the segment, so it
+ * belongs to whichever workspace this deployment served at the time — a question with an
+ * answer only where a deployment serves ONE. Where the workspace comes from the Host there
+ * is no read-through and there must not be one: it would hand one workspace a roster,
+ * or a publish token, that may be another's. That is what makes the move a PREREQUISITE on
+ * a host-resolved deployment rather than an optimisation — see `rekeyIdentityToSegment`.
+ */
+function identityWorkspaceSegment(env, tenantId) {
+  const hostResolved = !!(env && typeof env.TENANT_HOST_SUFFIX === "string" && env.TENANT_HOST_SUFFIX.trim());
+  return {
+    workspace: hostResolved ? (tenantId || DEFAULT_TENANT_ID) : "",
+    legacyIsOurs: !hostResolved,
+  };
+}
+
+/**
+ * The namespace as ONE workspace sees it: the same verbs over LOGICAL keys, with the
+ * segment applied on the way in and stripped on the way out.
+ *
+ * ⚠️ WITH NO SEGMENT THIS IS THE BINDING ITSELF — not a wrapper around it, the object.
+ * Deliberate, and the same property `bundleStore` has: with no segment this function is
+ * the identity, so a deployment that never asked for a segment has no new code at all
+ * between it and KV and nothing to get subtly wrong. That is the claim
+ * `test/identity-kv-tenancy.test.mjs` proves by identity comparison rather than by
+ * argument, and the rehearsal proves again on real workerd by counting the keys written.
+ */
+function identityKvView(env, kv, tctx) {
+  const workspace = identityWorkspaceSegment(env, tctx && tctx.tenantId).workspace;
+  if (!kv || !workspace) return kv || null;
+  const seg = IDENTITY_TENANT_PREFIX + workspace + "/";
+  const K = (k) => identityKey(k, workspace);
+  const un = (k) => (String(k).startsWith(seg) ? String(k).slice(seg.length) : String(k));
+  // ⚠️ WRITES GO TO BOTH KEYS WHILE THE FAMILY'S FLAG IS ON, AND THAT IS WHAT MAKES THE
+  // FLAG A REVERT. Flipping one word in `IDENTITY_TENANCY` back sends that family's reads
+  // to the unsegmented key, and a straddle that had written only the segmented one would
+  // send them to a document that stops at the day of the cut — a rollback, not a revert.
+  //
+  // WHAT THE SECOND WRITE IS NOT: it is not a second live copy, and it is not isolation.
+  // Nothing reads it while the flag is on, and on a namespace holding several workspaces
+  // two of them write that one key last-writer-wins — which is precisely today's
+  // collision, kept alive deliberately, because reverting to today is what a revert to
+  // today means. An operator reaching for the revert is choosing a known-bad live path
+  // over a broken new one, and that choice needs the old document to still be there.
+  //
+  // ⚠️ DELETES DO NOT GO TO BOTH, and this is the asymmetry that makes the reseed clause
+  // work. An unsegmented key on a shared namespace is unattributable, so deleting one is
+  // deleting a document that may be a neighbour's — and the safe direction of a straddle
+  // is to leave more behind rather than less. It is also the whole of why a nightly reset
+  // that clears `users:roster` for workspace A does not clear it for workspace B.
+  const dual = async (k, v, opts) => {
+    const key = K(k);
+    if (key === k) return; // a family this scheme does not name — one write, not two
+    try { await (opts === undefined ? kv.put(k, v) : kv.put(k, v, opts)); } catch (e) { /* the segmented write is the one that serves */ }
+  };
+  return {
+    get: (k, opts) => (opts === undefined ? kv.get(K(k)) : kv.get(K(k), opts)),
+    getWithMetadata: (k, opts) => (opts === undefined ? kv.getWithMetadata(K(k)) : kv.getWithMetadata(K(k), opts)),
+    put: async (k, v, opts) => {
+      const res = opts === undefined ? await kv.put(K(k), v) : await kv.put(K(k), v, opts);
+      await dual(k, v, opts);
+      return res;
+    },
+    delete: (k) => kv.delete(K(k)),
+    list: async (opts = {}) => {
+      // ⚠️ A LISTING IS THE OTHER HALF OF THE PREFIX SWEEP, AND IT HAS TO BE SEGMENTED OR
+      // THE SWEEP IS DEPLOYMENT-WIDE AGAIN. `kv.list({prefix: "avatar:"})` from workspace A
+      // must enumerate A's photos and no one else's, so the prefix takes the segment and
+      // the names come back unsegmented — which is what lets every existing caller hand a
+      // returned name straight to `get` or `delete` without double-prefixing it.
+      const prefix = String(opts.prefix || "");
+      const family = identityFamily(prefix);
+      // A prefix that names a segmented family takes the segment. Anything else — a
+      // family this scheme does not name, or a bare listing of the whole namespace —
+      // is left alone: it is not this view's to narrow, and narrowing it would hide
+      // keys from an export that walks the namespace looking for what it holds.
+      const scoped = family && IDENTITY_TENANCY[family] ? seg + prefix : prefix;
+      const page = await kv.list({ ...opts, prefix: scoped });
+      return { ...page, keys: (page.keys || []).map((x) => ({ ...x, name: un(x.name) })) };
     },
   };
 }
@@ -3810,7 +4031,7 @@ async function publishAuthDetailed(tctx, request, env, spaceId, anySpace) {
     }
     return { entry: { space: "*", label: "bootstrap" }, refusal: null };
   }
-  const kv = kvFor(env);
+  const kv = kvFor(env, tctx);
   const ident = identityFor(env, tctx, "publishTokens");
   if (!kv && !ident) return { entry: null, refusal: "no-store" };
   try {
@@ -4131,7 +4352,7 @@ async function publishApi(tctx, request, url, env) {
       await loginFail(env, rlIds);
       return jsonResponse({ error: "bad-credentials" }, 403);
     }
-    const kv = kvFor(env);
+    const kv = kvFor(env, tctx);
     if (!kv) return jsonResponse({ error: "no-kv-binding" }, 500);
     // A viewer signs in, comments and drives boards like anyone else, but can never
     // hold a publish token — the role for accounts whose password is public knowledge
@@ -4291,6 +4512,20 @@ async function publishApi(tctx, request, url, env) {
         dryRun: !(body && body.confirm),
       }));
     }
+    // The identity half of the same move. A SEPARATE op rather than a family on the one
+    // above, because the two answer different questions of a deployment — one is "is my
+    // published content where I read it", the other is "is my roster" — and an operator
+    // running a content move must not silently move the login gate's documents too.
+    if (op === "identity-rekey" && request.method === "POST") {
+      let body = null;
+      try { body = await request.json(); } catch (e) { /* a dry run needs no body */ }
+      return jsonResponse(await rekeyIdentityToSegment(tctx, env, {
+        confirm: body && body.confirm,
+        families: body && body.families,
+        limit: body && body.limit,
+        dryRun: !(body && body.confirm),
+      }));
+    }
     if (op === "blob-gc" && request.method === "POST") {
       let body = null;
       try { body = await request.json(); } catch (e) { /* a dry run needs no body */ }
@@ -4345,10 +4580,10 @@ async function publishApi(tctx, request, url, env) {
     // users:secrets tombstones are NOT touched — they are the security boundary;
     // this is only the roster list converging back to one record.
     try {
-      const kv = kvFor(env);
+      const kv = kvFor(env, tctx);
       if (kv) {
         const named = new Set((cfg.users || []).map((u) => String((u && u.email) || "").toLowerCase()).filter(Boolean));
-        const roster = await readRoster(env);
+        const roster = await readRoster(env, tctx);
         const add = Object.fromEntries(Object.entries(roster.add).filter(([e]) => !named.has(String(e).toLowerCase())));
         const remove = roster.remove.filter((e) => named.has(String(e).toLowerCase()));
         if (Object.keys(add).length !== Object.keys(roster.add).length || remove.length !== roster.remove.length) {
@@ -4846,7 +5081,7 @@ async function publishApi(tctx, request, url, env) {
         const engineSha = (engRef && ((engRef.builtWith && engRef.builtWith.engine) || (engRef.source && engRef.source.sha))) || null;
         const publishedWith = (out.builtWith && out.builtWith.engine) || null;
         if (engineSha && publishedWith !== engineSha) {
-          const kv = kvFor(env);
+          const kv = kvFor(env, tctx);
           const sentKey = `rebake:sent:${spaceId}`;
           const already = kv ? await kv.get(sentKey).catch(() => null) : null;
           if (already) {
@@ -5160,7 +5395,7 @@ async function adminVersionApi(tctx, env, me) {
 // without one still get the KV-only behaviour it has always had.
 async function adminTokensApi(request, env, me, tctx = null) {
   if (!me || me.role !== "admin") return jsonResponse({ error: "forbidden" }, 403);
-  const kv = kvFor(env);
+  const kv = kvFor(env, tctx);
   const ident = identityFor(env, tctx, "publishTokens");
   if (!kv) return jsonResponse({ error: "no-kv-binding" }, 500);
   const raw = await kv.get(PUBLISH_TOKENS_KEY);
@@ -6145,7 +6380,7 @@ async function reviewApi(tctx, request, url, env, authed) {
     // Resolve the caller's session so authorship is stamped from the cookie, not the
     // body. Reads/writes stay open (public reviewers carry no login) — this only fixes
     // WHO a message is attributed to, so a forged trusted name can't slip in.
-    const me = await identify(request, env, tctx.USERS, { sessionKeys: tctx.SESSION_KEYS });
+    const me = await identify(request, env, tctx.USERS, { sessionKeys: tctx.SESSION_KEYS, tctx });
     // The permission check below reads the CURRENT threads; the mutate re-reads them and
     // may run again on a retry. Both see the same document because both go through the
     // store, and the check is about who owns a root message — a fact that does not change
@@ -6740,7 +6975,7 @@ async function readStateFamily(tctx, env, entry, store, kv) {
  */
 async function exportState(tctx, env) {
   const store = overlayFor(env, tctx);
-  const kv = kvFor(env);
+  const kv = kvFor(env, tctx);
   const families = {};
   const absent = [];
   const failed = [];
@@ -6823,7 +7058,7 @@ const NEVER_CLEARED = Object.freeze(["users:secrets", "users:invites", "publish:
  */
 async function clearFamilies(tctx, env, ids) {
   const store = overlayFor(env, tctx);
-  const kv = kvFor(env);
+  const kv = kvFor(env, tctx);
   const cleared = [];
   const refused = [];
   for (const id of ids || []) {
@@ -6880,7 +7115,7 @@ async function importState(tctx, env, doc) {
     return { ok: false, reason: "incomplete-export", failed: doc.failed.map((f) => f && f.id) };
   }
   const store = overlayFor(env, tctx);
-  const kv = kvFor(env);
+  const kv = kvFor(env, tctx);
   if (!store && !kv) return { ok: false, reason: "no-store" };
 
   const cleared = doc.clear ? await clearFamilies(tctx, env, doc.clear) : { cleared: [], refused: [] };
@@ -7343,7 +7578,7 @@ async function isPausedWorkspaceMember(request, env, tenantId) {
   try {
     const tctx = await loadConfig(tenantId, env);
     if (!tctx || !tctx.USERS.length) return false;
-    return !!(await identify(request, env, tctx.USERS, { sessionKeys: tctx.SESSION_KEYS }));
+    return !!(await identify(request, env, tctx.USERS, { sessionKeys: tctx.SESSION_KEYS, tctx }));
   } catch (e) {
     return false;
   }
@@ -7760,6 +7995,100 @@ async function rekeyToSegment(tctx, env, { confirm, families, limit, dryRun = tr
     copied: copied.length, skipped, shared, bytes, pending,
     // `done` is the caller's loop condition and it means what it says: nothing is left to
     // move for the families asked for.
+    done: pending === 0,
+    keys: copied.slice(0, 20),
+  };
+}
+
+// ---- The same move, for the identity documents ------------------------------
+//
+// `B-identity-kv-write-segmentation`. The bundle-store move above has an exact twin here
+// and it exists for the same reason: `identityWorkspaceSegment` has NO read-through where
+// the workspace comes from the Host, because an unsegmented `users:roster` belongs to
+// whichever workspace this deployment served before the segment existed and nothing in the
+// key says which. So a workspace already living on such a deployment has to be MOVED, and
+// the move is a prerequisite for turning the flags on rather than an optimisation.
+//
+// ⚠️ IT IS A COPY AND NEVER A CUT, and here that matters more than it does for content. The
+// source documents are what a per-family revert reads: flip one word in `IDENTITY_TENANCY`
+// back and the unsegmented roster has to still be there, or the revert is a rollback to the
+// day of the cut and everybody minted since is gone.
+//
+// ⚠️ AND IT IS CORRECT FOR EXACTLY ONE WORKSPACE PER DEPLOYMENT, guarded by the same
+// question the content move asks — `storeWorkspaceIds`, which is the deployment's own
+// account of which workspaces hold a prefix. Running it as a SECOND workspace would hand
+// that workspace the FIRST one's roster and publish tokens, which is the disclosure the
+// segment exists to close, performed on purpose.
+//
+// ⛔ `users:secrets` IS NOT COPIED, because it is not segmented: a credential is
+// account-level. `IDENTITY_KV_FAMILIES` is the whole list and this walks it, so a family
+// added there is moved here without anybody remembering to.
+const IDENTITY_REKEY_LIMIT = 500;
+
+async function rekeyIdentityToSegment(tctx, env, { confirm, families, limit, dryRun = true } = {}) {
+  const id = tctx && tctx.tenantId;
+  if (!id) return { ok: false, reason: "no-workspace" };
+  const kv = kvForRaw(env);
+  if (!kv) return { ok: false, reason: "no-store" };
+  const seg = identityWorkspaceSegment(env, id).workspace;
+  // A deployment that serves one workspace writes no segment, so its documents are already
+  // where it reads them. Saying so is the honest answer rather than an error.
+  if (!seg) return { ok: true, done: true, reason: "no-segment", workspace: id };
+  if (!dryRun && confirm !== id) return { ok: false, reason: "confirm-mismatch", expected: id };
+
+  const all = Object.keys(IDENTITY_KV_FAMILIES).filter((f) => IDENTITY_TENANCY[f]);
+  const want = Array.isArray(families) && families.length ? families : all;
+  const unknown = want.filter((f) => !all.includes(f));
+  if (unknown.length) return { ok: false, reason: "unknown-family", unknown };
+
+  const held = await storeWorkspaceIds(env);
+  if (!held.complete) return { ok: false, reason: "incomplete-listing" };
+  const others = held.ids.filter((w) => w !== seg);
+  if (others.length) return { ok: false, reason: "not-the-only-workspace", others };
+
+  // Every unsegmented key this run would move. A family's document is either one key or a
+  // prefix; a prefix is LISTED, and the listing is on the raw namespace because the point
+  // is to find what is NOT under the segment.
+  const src = [];
+  try {
+    for (const family of want) {
+      for (const doc of IDENTITY_KV_FAMILIES[family]) {
+        if (!doc.endsWith(":")) { src.push(doc); continue; }
+        let cursor;
+        do {
+          const page = await kv.list({ prefix: doc, cursor, limit: 1000 });
+          for (const k of page.keys || []) {
+            // A key already under a segment is somebody's move, not a source for this one.
+            if (!k.name.startsWith(IDENTITY_TENANT_PREFIX)) src.push(k.name);
+          }
+          cursor = page.list_complete ? null : page.cursor;
+        } while (cursor);
+      }
+    }
+  } catch (e) { return { ok: false, reason: "incomplete-listing" }; }
+
+  const cap = Number(limit) > 0 ? Math.min(Number(limit), IDENTITY_REKEY_LIMIT) : IDENTITY_REKEY_LIMIT;
+  const copied = [];
+  let skipped = 0, absent = 0, bytes = 0, pending = 0;
+  for (const key of src) {
+    const dest = identityKey(key, seg);
+    if (dest === key) { skipped++; continue; }
+    // Already there. This is what makes the run idempotent, and it is also why a re-run
+    // after a live write does not undo that write.
+    const there = await kv.get(dest);
+    if (there !== null && there !== undefined) { skipped++; continue; }
+    if (copied.length >= cap) { pending++; continue; }
+    if (dryRun) { copied.push(key); continue; }
+    const raw = await kv.get(key);
+    if (raw === null || raw === undefined) { absent++; continue; }
+    await kv.put(dest, raw);
+    bytes += raw.length;
+    copied.push(key);
+  }
+  return {
+    ok: true, dryRun: !!dryRun, workspace: id, segment: IDENTITY_TENANT_PREFIX + seg + "/",
+    families: [...want], considered: src.length,
+    copied: copied.length, skipped, absent, bytes, pending,
     done: pending === 0,
     keys: copied.slice(0, 20),
   };
@@ -8789,7 +9118,7 @@ const ASSET_MAX_BYTES = 4 * 1024 * 1024; // client compresses to ~<1MB; hard sto
 // and a board that half-renders is worse than one that cannot grow. The fallback drains on
 // its own as boards are re-pasted; nothing has to migrate for a board to keep working.
 async function assetApi(tctx, request, url, env) {
-  const kv = kvFor(env);
+  const kv = kvFor(env, tctx);
   const r2 = (env.BUNDLES && bundlesFor(env, tctx && tctx.tenantId)) || null;
   const store = overlayFor(env, tctx);
   // ⚠️ THE SWITCH IS THE WORKSPACE STORE, NOT THE BUNDLE STORE, and the reason is BACKUPS.
@@ -8950,7 +9279,7 @@ async function adminUsersApi(tctx, request, url, env, me, users = tctx.USERS, co
   // touches. On an instance that never set memberships this is the old global check,
   // because a global admin administers everything by default.
   if (!me || !administersAny(me, spaces)) return jsonResponse({ error: "forbidden" }, 403);
-  const kv = kvFor(env);
+  const kv = kvFor(env, tctx);
   // A roster write lands in THIS isolate on its next request (so the list the admin is
   // looking at is right) and everywhere else within ROSTER_TTL_MS. Two statements do
   // that, and both name the workspace they belong to or nothing at all: the overlay bust
@@ -9070,7 +9399,7 @@ async function adminUsersApi(tctx, request, url, env, me, users = tctx.USERS, co
       }
       // Clearing the secret and minting the link are ONE action: there is never a state
       // where a known password is still live alongside a pending invite.
-      await revokeSecret(env, u.email);
+      await revokeSecret(env, u.email, tctx);
       await revokePublishTokens(tctx, env, u.email); // a reset password must not leave a live publish token
       const token = await mintInvite(tctx, env, u.email);
       const mail = await mailLink(u.email, "credential-reset", token);
@@ -9087,7 +9416,7 @@ async function adminUsersApi(tctx, request, url, env, me, users = tctx.USERS, co
       // new should be created wearing it.
       const role = ROLES.includes(op.role) ? op.role : "editor";
       const name = clamp(op.name, 80).trim() || nameFromEmail(email);
-      const roster = await readRoster(env);
+      const roster = await readRoster(env, tctx);
       if (Object.keys(roster.add).length >= ROSTER_ADD_MAX) {
         return jsonResponse({ error: "roster-full" }, 409);
       }
@@ -9101,7 +9430,7 @@ async function adminUsersApi(tctx, request, url, env, me, users = tctx.USERS, co
       await mirrorRosterDocs(tctx, env, { roster });
       // A stale hash under this address (a previous member of the same name) would make
       // the new invitee "accepted" on arrival, holding someone else's old password.
-      await revokeSecret(env, email);
+      await revokeSecret(env, email, tctx);
       const token = await mintInvite(tctx, env, email);
       commitRoster();
       // One record, not two: ask the deploy shell to commit this person to the
@@ -9142,7 +9471,7 @@ async function adminUsersApi(tctx, request, url, env, me, users = tctx.USERS, co
       if (demoting && lastAdminOf(users, sid, email)) {
         return jsonResponse({ error: "last-admin", message: "This is the only admin of this space." }, 409);
       }
-      const index = await readSpaces(env);
+      const index = await readSpaces(env, tctx);
       // An absent entry means "every space" (see USER_SPACES_KEY), so the first write
       // for someone must SPELL OUT the spaces they already had — otherwise granting
       // one space silently removes every other.
@@ -9168,7 +9497,7 @@ async function adminUsersApi(tctx, request, url, env, me, users = tctx.USERS, co
       // "their current role" means. Those two disagree for a whole config tick after
       // any change, and reading the stale one would report a real change as a no-op and
       // skip the write (and the token revocation that rides with it).
-      const overlay = await readRoles(env);
+      const overlay = await readRoles(env, tctx);
       const from = ROLES.includes(overlay[email]) ? overlay[email] : roleOf(u);
       if (from === role) return jsonResponse({ ok: true, email, role, unchanged: true });
 
@@ -9207,7 +9536,7 @@ async function adminUsersApi(tctx, request, url, env, me, users = tctx.USERS, co
       // Keep the roster overlay honest too, for an invited (non-config) user — the
       // roles overlay is what takes effect, but two records disagreeing about the same
       // person is how the next reader gets it wrong.
-      const roster = await readRoster(env);
+      const roster = await readRoster(env, tctx);
       if (roster.add[email]) {
         roster.add[email].role = role;
         await kv.put(USER_ROSTER_KEY, JSON.stringify(roster));
@@ -9244,7 +9573,7 @@ async function adminUsersApi(tctx, request, url, env, me, users = tctx.USERS, co
       if (!u) return jsonResponse({ error: "unknown-user" }, 400);
       const email = lcEmail(u.email);
       if (email === lcEmail(me.email)) return jsonResponse({ error: "cannot-remove-self" }, 400);
-      const roster = await readRoster(env);
+      const roster = await readRoster(env, tctx);
       delete roster.add[email];
       // Only a CONFIG user needs a tombstone in the list — dropping the add entry is
       // enough for an invited one, and an unbounded remove list would grow forever.
@@ -9256,7 +9585,7 @@ async function adminUsersApi(tctx, request, url, env, me, users = tctx.USERS, co
       // The CANONICAL address, not the lowercased key: effectiveSecret looks the
       // tombstone up by u.email exactly, so a case-folded key would miss it and fall
       // through to the config roster's legacy `pass`.
-      await revokeSecret(env, u.email);     // kills their session too (cookies bind to it)
+      await revokeSecret(env, u.email, tctx);     // kills their session too (cookies bind to it)
       await revokePublishTokens(tctx, env, email); // and any publish token they minted via `augur login`
       await revokeInvitesFor(tctx, env, email);   // an outstanding link must not let them back in
       try { await clearAvatar(tctx, env, email); } catch (e) {} // their face leaves the index too
@@ -9264,7 +9593,7 @@ async function adminUsersApi(tctx, request, url, env, me, users = tctx.USERS, co
       // A re-invited address must not inherit the last person's role — least of all admin.
       try { await clearRole(tctx, env, email); } catch (e) {}
       // …nor their spaces, least of all one they administered.
-      try { await clearSpaces(env, email); } catch (e) {}
+      try { await clearSpaces(env, email, tctx); } catch (e) {}
       try { await kv.delete(LASTSEEN_PREFIX + u.email); } catch (e) {}
       // …and from the object, where the family is now read. Both, for revokeInvitesFor's
       // reason: a stamp left in one store comes back the moment the other is the answer.
@@ -9720,7 +10049,7 @@ async function handleRequest(request, env, ctx, url, trace) {
     // The approval page. Gated like any other page — this is the one place the flow WANTS
     // an authenticated browser — and absent entirely when the instance has not opted in.
     if (url.pathname === "/__connect" && tctx.DEVICE_PAIRING) {
-      const who = tctx.USERS.length ? await identify(request, env, tctx.USERS, { sessionKeys: tctx.SESSION_KEYS }) : null;
+      const who = tctx.USERS.length ? await identify(request, env, tctx.USERS, { sessionKeys: tctx.SESSION_KEYS, tctx }) : null;
       if (!who && tctx.USERS.length) return htmlResponse(loginPage(tctx, "/__connect", false, url.href), 200);
       return htmlResponse(connectPage(tctx, who), 200);
     }
@@ -9729,7 +10058,7 @@ async function handleRequest(request, env, ctx, url, trace) {
       // route runs BEFORE the gate — the same early-exit shape /__version and the review
       // export use. `usersActive` is not in scope yet either; on an instance with no
       // roster there is nobody to approve, and approve is the only step that needs one.
-      const who = tctx.USERS.length ? await identify(request, env, tctx.USERS, { sessionKeys: tctx.SESSION_KEYS }) : null;
+      const who = tctx.USERS.length ? await identify(request, env, tctx.USERS, { sessionKeys: tctx.SESSION_KEYS, tctx }) : null;
       const paired = await pairApi(tctx, request, url, env, who);
       if (paired) return paired;
     }
@@ -9784,7 +10113,7 @@ async function handleRequest(request, env, ctx, url, trace) {
     const expected = env.SITE_PASSWORD;
     const usersActive = tctx.USERS.length > 0;
     // Resolve identity once (identity mode); null in legacy/open mode.
-    const me = usersActive ? await identify(request, env, tctx.USERS, { sessionKeys: tctx.SESSION_KEYS }) : null;
+    const me = usersActive ? await identify(request, env, tctx.USERS, { sessionKeys: tctx.SESSION_KEYS, tctx }) : null;
     // Is this request past the gate? identity mode → a known user; legacy → the
     // shared-password cookie; neither configured → open (raw/local build, no gate).
     let authed;
@@ -9843,7 +10172,7 @@ async function handleRequest(request, env, ctx, url, trace) {
     }
     if (url.pathname === "/__admin/space-icon") {
       if (!authed) return jsonResponse({ error: "unauthorized" }, 401);
-      return spaceIconApi(tctx.tenantId, request, env, me, tctx.SPACES);
+      return spaceIconApi(tctx.tenantId, request, env, me, tctx.SPACES, tctx);
     }
 
     // My own profile photo — set or clear. Ahead of the gate for the same reason
@@ -9953,7 +10282,7 @@ async function handleRequest(request, env, ctx, url, trace) {
         // costs the same as a known one (no timing enumeration).
         const ok = await verifyPassword(pass, real || DUMMY_HASH);
         if (u && real && ok) {
-          const token = await userToken(env, u, undefined, tctx.SESSION_KEYS);
+          const token = await userToken(env, u, undefined, tctx.SESSION_KEYS, tctx);
           if (ctx && ctx.waitUntil) ctx.waitUntil(touchLastSeen(tctx, env, u));
           touchWorkspaceActivity(env, tctx, ctx);
           // ⚠️ INSIDE THE SUCCESS BRANCH, WHICH IS THE POINT. A wrong password falls through
@@ -10246,6 +10575,9 @@ export const __testables = Object.freeze({
   quotaBump, quotaMinute, quotaDay, workspaceStatus, touchWorkspaceActivity,
   deleteWorkspace, purgeDue, blobGc, clearFamilies, NEVER_CLEARED,
   rekeyToSegment, REKEY_FAMILIES, REKEY_DEFAULT_FAMILIES, REKEY_LIMIT,
+  IDENTITY_TENANCY, IDENTITY_KV_FAMILIES, IDENTITY_TENANT_PREFIX, identityKey,
+  identityFamily, identityKvView, identityWorkspaceSegment, rekeyIdentityToSegment,
+  kvFor, kvForRaw,
   capabilityRefusal, CAP_ROUTES,
   runScheduledHealth, adminHealthApi, HEALTH_REPORT_KEY,
   readFreeze, setFreeze, isFrozenWrite, FROZEN_WRITES, FREEZE_KEY,
@@ -10260,6 +10592,7 @@ export const __testables = Object.freeze({
   composeFork, carriedLineage, assertedLineage, manifestCeiling, bytesReferencedOf,
   isPublicPath, isTrackPath, isRestrictedPath, versionFor, brandMark,
   boardApi, canvasesApi, virtualCanvas, rtProxy, roomName, kvWorkspaceSegment,
+  OVERLAY_KV_KEYS, overlayKvKey,
   CANVASES_KEY, BOARD_PREFIX, BOARD_MAX_BYTES,
   assetApi, ASSET_PREFIX, ASSET_R2_PREFIX, ASSET_MAX_BYTES, assetGc, ASSET_GC_GRACE_MS,
   composeChrome, renderAppChrome, renderSpaceContextScript, __setChromeTestState,

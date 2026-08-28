@@ -54,6 +54,7 @@ const map = {
   // instance, the bucket, or its own hostname. `migrate` cannot do it — it is
   // origin-addressed and a restore lands every space at v1, which would strand the history.
   "bundle-rekey": "bundle-rekey.mjs",
+  "identity-rekey": "identity-rekey.mjs",
   // NOT a synonym for migrate, and the names are kept apart on purpose: migrate MOVES a
   // workspace to another instance, adopt copies THIS instance's KV into its own object.
   adopt: "adopt.mjs",
@@ -65,7 +66,7 @@ const map = {
   build: path.join("..", "build.js"),
 };
 if (!map[sub]) {
-  console.error("usage: augur <init|ship|dev|offline|build|deploy|publish|fork|status|canon|refine|mark|clone|pull|export|restore|migrate|bundle-rekey|adopt|freeze|thaw|connect|login> [options]");
+  console.error("usage: augur <init|ship|dev|offline|build|deploy|publish|fork|status|canon|refine|mark|clone|pull|export|restore|migrate|bundle-rekey|identity-rekey|adopt|freeze|thaw|connect|login> [options]");
   process.exit(sub ? 1 : 0);
 }
 const child = spawn(process.execPath, [path.join(SCRIPTS, map[sub]), ...rest], {

@@ -153,7 +153,13 @@ let nextLabel = 0;
 async function instance({ seeded = false, workspace = false, rooms = false } = {}) {
   const label = `ws${++nextLabel}`;
   const kv = memKv();
-  await kv.put("publish:tokens", JSON.stringify({ [await W.tokenFor("pub:tok")]: { space: "*", label: "ci" } }));
+  // ⚠️ THE IDENTITY KEYS COME FROM THE PRODUCER TOO, and for the same reason the store
+  // keys do: these instances set `TENANT_HOST_SUFFIX`, so the identity documents carry a
+  // workspace segment (`identityKey`). A fixture spelling `publish:tokens` by hand would
+  // seed a key this deployment shape does not read, and every publish here would be a 403
+  // that looked like a token problem.
+  const IK = (k) => W.identityKey(k, label);
+  await kv.put(IK("publish:tokens"), JSON.stringify({ [await W.tokenFor("pub:tok")]: { space: "*", label: "ci" } }));
   // ⚠️ THE STORE KEYS COME FROM THE PRODUCER, NOT FROM THIS FILE. These instances set
   // `TENANT_HOST_SUFFIX`, which is what makes the bundle store carry a workspace segment
   // (`bundleKey`), so a fixture spelling `spaces/alpha/manifest.json` by hand would be
@@ -182,7 +188,7 @@ async function instance({ seeded = false, workspace = false, rooms = false } = {
       canvases: { "/b/one/": { name: "One", by: "a@x.test", t: 1 } },
       "c:/p/one/": [{ id: "t1", messages: [{ author: "Ada", body: "hello" }] }],
       "board:/b/one/": { name: "One", nodes: [{ id: "n1" }], clock: 4 },
-    })) await kv.put(k, JSON.stringify(v));
+    })) await kv.put(IK(k), JSON.stringify(v));
   }
   const env = {
     COMMENTS: kv, BUNDLES: r2, GV_ASSET_SOURCE: "r2", TENANT_HOST_SUFFIX: SUFFIX,

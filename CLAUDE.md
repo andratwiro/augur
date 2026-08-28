@@ -759,6 +759,38 @@ name, initials, colour and role. Passwords live in KV as PBKDF2 hashes under
   blocker on this item — they are the next two, and `AN OBJECT THAT WAS NEVER GIVEN THE
   ROSTER DEFERS TO KV` in `test/kv-read-cutover.test.mjs` is why a workspace whose copy has
   not run does not read the object's empty answer as an emptied overlay.
+- **⏳ The identity KV documents carry the WORKSPACE too, on the WRITE path.** `identityKey`
+  in `src/_worker.js` — `t/<workspace>/users:roster` and the rest, the same segment
+  `board:<workspace>:<path>` already carried and the same `t/` the bundle store uses. It
+  exists because the reads moving to the object left the WRITES landing in one
+  deployment-wide document each: a full `restore --state` into a second workspace overwrote
+  the first one's `publish:tokens`, roster, roles, names, avatars and icons, and a nightly
+  reset that CLEARS those families cleared them for every workspace at once, with no
+  migration involved. **Which families take the segment is `IDENTITY_TENANCY`, one word
+  each** — the same shape and the same per-family revert as `KV_CUTOVER` and
+  `BUNDLE_TENANCY`, and the three share family names on purpose, so a source edit that
+  reverts one must name the table (`test/kv-read-cutover.test.mjs`'s `revertedWorker` does).
+  **Which DOCUMENTS each family owns is `IDENTITY_KV_FAMILIES`**, and it is checked against
+  `src/state-inventory.mjs` in BOTH directions: every `to: "workspace"` KV family is either
+  an overlay family (which on a `TENANTS`-bound deployment lives in the workspace object and
+  never touches KV at all) or segmented here. **⛔ `users:secrets` is not segmented and must
+  not be** — a credential is account-level, `to: "account"`, and it moves with
+  `B-cross-workspace-signin`. **⚠️ `avatar:` and `spaceicon:` ARE segmented although they are
+  content-addressed**, unlike R2's `blobs/`: a reset clears them by PREFIX, so one
+  workspace's housekeeping would delete every workspace's photos. **Unset
+  `TENANT_HOST_SUFFIX` — every instance running today — writes no segment at all**:
+  `identityKvView` returns the binding itself, so there is no new code between the worker
+  and KV. Writes go to BOTH keys while a flag is on (what makes the word a revert);
+  **deletes do NOT**, which is what keeps one workspace's reset out of a neighbour's
+  documents. There is **no read-through fallback** where the workspace comes from the Host,
+  so a live workspace has to be MOVED: `augur identity-rekey` →
+  `POST /__publish/_state/identity-rekey`, a copy that is idempotent, dry-runnable, paged,
+  never deletes the source, and refuses `not-the-only-workspace`. It is a SEPARATE command
+  from `augur bundle-rekey` on purpose — moving content must not silently move the login
+  gate's documents. `test/identity-kv-tenancy.test.mjs` drives two workspaces on one
+  deployment over the real routes; ⚠️ **a `kv.get` through the worker is cached up to sixty
+  seconds**, so a live check of a freshly written key can answer missing for that long, and
+  a "nothing changed" read of a neighbour is only evidence if the read is fresh.
 
 ## Email
 

@@ -56,6 +56,8 @@ import crypto from "node:crypto";
 import http from "node:http";
 import { spawn } from "node:child_process";
 import { fileURLToPath } from "node:url";
+import { __testables as WORKER_TESTABLES } from "../src/_worker.js";
+const __IDENTITY_KEY = (k, ws) => WORKER_TESTABLES.identityKey(k, ws);
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const WORK = path.join(ROOT, ".wrangler", "bundle-tenancy-rehearsal");
@@ -145,6 +147,15 @@ async function probe(request, env, url) {
     const kv = env.COMMENTS;
     if (b.op === "get") return Response.json({ value: await kv.get(b.key) });
     if (b.op === "put") { await kv.put(b.key, b.value); return Response.json({ ok: true }); }
+    if (b.op === "list") {
+      const out = []; let cursor;
+      do {
+        const page = await kv.list({ prefix: b.prefix || "", cursor });
+        for (const k of page.keys || []) out.push(k.name);
+        cursor = page.list_complete ? null : page.cursor;
+      } while (cursor);
+      return Response.json({ keys: out });
+    }
     return Response.json({ error: "bad-op" }, { status: 400 });
   }
   if (url.pathname === "/__rehearsal/call") {
@@ -402,11 +413,19 @@ const state = {};
 async function singlePhase() {
   clause("the deployment every instance runs today — no suffix, no TENANTS");
 
-  // The publish token. One flat KV key, shared by every workspace on a deployment — that is
-  // `B-kv-read-cutover`'s territory, not this item's, and it is why one token below reaches
-  // both hostnames. Noted rather than worked around: hiding it here would hide it.
+  // The publish token. ⚠️ THE KEY COMES FROM THE PRODUCER: this phase's deployment sets no
+  // host suffix, so the document is at the unsegmented key it has always been at; the
+  // hosted phase below seeds it PER WORKSPACE, because `identityKey` segments it there
+  // (`B-identity-kv-write-segmentation`). One flat key used to be why a single token
+  // reached both hostnames — that is closed, and the two workspaces below now hold their
+  // own credential rather than sharing one, which is also the only way an isolation claim
+  // about them means anything.
   const h = crypto.createHash("sha256").update("gv:pub:" + TOKEN, "utf8").digest("hex");
-  await kv({ op: "put", key: "publish:tokens", value: JSON.stringify({ [h]: { space: "*", label: "ci" } }) });
+  await kv({
+    op: "put",
+    key: __IDENTITY_KEY("publish:tokens", ""),
+    value: JSON.stringify({ [h]: { space: "*", label: "ci" } }),
+  });
 
   const cfg = await post("/__publish/_instance/config", "127.0.0.1", {
     tenantId: A, users: [], engineVersion: "0.0.0", sentinels: [],
@@ -444,6 +463,15 @@ async function singlePhase() {
   const shapes = all.objects.map((o) => o.key).sort();
   check("and every key it does hold is the shape it has always been",
     shapes.every((k) => /^(config\/|spaces\/|blobs\/|assets\/)/.test(k)), shapes.join("\n"));
+  // ⚠️ THE SAME CLAIM FOR THE IDENTITY DOCUMENTS, AND IT IS THE ONE A LIVE INSTANCE PAYS
+  // FOR. `B-identity-kv-write-segmentation` gave the roster, the tokens and the rest the
+  // same segment — and a deployment that resolves no workspace from the Host must write
+  // not one key under `t/`. Counted rather than argued, on real workerd, after a real
+  // publish and a real config push have both run.
+  const kvAll = await kv({ op: "list", prefix: "" });
+  const kvPrefixed = (kvAll.keys || []).filter((k) => k.startsWith("t/"));
+  check("the namespace holds no key under `t/` at all", kvPrefixed.length === 0,
+    kvPrefixed.length ? kvPrefixed.join("\n") : `${(kvAll.keys || []).length} keys, none prefixed`);
   const t = await call({ fn: "tenancy", workspace: A, space: SPACE });
   check("the segment this deployment computes is EMPTY", t.segment.workspace === "",
     JSON.stringify(t.segment));
@@ -469,6 +497,19 @@ const hostB = B + SUFFIX;
 
 async function hostedPhase() {
   clause("the same bucket, seen by a deployment that resolves the workspace from the Host");
+
+  // ⚠️ EACH WORKSPACE GETS ITS OWN COPY OF THE CREDENTIAL, at its own segmented key. The
+  // token VALUE is the same string only so this script has one thing to send; the point is
+  // that the document is per workspace, so nothing below can pass because a shared
+  // document authenticated everywhere.
+  const th = crypto.createHash("sha256").update("gv:pub:" + TOKEN, "utf8").digest("hex");
+  for (const ws of [A, B]) {
+    await kv({
+      op: "put",
+      key: __IDENTITY_KEY("publish:tokens", ws),
+      value: JSON.stringify({ [th]: { space: "*", label: "ci" } }),
+    });
+  }
 
   const t = await call({ fn: "tenancy", workspace: A, space: SPACE });
   check("the segment is now this workspace", t.segment.workspace === A, JSON.stringify(t.segment));

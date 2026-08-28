@@ -63,6 +63,7 @@ import crypto from "node:crypto";
 import http from "node:http";
 import { spawn } from "node:child_process";
 import { fileURLToPath } from "node:url";
+import { __testables as WORKER_TESTABLES } from "../src/_worker.js";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const WORK = path.join(ROOT, ".wrangler", "tenant-do-rehearsal");
@@ -320,8 +321,18 @@ async function generate() {
     fs.cpSync(src, revertedSrc, { recursive: true });
     const wf = path.join(revertedSrc, "_worker.js");
     const before = fs.readFileSync(wf, "utf8");
-    const after = before.replace(`\n  ${family}: true,`, `\n  ${family}: false,`);
-    if (after === before) throw new Error(`the revert edit did not apply for ${family} — has KV_CUTOVER moved or been renamed?`);
+    // ⚠️ THE EDIT IS ANCHORED INSIDE `KV_CUTOVER`, AND IT HAS TO BE. Three constants now
+    // carry per-family flags under the SAME family names — `KV_CUTOVER`, `BUNDLE_TENANCY`
+    // and `IDENTITY_TENANCY` — and a bare `\n  invites: true,` matches whichever is
+    // declared first. It found that out by reverting the wrong table and reporting every
+    // clause in this section as a failure of a change nobody had made.
+    const start = before.indexOf("const KV_CUTOVER = Object.freeze({");
+    const end = before.indexOf("\n});", start);
+    if (start < 0 || end < 0) throw new Error("KV_CUTOVER has moved or been renamed");
+    const block = before.slice(start, end);
+    const edited = block.replace(`\n  ${family}: true,`, `\n  ${family}: false,`);
+    if (edited === block) throw new Error(`the revert edit did not apply for ${family} — has KV_CUTOVER.${family} moved or been renamed?`);
+    const after = before.slice(0, start) + edited + before.slice(start + block.length);
     fs.writeFileSync(wf, after);
     fs.writeFileSync(path.join(WORK, `reverted-entry-${family}.js`), entrySource(revertedSrc));
     fs.writeFileSync(path.join(WORK, `reverted-${family}.toml`),
@@ -428,9 +439,16 @@ async function rehearse(pathname, body) {
   });
   return JSON.parse(res.text);
 }
-const kvGet = (key) => rehearse("/__rehearsal/kv", { op: "get", key });
-const kvPut = (key, value) => rehearse("/__rehearsal/kv", { op: "put", key, value });
-const kvDel = (key) => rehearse("/__rehearsal/kv", { op: "delete", key });
+// ⚠️ THE KEY COMES FROM THE PRODUCER, NOT FROM THIS FILE. These deployments set
+// `TENANT_HOST_SUFFIX`, so the identity documents carry a workspace segment
+// (`identityKey`). A poke that spelled `users:invites` by hand would be writing and
+// deleting a key the worker does not read — and the revert clauses would then report a
+// failure of a change nobody had made, which is exactly how this was found.
+// `users:secrets` maps to itself here, because a credential is account-level.
+const IK = (key) => WORKER_TESTABLES.identityKey(key, WORKSPACE);
+const kvGet = (key) => rehearse("/__rehearsal/kv", { op: "get", key: IK(key) });
+const kvPut = (key, value) => rehearse("/__rehearsal/kv", { op: "put", key: IK(key), value });
+const kvDel = (key) => rehearse("/__rehearsal/kv", { op: "delete", key: IK(key) });
 const sql = (stmt, params = []) => rehearse("/__rehearsal/do", {
   workspace: WORKSPACE, path: "/__rehearsal/sql", body: { stmt, params },
 }).then((r) => (r.body ? JSON.parse(r.body) : r));
