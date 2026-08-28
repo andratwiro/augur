@@ -222,11 +222,15 @@ export const TEMPLATES = Object.freeze({
 
   // An admin added someone to a workspace's roster. The link sets their password and
   // signs them in, which is the whole of "accepting" an invite.
+  // `passwordless` is where the link LANDS, decided by the deployment (its SESSION_KEYS
+  // flag), and the message must describe that landing: a mail promising "choose a
+  // password" above a link that signs the person straight in reads as a phishing tell,
+  // and the reverse promises a sign-in the deployment will answer with a password form.
   "roster-invite": (v) => {
     const who = str(v.inviter);
     const lines = [
       who ? `${who} invited you to ${v.workspace}.` : `You have been invited to ${v.workspace}.`,
-      "Choose a password and you're in.",
+      v.passwordless ? "Open the link and you're in — there is no password to set." : "Choose a password and you're in.",
       expiryLine(v.expiresHours),
     ];
     return {
@@ -234,7 +238,7 @@ export const TEMPLATES = Object.freeze({
       text: textBody({ lines, link: v.link, footer: "If you weren't expecting this, ignore this message." }),
       html: htmlShell({
         heading: "You've been invited",
-        lines, link: v.link, action: "Set your password",
+        lines, link: v.link, action: v.passwordless ? "Accept invitation" : "Set your password",
         footer: "If you weren't expecting this, ignore this message.",
       }),
     };
@@ -242,19 +246,26 @@ export const TEMPLATES = Object.freeze({
 
   // The credential is already gone by the time this is sent — reset revokes and mints the
   // link in one action, so there is never a live password alongside a pending link. The
-  // wording has to match that, or people go looking for the old one.
+  // wording has to match that, or people go looking for the old one. On a passwordless
+  // deployment "reset" means the old SESSIONS are ended and this link is the way back in.
   "credential-reset": (v) => {
-    const lines = [
+    const lines = v.passwordless ? [
+      `Your access to ${v.workspace} was reset, so your old sign-in no longer works.`,
+      "Open the link to sign back in — there is no password to set.",
+      expiryLine(v.expiresHours),
+    ] : [
       `Your password for ${v.workspace} was reset, so the old one no longer works.`,
       "Choose a new one to get back in.",
       expiryLine(v.expiresHours),
     ];
     return {
-      subject: `Set a new password for ${str(v.workspace) || "your account"}`,
+      subject: v.passwordless
+        ? `Sign back in to ${str(v.workspace) || "your account"}`
+        : `Set a new password for ${str(v.workspace) || "your account"}`,
       text: textBody({ lines, link: v.link, footer: "If you didn't expect this, tell whoever runs the site. Someone with admin access did it." }),
       html: htmlShell({
-        heading: "Set a new password",
-        lines, link: v.link, action: "Choose a new password",
+        heading: v.passwordless ? "Sign back in" : "Set a new password",
+        lines, link: v.link, action: v.passwordless ? "Sign back in" : "Choose a new password",
         footer: "If you didn't expect this, tell whoever runs the site. Someone with admin access did it.",
       }),
     };
@@ -264,7 +275,7 @@ export const TEMPLATES = Object.freeze({
 export function renderMail(template, vars = {}) {
   const fn = TEMPLATES[template];
   if (!fn) return null;
-  const v = { workspace: "your workspace", link: "", inviter: "", expiresHours: 0, ...vars };
+  const v = { workspace: "your workspace", link: "", inviter: "", expiresHours: 0, passwordless: false, ...vars };
   return fn(v);
 }
 

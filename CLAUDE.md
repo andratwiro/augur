@@ -627,16 +627,33 @@ name, initials, colour and role. Passwords live in KV as PBKDF2 hashes under
   roster user has a `users:secrets` entry (a hash if redeemed, a tombstone if reset), so
   nothing today should ever hit that fallback, but "tidying" a tombstone into an absent
   key would put the reset password right back in service.
-- **⚠️ No effective secret ⇒ no session.** `identify()` refuses any user whose
+- **⚠️ No effective BINDING ⇒ no session — and which value is the binding depends on
+  `SESSION_KEYS`.** With the flag OFF (the default), `identify()` refuses any user whose
   `effectiveSecret` is empty (pending invite, or just reset), *before* deriving the
-  session token. `userToken()`'s own no-`SESSION_SECRET` fallback degrades to a publicly
-  computable `SHA-256("gv:<email>:")` when there is no secret, so without this guard
-  anyone who knows an email could forge a cookie for that account — including a reset
-  admin, which hands over the admin API and admin-only spaces. **This must survive any
-  future refactor.** It signs no legitimate user out: the two cookie issuers, `/__auth`
-  and `invitePost`, both establish a truthy secret before issuing one.
+  session token — unchanged in every respect. With it ON, the same invariant is asked of
+  the value the cookie is actually bound to: `sessionBinding` (stored per-person session
+  key, falling back to the credential), which fails closed exactly as `effectiveSecret`
+  does — no stored key and no credential is refused, an unreadable store is refused, a
+  present-and-falsy entry is a revocation and is refused. The reason is the same in both
+  modes: `userToken()`'s no-`SESSION_SECRET` fallback degrades to a publicly computable
+  `SHA-256("gv:<email>:")` when the bound value is empty, so without the guard anyone who
+  knows an email could forge a cookie for that account — including a reset admin, which
+  hands over the admin API and admin-only spaces. **In no combination may an empty value
+  reach the derivation, and that must survive any future refactor.** It signs no
+  legitimate user out: the two cookie issuers, `/__auth` and `invitePost`, both establish
+  a truthy binding before issuing one — a verified credential, or (flag on, invite
+  redemption) the fresh session key `rotateSessionKey` just wrote, bound by value so a
+  stale store read cannot mint a dead cookie.
   (`/__publish/_login/token` runs the same credential check but mints a publish token,
   not a session.)
+- **⚠️ With `SESSION_KEYS` on, redeeming an invite link IS the sign-in.** `/__invite`
+  renders a one-click confirmation instead of the set-password form, and its POST
+  consumes the token, rotates the person's session key and issues the cookie — no
+  password exists at any point, and `users:secrets` is not written. The GET never
+  consumes in either mode (mail scanners follow links with a GET; a consuming GET would
+  burn every scanned invite unread). Password sign-in on `/__auth` keeps working
+  unchanged for anyone who has one — the flag ADDS a way in, it removes none. Flag off:
+  the invite flow is byte-for-byte what predates it.
 - **⚠️ `identify()` resolves the effective secret ONCE and passes it to the token
   derivation.** Re-resolving inside `userToken` is not atomic with the guard above: a
   truthy first read passes the guard while a later read returns `""`, and the

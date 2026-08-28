@@ -2057,7 +2057,11 @@ async function rotateSessionKey(env, email, tctx) {
   const bytes = new Uint8Array(32);
   crypto.getRandomValues(bytes);
   keys[email] = [...bytes].map((b) => b.toString(16).padStart(2, "0")).join("");
-  try { await kv.put(SESSION_KEYS_KEY, JSON.stringify(keys)); return { ok: true }; }
+  // The success verdict carries the key just written. A caller issuing a cookie on the
+  // spot (invite redemption) binds to THIS value rather than re-reading the store — a
+  // read-after-write through KV can answer with the previous map for up to a minute of
+  // edge cache, and a cookie minted on the stale key dies on its very first request.
+  try { await kv.put(SESSION_KEYS_KEY, JSON.stringify(keys)); return { ok: true, key: keys[email] }; }
   catch (e) { return { ok: false, why: String((e && e.message) || e).slice(0, 120) }; }
 }
 
@@ -2297,9 +2301,17 @@ function previewHead(tctx, requestUrl) {
   return lines.join("\n  ");
 }
 
-// GET /__invite?t=… — the set-password form. Deliberately says nothing about whether
+// GET /__invite?t=… — the redemption page. Deliberately says nothing about whether
 // the token is valid beyond "this link is no longer valid": no user enumeration.
-function invitePage(tctx, token, error, email) {
+//
+// TWO MODES, decided by the deployment's SESSION_KEYS flag, never by the request.
+// Off (the default): the set-password form this page has always been. On: redeeming
+// establishes a session directly and no password exists at any point, so the form is a
+// single Continue button. In BOTH modes the GET only shows the page and the POST is what
+// redeems — that is load-bearing, not ceremony: corporate mail scanners follow links
+// with a GET, so a GET that consumed the token would burn every scanned invite unread,
+// and a GET that signed in would establish sessions inside the scanner's sandbox.
+function invitePage(tctx, token, error, email, passwordless = false) {
   const t = escapeHtml(token || "");
   const em = escapeHtml(email || "");
   // Text only — the .error block below supplies the icon and wrapper, matching loginPage.
@@ -2310,7 +2322,7 @@ function invitePage(tctx, token, error, email) {
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="robots" content="noindex, nofollow" />
-  <title>Set your password — Augur</title>
+  <title>${passwordless ? "You're invited" : "Set your password"} — Augur</title>
   <link rel="preload" href="/fonts/inter-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin />
   <style>
     /* Self-hosted Inter — KEEP IN SYNC with loginPage(); no external font request. */
@@ -2378,12 +2390,21 @@ function invitePage(tctx, token, error, email) {
     <div class="logo">
       ${brandMark(tctx)}
     </div>
-    <h1>Set your password</h1>
+    <h1>${passwordless ? "You&rsquo;re invited" : "Set your password"}</h1>
     <p class="error" role="alert">
       <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 8v5M12 16.5v.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M10.3 3.9 2.5 18a2 2 0 0 0 1.7 3h15.6a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>
       <span>${msg}</span>
     </p>
-    <form method="POST" action="/__invite">
+    ${passwordless ? (t ? `<form method="POST" action="/__invite">
+      <input type="hidden" name="token" value="${t}" />
+      ${em ? `<label for="acct-email">You are signing in as</label>
+      <input id="acct-email" type="email" value="${em}" readonly aria-readonly="true" tabindex="-1"
+             style="width:100%; font:inherit; font-size:15px; padding:8px 13px; border-radius:9px;
+                    border:1px solid var(--line-2); margin-bottom:16px; background:#f4f4f6;
+                    color:#5b626e; cursor:default;" />` : ""}
+      <p class="hint" style="margin:0">One click and you&rsquo;re in — no password to set.</p>
+      <button type="submit" autofocus>Continue</button>
+    </form>` : "") : `<form method="POST" action="/__invite">
       <input type="hidden" name="token" value="${t}" />
       ${em ? `<label for="acct-email">You are setting the password for</label>
       <input id="acct-email" type="email" value="${em}" readonly aria-readonly="true" tabindex="-1"
@@ -2396,9 +2417,9 @@ function invitePage(tctx, token, error, email) {
              aria-describedby="pw-hint" ${error ? 'aria-invalid="true"' : ""} />
       <p class="hint" id="pw-hint" aria-live="polite">${MIN_PASSWORD_LENGTH} characters minimum</p>
       <button type="submit" disabled>Set password</button>
-    </form>
+    </form>`}
   </main>
-  <script>
+  ${passwordless ? "" : `<script>
     // Live length check. The server enforces the same minimum (a disabled button is a
     // convenience, not a control), and minlength="" already covers the no-JS case —
     // this just tells you where you are while typing instead of after submitting.
@@ -2422,22 +2443,68 @@ function invitePage(tctx, token, error, email) {
       pw.addEventListener("input", sync);
       sync();
     })();
-  </script>
+  </script>`}
 </body></html>`;
 }
 
 async function inviteGet(tctx, url, env) {
   const token = url.searchParams.get("t") || "";
   const email = await readInvite(tctx, env, token);
-  if (!email) return htmlResponse(invitePage(tctx, "", "This link is no longer valid. Ask for a new one."), 400);
-  // Show WHOSE account this link sets — a wrong recipient sees an address that isn't
+  if (!email) return htmlResponse(invitePage(tctx, "", "This link is no longer valid. Ask for a new one.", undefined, tctx.SESSION_KEYS), 400);
+  // Show WHOSE account this link admits — a wrong recipient sees an address that isn't
   // theirs and stops, and no one can quietly claim a different identity (it's read-only).
-  return htmlResponse(invitePage(tctx, token, "", email), 200);
+  return htmlResponse(invitePage(tctx, token, "", email, tctx.SESSION_KEYS), 200);
+}
+
+// Redeeming an invite WITH SESSION_KEYS ON: the link ends in a session, not in "set a
+// password". No credential is created, read or prompted for at any point — the session
+// binds to a fresh per-person session key (the seam `sessionBinding` provides), which is
+// what stops the removal of the password from collapsing the cookie derivation to the
+// publicly computable tokenFor("<email>:").
+//
+// Every refusal here is the SAME page with the SAME words as an expired link — a caller
+// cannot tell "already used" from "expired", on purpose (no oracle on someone else's link).
+async function inviteRedeemSession(tctx, token, env, users) {
+  const invalid = () => htmlResponse(invitePage(tctx, "", "This link is no longer valid. Ask for a new one.", undefined, true), 400);
+  const email = await readInvite(tctx, env, token);
+  if (!email) return invalid();
+  const u = userByEmail(email, users);
+  if (!u) return invalid();
+  // Rotate BEFORE consuming, for the reason the password path hashes before consuming:
+  // the token is the only way back in, so nothing that can fail may run after it is
+  // burned. The rotate is the step that talks to the store; if it fails, the link
+  // survives and re-clicking works the moment the cause is fixed. A rotate left behind
+  // by a consume that then refuses ends no session anybody holds — this person's secret
+  // was revoked when the link was minted.
+  const rot = await rotateSessionKey(env, u.email, tctx);
+  if (!rot.ok || !rot.key) {
+    console.error("invite: rotateSessionKey failed", rot.why || "");
+    return htmlResponse(invitePage(tctx, token, "Something went wrong signing you in. Try again.", email, true), 500);
+  }
+  const consumed = await consumeInvite(tctx, env, token);
+  if (!consumed) return invalid();
+  // Bind to the key JUST WRITTEN, never to a re-read: a read-after-write through KV can
+  // answer with the previous map for up to a minute of edge cache, and a cookie minted
+  // on the stale value dies on its very first request — with nothing saying why.
+  const token2 = await userToken(env, u, rot.key, true, tctx);
+  return new Response(null, {
+    status: 303,
+    headers: {
+      Location: "/",
+      "Set-Cookie": `${USER_COOKIE}=${u.email}.${token2}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=${MAX_AGE}`,
+      "Cache-Control": "no-store",
+    },
+  });
 }
 
 async function invitePost(tctx, request, url, env, users = tctx.USERS) {
   const form = await request.formData();
   const token = (form.get("token") || "").toString();
+  // The deployment's flag decides where redemption lands, never anything in the request:
+  // with SESSION_KEYS on the POST establishes a session directly and any submitted
+  // password field is ignored unread. With it off — every deployment that has not opted
+  // in — everything below this line is byte-for-byte the behaviour that predates the flag.
+  if (tctx.SESSION_KEYS) return inviteRedeemSession(tctx, token, env, users);
   const password = (form.get("password") || "").toString();
 
   // Validate the password BEFORE consuming the token, so a typo doesn't burn the link.
@@ -2567,7 +2634,17 @@ async function identify(request, env, users, { sessionKeys = false, tctx } = {})
   // the guard was there to stop. Binding the guarded value to the derived value also
   // cuts 2 KV reads per cookie-bearing request to one.
   const secret = await effectiveSecret(env, u);
-  if (!secret) return null;
+  // ⚠️ WITH SESSION_KEYS OFF THIS CREDENTIAL GUARD IS THE GUARD, unchanged in every
+  // respect: no effective secret ⇒ no session, before any derivation. With it ON the
+  // guard moves to the BINDING below — and that is not a weakening, it is the same
+  // invariant asked of the right value. A person signed in by invite link holds no
+  // credential at all; what their cookie is bound to is their stored session key, and
+  // `sessionBinding` fails closed exactly as `effectiveSecret` does: no stored key falls
+  // back to the (empty) credential and is refused, an unreadable store is refused, a
+  // present-and-falsy entry is a revocation and is refused. In NO combination does an
+  // empty value reach the derivation — that is the forgery-stopping invariant, and it
+  // must survive any future refactor in both modes.
+  if (!sessionKeys && !secret) return null;
   // THE SECOND RESOLVE, and it is a DIFFERENT value rather than a re-read of the first.
   // The guard above is on the credential — "no effective secret ⇒ no session" — and this
   // one is on what the cookie is actually bound to. Both are resolved exactly once and
@@ -9457,6 +9534,12 @@ async function adminUsersApi(tctx, request, url, env, me, users = tctx.USERS, co
     const ident = identityFor(env, tctx, "lastseen");
     let seenMap = null;
     if (ident) { try { seenMap = await ident.lastseenRead(); } catch (e) { /* KV below */ } }
+    // With SESSION_KEYS on, someone signed in by invite link holds no credential at all,
+    // so the credential alone would report them "pending" forever. Redeemed-by-link IS
+    // accepted, and the stored session key is the record the redemption left. One read
+    // for the whole list, and a read that fails leaves the credential answer standing.
+    let keyMap = null;
+    if (tctx.SESSION_KEYS && kv) keyMap = await readSessionKeys(kv);
     const out = [];
     for (const u of inScope) {
       let lastSeen = null;
@@ -9469,7 +9552,7 @@ async function adminUsersApi(tctx, request, url, env, me, users = tctx.USERS, co
         email: u.email, name: u.name, role: scope ? roleIn(u, scope) : roleOf(u),
         initials: u.initials || "", color: u.color || "#4f46e5",
         avatar: avatarUrl(u),
-        state: secret ? "accepted" : "pending",
+        state: (secret || (keyMap && keyMap[u.email])) ? "accepted" : "pending",
         lastSeen,
         // Whether THIS admin may reset THIS person — the panel hides the action rather
         // than offering one the API will refuse. See mayResetPassword.
@@ -9499,6 +9582,10 @@ async function adminUsersApi(tctx, request, url, env, me, users = tctx.USERS, co
           workspace: (spaces.find((s) => s.default) || {}).name || url.host,
           link: link(token),
           expiresHours: Math.round(INVITE_TTL_MS / 3600000),
+          // Where the link LANDS is the deployment's SESSION_KEYS choice, and the mail
+          // must describe that landing: promising "choose a password" above a link that
+          // signs the person straight in reads as a phishing tell.
+          passwordless: !!tctx.SESSION_KEYS,
           ...extra,
         },
       }, {
