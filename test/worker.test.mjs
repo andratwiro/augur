@@ -1095,7 +1095,10 @@ test("revokePublishTokens drops exactly the removed user's tokens", async () => 
     h2: { space: "space-alpha", label: "gone@example.test", createdAt: "y" }, // case-different label handled by lcEmail
     h3: { space: "space-alpha", label: "keep@example.test", createdAt: "z" },
   }) });
-  await W.revokePublishTokens(envWith(kv), "GONE@example.test");
+  // `tctx` first, since `B-kv-read-cutover` moved the token read onto the workspace object
+  // and a revocation has to reach BOTH stores. Null here is a deployment with no object,
+  // which is every self-hosted instance and exactly the KV-only behaviour this pins.
+  await W.revokePublishTokens(null, envWith(kv), "GONE@example.test");
   const map = JSON.parse(await kv.get("publish:tokens"));
   assert.deepEqual(Object.keys(map), ["h3"], "only the other user's token survives");
 });

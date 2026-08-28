@@ -20,7 +20,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { DatabaseSync } from "node:sqlite";
 import {
-  TENANT_SCHEMA, TENANT_SCHEMA_VERSION, FORBIDDEN_COLUMNS,
+  TENANT_SCHEMA, TENANT_SCHEMA_VERSION, TENANT_SCHEMA_ADDITIONS, FORBIDDEN_COLUMNS,
   applyTenantSchema, TenantStore,
 } from "../src/tenant-do.js";
 
@@ -175,6 +175,49 @@ test("removal is a tombstone, not a deleted row", () => {
   assert.ok(db.prepare("PRAGMA table_info(members)").all().some((c) => c.name === "removed_at"));
 });
 
+test("a table built at an EARLIER version gains its new columns", () => {
+  // ⚠️ `CREATE TABLE IF NOT EXISTS` IS NOT A MIGRATION. An object provisioned at schema
+  // version 1 already has `members` and `publish_tokens`, so the statements naming the new
+  // columns are no-ops on exactly the workspaces that have been running longest — and the
+  // difference shows up as a roster read answering `undefined`. This drives the real
+  // version-1 DDL and then applies today's schema over it.
+  const db = new DatabaseSync(":memory:");
+  const sql = sqlHandle(db);
+  sql.exec(`CREATE TABLE members (
+     email TEXT PRIMARY KEY, role TEXT NOT NULL CHECK (role IN ('admin','editor','viewer')),
+     name TEXT, avatar_key TEXT, avatar_mime TEXT, avatar_at TEXT,
+     added_at TEXT NOT NULL, removed_at TEXT)`);
+  sql.exec(`CREATE TABLE publish_tokens (
+     token_hash TEXT PRIMARY KEY, label TEXT, created_at TEXT NOT NULL, expires_at TEXT)`);
+  // A row written by the older build, which the migration must not disturb.
+  sql.exec(`INSERT INTO members (email, role, name, added_at) VALUES ('old@x.test','admin','Old','2026-01-01')`);
+
+  applyTenantSchema(sql, "acme");
+
+  const cols = (t) => db.prepare(`PRAGMA table_info(${t})`).all().map((c) => c.name).sort();
+  for (const { table, column } of TENANT_SCHEMA_ADDITIONS) {
+    assert.ok(cols(table).includes(column), `${table}.${column} was not added to an existing table`);
+  }
+  const row = db.prepare(`SELECT email, role, name, initials FROM members`).all()[0];
+  assert.equal(row.email, "old@x.test", "the migration dropped a row it was supposed to widen");
+  assert.equal(row.name, "Old");
+  assert.equal(row.initials, null, "a new column on an old row is null, never a default nobody chose");
+  assert.equal(Number(db.prepare(`SELECT v FROM meta WHERE k = 'schema_version'`).all()[0].v),
+    TENANT_SCHEMA_VERSION, "the version was not moved with the columns");
+});
+
+test("every addition is also in the CREATE statement, so a fresh object and a migrated one agree", () => {
+  // Two lists that can drift are two schemas. A column added to `TENANT_SCHEMA_ADDITIONS`
+  // and not to the CREATE would exist only on old workspaces; the other way round, only on
+  // new ones. Both are read from the tables SQLite actually built.
+  const db = new DatabaseSync(":memory:");
+  applyTenantSchema(sqlHandle(db), "acme");
+  for (const { table, column } of TENANT_SCHEMA_ADDITIONS) {
+    const cols = db.prepare(`PRAGMA table_info(${table})`).all().map((c) => c.name);
+    assert.ok(cols.includes(column), `${table}.${column} is an addition the CREATE does not name`);
+  }
+});
+
 test("the store exposes no read or write verb it does not yet need", () => {
   // The schema is what this item is for; the verbs arrive with the families that move onto
   // them. Speculative methods would be guesses at call sites that do not exist. `quotas`
@@ -209,6 +252,14 @@ test("the store exposes no read or write verb it does not yet need", () => {
   // family is straddled; see KV_CUTOVER in src/_worker.js. There is no `secrets*` verb and
   // there must never be one — a credential is account-level, and `effectiveSecret` moving is
   // B-cross-workspace-signin's, not this item's.
+  // `rosterRead`/`rosterWrite` and the four `publishToken*` verbs are the SECOND slice of
+  // the same item. `rosterRead` answers with the four KV documents rather than with a
+  // roster, so the worker's serving pipeline is one pipeline fed from either store instead
+  // of two that have to be kept in agreement; `rosterWrite` takes whole documents for the
+  // same reason, because that is the unit the KV path writes and the straddle mirrors.
+  // `publishTokenRead` is separate from `publishTokenList` because the request path wants
+  // one token and only the admin panel wants all of them, and a request-path read that had
+  // to page the whole map would be the KV shape this move is getting away from.
   const names = Object.getOwnPropertyNames(TenantStore.prototype).filter((n) => n !== "constructor");
   assert.deepEqual(names.sort(), [
     "bumpCounter", "clearMeta", "controlResult", "deleteWorkspace", "destroy", "fetch",
@@ -220,8 +271,9 @@ test("the store exposes no read or write verb it does not yet need", () => {
     "nextPublishVersion",
     "overlayCas", "overlayInsert", "overlayOwner", "overlayRead", "overlayReadRev",
     "overlayReplace", "overlayScopes", "overlaySet", "provision",
+    "publishTokenList", "publishTokenMint", "publishTokenRead", "publishTokenRevoke",
     "purgeAuthor", "quotas", "readCounter", "readMeta", "renameAway", "resume",
-    "resumeOnSignIn", "rotate", "schemaVersion",
+    "resumeOnSignIn", "rosterRead", "rosterWrite", "rotate", "schemaVersion",
     "sessionKey",
     "sql", "status", "suspend", "suspension", "touchActivity",
     "usersActive", "workspaceId", "writeMeta",

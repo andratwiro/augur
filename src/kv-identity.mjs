@@ -45,6 +45,7 @@ const isoStamp = (v, fallback) => {
 };
 
 /** The roles `members.role` will accept. A value outside this set is the object's to refuse. */
+const MEMBER_ROLE_SET = Object.freeze(["admin", "editor", "viewer"]);
 const FALLBACK_ROLE = "viewer";
 
 /**
@@ -110,22 +111,43 @@ export async function identityFromKv(families = {}, opts = {}) {
     merged.push({ ...rec, email: e });
   }
 
+  // Which addresses the config file NAMES, as against which the overlay added. That is the
+  // provenance `members.source` carries, and it is a fact about the source rather than
+  // something the table can be asked to work out afterwards.
+  const fromConfig = new Set((configUsers || []).map((u) => lc(u && u.email)).filter(Boolean));
+
   const rowFor = (u, removedAt) => {
     const e = lc(u.email);
     const av = avatars[e] && typeof avatars[e] === "object" ? avatars[e] : null;
-    // `users:names` is documented as `{email: {name, at}}` and older instances hold a bare
-    // string. Both are read: a copy that understood only the current shape would drop the
-    // display name of everyone who set one before the shape changed, and a dropped name
-    // looks exactly like a name nobody set.
+    // ⚠️ THE OVERLAY AND THE FILE GO INTO DIFFERENT COLUMNS AND ARE NOT MERGED HERE.
+    // Merging is what the SERVING path does, per request, and it is not a fold: `applyNames`
+    // DROPS a config-set `initials` when a name override exists and keeps it when one does
+    // not, so a table that had already merged them could not answer both. `users:names` also
+    // has two live shapes — `{name, at}` today, a bare string on older instances — and only
+    // the first is honoured by `applyNames`, so the value travels VERBATIM rather than
+    // normalised: normalising would start applying a name the KV path ignores.
     const nmRaw = names[e];
-    const nm = typeof nmRaw === "string" ? { name: nmRaw }
-      : (nmRaw && typeof nmRaw === "object" ? nmRaw : null);
     return {
       email: e,
-      // The role overlay wins over the config's, which is the precedence `applyRoles` uses:
-      // an admin's change has to take effect without waiting for a commit.
-      role: roles[e] || u.role || FALLBACK_ROLE,
-      name: (nm && nm.name) || u.name || null,
+      // The DURABLE half: what the file says, or what the invitation said for somebody the
+      // file does not name yet.
+      //
+      // A value `members.role` will not accept — the column has a CHECK and `users:roster`
+      // does not — is passed through UNCHANGED so `writeIdentity` refuses it BY NAME rather
+      // than the copy quietly deciding what somebody's role is. The one exception is a legal
+      // overlay role on top of an illegal durable one: taking it keeps the person, where
+      // refusing loses them and their overlay together, and `role_overlay` still records
+      // that the overlay is where it came from.
+      role: MEMBER_ROLE_SET.includes(u.role) ? u.role
+        : (MEMBER_ROLE_SET.includes(roles[e]) ? roles[e] : (u.role || FALLBACK_ROLE)),
+      name: u.name || null,
+      initials: u.initials || null,
+      colour: u.color || null,
+      addedBy: u.addedBy || null,
+      source: fromConfig.has(e) ? "config" : "overlay",
+      // The OVERLAY half, one column each.
+      roleOverlay: typeof roles[e] === "string" && roles[e] ? roles[e] : null,
+      nameOverlay: nmRaw === undefined || nmRaw === null ? null : nmRaw,
       avatarKey: av ? av.k ?? null : null,
       avatarMime: av ? av.mime ?? null : null,
       avatarAt: av ? av.at ?? null : null,
@@ -170,16 +192,14 @@ export async function identityFromKv(families = {}, opts = {}) {
 
   // Publish tokens need no re-keying: KV already stores them under a hash.
   //
-  // ⚠️ AND THE SCOPE DOES NOT COME ACROSS, WHICH IS WHY THE READ CANNOT MOVE YET. KV's
-  // record is `{space, label, createdAt, expiresAt?}`, and `space` is not a label — it is
-  // what `publishAuthDetailed` refuses `wrong-space` on, with `*` meaning admin-equivalent
-  // because a star token can push the instance config, i.e. the roster. There is no column
-  // for it in `publish_tokens`, so it is dropped here; a read cut over to that table would
-  // have to invent an answer, and both available inventions are wrong in a direction
-  // somebody would notice only afterwards. `scripts/state-inventory.mjs` cannot catch this:
-  // it asks whether a family has somewhere to land, and this family does. Named here so the
-  // next person to move the read finds the reason before the bug — see `KV_CUTOVER` in
-  // src/_worker.js.
+  // ⚠️ THE SCOPE TRAVELS VERBATIM AND IS THE POINT OF THE ROW. KV's record is
+  // `{space, label, createdAt, expiresAt?}`, and `space` is not a label — it is what
+  // `publishAuthDetailed` refuses `wrong-space` on, with `*` meaning admin-equivalent
+  // because a star token can push the instance config, i.e. the roster. `*` stays `*` and a
+  // space id stays that space id: mapping either onto the other would widen every
+  // space-scoped token or refuse every star one, and nothing would say so until somebody
+  // published. A record with NO `space` copies across as null, which the read treats as
+  // "this object cannot answer for this token" rather than as any scope at all.
   const publishTokens = [];
   if (has("publish:tokens")) {
     take("publish:tokens");
@@ -187,6 +207,7 @@ export async function identityFromKv(families = {}, opts = {}) {
       if (!hash || !rec) continue;
       publishTokens.push({
         tokenHash: hash,
+        scope: typeof rec.space === "string" && rec.space ? rec.space : null,
         label: rec.label ?? null,
         createdAt: rec.createdAt || now,
         expiresAt: rec.expiresAt ?? null,

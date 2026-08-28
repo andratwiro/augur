@@ -351,6 +351,7 @@ const ALLOWLIST = {
       "SEEDABLE_FAMILIES",   // which overlay families a seed pack may write; a fact about the schema
       "IDENTITY_FAMILIES",   // which identity families a copy may write; a fact about the schema, and the list that keeps a credential out
       "MEMBER_ROLES",        // the three roles the members CHECK constraint allows; the same three everywhere
+      "TENANT_SCHEMA_ADDITIONS", // columns a table built at an earlier version is missing; a fact about the schema's history
       "DORMANCY_SUSPENSION_REASONS", // which suspension reasons a sign-in may lift; a published policy, identical for every workspace
     ],
   },
@@ -359,6 +360,7 @@ const ALLOWLIST = {
     frozen: [
       "UNMAPPED_WORKSPACE_FAMILIES", // which workspace-destined families this translation does NOT carry, and why; a fact about the schema
       "IDENTITY_KV_FAMILIES",        // which KV documents it DOES read; the other half of the same fact, read by the inventory guard
+      "MEMBER_ROLE_SET",             // the roles `members.role` accepts; the same three everywhere, and the copy's copy of tenant-do's list
     ],
   },
 

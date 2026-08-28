@@ -36,12 +36,13 @@
  * generated tree. The engine's own request path, its worker and its store class are
  * untouched: every assertion below is made against a response the real front door produced.
  *
- * THE THREE DEPLOYMENTS, which differ in exactly what the clauses need them to:
- *   bound     `TENANTS` bound. The hosted shape.
- *   unbound   the same config with the binding and the migration removed, and nothing else.
- *   reverted  bound, but `main` resolves a COPY of src/ with one word flipped — the
- *             per-family revert, RUN rather than read.
- * All three share one `--persist-to` directory and one worker name, so the KV documents and
+ * THE FIVE DEPLOYMENTS, which differ in exactly what the clauses need them to:
+ *   bound       `TENANTS` bound. The hosted shape.
+ *   unbound     the same config with the binding and the migration removed, and nothing else.
+ *   reverted-*  bound, but `main` resolves a COPY of src/ with ONE word flipped — one tree
+ *               per family, because the property being run is that reverting one family
+ *               restores ITS KV answer and touches no other family's.
+ * All of them share one `--persist-to` directory and one worker name, so the KV documents and
  * the object's SQLite survive from one to the next. That sharing is not a convenience: "the
  * two answer the same" and "the revert restores the KV answer" are both claims about one
  * workspace's state seen through two deployments, and a fresh store each time would make
@@ -91,9 +92,14 @@ const SESSION_SECRET = "rehearsal-session-secret-not-a-credential";
 const WORKER_NAME = "augur-tenant-do-rehearsal";
 const KV_ID = "tenant-do-rehearsal-kv";
 
+// The families that get their OWN reverted deployment. Each is one word in `KV_CUTOVER`.
+const REVERTED_FAMILIES = ["invites", "publishTokens", "roster"];
+
 const USER_INVITES_KEY = "users:invites";
 const USER_SECRETS_KEY = "users:secrets";
 const LASTSEEN_PREFIX = "users:lastseen:";
+const PUBLISH_TOKENS_KEY = "publish:tokens";
+const ROSTER_KEYS = ["users:roster", "users:roles", "users:names", "users:avatars"];
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 // ---- the transcript ---------------------------------------------------------
@@ -113,6 +119,8 @@ function note(text) { console.log(`        ${String(text).replace(/\n/g, "\n    
 const sha256hex = (s) => crypto.createHash("sha256").update(s, "utf8").digest("hex");
 /** How an invite token is keyed in the object: `tokenFor("inv:" + token)`. One contract. */
 const inviteHash = (token) => sha256hex("gv:inv:" + token);
+/** How a PUBLISH token is keyed in both stores: `tokenFor("pub:" + token)`. */
+const publishHash = (token) => sha256hex("gv:pub:" + token);
 /** A token shaped like the ones `mintInvite` issues, for the rows written directly. */
 const freshToken = () => crypto.randomBytes(32).toString("base64")
   .replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
@@ -247,6 +255,15 @@ TENANT_HOST_SUFFIX = ${JSON.stringify(SUFFIX)}
 [[kv_namespaces]]
 binding = "COMMENTS"
 id = ${JSON.stringify(KV_ID)}
+
+# The bundle store. Bound so the publish routes reach their AUTH check — without it every
+# one of them answers 501 before publishAuthDetailed runs, which would make the clauses
+# below compare two identical refusals and prove nothing. GV_ASSET_SOURCE is deliberately
+# NOT set, so serving stays in assets mode and the front door is the one every other clause
+# drives. Local simulator under --persist-to; no account, no bucket, no network.
+[[r2_buckets]]
+binding = "BUNDLES"
+bucket_name = ${JSON.stringify(WORKER_NAME + "-bundles")}
 ${tenants ? `
 [[durable_objects.bindings]]
 name = "TENANTS"
@@ -292,27 +309,29 @@ async function generate() {
   const src = path.join(ROOT, "src");
   fs.writeFileSync(path.join(WORK, "entry.js"), entrySource(src));
 
-  // THE REVERT, as a copy of src/ with one word changed. Copied rather than patched in
-  // place for the obvious reason — the tree under test must not be edited to test it — and
-  // the edit is asserted to have landed, because a revert that silently did not apply is a
-  // clause that passes for the wrong reason.
-  const revertedSrc = path.join(WORK, "reverted-src");
-  fs.cpSync(src, revertedSrc, { recursive: true });
-  const wf = path.join(revertedSrc, "_worker.js");
-  const before = fs.readFileSync(wf, "utf8");
-  const after = before.replace(/(const KV_CUTOVER = Object\.freeze\(\{[\s\S]{0,4000}?\n)(\s*)invites: true,/,
-    (_m, head, indent) => `${head}${indent}invites: false,`);
-  if (after === before) throw new Error("the revert edit did not apply — has KV_CUTOVER moved or been renamed?");
-  fs.writeFileSync(wf, after);
-  fs.writeFileSync(path.join(WORK, "reverted-entry.js"), entrySource(revertedSrc));
-
+  // THE REVERT, as a copy of src/ with one word changed — ONE TREE PER FAMILY, because the
+  // property being run is that reverting ONE family restores its KV answer and touches
+  // nothing else. Copied rather than patched in place for the obvious reason (the tree under
+  // test must not be edited to test it), and each edit is asserted to have landed, because a
+  // revert that silently did not apply is a clause that passes for the wrong reason.
   const assets = path.join(WORK, "assets");
+  for (const family of REVERTED_FAMILIES) {
+    const revertedSrc = path.join(WORK, `reverted-src-${family}`);
+    fs.cpSync(src, revertedSrc, { recursive: true });
+    const wf = path.join(revertedSrc, "_worker.js");
+    const before = fs.readFileSync(wf, "utf8");
+    const after = before.replace(`\n  ${family}: true,`, `\n  ${family}: false,`);
+    if (after === before) throw new Error(`the revert edit did not apply for ${family} — has KV_CUTOVER moved or been renamed?`);
+    fs.writeFileSync(wf, after);
+    fs.writeFileSync(path.join(WORK, `reverted-entry-${family}.js`), entrySource(revertedSrc));
+    fs.writeFileSync(path.join(WORK, `reverted-${family}.toml`),
+      wranglerConfig({ entry: path.join(WORK, `reverted-entry-${family}.js`), assets, tenants: true }));
+  }
+
   fs.writeFileSync(path.join(WORK, "bound.toml"),
     wranglerConfig({ entry: path.join(WORK, "entry.js"), assets, tenants: true }));
   fs.writeFileSync(path.join(WORK, "unbound.toml"),
     wranglerConfig({ entry: path.join(WORK, "entry.js"), assets, tenants: false }));
-  fs.writeFileSync(path.join(WORK, "reverted.toml"),
-    wranglerConfig({ entry: path.join(WORK, "reverted-entry.js"), assets, tenants: true }));
 }
 
 // ---- one deployment ---------------------------------------------------------
@@ -436,6 +455,53 @@ async function mintVia(cookie, email) {
   return new URL(JSON.parse(r.text).url).searchParams.get("t");
 }
 
+/** Mint a publish token the only way a person does: the admin panel. */
+async function mintToken(cookie, space, label) {
+  const r = await req("/__admin/tokens", {
+    method: "POST", headers: { "content-type": "application/json" }, cookie,
+    body: JSON.stringify({ space, label }),
+  });
+  if (r.status !== 200) throw new Error(`token mint failed (${r.status}): ${r.text.slice(0, 300)}`);
+  return JSON.parse(r.text).token;
+}
+
+/**
+ * Present a publish token at the REAL front door and report what the gate said.
+ *
+ * `403` is the refusal `publishAuthDetailed` produces and anything else means the token got
+ * PAST it — which is the whole of what is being measured here. Nothing is read from either
+ * store to decide it.
+ */
+async function publishAs(token, space = "one") {
+  const r = await req(`/__publish/${space}/check`, {
+    method: "POST",
+    headers: { "content-type": "application/json", authorization: `Bearer ${token}` },
+    body: JSON.stringify({ files: {} }),
+  });
+  return { status: r.status, authorized: r.status !== 403, body: r.text.slice(0, 160) };
+}
+
+/**
+ * Force this isolate to re-read the roster overlay on the next request.
+ *
+ * `rosterFields` memoises the overlay for sixty seconds per workspace, and every write
+ * handler busts that entry for the workspace it wrote in. Setting the display name to what
+ * it already is changes no answer and is the cheapest real write that does it.
+ */
+async function bustRosterMemo(cookie, name = "Ada Renamed") {
+  await req("/__me/name", {
+    method: "POST", headers: { "content-type": "application/json" }, cookie,
+    body: JSON.stringify({ name }),
+  });
+}
+
+/** The admin list, as `address/role/name` lines — one HTTP answer, never a store read. */
+async function adminList(cookie) {
+  const r = await req("/__admin/users", { cookie });
+  if (r.status !== 200) throw new Error(`admin list failed (${r.status}): ${r.text.slice(0, 200)}`);
+  return JSON.parse(r.text).users.map((u) => `${u.email}/${u.role}/${u.name || ""}`).sort();
+}
+
 const invitesDoc = async () => JSON.parse((await kvGet(USER_INVITES_KEY)).value || "{}");
 const secretsDoc = async () => JSON.parse((await kvGet(USER_SECRETS_KEY)).value || "{}");
 const inviteRow = async (token) => {
@@ -454,8 +520,10 @@ async function boundPhase() {
   check("TENANTS is a Durable Object namespace: idFromName is a 64-hex object id, not its argument",
     rt.tenantsBound && /^[0-9a-f]{64}$/.test(String(rt.idFromName)),
     `idFromName("${WORKSPACE}") = ${rt.idFromName}`);
-  check("this deployment reads invites AND lastseen from the object",
-    rt.kvCutover.invites === true && rt.kvCutover.lastseen === true, JSON.stringify(rt.kvCutover));
+  check("this deployment reads all four cut families from the object",
+    rt.kvCutover.invites === true && rt.kvCutover.lastseen === true
+      && rt.kvCutover.publishTokens === true && rt.kvCutover.roster === true,
+    JSON.stringify(rt.kvCutover));
   // One identity call, which is what applies the schema — the object is created lazily and
   // `init()` runs on the first request the request path makes to it.
   await identityCall("lastseen/read", {});
@@ -622,6 +690,115 @@ async function boundPhase() {
   const gGone = await req(`/__invite?t=${encodeURIComponent(tGone)}`);
   check("their link is dead", gGone.status === 400 && !gGone.setCookie, `${gGone.status}`);
 
+  clause("8 · PUBLISH TOKENS answer from the object, WITH their scope, on real SQLite");
+  const tScoped = await mintToken(cookie, "one", "backup");
+  const tStar = await mintToken(cookie, "*", "ci");
+  const tokRows = await sql(`SELECT token_hash, label, scope FROM publish_tokens ORDER BY label`);
+  check("the object's publish_tokens table has a `scope` column and the mint filled it",
+    tokRows.ok && tokRows.rows.length === 2
+      && tokRows.rows.find((r) => r.label === "ci").scope === "*"
+      && tokRows.rows.find((r) => r.label === "backup").scope === "one",
+    JSON.stringify(tokRows.rows));
+  // ⚠️ THE SHAPE THE LAST SLICE'S BUG HAD. A value bound into a column is the RUNTIME's
+  // affinity decision, not this file's — so what the scope comes back AS is asserted, not
+  // assumed. A number here would mean a space id spelled `"1.0"` somewhere.
+  check("and workerd returns it as a JS string, not as a number through TEXT affinity",
+    tokRows.ok && tokRows.types.every((t) => t.scope === "string"),
+    JSON.stringify(tokRows.types));
+
+  const kvTokens = (await kvGet(PUBLISH_TOKENS_KEY)).value;
+  check("the mint ALSO wrote KV, which is what makes the flag a revert",
+    !!kvTokens && Object.keys(JSON.parse(kvTokens)).length === 2, `keys: ${Object.keys(JSON.parse(kvTokens || "{}")).length}`);
+
+  // NON-VACUOUS: with the KV document gone, only the object can answer.
+  await kvDel(PUBLISH_TOKENS_KEY);
+  const pScoped = await publishAs(tScoped, "one");
+  check("a SPACE-SCOPED token publishes at its own space with KV deleted",
+    pScoped.authorized, `${pScoped.status} ${pScoped.body}`);
+  const pWrong = await publishAs(tScoped, "two");
+  check("…and is REFUSED elsewhere — the scope is an authorization, not a label",
+    !pWrong.authorized, `${pWrong.status} ${pWrong.body}`);
+  const pStar = await publishAs(tStar, "one");
+  check("a STAR token still publishes — it was not narrowed to the default space",
+    pStar.authorized, `${pStar.status} ${pStar.body}`);
+  const pJunk = await publishAs("not-a-token-anybody-minted", "one");
+  check("and a token nobody minted is refused, so the three above are not a blanket yes",
+    !pJunk.authorized, `${pJunk.status} ${pJunk.body}`);
+  await kvPut(PUBLISH_TOKENS_KEY, kvTokens);   // the mirror back, for the revert clause
+
+  clause("9 · THE ROSTER answers from the object — four KV documents, one round trip");
+  const invited = await req("/__admin/users", {
+    method: "POST", headers: { "content-type": "application/json" }, cookie,
+    body: JSON.stringify({ op: "invite", email: "kay@example.test", name: "Kay", role: "viewer" }),
+  });
+  check("an invite through the admin route succeeds", invited.status === 200, `${invited.status} ${invited.text.slice(0, 200)}`);
+  const memberRow = await sql(
+    `SELECT email, role, name, initials, colour, source, added_by, name_overlay, role_overlay
+       FROM members WHERE email = ?`, ["kay@example.test"]);
+  check("the object's members table holds the invitee, with its provenance and its chip fields",
+    memberRow.ok && memberRow.rows.length === 1 && memberRow.rows[0].source === "overlay"
+      && memberRow.rows[0].role === "viewer" && !!memberRow.rows[0].initials && !!memberRow.rows[0].colour,
+    JSON.stringify(memberRow.rows[0] || null));
+
+  const named = await req("/__me/name", {
+    method: "POST", headers: { "content-type": "application/json" }, cookie,
+    body: JSON.stringify({ name: "Ada Renamed" }),
+  });
+  check("a self-set display name succeeds", named.status === 200, `${named.status} ${named.text.slice(0, 160)}`);
+  const adaRow = await sql(`SELECT name, name_overlay, source FROM members WHERE email = ?`, [ADMIN]);
+  check("the OVERLAY name is its own column and the file's name is still in the durable one",
+    adaRow.ok && adaRow.rows[0].name === "Ada"
+      && JSON.parse(adaRow.rows[0].name_overlay || "null") && JSON.parse(adaRow.rows[0].name_overlay).name === "Ada Renamed",
+    JSON.stringify(adaRow.rows[0] || null));
+
+  // NON-VACUOUS: the four KV documents are deleted, so only the object can answer.
+  const rosterKv = {};
+  for (const k of ROSTER_KEYS) { rosterKv[k] = (await kvGet(k)).value; await kvDel(k); }
+  const listNoKv = await adminList(cookie);
+  check("the admin list still names the invitee with all four KV documents deleted",
+    listNoKv.some((l) => l.startsWith("kay@example.test/viewer/")), listNoKv.join(" · "));
+  check("…and still shows the self-set name, which lives in the overlay half",
+    listNoKv.some((l) => l.includes("/Ada Renamed")), listNoKv.join(" · "));
+  for (const k of ROSTER_KEYS) if (rosterKv[k] != null) await kvPut(k, rosterKv[k]);
+
+  clause("10 · THE LOGIN GATE ON THE ROSTER: a broken object REFUSES an overlay grant");
+  // ⚠️ `rosterFields` fails OPEN to the CONFIG roster on purpose — the tombstone and not
+  // this overlay is the security boundary. What must NOT happen is a fall-through onto KV,
+  // so the KV role overlay is left LIVE and a promotion recorded only in the overlay has to
+  // stop taking effect the moment the object cannot be read.
+  const promoted = await req("/__admin/users", {
+    method: "POST", headers: { "content-type": "application/json" }, cookie,
+    body: JSON.stringify({ op: "role", email: ONE, role: "admin" }),
+  });
+  check("the invitee-turned-editor is promoted to admin in the overlay", promoted.status === 200,
+    `${promoted.status} ${promoted.text.slice(0, 200)}`);
+  const oneCookie = await signIn(ONE);
+  const adminBefore = await req("/__admin/users", { cookie: oneCookie });
+  check("and that promotion admits them to the admin API", adminBefore.status === 200, `${adminBefore.status}`);
+  const rolesLive = (await kvGet("users:roles")).value;
+  check("KV STILL HOLDS the role overlay, so a fall-through would succeed",
+    !!rolesLive && JSON.parse(rolesLive)[ONE] === "admin", String(rolesLive));
+
+  const brokeRoster = await sql(`ALTER TABLE members RENAME TO members_broken`);
+  check("the object's members table is renamed away", brokeRoster.ok, JSON.stringify(brokeRoster).slice(0, 160));
+  // ⚠️ THE OVERLAY IS MEMOISED FOR SIXTY SECONDS, so a break is invisible until the memo
+  // is asked to refresh — which is a real property of this layer and not a test artefact.
+  // Any roster write busts it for this workspace, so one is made: the same display name
+  // again, which changes no answer and forces the next request to re-read the store.
+  await bustRosterMemo(cookie);
+  const adminDuring = await req("/__admin/users", { cookie: oneCookie });
+  check("the admin API REFUSES rather than falling through to the live KV overlay",
+    adminDuring.status === 403, `${adminDuring.status} ${adminDuring.text.slice(0, 160)}`);
+  const adaDuring = await req("/__admin/users", { cookie });
+  check("a CONFIG admin is still admitted — the fail-open is to the config roster, as designed",
+    adaDuring.status === 200, `${adaDuring.status}`);
+  const fixedRoster = await sql(`ALTER TABLE members_broken RENAME TO members`);
+  check("the object's table is restored", fixedRoster.ok);
+  await bustRosterMemo(cookie);
+  const adminAfter = await req("/__admin/users", { cookie: oneCookie });
+  check("THE SAME SESSION IS ADMITTED AGAIN — the outage was a refusal, not a wedge",
+    adminAfter.status === 200, `${adminAfter.status}`);
+
   clause("2 · setup — an answer to compare, and a state only one store holds");
   await req("/__me", { cookie });                       // stamps lastseen on both stores
   const seenRow = await sql(`SELECT email, at FROM lastseen WHERE email = ?`, [ADMIN]);
@@ -653,6 +830,17 @@ async function boundPhase() {
   // deployments reuse. Minted now, stripped from KV after the unbound comparison.
   state.objectOnly = await mintVia(cookie, TWO);
   state.cookie = cookie;
+
+  // The three answers the unbound deployment has to reproduce, over the same endpoints.
+  state.tokens = { scoped: tScoped, star: tStar };
+  state.boundPublish = {
+    scoped: await publishAs(tScoped, "one"),
+    wrong: await publishAs(tScoped, "two"),
+    star: await publishAs(tStar, "one"),
+  };
+  state.boundRoster = await adminList(cookie);
+  note(`bound: publish one=${state.boundPublish.scoped.status} two=${state.boundPublish.wrong.status} star=${state.boundPublish.star.status}`);
+  note(`bound roster: ${state.boundRoster.join(" · ")}`);
 }
 
 async function unboundPhase() {
@@ -668,14 +856,48 @@ async function unboundPhase() {
   check("GET /__admin/users: the same lastSeen stamp for the same person",
     me.lastSeen === state.boundAdmin.lastSeen, `bound ${state.boundAdmin.lastSeen} · unbound ${me.lastSeen}`);
 
-  // Set up the revert clause from here, where there is no object to touch by accident:
-  // one invite left only in the object, and a lastseen stamp left only in the object.
+  const pubOne = await publishAs(state.tokens.scoped, "one");
+  const pubTwo = await publishAs(state.tokens.scoped, "two");
+  const pubStar = await publishAs(state.tokens.star, "one");
+  check("POST /__publish/one/check: the same verdict for the same space-scoped token",
+    pubOne.status === state.boundPublish.scoped.status,
+    `bound ${state.boundPublish.scoped.status} · unbound ${pubOne.status}`);
+  check("…and the same REFUSAL at the space it is not scoped to",
+    pubTwo.status === state.boundPublish.wrong.status && pubTwo.status === 403,
+    `bound ${state.boundPublish.wrong.status} · unbound ${pubTwo.status}`);
+  check("…and the same verdict for the STAR token, which was neither widened nor narrowed",
+    pubStar.status === state.boundPublish.star.status,
+    `bound ${state.boundPublish.star.status} · unbound ${pubStar.status}`);
+
+  const roster = await adminList(state.cookie);
+  check("GET /__admin/users: the same roster, person for person, role for role, name for name",
+    JSON.stringify(roster) === JSON.stringify(state.boundRoster),
+    `bound ${state.boundRoster.join(" · ")}\nunbound ${roster.join(" · ")}`);
+
+  // Set up the revert clauses from here, where there is no object to touch by accident:
+  // one invite left only in the object, a lastseen stamp left only in the object, one
+  // publish token left only in the object, and one roster change left only in the object.
   const doc = await invitesDoc();
   delete doc[state.objectOnly];
   await kvPut(USER_INVITES_KEY, JSON.stringify(doc));
   await kvDel(LASTSEEN_PREFIX + ADMIN);
   check("one invite is now object-only, and the admin's lastseen stamp is object-only",
     !(await invitesDoc())[state.objectOnly] && !(await kvGet(LASTSEEN_PREFIX + ADMIN)).value);
+
+  const tokenMap = JSON.parse((await kvGet(PUBLISH_TOKENS_KEY)).value || "{}");
+  delete tokenMap[publishHash(state.tokens.star)];
+  await kvPut(PUBLISH_TOKENS_KEY, JSON.stringify(tokenMap));
+  check("the STAR token is now object-only, and the space-scoped one is still in KV",
+    !JSON.parse((await kvGet(PUBLISH_TOKENS_KEY)).value)[publishHash(state.tokens.star)]
+      && !!JSON.parse((await kvGet(PUBLISH_TOKENS_KEY)).value)[publishHash(state.tokens.scoped)],
+    `KV holds ${Object.keys(JSON.parse((await kvGet(PUBLISH_TOKENS_KEY)).value)).length} token(s)`);
+
+  const rosterDoc = JSON.parse((await kvGet("users:roster")).value || '{"add":{},"remove":[]}');
+  delete rosterDoc.add["kay@example.test"];
+  await kvPut("users:roster", JSON.stringify(rosterDoc));
+  check("the invitee is now object-only, while the ROLE overlay stays in both stores",
+    !JSON.parse((await kvGet("users:roster")).value).add["kay@example.test"]
+      && JSON.parse((await kvGet("users:roles")).value)[ONE] === "admin");
 }
 
 async function revertedPhase() {
@@ -684,6 +906,24 @@ async function revertedPhase() {
   check("this deployment is bound, and reads invites from KV while lastseen stays on the object",
     rt.tenantsBound === true && rt.kvCutover.invites === false && rt.kvCutover.lastseen === true,
     JSON.stringify(rt.kvCutover));
+
+  // ── THE COLUMN MIGRATION, ON A COLD OBJECT, ON REAL WORKERD ───────────────────────────
+  //
+  // ⚠️ `CREATE TABLE IF NOT EXISTS` IS NOT A MIGRATION, and no clause above proves the part
+  // that is: every object here was BUILT in today's shape, so `applySchemaAdditions` has
+  // only ever been a no-op. So a column is dropped from a table that is warm in no isolate
+  // — this deployment has only ever spoken to the object through the rehearsal's own SQL
+  // verb, which does not `init()` — and then a REAL request is made, which does.
+  const dropped = await sql(`ALTER TABLE members DROP COLUMN initials`);
+  check("a column is dropped, putting the object back in an earlier version's shape", dropped.ok,
+    JSON.stringify(dropped).slice(0, 160));
+  const gone = await sql(`SELECT initials FROM members LIMIT 1`);
+  check("and the object really cannot answer for it", gone.ok === false, JSON.stringify(gone).slice(0, 160));
+  await req("/__me", { cookie: state.cookie });   // the first request that reaches init()
+  const back = await sql(`SELECT email, initials FROM members ORDER BY email`);
+  check("a real request re-applied the schema and the column is BACK, rows intact",
+    back.ok && back.rows.length > 0 && "initials" in back.rows[0],
+    JSON.stringify(back.rows).slice(0, 220));
 
   const rowStillThere = await inviteRow(state.objectOnly);
   check("the object still HOLDS the object-only invite — the revert loses no data",
@@ -708,6 +948,66 @@ async function revertedPhase() {
     me.lastSeen === state.lastSeenAt, `object ${state.lastSeenAt} · served ${me.lastSeen}`);
 }
 
+async function revertedTokensPhase() {
+  clause("6b · reverting `publishTokens` ALONE, RUN on the real runtime");
+  const rt = await rehearse("/__rehearsal/runtime", {});
+  check("this deployment is bound, and reads publish tokens from KV while the rest stay on the object",
+    rt.tenantsBound === true && rt.kvCutover.publishTokens === false
+      && rt.kvCutover.invites === true && rt.kvCutover.lastseen === true && rt.kvCutover.roster === true,
+    JSON.stringify(rt.kvCutover));
+
+  const row = await sql(`SELECT scope FROM publish_tokens WHERE token_hash = ?`, [publishHash(state.tokens.star)]);
+  check("the object still HOLDS the object-only token — the revert loses no data",
+    row.ok && row.rows.length === 1 && row.rows[0].scope === "*", JSON.stringify(row.rows));
+  const star = await publishAs(state.tokens.star, "one");
+  check("and it is no longer answered — the object is not read for this family any more",
+    !star.authorized, `${star.status} ${star.body}`);
+
+  const scoped = await publishAs(state.tokens.scoped, "one");
+  check("the token KV still holds IS answered — KV answers again, at its own scope",
+    scoped.authorized, `${scoped.status} ${scoped.body}`);
+  const wrong = await publishAs(state.tokens.scoped, "two");
+  check("…and still refused elsewhere: the scope came back from KV unchanged",
+    !wrong.authorized, `${wrong.status} ${wrong.body}`);
+
+  const fresh = await mintToken(state.cookie, "one", "after-the-revert");
+  const freshRow = await sql(`SELECT token_hash FROM publish_tokens WHERE token_hash = ?`, [publishHash(fresh)]);
+  check("a new token goes to KV and NOT to the object",
+    (await publishAs(fresh, "one")).authorized && freshRow.ok && freshRow.rows.length === 0,
+    `object rows: ${freshRow.rows && freshRow.rows.length}`);
+
+  const roster = await adminList(state.cookie);
+  check("the ROSTER did not come back with it — the invitee KV no longer names is still served",
+    roster.some((l) => l.startsWith("kay@example.test/")), roster.join(" · "));
+}
+
+async function revertedRosterPhase() {
+  clause("6c · reverting `roster` ALONE, RUN on the real runtime");
+  const rt = await rehearse("/__rehearsal/runtime", {});
+  check("this deployment is bound, and reads the roster from KV while the rest stay on the object",
+    rt.tenantsBound === true && rt.kvCutover.roster === false
+      && rt.kvCutover.invites === true && rt.kvCutover.lastseen === true && rt.kvCutover.publishTokens === true,
+    JSON.stringify(rt.kvCutover));
+
+  const row = await sql(`SELECT email, source FROM members WHERE email = ?`, ["kay@example.test"]);
+  check("the object still HOLDS the object-only member — the revert loses no data",
+    row.ok && row.rows.length === 1 && row.rows[0].source === "overlay", JSON.stringify(row.rows));
+
+  const roster = await adminList(state.cookie);
+  check("and they are no longer served — the object is not read for this family any more",
+    !roster.some((l) => l.startsWith("kay@example.test/")), roster.join(" · "));
+  check("the roster KV still holds IS answered — the role overlay still promotes them",
+    roster.some((l) => l.startsWith(`${ONE}/admin/`)), roster.join(" · "));
+
+  const token = await mintVia(state.cookie, THREE);
+  const stillObject = await inviteRow(token);
+  check("INVITES did not come back with it: a new one still goes to the object",
+    !!stillObject, stillObject ? JSON.stringify(stillObject.row) : "no row");
+  const tokenAuth = await publishAs(state.tokens.star, "one");
+  check("and PUBLISH TOKENS did not either: the object-only star token is answered again",
+    tokenAuth.authorized, `${tokenAuth.status} ${tokenAuth.body}`);
+}
+
 // ---- run --------------------------------------------------------------------
 
 async function main() {
@@ -719,7 +1019,12 @@ async function main() {
   try {
     dep = await boot("bound", "bound"); await boundPhase(); await shutdown(dep); dep = null;
     dep = await boot("unbound", "unbound"); await unboundPhase(); await shutdown(dep); dep = null;
-    dep = await boot("reverted", "reverted (KV_CUTOVER.invites = false)"); await revertedPhase();
+    dep = await boot("reverted-invites", "reverted (KV_CUTOVER.invites = false)");
+    await revertedPhase(); await shutdown(dep); dep = null;
+    dep = await boot("reverted-publishTokens", "reverted (KV_CUTOVER.publishTokens = false)");
+    await revertedTokensPhase(); await shutdown(dep); dep = null;
+    dep = await boot("reverted-roster", "reverted (KV_CUTOVER.roster = false)");
+    await revertedRosterPhase();
   } finally {
     await shutdown(dep);
     if (!KEEP) fs.rmSync(WORK, { recursive: true, force: true });

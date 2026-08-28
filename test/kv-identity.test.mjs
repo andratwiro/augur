@@ -31,20 +31,83 @@ test("the config roster is carried, not just the KV overlay", async () => {
   assert.equal(byEmail(identity.members, "second@example.com").addedAt, NOW, "a config user with no addedAt gets the run's stamp");
 });
 
-test("config wins over an overlay add of the same address, and the role overlay wins over both", async () => {
+test("the file and the overlay land in DIFFERENT columns and are not folded together", async () => {
+  // ⚠️ THIS IS THE PROPERTY `B-kv-read-cutover` COULD NOT MOVE THE ROSTER WITHOUT.
+  // The copy used to write the MERGED answer — the overlay's role and name if there was
+  // one, the file's otherwise — and a merged column cannot be un-merged: `applyNames` DROPS
+  // a config-set `initials` when a name override exists and KEEPS it when one does not, so
+  // the serving path needs to know which of the two said what. It records both.
   const { identity } = await identityFromKv({
     "users:roster": { add: { "owner@example.com": { email: "owner@example.com", name: "Impostor", role: "viewer" } } },
     "users:roles": { "owner@example.com": "editor" },
     "users:names": { "owner@example.com": { name: "Chosen", at: NOW } },
   }, {
-    configUsers: [{ email: "owner@example.com", name: "Owner", role: "admin" }],
+    configUsers: [{ email: "owner@example.com", name: "Owner", role: "admin", initials: "OW", color: "#123456" }],
     hashInvite, now: NOW,
   });
 
   assert.equal(identity.members.length, 1, "one address is one member however many documents mention it");
   const m = identity.members[0];
-  assert.equal(m.name, "Chosen", "a self-set name beats the config's");
-  assert.equal(m.role, "editor", "the role overlay beats the config, the way applyRoles does");
+  assert.equal(m.name, "Owner", "the durable column holds the FILE's name");
+  assert.equal(m.role, "admin", "and the file's role");
+  assert.equal(m.initials, "OW", "initials come across — the roster serves them on every chip");
+  assert.equal(m.colour, "#123456", "and so does the colour");
+  assert.deepEqual(m.nameOverlay, { name: "Chosen", at: NOW }, "the overlay's name is its own column");
+  assert.equal(m.roleOverlay, "editor", "and so is the overlay's role");
+  assert.equal(m.source, "config", "provenance is recorded, never inferred from the row afterwards");
+});
+
+test("the overlay name travels VERBATIM, both live shapes", async () => {
+  // `users:names` holds `{name, at}` today and a bare string on instances that have not
+  // written a name since the shape changed — and `applyNames` reads `rec.name`, so it
+  // honours the first and IGNORES the second. Normalising the bare string into an object
+  // here would start applying a display name the KV path does not, on exactly the oldest
+  // instances, which is a divergence rather than a cut.
+  const { identity } = await identityFromKv({
+    "users:names": { "old@example.com": "Legacy", "new@example.com": { name: "Current", at: NOW } },
+  }, {
+    configUsers: [
+      { email: "old@example.com", name: "Old", role: "editor" },
+      { email: "new@example.com", name: "New", role: "editor" },
+    ],
+    hashInvite, now: NOW,
+  });
+  assert.equal(byEmail(identity.members, "old@example.com").nameOverlay, "Legacy", "a bare string stays a bare string");
+  assert.deepEqual(byEmail(identity.members, "new@example.com").nameOverlay, { name: "Current", at: NOW });
+});
+
+test("an overlay-added address is marked as such, so it can be told from one the file names", async () => {
+  const { identity } = await identityFromKv({
+    "users:roster": { add: { "invited@example.com": {
+      email: "invited@example.com", name: "Invited", role: "editor",
+      initials: "IN", color: "#abcdef", addedAt: "2026-08-01T00:00:00.000Z", addedBy: "owner@example.com",
+    } } },
+  }, {
+    configUsers: [{ email: "owner@example.com", name: "Owner", role: "admin" }],
+    hashInvite, now: NOW,
+  });
+  const m = byEmail(identity.members, "invited@example.com");
+  assert.equal(m.source, "overlay");
+  assert.equal(m.addedBy, "owner@example.com", "who let them in is part of the record");
+  assert.equal(byEmail(identity.members, "owner@example.com").source, "config");
+});
+
+test("a role the file holds and the schema does not is RESCUED by a legal overlay, never invented", async () => {
+  // `members.role` has a CHECK and `identity.json` does not, so a legacy spelling would be
+  // refused by the object and the person would be lost — along with the overlay that was
+  // already correcting them. A LEGAL overlay role is taken; nothing else is.
+  const { identity } = await identityFromKv({
+    "users:roles": { "legacy@example.com": "viewer" },
+  }, {
+    configUsers: [
+      { email: "legacy@example.com", name: "Legacy", role: "user" },
+      { email: "stuck@example.com", name: "Stuck", role: "user" },
+    ],
+    hashInvite, now: NOW,
+  });
+  assert.equal(byEmail(identity.members, "legacy@example.com").role, "viewer");
+  assert.equal(byEmail(identity.members, "stuck@example.com").role, "user",
+    "with no legal overlay the odd value is passed through, for the object to refuse BY NAME");
 });
 
 test("a removal is a tombstone carrying the role it had", async () => {
@@ -84,13 +147,25 @@ test("invites without a hash function is refused rather than copied in the clear
   );
 });
 
-test("publish tokens are already hashed and pass through", async () => {
+test("publish tokens are already hashed and pass through, carrying their SCOPE verbatim", async () => {
+  // ⚠️ `space` IS THE AUTHORIZATION AND NOT A LABEL. `publishAuthDetailed` refuses
+  // `wrong-space` on it, and `*` is admin-equivalent because a star token pushes the
+  // instance config — the user list. Mapping either onto the other would widen every
+  // space-scoped token or refuse every star one, and nothing says so until a publish fails.
   const { identity } = await identityFromKv({
-    "publish:tokens": { "already-a-hash": { space: "delta", label: "owner@example.com", createdAt: "2026-08-05T00:00:00.000Z" } },
+    "publish:tokens": {
+      "already-a-hash": { space: "gallery", label: "owner@example.com", createdAt: "2026-08-05T00:00:00.000Z" },
+      "star-hash": { space: "*", label: "ci", createdAt: "2026-08-06T00:00:00.000Z" },
+      "no-scope-hash": { label: "odd", createdAt: "2026-08-07T00:00:00.000Z" },
+    },
   }, { hashInvite, now: NOW });
 
-  assert.equal(identity.publishTokens[0].tokenHash, "already-a-hash");
-  assert.equal(identity.publishTokens[0].expiresAt, null, "a token minted before expiry existed has none, and null is the honest answer");
+  const by = (h) => identity.publishTokens.find((t) => t.tokenHash === h);
+  assert.equal(by("already-a-hash").expiresAt, null, "a token minted before expiry existed has none, and null is the honest answer");
+  assert.equal(by("already-a-hash").scope, "gallery", "a space id stays that space id");
+  assert.equal(by("star-hash").scope, "*", "and a star stays a star — never narrowed to the default space");
+  assert.equal(by("no-scope-hash").scope, null,
+    "a record with no scope copies as null, which the read treats as 'cannot answer' rather than as any scope");
 });
 
 test("prefixed families become rows, and the two blob prefixes keep their names", async () => {

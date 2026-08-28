@@ -1052,6 +1052,84 @@ function __setConfigTestState({ cfgAt: c, cfgGoodAt: g, roster, mcpHostAllowlist
 // binding — the cadence tests need to see what the config tick settled on, and there is
 // no global left to read it from.
 const __usersNow = () => TENANT_CTX.USERS;
+
+/**
+ * The six documents `rosterFields` runs on, from whichever store holds each of them.
+ *
+ * `B-kv-read-cutover`. FOUR of the six come from the workspace object in ONE round trip
+ * once `KV_CUTOVER.roster` is on, and they come back spelled exactly as KV spells them —
+ * so `mergeRoster`/`applyRoles`/`applyNames`/`applyAvatars` below are one pipeline fed from
+ * two possible stores rather than two pipelines that have to be kept in agreement. That is
+ * what makes "bound and unbound answer the same" a property of the shape rather than a
+ * thing a test hopes for.
+ *
+ * ⚠️ AN OBJECT THAT HAS NEVER BEEN GIVEN THIS FAMILY IS NOT AN EMPTY ONE. A workspace
+ * copied off KV and a workspace whose copy has not run yet both have no rows, and answering
+ * the second from the object would silently UN-REMOVE everybody `users:roster.remove` names.
+ * So the object reports whether it has been seeded and an unseeded one defers to KV — the
+ * same "object first, KV as the fallback" rule an outstanding invite link relies on. A
+ * workspace provisioned on the object was never on KV and is seeded from birth.
+ *
+ * ⚠️ AND A STORE ERROR IS NOT AN ANSWER EITHER. It throws, which `rosterFields` catches into
+ * the config roster — the deliberate fail-OPEN this layer has always had, because the
+ * `users:secrets` tombstone and not this overlay is the security boundary. Falling through
+ * to KV instead would be a fail-open too, one document at a time and much harder to see.
+ *
+ * The last two stay on KV and the constant says why: `users:spaces` is inventoried as
+ * DROPPED rather than migrated, and `spaces:icons` has no copy into `settings` yet.
+ */
+async function readRosterDocs(ctx, env) {
+  const ident = identityFor(env, ctx, "roster");
+  if (ident) {
+    const [docs, spaces, icons] = await Promise.all([
+      ident.rosterRead(), readSpaces(env), readSpaceIcons(env),
+    ]);
+    if (docs && docs.seeded) {
+      return [docs.roster, docs.avatars, docs.names, docs.roles, spaces, icons];
+    }
+    // Unseeded: KV still holds this workspace's overlay, and it is the answer.
+    const [roster, avatars, names, roles] = await Promise.all([
+      readRoster(env), readAvatars(env), readNames(env), readRoles(env),
+    ]);
+    return [roster, avatars, names, roles, spaces, icons];
+  }
+  return Promise.all([
+    readRoster(env), readAvatars(env), readNames(env), readRoles(env), readSpaces(env),
+    readSpaceIcons(env),
+  ]);
+}
+
+/**
+ * Mirror the roster documents a KV write just produced into the workspace object.
+ *
+ * ⚠️ THE WRITES GO TO BOTH STORES AND THAT IS WHAT MAKES THE FLAG A REVERT. Flipping
+ * `KV_CUTOVER.roster` back has to restore the KV answer with nothing lost, which is only
+ * true if KV kept receiving every change while the object was the read. The reverse mirror
+ * — object-only writes — would make the revert a rollback to whenever the cut happened.
+ *
+ * It takes the DOCUMENTS the handler already computed rather than re-reading them: a mirror
+ * that re-read would race the write it is mirroring, and on the KV backing that race is
+ * exactly the read-modify-write the content overlay moved off for.
+ *
+ * Best-effort and never fatal: the KV write has already landed and is still the fallback.
+ */
+async function mirrorRosterDocs(tctx, env, docs) {
+  const ident = identityFor(env, tctx, "roster");
+  if (!ident) return;
+  try {
+    await ident.rosterWrite({
+      // The durable half travels too, so an overlay entry naming somebody this object has
+      // no row for can be seeded from the record rather than from a guess. Only the fields
+      // `members` has columns for — a config user's `passHash` has no business here and
+      // `identityFromKv` does not carry one either.
+      configUsers: (tctx.CONFIG_USERS || []).map((u) => ({
+        email: u.email, name: u.name || null, role: u.role || null,
+        initials: u.initials || null, color: u.color || null,
+      })),
+      ...docs,
+    });
+  } catch (e) { /* KV has it, and KV is still the fallback */ }
+}
 // The overlay as a VALUE: it reads KV and returns the three fields the overlay owns, on
 // top of the context the config documents just produced. Nothing is written here, so a
 // throw anywhere in the chain reaches the caller having changed nothing — and the answer
@@ -1066,10 +1144,7 @@ async function rosterFields(ctx, env) {
     const cur = ROSTER_OVERLAY.entry(ctx.tenantId, () => ({ at: 0, docs: null }));
     if (!cur.docs || Date.now() - cur.at >= ROSTER_TTL_MS) {
       cur.at = Date.now();
-      cur.docs = await Promise.all([
-        readRoster(env), readAvatars(env), readNames(env), readRoles(env), readSpaces(env),
-        readSpaceIcons(env),
-      ]);
+      cur.docs = await readRosterDocs(ctx, env);
     }
     const [roster, avatars, names, roles, spaces, icons] = cur.docs;
     // The photo pass hands back the users AND the hashes it stamped — see applyAvatars —
@@ -1141,7 +1216,7 @@ function applyRoles(users, index) {
 // the file has caught up (the change drains itself, exactly like the roster overlay)
 // and when an address is removed — a re-invited address must not inherit the last
 // person's role, least of all `admin`.
-async function clearRole(env, email) {
+async function clearRole(tctx, env, email) {
   const kv = kvFor(env);
   if (!kv) return;
   try {
@@ -1149,6 +1224,7 @@ async function clearRole(env, email) {
     if (!(lcEmail(email) in index)) return;
     delete index[lcEmail(email)];
     await kv.put(USER_ROLES_KEY, JSON.stringify(index));
+    await mirrorRosterDocs(tctx, env, { roles: index });
   } catch (e) {}
 }
 
@@ -1395,7 +1471,7 @@ function applyNames(users, index) {
 // Drop someone's chosen name, so the config roster's own name takes over again. Called
 // when an admin removes them: a re-invited address must not inherit the last person's
 // chosen name, and there is no UI for clearing it yourself.
-async function clearName(env, email) {
+async function clearName(tctx, env, email) {
   const kv = kvFor(env);
   if (!kv) return false;
   const index = await readNames(env);
@@ -1403,6 +1479,7 @@ async function clearName(env, email) {
   if (!index[key]) return false;
   delete index[key];
   await kv.put(USER_NAMES_KEY, JSON.stringify(index));
+  await mirrorRosterDocs(tctx, env, { names: index });
   return true;
 }
 
@@ -1412,7 +1489,7 @@ async function clearName(env, email) {
 // because comments store a person id, never a name snapshot.
 //
 // `tenantId` is carried for the roster overlay's cache — see spaceIconApi.
-async function meNameApi(tenantId, request, env, me) {
+async function meNameApi(tenantId, request, env, me, tctx) {
   if (!me) return jsonResponse({ error: "unauthorized" }, 401);
   if (request.method !== "POST") return jsonResponse({ error: "method-not-allowed" }, 405);
   const kv = kvFor(env);
@@ -1424,6 +1501,7 @@ async function meNameApi(tenantId, request, env, me) {
   const index = await readNames(env);
   index[lcEmail(me.email)] = { name, at: new Date().toISOString() };
   await kv.put(USER_NAMES_KEY, JSON.stringify(index));
+  await mirrorRosterDocs(tctx, env, { names: index });
   // This workspace re-reads on the next request; other isolates within ROSTER_TTL_MS.
   bustRosterOverlay(tenantId); cfgAt = 0;
   return jsonResponse({ ok: true, name, initials: initialsFor(name) });
@@ -1487,7 +1565,7 @@ async function avatarHash(dataUri) {
 
 // Drop someone's photo from the index. Blobs are deliberately left behind: two people
 // may share a hash, and an orphan is a few KB — the same trade the bundle store makes.
-async function clearAvatar(env, email) {
+async function clearAvatar(tctx, env, email) {
   const kv = kvFor(env);
   if (!kv) return false;
   const index = await readAvatars(env);
@@ -1495,6 +1573,7 @@ async function clearAvatar(env, email) {
   if (!index[key]) return false;
   delete index[key];
   await kv.put(USER_AVATARS_KEY, JSON.stringify(index));
+  await mirrorRosterDocs(tctx, env, { avatars: index });
   return true;
 }
 
@@ -1549,7 +1628,7 @@ async function meAvatarApi(tenantId, request, env, me, tctx) {
   if (!kv) return jsonResponse({ error: "no-kv-binding" }, 500);
 
   if (request.method === "DELETE") {
-    await clearAvatar(env, me.email);
+    await clearAvatar(tctx, env, me.email);
     // This workspace re-reads next request; other isolates within ROSTER_TTL_MS.
     bustRosterOverlay(tenantId); cfgAt = 0;
     return jsonResponse({ ok: true, avatar: null });
@@ -1567,6 +1646,7 @@ async function meAvatarApi(tenantId, request, env, me, tctx) {
     const index = await readAvatars(env);
     index[lcEmail(me.email)] = { k, mime: parsed.mime, at: new Date().toISOString() };
     await kv.put(USER_AVATARS_KEY, JSON.stringify(index));
+    await mirrorRosterDocs(tctx, env, { avatars: index });
     bustRosterOverlay(tenantId); cfgAt = 0;
     return jsonResponse({ ok: true, avatar: "/__avatar/" + AVATAR_KV_PREFIX + k });
   }
@@ -1672,7 +1752,16 @@ async function revokeInvitesFor(tctx, env, email) {
 // Publish tokens minted by `augur login` are labelled with the user's email and never
 // expire. Removing or resetting a user must drop theirs, or a departed teammate keeps
 // write access to the live content store. Best-effort (a KV blip just leaves the token).
-async function revokePublishTokens(env, email) {
+//
+// ⚠️ BOTH STORES, for `revokeInvitesFor`'s reason: the read comes from the object and KV is
+// the fallback, so a revocation that dropped only one of them would leave the credential
+// live on the other the moment anything flipped. Each half is attempted independently —
+// one store being unreachable must not stop the other being cleaned.
+async function revokePublishTokens(tctx, env, email) {
+  try {
+    const ident = identityFor(env, tctx, "publishTokens");
+    if (ident) await ident.tokenRevoke({ label: email });
+  } catch (e) {}
   const kv = kvFor(env);
   if (!kv) return;
   try {
@@ -2825,7 +2914,12 @@ function publishTokenTtlMs(tctx) {
  * doors call this, so an expiry, a label rule or a scope rule cannot land on one and miss
  * the other.
  */
-async function mintPublishToken(kv, tctx, u, { label = null } = {}) {
+// ⚠️ WRITES GO TO BOTH STORES WHILE `KV_CUTOVER.publishTokens` IS ON — see that constant.
+// The object is where the read comes from and KV is what makes flipping the word back a
+// revert rather than a data loss, so a token minted after the cut has to exist on both
+// sides of it. `env` is optional because two tests mint without one; without it this is
+// exactly the KV-only function it has always been.
+async function mintPublishToken(kv, tctx, u, { label = null, env = null } = {}) {
   const space = roleOf(u) === "admin" ? "*" : (tctx.SPACES.find((s) => s.default) || { id: null }).id;
   if (!space) return null;
   const token = randomHex(32);
@@ -2834,8 +2928,19 @@ async function mintPublishToken(kv, tctx, u, { label = null } = {}) {
   const rec = { space, label: label || u.email, createdAt: new Date().toISOString() };
   const ttlMs = publishTokenTtlMs(tctx);
   if (ttlMs) rec.expiresAt = new Date(Date.now() + ttlMs).toISOString();
-  map[await tokenFor("pub:" + token)] = rec;
+  const hash = await tokenFor("pub:" + token);
+  map[hash] = rec;
   await kv.put(PUBLISH_TOKENS_KEY, JSON.stringify(map));
+  // The object second and not first: this function's contract is that the token it RETURNS
+  // works, and KV is still the fallback the read falls through to. A throw here would hand
+  // back nothing while a usable credential was already in the store.
+  const ident = env && identityFor(env, tctx, "publishTokens");
+  if (ident) {
+    // `space` verbatim into `scope`. `*` stays `*`, a space id stays that space id — the
+    // whole reason the column exists.
+    try { await ident.tokenMint({ tokenHash: hash, space, label: rec.label, createdAt: rec.createdAt, expiresAt: rec.expiresAt || null }); }
+    catch (e) { /* the token is live in KV, which the read still falls back to */ }
+  }
   return { token, space, expiresAt: rec.expiresAt || null };
 }
 
@@ -2967,7 +3072,7 @@ async function pairApi(tctx, request, url, env, me) {
       await loginFail(env, ids);
       return jsonResponse({ error: "no-such-code" }, 404);
     }
-    const minted = await mintPublishToken(kv, tctx, me);
+    const minted = await mintPublishToken(kv, tctx, me, { env });
     if (!minted) return jsonResponse({ error: "no-default-space" }, 500);
     await kv.put(PAIR_PREFIX + code, JSON.stringify({
       ...rec, status: "approved", token: minted.token, space: minted.space,
@@ -3706,12 +3811,31 @@ async function publishAuthDetailed(tctx, request, env, spaceId, anySpace) {
     return { entry: { space: "*", label: "bootstrap" }, refusal: null };
   }
   const kv = kvFor(env);
-  if (!kv) return { entry: null, refusal: "no-store" };
+  const ident = identityFor(env, tctx, "publishTokens");
+  if (!kv && !ident) return { entry: null, refusal: "no-store" };
   try {
     const h = await tokenFor("pub:" + token);
-    const raw = await kv.get(PUBLISH_TOKENS_KEY);
-    const map = raw ? JSON.parse(raw) : {};
-    const e = map[h];
+    // ⚠️ THE OBJECT FIRST, KV AS THE FALLBACK — and the fallback is what carries a token
+    // somebody's CI is already holding across the cut. Three things read as "the object has
+    // nothing": no row, a row a pre-`scope` copy wrote, and a copy that has not run at all.
+    // All three fall through to KV, because a token that exists and whose SCOPE this object
+    // cannot state is a token no answer can be invented for — `*` would widen it to
+    // admin-equivalent and a space id would refuse a star one.
+    //
+    // An ERROR is different and does NOT fall through: `identityFor` throwing is an absence
+    // of an answer rather than an answer, and falling through on it would make a broken
+    // workspace store fail OPEN onto KV. `no-store` is what a publisher then sees, which is
+    // a retry rather than an admission.
+    let e = null;
+    if (ident) {
+      try { e = await ident.tokenRead(h); }
+      catch (err) { return { entry: null, refusal: "no-store" }; }
+    }
+    if (!e && kv) {
+      const raw = await kv.get(PUBLISH_TOKENS_KEY);
+      const map = raw ? JSON.parse(raw) : {};
+      e = map[h];
+    }
     if (!e) return { entry: null, refusal: "unknown-token" };
     // An EXPIRED token is no token. Strictly additive: only a record that carries an
     // `expiresAt` can fail this, and every token minted before device pairing existed has
@@ -4019,7 +4143,7 @@ async function publishApi(tctx, request, url, env) {
     // The SAME mint the pairing flow uses. It was a second copy of this code until the
     // token grew an expiry, at which point the copy was a door that would have kept
     // handing out credentials that live forever while the other one stopped.
-    const minted = await mintPublishToken(kv, tctx, u);
+    const minted = await mintPublishToken(kv, tctx, u, { env });
     if (!minted) return jsonResponse({ error: "no-default-space" }, 500);
     // `expiresAt` is in the response so the CLI can say when, rather than the holder
     // finding out from a 403 on the day it matters.
@@ -4228,7 +4352,9 @@ async function publishApi(tctx, request, url, env) {
         const add = Object.fromEntries(Object.entries(roster.add).filter(([e]) => !named.has(String(e).toLowerCase())));
         const remove = roster.remove.filter((e) => named.has(String(e).toLowerCase()));
         if (Object.keys(add).length !== Object.keys(roster.add).length || remove.length !== roster.remove.length) {
-          await kv.put(USER_ROSTER_KEY, JSON.stringify({ ...roster, add, remove }));
+          const drained = { ...roster, add, remove };
+          await kv.put(USER_ROSTER_KEY, JSON.stringify(drained));
+          await mirrorRosterDocs(tctx, env, { roster: drained });
           bustRosterOverlay(tctx.tenantId);
         }
       }
@@ -5027,13 +5153,27 @@ async function adminVersionApi(tctx, env, me) {
 // ---- Admin: publish tokens (KV-backed) --------------------------------------
 // GET lists token metadata (hashes only — the token itself is shown once at
 // mint); POST {space,label} mints; DELETE {hash} revokes. Admin-cookie gated.
-async function adminTokensApi(request, env, me) {
+// ⚠️ THE PANEL LISTS THE UNION AND WRITES TO BOTH, for the length of the straddle. A list
+// from one store alone shows an admin a revoke button for tokens that will keep publishing,
+// or hides a live one entirely; the union is the set that can actually publish, which is
+// the only set worth showing. `tctx` is optional so the two tests that drive this route
+// without one still get the KV-only behaviour it has always had.
+async function adminTokensApi(request, env, me, tctx = null) {
   if (!me || me.role !== "admin") return jsonResponse({ error: "forbidden" }, 403);
   const kv = kvFor(env);
+  const ident = identityFor(env, tctx, "publishTokens");
   if (!kv) return jsonResponse({ error: "no-kv-binding" }, 500);
   const raw = await kv.get(PUBLISH_TOKENS_KEY);
   const map = raw ? JSON.parse(raw) : {};
-  if (request.method === "GET") return jsonResponse({ tokens: map });
+  if (request.method === "GET") {
+    let tokens = map;
+    if (ident) {
+      // The object's rows win a collision: it is what `publishAuthDetailed` reads first,
+      // so a disagreement about a token's scope should be shown as the answer that governs.
+      try { tokens = { ...map, ...(await ident.tokenList()).tokens }; } catch (e) {}
+    }
+    return jsonResponse({ tokens });
+  }
   if (request.method === "POST") {
     let op;
     try { op = await request.json(); } catch (e) { return jsonResponse({ error: "bad-json" }, 400); }
@@ -5042,17 +5182,32 @@ async function adminTokensApi(request, env, me) {
     const bytes = new Uint8Array(32);
     crypto.getRandomValues(bytes);
     const token = [...bytes].map((b) => b.toString(16).padStart(2, "0")).join("");
-    map[await tokenFor("pub:" + token)] = { space, label, createdAt: new Date().toISOString() };
+    const hash = await tokenFor("pub:" + token);
+    const createdAt = new Date().toISOString();
+    map[hash] = { space, label, createdAt };
     await kv.put(PUBLISH_TOKENS_KEY, JSON.stringify(map));
+    if (ident) {
+      try { await ident.tokenMint({ tokenHash: hash, space, label, createdAt, expiresAt: null }); }
+      catch (e) { /* live in KV, which the read still falls back to */ }
+    }
     return jsonResponse({ token, space, label });
   }
   if (request.method === "DELETE") {
     let op;
     try { op = await request.json(); } catch (e) { return jsonResponse({ error: "bad-json" }, 400); }
     const h = clamp(op && op.hash, 80);
-    if (!map[h]) return jsonResponse({ error: "unknown-token" }, 404);
-    delete map[h];
-    await kv.put(PUBLISH_TOKENS_KEY, JSON.stringify(map));
+    // A hash the object holds and KV does not is still a revocable token — it is what the
+    // read answers from. So "unknown" means neither store has it.
+    let droppedFromObject = 0;
+    if (ident) {
+      try { droppedFromObject = (await ident.tokenRevoke({ tokenHash: h })).dropped || 0; }
+      catch (e) { return jsonResponse({ error: "no-store" }, 503); }
+    }
+    if (!map[h] && !droppedFromObject) return jsonResponse({ error: "unknown-token" }, 404);
+    if (map[h]) {
+      delete map[h];
+      await kv.put(PUBLISH_TOKENS_KEY, JSON.stringify(map));
+    }
     return jsonResponse({ ok: true });
   }
   return jsonResponse({ error: "method-not-allowed" }, 405);
@@ -6379,29 +6534,42 @@ const KV_CUTOVER = Object.freeze({
   // set: it grants nothing and refuses nothing, so a wrong answer costs a column in the
   // admin list and never a session.
   lastseen: true,
+  // `publish:tokens` → the object's `publish_tokens` table, WITH its scope. The sharp one:
+  // KV records a token as `{space, label, createdAt, expiresAt?}` and `space` is the
+  // AUTHORIZATION SCOPE, not a label — `publishAuthDetailed` refuses `wrong-space` on it,
+  // and `*` is admin-equivalent because a star token pushes instance config, which is the
+  // user list. The table now has a `scope` column carrying that value VERBATIM, and a row
+  // whose scope is NULL — one a copy wrote before the column existed — is treated as no
+  // answer rather than as a guess, so no token is widened to star and none is refused for
+  // a value the copy could not carry.
+  publishTokens: true,
+  // `users:roster` / `users:roles` / `users:names` / `users:avatars` → `members`, read back
+  // as those same four documents so the serving pipeline is one pipeline rather than two
+  // that have to agree. The table keeps the durable half and the overlay half in separate
+  // columns, because `applyNames` DROPS a config-set `initials` when there is a name
+  // override and keeps it when there is not — one merged column cannot answer both, and a
+  // login-gate cut with a known divergence is not a cut.
   //
-  // ⏳ WHAT IS NOT HERE, AND WHY EACH ONE IS BLOCKED RATHER THAN SKIPPED.
+  // This is the read-volume one: six KV gets per workspace per sixty-second tick was the
+  // site's dominant KV consumer, enough to exhaust a day's `get()` budget and take every
+  // KV-touching route down with it. Four of the six become one round trip here.
+  roster: true,
   //
-  // `publish:tokens` → `publish_tokens`. BLOCKED, and this is the sharp one. KV records a
-  // token as `{space, label, createdAt, expiresAt?}` and `space` is the AUTHORIZATION
-  // SCOPE — `publishAuthDetailed` refuses `wrong-space` on it, and `*` is admin-equivalent
-  // because a star token pushes instance config, which is the user list. The object's
-  // `publish_tokens` table has no column for it and `identityFromKv` does not carry it, so
-  // cutting this read today would either widen every space-scoped token to star or refuse
-  // every token, and the state-inventory check cannot see it: that guard works at FAMILY
-  // granularity, and this family is mapped. It needs a column and a copy that fills it —
-  // one schema version, in the item that owns the copy — before the read can move.
+  // ⏳ WHAT IS NOT HERE, AND WHY EACH ONE IS LEFT RATHER THAN SKIPPED.
   //
-  // `users:roster` / `users:roles` / `users:names` / `users:avatars` → `members`. BLOCKED
-  // on the same kind of loss, one layer up. The copy MERGES the config roster into
-  // `members`, so the column no longer says whether a value came from `identity.json` or
-  // from the overlay on top of it — and the serving path needs that difference: `applyNames`
-  // DROPS a config-set `initials` when there is a name override and keeps it when there is
-  // not, so one column cannot reproduce both answers. `members` also has no `initials` or
-  // colour, which the roster serves on every chip. Reconstructing the four documents from
-  // the table is possible for every value except the aliasing case, and a login-gate cut
-  // with a known divergence is not a cut. The fix is a schema that keeps overlay and config
-  // apart, which is a decision for the item that owns the table.
+  // `users:spaces` → NOTHING, on purpose. The inventory sends it to `drop`: it was a role
+  // per address PER SPACE from when one deployment mounted several, and a workspace is the
+  // only tier now. So `readSpaces` is the one KV get `rosterFields` still spends on a cut
+  // workspace, and it stays: answering `{}` from the object would drop every per-space
+  // restriction an instance has recorded, and `roleIn` gives a non-member `editor` where
+  // their global role might be `admin` — a WIDENING, which is the direction this item is
+  // most careful about. Retiring the document is `A-retire-space-tier`'s to do, and it is a
+  // deletion rather than a cut.
+  //
+  // `spaces:icons` → the object's `settings` table, which `importAll` does not write.
+  // Declared unmapped in `UNMAPPED_WORKSPACE_FAMILIES` with that reason, so a copy of a
+  // workspace does not silently claim to have carried it. Until the copy fills it, the read
+  // has nothing to move to; `readSpaceIcons` is the second and last KV get on this path.
   //
   // ⛔ `users:secrets` is not a gap and never becomes one here: see the header above.
 });
@@ -6446,6 +6614,16 @@ function doIdentity(stub, tenantId) {
     lastseenRead: async () => (await call("lastseen/read", {})).map || {},
     lastseenTouch: (email, throttleMs, now) => call("lastseen/touch", { email, throttleMs, now }),
     lastseenForget: (email) => call("lastseen/forget", { email }),
+    // The four roster documents in ONE round trip, spelled the way KV spells them —
+    // `{seeded, roster, roles, names, avatars}`. `seeded` is the object saying whether it
+    // has ever been given this family: an empty overlay and an un-copied one read the same
+    // from the rows, and only one of them may be answered from here.
+    rosterRead: () => call("roster/read", {}),
+    rosterWrite: (docs) => call("roster/write", docs),
+    tokenRead: async (tokenHash) => (await call("token/read", { tokenHash })).entry,
+    tokenList: () => call("token/list", {}),
+    tokenMint: (rec) => call("token/mint", rec),
+    tokenRevoke: (sel) => call("token/revoke", sel),
   };
 }
 
@@ -6791,10 +6969,11 @@ async function importState(tctx, env, doc) {
     if (!res.ok) return { ok: false, reason: "workspace-refused", status: res.status };
     const { atomic, refused } = await res.json();
     // ⚠️ THE IDENTITY FAMILIES GO TO BOTH, AND THAT IS THE POINT OF THE SPLIT.
-    // `B-kv-to-do-migration-tool` is a COPY: the object gets a faithful second copy and KV
-    // stays exactly what the login gate reads, so this cannot take an instance down. Moving
-    // the reads is `B-kv-read-cutover`, and until it lands, skipping the KV write here would
-    // sign everybody out.
+    // The object gets a faithful copy and KV stays exactly what the KV path reads, so a
+    // restore cannot take an instance down whichever store is currently answering. With the
+    // reads moved (`KV_CUTOVER`), skipping either half would be worse, not better: without
+    // the object write a restore lands nothing the cut families read, and without the KV
+    // write it lands nothing the REVERT would read.
     const rest = await replayFamilies(store, kv, doc, skipped);
     return {
       ok: true, atomic, ...cleared,
@@ -8892,7 +9071,7 @@ async function adminUsersApi(tctx, request, url, env, me, users = tctx.USERS, co
       // Clearing the secret and minting the link are ONE action: there is never a state
       // where a known password is still live alongside a pending invite.
       await revokeSecret(env, u.email);
-      await revokePublishTokens(env, u.email); // a reset password must not leave a live publish token
+      await revokePublishTokens(tctx, env, u.email); // a reset password must not leave a live publish token
       const token = await mintInvite(tctx, env, u.email);
       const mail = await mailLink(u.email, "credential-reset", token);
       return jsonResponse({ ok: true, email: u.email, url: link(token), mail });
@@ -8919,6 +9098,7 @@ async function adminUsersApi(tctx, request, url, env, me, users = tctx.USERS, co
         addedAt: new Date().toISOString(), addedBy: me.email,
       };
       await kv.put(USER_ROSTER_KEY, JSON.stringify(roster));
+      await mirrorRosterDocs(tctx, env, { roster });
       // A stale hash under this address (a previous member of the same name) would make
       // the new invitee "accepted" on arrival, holding someone else's old password.
       await revokeSecret(env, email);
@@ -9018,10 +9198,11 @@ async function adminUsersApi(tctx, request, url, env, me, users = tctx.USERS, co
         return c ? roleOf(c) : null;
       })();
       if (configRole === role) {
-        await clearRole(env, email);
+        await clearRole(tctx, env, email);
       } else {
         overlay[email] = role;
         await kv.put(USER_ROLES_KEY, JSON.stringify(overlay));
+        await mirrorRosterDocs(tctx, env, { roles: overlay });
       }
       // Keep the roster overlay honest too, for an invited (non-config) user — the
       // roles overlay is what takes effect, but two records disagreeing about the same
@@ -9030,14 +9211,15 @@ async function adminUsersApi(tctx, request, url, env, me, users = tctx.USERS, co
       if (roster.add[email]) {
         roster.add[email].role = role;
         await kv.put(USER_ROSTER_KEY, JSON.stringify(roster));
+        await mirrorRosterDocs(tctx, env, { roster });
       }
 
       // A demotion must not leave the privilege behind in a token. Losing admin drops
       // the star-scope token; becoming a viewer drops every publish token they hold,
       // because a viewer may hold none at all. publishAuth re-checks both at resolve
       // time as well — this is the immediate half, that one is the durable half.
-      if (role === "viewer") await revokePublishTokens(env, email);
-      else if (from === "admin") await revokePublishTokens(env, email);
+      if (role === "viewer") await revokePublishTokens(tctx, env, email);
+      else if (from === "admin") await revokePublishTokens(tctx, env, email);
 
       // This isolate's roster on its next request, everywhere within ROSTER_TTL_MS —
       // through the same two statements as invite/remove, and for the same reason there
@@ -9070,16 +9252,17 @@ async function adminUsersApi(tctx, request, url, env, me, users = tctx.USERS, co
         roster.remove.push(email);
       }
       await kv.put(USER_ROSTER_KEY, JSON.stringify(roster));
+      await mirrorRosterDocs(tctx, env, { roster });
       // The CANONICAL address, not the lowercased key: effectiveSecret looks the
       // tombstone up by u.email exactly, so a case-folded key would miss it and fall
       // through to the config roster's legacy `pass`.
       await revokeSecret(env, u.email);     // kills their session too (cookies bind to it)
-      await revokePublishTokens(env, email); // and any publish token they minted via `augur login`
+      await revokePublishTokens(tctx, env, email); // and any publish token they minted via `augur login`
       await revokeInvitesFor(tctx, env, email);   // an outstanding link must not let them back in
-      try { await clearAvatar(env, email); } catch (e) {} // their face leaves the index too
-      try { await clearName(env, email); } catch (e) {}   // …and so does their chosen name
+      try { await clearAvatar(tctx, env, email); } catch (e) {} // their face leaves the index too
+      try { await clearName(tctx, env, email); } catch (e) {}   // …and so does their chosen name
       // A re-invited address must not inherit the last person's role — least of all admin.
-      try { await clearRole(env, email); } catch (e) {}
+      try { await clearRole(tctx, env, email); } catch (e) {}
       // …nor their spaces, least of all one they administered.
       try { await clearSpaces(env, email); } catch (e) {}
       try { await kv.delete(LASTSEEN_PREFIX + u.email); } catch (e) {}
@@ -9670,7 +9853,7 @@ async function handleRequest(request, env, ctx, url, trace) {
 
     // My own display name — same placement and the same reasoning as the photo route
     // above: chrome, ahead of the gate, re-checks the session itself (401 without one).
-    if (url.pathname === "/__me/name") return meNameApi(tctx.tenantId, request, env, me);
+    if (url.pathname === "/__me/name") return meNameApi(tctx.tenantId, request, env, me, tctx);
 
     // Comment-author faces, same deal as /__me and /__avatar/ above: this route must
     // stay here, ahead of the auth gate, because intercepting first is what makes it
@@ -9719,7 +9902,7 @@ async function handleRequest(request, env, ctx, url, trace) {
     if (url.pathname === "/__admin/users") return adminUsersApi(tctx, request, url, env, me);
 
     // Admin publish-token API — mint/list/revoke per-space publish tokens.
-    if (url.pathname === "/__admin/tokens") return adminTokensApi(request, env, me);
+    if (url.pathname === "/__admin/tokens") return adminTokensApi(request, env, me, tctx);
 
     // Admin bundle-store gauge — bytes/objects vs the free-tier ceiling.
     if (url.pathname === "/__admin/storage") return adminStorageApi(tctx.tenantId, env, me);
@@ -10027,6 +10210,7 @@ export const __testables = Object.freeze({
   // accessor that answers. Exported so test/kv-read-cutover.test.mjs can assert the
   // straddle from both sides rather than describe it.
   KV_CUTOVER, identityFor, inviteHash, LASTSEEN_PREFIX, USER_INVITES_KEY,
+  readRosterDocs, mirrorRosterDocs, PUBLISH_TOKENS_KEY,
   invitePost, inviteGet, invitePage, setUserSecret, MIN_PASSWORD_LENGTH,
   loginPage, RESET_NOTICE, previewHead, ENGINE_TAGLINE, notFoundPage,
   PBKDF2_ITERATIONS,

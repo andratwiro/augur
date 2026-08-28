@@ -49,7 +49,10 @@ import { PLANS, DEFAULT_PLAN, QUOTA_FIELDS, quotasForPlan } from "./tenant-quota
 import { purgeThreads, personIdFor, idCollisions } from "./purge.mjs";
 import { deleteConfirmation, backupRetentionFromEnv } from "./delete-confirmation.mjs";
 
-export const TENANT_SCHEMA_VERSION = 1;
+// 1 → 2: `B-kv-read-cutover`'s second slice. `publish_tokens` gained `scope`, and `members`
+// gained the columns that let the roster documents be READ back rather than inferred — see
+// `TENANT_SCHEMA_ADDITIONS` for why each one exists and what was wrong without it.
+export const TENANT_SCHEMA_VERSION = 2;
 
 /**
  * The schema, as a list of statements so a migration can apply them one at a time and a
@@ -63,15 +66,38 @@ export const TENANT_SCHEMA = Object.freeze([
   // Who belongs to this workspace, what they may do, and how they appear.
   // Merges users:roster, users:roles, users:names and users:avatars, which were four
   // documents describing one thing and drifting independently.
+  //
+  // ⚠️ THE DURABLE HALF AND THE OVERLAY HALF ARE DIFFERENT COLUMNS, and that is not
+  // tidiness. `identity.json` names a person and the KV overlay changes what they are
+  // called; the serving path needs to know WHICH said what, because `applyNames` DROPS a
+  // config-set `initials` when there is a name override and keeps it when there is not.
+  // One merged column cannot answer both, so a cut that merged them would serve one person
+  // as two — see `KV_CUTOVER` in src/_worker.js.
+  //
+  //   name / role / initials / colour / added_by  — the DURABLE record: the config file's
+  //     values, or the invitation's for somebody the file does not name yet.
+  //   name_overlay / role_overlay / avatar_*      — the OVERLAY: `users:names`,
+  //     `users:roles`, `users:avatars`, each of which a person or an admin set after the
+  //     build, and each of which reverts to the column above it when cleared.
+  //   source                                      — 'config' or 'overlay': where the
+  //     MEMBERSHIP came from, which is what tells a `users:roster` `add` entry from a row
+  //     the file already named. Reconstructing it by inference is exactly the guess this
+  //     column exists to refuse.
   `CREATE TABLE IF NOT EXISTS members (
-     email       TEXT PRIMARY KEY,
-     role        TEXT NOT NULL CHECK (role IN ('admin','editor','viewer')),
-     name        TEXT,
-     avatar_key  TEXT,
-     avatar_mime TEXT,
-     avatar_at   TEXT,
-     added_at    TEXT NOT NULL,
-     removed_at  TEXT
+     email        TEXT PRIMARY KEY,
+     role         TEXT NOT NULL CHECK (role IN ('admin','editor','viewer')),
+     name         TEXT,
+     avatar_key   TEXT,
+     avatar_mime  TEXT,
+     avatar_at    TEXT,
+     added_at     TEXT NOT NULL,
+     removed_at   TEXT,
+     initials     TEXT,
+     colour       TEXT,
+     source       TEXT,
+     added_by     TEXT,
+     name_overlay TEXT,
+     role_overlay TEXT
    )`,
   // A REMOVED member is a tombstone, never a deleted row. The KV design learned this the
   // hard way on the credential side: a removal that merely deletes is undone by any
@@ -92,11 +118,24 @@ export const TENANT_SCHEMA = Object.freeze([
   // Publish tokens for THIS workspace. Hash only, same reasoning as invites.
   // `expires_at` is nullable because tokens minted before expiry existed have none, and
   // the check that reads it is additive on purpose.
+  //
+  // ⚠️ `scope` IS THE AUTHORIZATION AND NOT A LABEL. It carries KV's `space` VERBATIM:
+  // a space id means that space and `*` means every one of them, which is
+  // admin-equivalent because a star token pushes instance config — the user list itself.
+  // `publishAuthDetailed` in src/_worker.js refuses `wrong-space` on this value, so a
+  // copy that dropped it would either widen every space-scoped token to star or refuse
+  // every token, and neither is visible until somebody publishes.
+  //
+  // NULLABLE, and the null is load-bearing: it means "a copy wrote this row before the
+  // column existed and does not know". The read treats such a row as no answer at all and
+  // falls through to KV, which still holds the scope — a token is never widened by a
+  // missing value and never refused for one.
   `CREATE TABLE IF NOT EXISTS publish_tokens (
      token_hash TEXT PRIMARY KEY,
      label      TEXT,
      created_at TEXT NOT NULL,
-     expires_at TEXT
+     expires_at TEXT,
+     scope      TEXT
    )`,
 
   // Last connection, shown in the admin list. Its own table rather than a column on
@@ -257,9 +296,69 @@ export const FORBIDDEN_COLUMNS = Object.freeze([
   "password", "passhash", "pass_hash", "pass", "secret", "credential", "pbkdf2", "salt",
 ]);
 
+/**
+ * Columns added to a table that already exists, for objects built at an earlier version.
+ *
+ * ⚠️ `CREATE TABLE IF NOT EXISTS` IS NOT A MIGRATION, and that is the trap this closes. An
+ * object provisioned at version 1 has a `members` table, so every statement above is a
+ * no-op on it — including the one that now names six more columns. Without this list the
+ * new columns exist on a workspace created today and on no workspace created before today,
+ * and the difference shows up as a roster read answering `undefined` on exactly the
+ * instances that have been running longest.
+ *
+ * Every entry is additive and nullable by construction: SQLite can add a column to a
+ * populated table only if it needs no default, which is the same constraint that makes
+ * this safe to run against a live workspace. Nothing is renamed, nothing is dropped, and
+ * a downgrade to an engine that does not know these columns still reads every row it wrote.
+ *
+ * `test/tenant-do.test.mjs` executes the schema and asserts this list and the CREATE
+ * statements name the same columns, so the two cannot drift.
+ */
+export const TENANT_SCHEMA_ADDITIONS = Object.freeze([
+  { table: "members", column: "initials", type: "TEXT" },
+  { table: "members", column: "colour", type: "TEXT" },
+  { table: "members", column: "source", type: "TEXT" },
+  { table: "members", column: "added_by", type: "TEXT" },
+  { table: "members", column: "name_overlay", type: "TEXT" },
+  { table: "members", column: "role_overlay", type: "TEXT" },
+  { table: "publish_tokens", column: "scope", type: "TEXT" },
+]);
+
+/**
+ * Add any column in `TENANT_SCHEMA_ADDITIONS` that this object's tables are missing.
+ *
+ * ⚠️ IT ASKS BY TRYING, NOT BY INTROSPECTING. The obvious shape is `PRAGMA table_info` and
+ * a set difference, and it is wrong in a way that passes every test: a PRAGMA is neither a
+ * SELECT nor a plain statement, so a harness that routes by keyword answers it with no rows
+ * — and "no rows" reads as "this table has no columns", which skips every addition. The
+ * migration would then exist only in the source. `ALTER TABLE … ADD COLUMN` is the same
+ * question asked of the engine itself, and a column that is already there is the one error
+ * it can raise that means success.
+ *
+ * Nothing else is swallowed. A failure that is not "the column is already there" is a
+ * schema this build cannot read, and carrying on would serve wrong answers rather than
+ * refuse.
+ */
+export function applySchemaAdditions(sql) {
+  const added = [];
+  for (const { table, column, type } of TENANT_SCHEMA_ADDITIONS) {
+    try {
+      sql.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${type}`);
+      added.push(`${table}.${column}`);
+    } catch (e) {
+      const msg = String((e && e.message) || e);
+      if (!/duplicate column/i.test(msg)) throw e;
+    }
+  }
+  return added;
+}
+
 /** Apply the schema to a SQLite-backed store. Idempotent — every statement is IF NOT EXISTS. */
 export function applyTenantSchema(sql, workspaceId) {
   for (const stmt of TENANT_SCHEMA) sql.exec(stmt);
+  // AFTER the creates, so a table that does not exist yet is created in today's shape and
+  // this pass is the no-op it should be on it.
+  applySchemaAdditions(sql);
   sql.exec(
     `INSERT INTO meta (k, v) VALUES ('schema_version', ?)
        ON CONFLICT(k) DO UPDATE SET v = excluded.v`,
@@ -481,6 +580,33 @@ function stampMs(v) {
   return Number.isFinite(ms) ? ms : null;
 }
 
+/**
+ * Whether this object has ever been given ONE identity family's contents — by a copy, by
+ * provisioning, or by a write since the reads moved.
+ *
+ * ⚠️ "EMPTY" AND "NEVER FILLED" ARE DIFFERENT ANSWERS AND THE CUT TURNS ON TELLING THEM
+ * APART. A workspace whose roster overlay is genuinely empty and one whose copy has not run
+ * yet both read as no rows, and answering the first from the object is correct while
+ * answering the second from it silently un-removes everybody KV's `remove` list names. So
+ * the object says which it is, and the worker falls back to KV for the second — the same
+ * "the object first, KV as the fallback" rule an outstanding invite link already relies on.
+ *
+ * A stamp rather than a flag, because the first question anybody asks of a straddle is when
+ * it started.
+ */
+const SEEDED_KEY = (family) => `identity_seeded:${family}`;
+
+function markSeeded(sql, family, at) {
+  sql.exec(
+    `INSERT INTO meta (k, v) VALUES (?1, ?2) ON CONFLICT(k) DO NOTHING`,
+    SEEDED_KEY(family), at || new Date().toISOString(),
+  );
+}
+
+function isSeeded(sql, family) {
+  return [...sql.exec(`SELECT v FROM meta WHERE k = ?`, SEEDED_KEY(family))].length > 0;
+}
+
 /** How many rows a seed pack would write. Used to report, and to tell "none" from "empty". */
 function seedCount(seed) {
   if (!seed || typeof seed !== "object") return 0;
@@ -521,17 +647,27 @@ function writeIdentity(sql, identity, at, written = [], refused = []) {
       continue;
     }
     sql.exec(
-      `INSERT INTO members (email, role, name, avatar_key, avatar_mime, avatar_at, added_at, removed_at)
-         VALUES (?1,?2,?3,?4,?5,?6,?7,?8)
+      `INSERT INTO members (email, role, name, avatar_key, avatar_mime, avatar_at, added_at,
+                            removed_at, initials, colour, source, added_by, name_overlay, role_overlay)
+         VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13,?14)
          ON CONFLICT(email) DO UPDATE SET
            role = ?2, name = ?3, avatar_key = ?4, avatar_mime = ?5,
-           avatar_at = ?6, added_at = ?7, removed_at = ?8`,
+           avatar_at = ?6, added_at = ?7, removed_at = ?8, initials = ?9, colour = ?10,
+           source = ?11, added_by = ?12, name_overlay = ?13, role_overlay = ?14`,
       String(m.email), m.role, m.name ?? null, m.avatarKey ?? null, m.avatarMime ?? null,
       m.avatarAt ?? null, m.addedAt || at, m.removedAt ?? null,
+      m.initials ?? null, m.colour ?? null, m.source === "overlay" ? "overlay" : "config",
+      m.addedBy ?? null,
+      // The overlay name travels as the JSON the KV document held, not as a string. See
+      // `rosterRead` — `users:names` has TWO live shapes and `applyNames` honours one of
+      // them, so normalising here would start applying a display name the KV path ignores.
+      m.nameOverlay === undefined || m.nameOverlay === null ? null : JSON.stringify(m.nameOverlay),
+      m.roleOverlay ?? null,
     );
     n++;
   }
   touched("members", n);
+  if (n) markSeeded(sql, "roster", at);
 
   n = 0;
   for (const i of list("invites")) {
@@ -550,14 +686,19 @@ function writeIdentity(sql, identity, at, written = [], refused = []) {
   for (const t of list("publishTokens")) {
     if (!t || !t.tokenHash) continue;
     sql.exec(
-      `INSERT INTO publish_tokens (token_hash, label, created_at, expires_at)
-         VALUES (?1,?2,?3,?4)
-         ON CONFLICT(token_hash) DO UPDATE SET label = ?2, created_at = ?3, expires_at = ?4`,
+      `INSERT INTO publish_tokens (token_hash, label, created_at, expires_at, scope)
+         VALUES (?1,?2,?3,?4,?5)
+         ON CONFLICT(token_hash) DO UPDATE SET label = ?2, created_at = ?3, expires_at = ?4,
+           -- COALESCE, so re-running a copy from a source that has no scope cannot blank a
+           -- scope a later one carried. A null here means "not known", never "star".
+           scope = COALESCE(?5, publish_tokens.scope)`,
       String(t.tokenHash), t.label ?? null, t.createdAt || at, t.expiresAt ?? null,
+      t.scope == null ? null : String(t.scope),
     );
     n++;
   }
   touched("publishTokens", n);
+  if (n) markSeeded(sql, "publishTokens", at);
 
   n = 0;
   for (const s of list("lastseen")) {
@@ -636,10 +777,15 @@ export function applyProvisioning(sql, {
     sessionKey || newSigningKey(), at,
   );
   sql.exec(
-    `INSERT INTO members (email, role, name, added_at) VALUES (?, 'admin', ?, ?)
+    `INSERT INTO members (email, role, name, added_at, source) VALUES (?, 'admin', ?, ?, 'config')
        ON CONFLICT(email) DO NOTHING`,
     String(adminEmail).trim().toLowerCase(), adminName || "", at,
   );
+  // A workspace PROVISIONED here has no KV era behind it, so this object is the record for
+  // both identity families from its first moment and there is nothing to fall back to. A
+  // workspace that ARRIVES from KV is marked by the copy instead — see `markSeeded`.
+  markSeeded(sql, "roster", at);
+  markSeeded(sql, "publishTokens", at);
   seedQuotas(sql, plan);
   // ── the seed, INSIDE the same body ────────────────────────────────────────────────
   //
@@ -1362,6 +1508,294 @@ export class TenantStore {
     return { wrote: true, at };
   }
 
+  // ── the roster overlay: four KV documents, one table, one round trip ───────
+  //
+  // ⚠️ WHAT THESE ANSWER WITH IS THE FOUR KV DOCUMENTS, NOT A ROSTER. `users:roster`,
+  // `users:roles`, `users:names` and `users:avatars`, spelled exactly as KV spells them,
+  // so `mergeRoster`/`applyRoles`/`applyNames`/`applyAvatars` in src/_worker.js run on
+  // identical input either way. The serving pipeline is then not two pipelines that have
+  // to be kept in agreement — it is one, fed from whichever store holds the documents,
+  // which is what makes "the two answers are identical" a property rather than a hope.
+  //
+  // Six KV gets per workspace per sixty-second tick become this one call. That read volume
+  // — the site's dominant KV consumer, enough to exhaust a day's `get()` budget and take
+  // every KV-touching route down with it — is why this item was urgent rather than tidy.
+
+  /** The four roster documents, as KV holds them, plus whether this object may be believed. */
+  rosterRead() {
+    const seeded = isSeeded(this.sql, "roster");
+    const add = {};
+    const remove = [];
+    const roles = {};
+    const names = {};
+    const avatars = {};
+    for (const row of this.sql.exec(
+      `SELECT email, role, name, initials, colour, added_at, added_by, removed_at,
+              source, name_overlay, role_overlay, avatar_key, avatar_mime, avatar_at
+         FROM members ORDER BY added_at, email`,
+    )) {
+      const e = String(row.email);
+      // A TOMBSTONE IS THE `remove` LIST. Every removed row lands there, including one for
+      // somebody the config file never named — `mergeRoster` filters the config list by it,
+      // so naming an address the file does not carry costs nothing and dropping the row
+      // instead would let a re-invite inherit the last holder's role.
+      if (row.removed_at != null) remove.push(e);
+      else if (row.source === "overlay") {
+        // An `add` entry, spelled the way `adminUsersApi`'s invite writes one. `color` and
+        // not `colour`: the column is the schema's spelling and this is the document's, and
+        // the translation belongs at exactly one edge.
+        const rec = { email: e, addedAt: row.added_at };
+        if (row.name != null) rec.name = row.name;
+        if (row.role != null) rec.role = row.role;
+        if (row.initials != null) rec.initials = row.initials;
+        if (row.colour != null) rec.color = row.colour;
+        if (row.added_by != null) rec.addedBy = row.added_by;
+        add[e] = rec;
+      }
+      if (row.role_overlay != null) roles[e] = row.role_overlay;
+      if (row.name_overlay != null) {
+        // ⚠️ TWO SHAPES, BOTH LIVE, AND ONLY ONE OF THEM IS HONOURED. `users:names` holds
+        // `{name, at}` today and a bare string on instances that have not written a name
+        // since the shape changed — and `applyNames` reads `rec.name`, so it applies the
+        // first and IGNORES the second. Normalising a bare string into an object here would
+        // therefore start showing a display name the KV path does not, on exactly the oldest
+        // instances. The column holds the document's own JSON so the shape survives the
+        // round trip and neither path invents an answer the other would not give.
+        try { names[e] = JSON.parse(row.name_overlay); } catch (err) { /* a corrupt row is not a corrupt map */ }
+      }
+      if (row.avatar_key != null) {
+        avatars[e] = { k: row.avatar_key, mime: row.avatar_mime ?? null, at: row.avatar_at ?? null };
+      }
+    }
+    return { seeded, roster: { add, remove }, roles, names, avatars };
+  }
+
+  /**
+   * Write whichever of the four documents the caller is holding.
+   *
+   * ⚠️ IT TAKES THE WHOLE DOCUMENT, because that is what the KV path computes and what the
+   * straddle has to mirror. Per-key rows are what the content overlay moved to and what
+   * this table will move to when KV is gone; while both stores are live the document is the
+   * unit, and a mirror written key-by-key from a document the other store wrote whole would
+   * diverge the moment a key was deleted rather than changed.
+   *
+   * `configUsers` is the durable half and is not optional in practice: an overlay entry can
+   * name somebody this object has no row for — a display name set by a config user on a
+   * workspace whose copy has not run — and `members.role` is NOT NULL, so there is no
+   * honest row to invent for them. Passing the config roster means the row is seeded from
+   * the record rather than from a guess.
+   */
+  rosterWrite({ configUsers = null, roster = null, roles = null, names = null, avatars = null } = {}, nowMs = Date.now()) {
+    const at = new Date(nowMs).toISOString();
+    const wrote = [];
+    const body = () => {
+      if (Array.isArray(configUsers)) {
+        for (const u of configUsers) {
+          const e = lcAddr(u && u.email);
+          if (!e) continue;
+          const role = MEMBER_ROLES.includes(u.role) ? u.role : "editor";
+          this.sql.exec(
+            `INSERT INTO members (email, role, name, added_at, initials, colour, source)
+               VALUES (?1,?2,?3,?4,?5,?6,'config')
+               ON CONFLICT(email) DO UPDATE SET
+                 role = ?2, name = ?3, initials = ?5, colour = ?6, source = 'config'`,
+            e, role, u.name ?? null, u.addedAt || at, u.initials ?? null, u.color ?? null,
+          );
+        }
+        wrote.push("configUsers");
+      }
+
+      if (roster && typeof roster === "object") {
+        const add = roster.add && typeof roster.add === "object" ? roster.add : {};
+        const removed = new Set((Array.isArray(roster.remove) ? roster.remove : []).map(lcAddr).filter(Boolean));
+        const added = new Set();
+        for (const rec of Object.values(add)) {
+          const e = lcAddr(rec && rec.email);
+          if (!e) continue;
+          added.add(e);
+          const role = MEMBER_ROLES.includes(rec.role) ? rec.role : "editor";
+          // `source` is set on INSERT only. An address the config file also names keeps
+          // 'config', which is the precedence `mergeRoster` applies: the file wins, and an
+          // `add` entry for somebody it names has already stopped taking effect.
+          this.sql.exec(
+            `INSERT INTO members (email, role, name, added_at, initials, colour, added_by, source, removed_at)
+               VALUES (?1,?2,?3,?4,?5,?6,?7,'overlay',NULL)
+               ON CONFLICT(email) DO UPDATE SET
+                 role = ?2, name = ?3, added_at = ?4, initials = ?5, colour = ?6, added_by = ?7,
+                 removed_at = NULL`,
+            e, role, rec.name ?? null, rec.addedAt || at, rec.initials ?? null,
+            rec.color ?? null, rec.addedBy ?? null,
+          );
+        }
+        for (const e of removed) {
+          this.sql.exec(
+            `INSERT INTO members (email, role, added_at, removed_at, source)
+               VALUES (?1,'viewer',?2,?2,'config')
+               ON CONFLICT(email) DO UPDATE SET removed_at = COALESCE(members.removed_at, ?2)`,
+            e, at,
+          );
+        }
+        // An INVITED person's removal deletes their `add` entry and writes NO tombstone —
+        // the KV list is only for addresses the config file names, and an unbounded one
+        // would grow forever. Here they become a tombstone anyway: `mergeRoster` filters
+        // the CONFIG list by `remove`, so naming somebody the file does not carry changes
+        // no answer, and the row is what stops a re-invite inheriting their role.
+        const orphans = [...this.sql.exec(
+          `SELECT email FROM members WHERE source = 'overlay' AND removed_at IS NULL`,
+        )].map((r) => String(r.email)).filter((e) => !added.has(e));
+        for (const e of orphans) {
+          this.sql.exec(`UPDATE members SET removed_at = ? WHERE email = ?`, at, e);
+        }
+        // …and the other direction: a config user the file has caught up with drops out of
+        // `remove`, and the tombstone has to go with it or they stay hidden forever. Only
+        // 'config' rows, so the orphan tombstones above are not undone by their own absence.
+        for (const row of this.sql.exec(
+          `SELECT email FROM members WHERE source = 'config' AND removed_at IS NOT NULL`,
+        )) {
+          if (!removed.has(String(row.email))) {
+            this.sql.exec(`UPDATE members SET removed_at = NULL WHERE email = ?`, String(row.email));
+          }
+        }
+        wrote.push("roster");
+      }
+
+      // The three flat overlays. Each is REPLACED, not merged: the KV document is written
+      // whole, so a key that has gone from it has been cleared and a merge would resurrect it.
+      const flat = (doc, column, encode) => {
+        this.sql.exec(`UPDATE members SET ${column} = NULL WHERE ${column} IS NOT NULL`);
+        for (const [key, value] of Object.entries(doc)) {
+          const e = lcAddr(key);
+          if (!e || value === null || value === undefined) continue;
+          const v = encode(value);
+          if (v === null) continue;
+          const hit = [...this.sql.exec(
+            `UPDATE members SET ${column} = ?2 WHERE email = ?1 RETURNING email`, e, v,
+          )];
+          // An overlay entry for somebody with no row is not dropped: `applyRoles` and
+          // `applyNames` are asked about the MERGED roster, which includes config users this
+          // object may not have been told about yet. The row is a carrier, and `source` says
+          // so — 'config' means the durable half of it is elsewhere.
+          if (!hit.length) {
+            this.sql.exec(
+              `INSERT INTO members (email, role, added_at, source, ${column})
+                 VALUES (?1,'viewer',?2,'config',?3) ON CONFLICT(email) DO NOTHING`,
+              e, at, v,
+            );
+          }
+        }
+      };
+      if (roles && typeof roles === "object") {
+        flat(roles, "role_overlay", (v) => (typeof v === "string" && v ? v : null));
+        wrote.push("roles");
+      }
+      if (names && typeof names === "object") {
+        flat(names, "name_overlay", (v) => JSON.stringify(v));
+        wrote.push("names");
+      }
+      if (avatars && typeof avatars === "object") {
+        this.sql.exec(`UPDATE members SET avatar_key = NULL, avatar_mime = NULL, avatar_at = NULL
+                         WHERE avatar_key IS NOT NULL`);
+        for (const [key, rec] of Object.entries(avatars)) {
+          const e = lcAddr(key);
+          if (!e || !rec || typeof rec !== "object" || typeof rec.k !== "string") continue;
+          const hit = [...this.sql.exec(
+            `UPDATE members SET avatar_key = ?2, avatar_mime = ?3, avatar_at = ?4
+               WHERE email = ?1 RETURNING email`,
+            e, rec.k, rec.mime ?? null, rec.at ?? null,
+          )];
+          if (!hit.length) {
+            this.sql.exec(
+              `INSERT INTO members (email, role, added_at, source, avatar_key, avatar_mime, avatar_at)
+                 VALUES (?1,'viewer',?2,'config',?3,?4,?5) ON CONFLICT(email) DO NOTHING`,
+              e, at, rec.k, rec.mime ?? null, rec.at ?? null,
+            );
+          }
+        }
+        wrote.push("avatars");
+      }
+      markSeeded(this.sql, "roster", at);
+    };
+    // One transaction: four documents describing one roster, half-written, is the state
+    // `importAll` refuses to leave behind and this must refuse it for the same reason.
+    if (typeof this.ctx.storage.transactionSync === "function") this.ctx.storage.transactionSync(body);
+    else body();
+    return { wrote };
+  }
+
+  // ── publish tokens ─────────────────────────────────────────────────────────
+
+  /**
+   * One token by its hash, or null when this object cannot answer for it.
+   *
+   * NULL MEANS TWO THINGS AND BOTH ARE "ASK KV": no such row, or a row a pre-`scope` copy
+   * wrote, which knows the token exists and not what it may publish. Answering the second
+   * from here would have to invent a scope, and both available inventions are wrong —
+   * `*` widens a space-scoped token to admin-equivalent, a space id refuses a star one.
+   */
+  publishTokenRead(tokenHash) {
+    if (!tokenHash) return null;
+    const rows = [...this.sql.exec(
+      `SELECT token_hash, label, created_at, expires_at, scope FROM publish_tokens
+         WHERE token_hash = ?`, String(tokenHash),
+    )];
+    if (!rows.length || rows[0].scope == null) return null;
+    return {
+      space: String(rows[0].scope), label: rows[0].label ?? null,
+      createdAt: rows[0].created_at, expiresAt: rows[0].expires_at ?? null,
+    };
+  }
+
+  /** Every token as the `{hash: {space,label,createdAt,expiresAt}}` map the panel lists. */
+  publishTokenList() {
+    const out = {};
+    for (const row of this.sql.exec(
+      `SELECT token_hash, label, created_at, expires_at, scope FROM publish_tokens`,
+    )) {
+      if (row.scope == null) continue;
+      const rec = { space: String(row.scope), label: row.label ?? null, createdAt: row.created_at };
+      if (row.expires_at != null) rec.expiresAt = row.expires_at;
+      out[String(row.token_hash)] = rec;
+    }
+    return { seeded: isSeeded(this.sql, "publishTokens"), tokens: out };
+  }
+
+  /** Record a minted token. The raw token never reaches this object — only its hash. */
+  publishTokenMint({ tokenHash, space, label = null, createdAt = null, expiresAt = null }, nowMs = Date.now()) {
+    if (!tokenHash || space == null) return { ok: false };
+    const at = new Date(nowMs).toISOString();
+    this.sql.exec(
+      `INSERT INTO publish_tokens (token_hash, label, created_at, expires_at, scope)
+         VALUES (?1,?2,?3,?4,?5)
+         ON CONFLICT(token_hash) DO UPDATE SET label = ?2, created_at = ?3, expires_at = ?4, scope = ?5`,
+      String(tokenHash), label, createdAt || at, expiresAt ?? null, String(space),
+    );
+    markSeeded(this.sql, "publishTokens", at);
+    return { ok: true };
+  }
+
+  /**
+   * Revoke by hash, or every token one person holds.
+   *
+   * By LABEL is not a convenience: `augur login` labels a token with the holder's address,
+   * and removing or demoting somebody has to drop the tokens that outlived their role. A
+   * revocation that missed this store would leave the credential live on the other one.
+   */
+  publishTokenRevoke({ tokenHash = null, label = null } = {}) {
+    if (tokenHash) {
+      const rows = [...this.sql.exec(
+        `DELETE FROM publish_tokens WHERE token_hash = ? RETURNING token_hash`, String(tokenHash),
+      )];
+      return { dropped: rows.length };
+    }
+    if (label) {
+      const rows = [...this.sql.exec(
+        `DELETE FROM publish_tokens WHERE LOWER(label) = ? RETURNING token_hash`, lcAddr(label),
+      )];
+      return { dropped: rows.length };
+    }
+    return { dropped: 0 };
+  }
+
   /** Forget one person's last connection — what removal and purge do to their row. */
   lastseenForget(email) {
     if (!email) return { dropped: 0 };
@@ -1873,6 +2307,18 @@ export class TenantStore {
           return Response.json(this.lastseenTouch(body.email, body.throttleMs, now));
         case "/identity/lastseen/forget":
           return Response.json(this.lastseenForget(body.email));
+        case "/identity/roster/read":
+          return Response.json(this.rosterRead());
+        case "/identity/roster/write":
+          return Response.json(this.rosterWrite(body, now));
+        case "/identity/token/read":
+          return Response.json({ entry: this.publishTokenRead(body.tokenHash) });
+        case "/identity/token/list":
+          return Response.json(this.publishTokenList());
+        case "/identity/token/mint":
+          return Response.json(this.publishTokenMint(body, now));
+        case "/identity/token/revoke":
+          return Response.json(this.publishTokenRevoke(body));
         default:
           return Response.json({ error: "not-found" }, { status: 404 });
       }

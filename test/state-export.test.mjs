@@ -243,11 +243,17 @@ test("THE COPY LANDS THE IDENTITY FAMILIES IN THE OBJECT, and KV is left exactly
   // ── the object holds the identity families ──
   const store = ns.get(ns.idFromName(CTX.tenantId)).store;
   const rows = (q) => [...store.sql.exec(q)];
-  const members = rows("SELECT email, role, name FROM members");
+  const members = rows("SELECT email, role, name, name_overlay, role_overlay, source FROM members");
   const ada = members.find((m) => m.email === "a@x.test");
   assert.ok(ada, `the roster did not land: ${JSON.stringify(members)}`);
   assert.equal(ada.role, "editor");
-  assert.equal(ada.name, "Ada", "a display name stored as a bare string still has to arrive");
+  assert.equal(ada.source, "overlay", "this address is in `users:roster.add` and the config names nobody");
+  // ⚠️ THE OVERLAY HAS ITS OWN COLUMN AND IS NOT FOLDED INTO THE DURABLE ONE — see
+  // `B-kv-read-cutover`. `users:names` here holds a BARE STRING, the shape older instances
+  // wrote, and it arrives verbatim rather than normalised: `applyNames` honours `{name, at}`
+  // and ignores a bare string, so normalising would start showing a name the KV path does not.
+  assert.equal(JSON.parse(ada.name_overlay), "Ada", "a display name stored as a bare string still has to arrive");
+  assert.equal(ada.role_overlay, "editor", "the roles overlay lands in its own column too");
   assert.equal(rows("SELECT * FROM invites").length, 1, "the outstanding invite did not land");
   assert.equal(rows("SELECT * FROM publish_tokens").length, 1, "the publish token did not land");
   assert.equal(rows("SELECT * FROM lastseen").length, 1);

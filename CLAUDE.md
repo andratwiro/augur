@@ -702,9 +702,10 @@ name, initials, colour and role. Passwords live in KV as PBKDF2 hashes under
   KV read leaves the roster as the config list, which would put a removed CONFIG user
   back in it — so removal ALSO writes the `users:secrets` tombstone, and that read fails
   closed. Never reduce removal to the list alone.
-- **⏳ Two identity families now answer from the WORKSPACE OBJECT, and the list is one
-  constant.** `KV_CUTOVER` in `src/_worker.js` — `invites` and `lastseen` today — is the
-  cut-over, family by family, with the KV path still live underneath. Reads take the object
+- **⏳ Four identity families now answer from the WORKSPACE OBJECT, and the list is one
+  constant.** `KV_CUTOVER` in `src/_worker.js` — `invites`, `lastseen`, `publishTokens` and
+  `roster` today — is the cut-over, family by family, with the KV path still live underneath.
+  Reads take the object
   first and KV as a FALLBACK, which is what carries an invite link somebody is already
   holding across the cut; **writes go to BOTH stores**, which is what makes flipping one word
   back a revert rather than a rollback (and what keeps `augur export --full`, which walks KV,
@@ -718,9 +719,13 @@ name, initials, colour and role. Passwords live in KV as PBKDF2 hashes under
   against a modified copy of the worker rather than asserting about the diff.
   **⚠️ THE SUITE'S STORE IS `node:sqlite` BEHIND A STUB, AND THAT IS NOT THE RUNTIME.**
   `scripts/tenant-do-rehearsal.mjs` is the same clauses on real workerd, under `wrangler dev
-  --local`: the real deploy entry, a `new_sqlite_classes` `TENANTS` binding, a local KV, and
-  three deployments over one persisted store differing only in the binding and in the flag —
-  so bound-versus-unbound, the refusal, and the revert are RUN rather than simulated. The
+  --local`: the real deploy entry, a `new_sqlite_classes` `TENANTS` binding, a local KV, a
+  local R2 (so the publish routes reach their AUTH check instead of answering 501 before it),
+  and FIVE deployments over one persisted store — bound, unbound, and one reverted tree per
+  family, differing only in the binding and in one word — so bound-versus-unbound, the
+  refusal, and each family's revert are RUN rather than simulated. It is also the only place
+  the column migration is exercised at all: every object elsewhere is BUILT in today's shape,
+  so a column is dropped from a cold object and a real request is what puts it back. The
   break is a real one (the `invites` table renamed away, so the real SELECT throws inside the
   real object), and it is what a stub cannot stage. Reach for it before moving another family:
   the run found that `stampMs`'s tolerance for a pre-fix copy's expiry matched a shape only a
@@ -730,10 +735,30 @@ name, initials, colour and role. Passwords live in KV as PBKDF2 hashes under
   **⛔ `users:secrets` is not in that list and must never be**: a credential is
   account-level, so `effectiveSecret` moving belongs with cross-workspace sign-in, and the
   two land independently — whichever is second reads the other's straddle.
-  ⏳ **The roster documents and the publish-token map are BLOCKED, not skipped**, each on a
-  field the copy cannot carry: a token's `space` scope has no column, and `members` cannot
-  tell a config value from an overlay of it. Both reasons are written where the code is,
-  and pinned by tests that fail on the day the gap closes.
+  **The roster read is FOUR KV documents becoming one round trip, and the object answers with
+  those documents rather than with a roster** — so `mergeRoster`/`applyRoles`/`applyNames`/
+  `applyAvatars` are one pipeline fed from either store instead of two that have to be kept
+  in agreement. That needed two schema changes, both in `TENANT_SCHEMA_VERSION` 2:
+  `publish_tokens.scope` carries KV's `space` VERBATIM (`*` stays `*`, a space id stays that
+  space id — it is the authorization `publishAuthDetailed` refuses `wrong-space` on, and a
+  row whose scope is NULL, written by a copy that predates the column, is treated as NO
+  ANSWER and falls through to KV rather than being guessed at); and `members` keeps the
+  durable half and the overlay half in SEPARATE columns (`name`/`role`/`initials`/`colour`
+  against `name_overlay`/`role_overlay`/`avatar_*`, plus `source`), because `applyNames`
+  drops a config-set `initials` when there is a name override and keeps it when there is
+  not, and one merged column cannot answer both. **`CREATE TABLE IF NOT EXISTS` is not a
+  migration**: `TENANT_SCHEMA_ADDITIONS` + `applySchemaAdditions` add the new columns to
+  tables an older object already built, and they ask by ATTEMPTING the `ALTER` rather than by
+  reading `PRAGMA table_info`, because a PRAGMA is neither a SELECT nor a plain statement and
+  a harness that routes by keyword answers it with no rows — which reads as "no columns" and
+  skips every addition.
+  ⏳ **The roster tick still spends TWO KV gets, down from six, and both are named in the
+  constant**: `users:spaces` is inventoried `to: drop` rather than migrated, and answering
+  `{}` for it from the object would widen a per-space restriction into somebody's global
+  role; `spaces:icons` has no copy into the object's `settings` table yet. Neither is a
+  blocker on this item — they are the next two, and `AN OBJECT THAT WAS NEVER GIVEN THE
+  ROSTER DEFERS TO KV` in `test/kv-read-cutover.test.mjs` is why a workspace whose copy has
+  not run does not read the object's empty answer as an emptied overlay.
 
 ## Email
 

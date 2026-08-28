@@ -3,9 +3,11 @@
 //
 // `B-kv-read-cutover`. `B-kv-to-do-migration-tool` left the object holding a COPY that
 // nothing read. This is the half that makes the object the thing the instance answers
-// from. Two families have moved: `users:invites` and `users:lastseen:`. The rest — the
-// roster documents behind `rosterFields`, and the publish-token map — have not, and the
-// header of `KV_CUTOVER` in src/_worker.js says which and why.
+// from. Four families have moved: `users:invites`, `users:lastseen:`, `publish:tokens`
+// (with its authorization SCOPE, which is the whole of why it could not move before), and
+// the four roster documents behind `rosterFields`. What is left is `users:spaces`, which
+// the inventory DROPS rather than migrates, and `spaces:icons`, which has no copy into the
+// object's `settings` table yet — the header of `KV_CUTOVER` in src/_worker.js says so.
 //
 // ── WHAT A GREEN RESULT HERE IS EVIDENCE OF ──────────────────────────────────────────
 //
@@ -447,95 +449,284 @@ test("REMOVING SOMEBODY KILLS THEIR OUTSTANDING LINK IN BOTH STORES", async () =
 
 // ═══ THE FAMILIES THAT DID NOT MOVE ══════════════════════════════════════════════════
 
-test("a publish token minted before the cut still publishes after it", async () => {
-  // `publish:tokens` has NOT been cut — see the finding recorded in KV_CUTOVER's header —
-  // so this is the regression check that moving its neighbours left it alone. Minted on a
-  // deployment with no object, presented to one with an object bound.
-  const before = await deployment({ tenants: false });
-  const res = await before.fire("/__admin/tokens", {
+/** Ask the real resolver about a token, over the real Authorization header. */
+const authFor = (d, token, spaceId = "one") => W.publishAuthDetailed(
+  { tenantId: d.id, USERS: ROSTER },
+  new Request(`${ORIGIN}/__publish/${spaceId}/check`, { headers: { Authorization: `Bearer ${token}` } }),
+  d.env, spaceId, false,
+);
+
+/** Mint through the admin route, which is the only door a person mints one at. */
+async function tokenVia(d, space, label) {
+  const res = await d.fire("/__admin/tokens", {
     method: "POST",
-    headers: { "Content-Type": "application/json", ...(await before.cookieFor(ADMIN)) },
-    body: JSON.stringify({ space: "one", label: "backup" }),
+    headers: { "Content-Type": "application/json", ...(await d.cookieFor(ADMIN)) },
+    body: JSON.stringify({ space, label }),
   });
-  const minted = await res.text();
-  assert.equal(res.status, 200, minted);
-  const token = JSON.parse(minted).token;
+  const text = await res.text();
+  assert.equal(res.status, 200, text);
+  const token = JSON.parse(text).token;
   assert.ok(token, "the fixture minted no token");
+  return token;
+}
+
+test("a publish token minted before the cut still publishes after it, at its own scope", async () => {
+  // ⚠️ THE CLAUSE THE `scope` COLUMN EARNS ITS PLACE ON. Two tokens minted on a deployment
+  // with no object — one scoped to a space, one star — carried into a deployment that reads
+  // from the object. The space-scoped one must not be WIDENED to star, and the star one must
+  // not be REFUSED: those are the two inventions a read with no column would have had to
+  // choose between, and each is wrong in a way nobody sees until afterwards.
+  const before = await deployment({ tenants: false });
+  const scoped = await tokenVia(before, "one", "backup");
+  const star = await tokenVia(before, "*", "ci");
 
   const after = await deployment({ tenants: true, kv: Object.fromEntries(before.kv.store) });
-  const auth = await W.publishAuthDetailed(
-    { tenantId: after.id, USERS: ROSTER },
-    new Request(`${ORIGIN}/__publish/one/check`, { headers: { Authorization: `Bearer ${token}` } }),
-    after.env, "one", false,
-  );
-  assert.equal(auth.refusal, null, `a token minted before the cut stopped publishing: ${auth.refusal}`);
-  assert.equal(auth.entry.space, "one", "the token's SCOPE did not survive");
+  const a1 = await authFor(after, scoped);
+  assert.equal(a1.refusal, null, `a token minted before the cut stopped publishing: ${a1.refusal}`);
+  assert.equal(a1.entry.space, "one", "the token's SCOPE did not survive");
+  const a2 = await authFor(after, star);
+  assert.equal(a2.refusal, null, `a star token minted before the cut was refused: ${a2.refusal}`);
+  assert.equal(a2.entry.space, "*", "a star token came back narrowed");
+
+  // And the scope is an authorization, not a label: the space-scoped one is refused
+  // elsewhere, on the object path, exactly as it was on the KV one.
+  const elsewhere = await authFor(after, scoped, "two");
+  assert.equal(elsewhere.refusal, "wrong-space", "a space-scoped token was widened by the move");
 });
 
-test("the roster still answers from KV — this item did not move it, and says so", async () => {
-  // Named rather than left implicit. `rosterFields` still spends its six KV reads per tick;
-  // KV_CUTOVER carries no `roster` key, and a day when it does is a day this assertion
-  // fails and somebody reads the header.
-  assert.deepEqual(Object.keys(W.KV_CUTOVER).sort(), ["invites", "lastseen"]);
-  assert.equal(Object.isFrozen(W.KV_CUTOVER), true);
+test("a token minted AFTER the cut answers off the object alone, and revocation reaches both", async () => {
+  // Non-vacuous in the way the item asks for: the KV document is emptied, so only the
+  // object can answer. Then the token is revoked through the panel and is dead on both.
   const d = await deployment({ tenants: true });
-  d.kv.gets.length = 0;
-  await d.fire("/__people?names=Grace");
-  assert.ok(d.kv.gets.includes("users:roster"), "the roster stopped reading KV without being cut over");
+  const scoped = await tokenVia(d, "one", "backup");
+  const star = await tokenVia(d, "*", "ci");
+  const kvMap = JSON.parse(d.kv.store.get(W.PUBLISH_TOKENS_KEY));
+  assert.equal(Object.keys(kvMap).length, 2, "the dual write did not reach KV, so the flag is not a revert");
+
+  d.kv.store.delete(W.PUBLISH_TOKENS_KEY);
+  assert.equal((await authFor(d, scoped)).entry.space, "one", "the object cannot answer without KV");
+  assert.equal((await authFor(d, star)).entry.space, "*");
+  assert.equal((await authFor(d, scoped, "two")).refusal, "wrong-space");
+
+  d.kv.store.set(W.PUBLISH_TOKENS_KEY, JSON.stringify(kvMap));
+  const hash = Object.keys(kvMap).find((h) => kvMap[h].label === "backup");
+  const del = await d.fire("/__admin/tokens", {
+    method: "DELETE",
+    headers: { "Content-Type": "application/json", ...(await d.cookieFor(ADMIN)) },
+    body: JSON.stringify({ hash }),
+  });
+  assert.equal(del.status, 200, await del.text());
+  assert.equal((await authFor(d, scoped)).refusal, "unknown-token", "a revoked token still publishes");
+  assert.equal(JSON.parse(d.kv.store.get(W.PUBLISH_TOKENS_KEY))[hash], undefined,
+    "the revocation reached the object and not KV — the fallback would resurrect it");
 });
 
-test("A PUBLISH TOKEN'S SCOPE DOES NOT SURVIVE THE COPY — the read cannot move until it does", async () => {
-  // ⚠️ THE OTHER BUG THIS ITEM FOUND, pinned so that cutting this family is a deliberate act
-  // rather than an afternoon's tidying. `space` is the authorization scope: `*` is
-  // admin-equivalent because a star token pushes the instance config, i.e. the roster. The
-  // object's table has no column for it, and `identityFromKv` drops it — so a read cut over
-  // to that table would have to invent every token's scope. This is the test that fails on
-  // the day somebody adds the column, which is exactly when they should be reading the note.
+test("GATE 5 — a broken object REFUSES a publish rather than falling through to KV", async () => {
+  // Same shape as GATE 2, on the other credential. The KV row is left live, so a
+  // fall-through would succeed — which is what makes the refusal a measurement.
+  const d = await deployment({ tenants: true });
+  const scoped = await tokenVia(d, "one", "backup");
+  assert.equal((await authFor(d, scoped)).refusal, null);
+  assert.ok(JSON.parse(d.kv.store.get(W.PUBLISH_TOKENS_KEY)), "KV holds no row, so nothing could fall through");
+
+  d.break();
+  assert.equal((await authFor(d, scoped)).refusal, "no-store",
+    "CRITICAL: an unreadable workspace store fell through to KV and authorized a publish");
+
+  d.restore();
+  assert.equal((await authFor(d, scoped)).refusal, null, "the refusal was a wedge, not an outage");
+});
+
+test("the cut families are exactly these four, and the constant is frozen", async () => {
+  // Named rather than left implicit, so adding a fifth is a deliberate act that fails a
+  // test and sends somebody to the header before they write the code.
+  assert.deepEqual(Object.keys(W.KV_CUTOVER).sort(),
+    ["invites", "lastseen", "publishTokens", "roster"]);
+  assert.equal(Object.isFrozen(W.KV_CUTOVER), true);
+});
+
+test("A PUBLISH TOKEN'S SCOPE SURVIVES THE COPY, AND IS NEITHER WIDENED NOR REFUSED", async () => {
+  // ⚠️ THE BLOCKER THIS SLICE CLEARED. `space` is the authorization scope: `*` is
+  // admin-equivalent because a star token pushes the instance config, i.e. the roster.
+  // Without a column the read could only invent one, and both inventions are wrong in a
+  // direction nobody sees until a publish fails. So: the column exists, the copy fills it
+  // verbatim, and a row an OLDER copy wrote — scope null — is treated as no answer at all
+  // rather than as a guess.
   const { identity } = await identityFromKv({
     "publish:tokens": {
       "hash-one": { space: "one", label: "backup", createdAt: "2026-01-01T00:00:00.000Z" },
       "hash-star": { space: "*", label: "ci", createdAt: "2026-01-01T00:00:00.000Z" },
     },
   }, { configUsers: ROSTER, hashInvite: W.inviteHash });
+  assert.deepEqual(identity.publishTokens.map((t) => t.scope).sort(), ["*", "one"]);
 
-  assert.equal(identity.publishTokens.length, 2, "the copy stopped carrying publish tokens at all");
-  for (const t of identity.publishTokens) {
-    assert.equal("space" in t, false,
-      "the copy now carries a token's SCOPE — add the column, then cut the read and delete this");
-  }
   const db = new DatabaseSync(":memory:");
   const store = new TenantStore({ storage: storage(db), blockConcurrencyWhile: async (f) => f() }, {});
   await store.provision({ workspaceId: "scope-check", adminEmail: ADMIN });
   const cols = db.prepare("PRAGMA table_info(publish_tokens)").all().map((c) => c.name);
-  assert.deepEqual(cols.sort(), ["created_at", "expires_at", "label", "token_hash"]);
-  assert.equal(W.KV_CUTOVER.publishTokens, undefined,
-    "publish tokens were cut over while their scope still cannot cross");
+  assert.deepEqual(cols.sort(), ["created_at", "expires_at", "label", "scope", "token_hash"]);
+
+  store.importAll({ overlay: {}, identity });
+  assert.equal(store.publishTokenRead("hash-one").space, "one", "a space-scoped token was not widened");
+  assert.equal(store.publishTokenRead("hash-star").space, "*", "a star token was not narrowed");
+
+  // The pre-column row: present, and deliberately unanswerable.
+  db.prepare("INSERT INTO publish_tokens (token_hash, label, created_at) VALUES ('old', 'legacy', 'x')").run();
+  assert.equal(store.publishTokenRead("old"), null,
+    "a row whose scope a copy could not carry was answered with an invented one");
 });
 
-test("THE ROSTER'S COLUMN CANNOT TELL THE FILE FROM THE OVERLAY — why that read is blocked", async () => {
-  // The second blocker, also pinned. The copy MERGES the config roster into `members`, so
-  // `role` and `name` no longer say where they came from. The serving path needs that
+test("THE ROSTER'S COLUMNS TELL THE FILE FROM THE OVERLAY — the other blocker, cleared", async () => {
+  // The second blocker. The copy used to MERGE the config roster into `members`, so `role`
+  // and `name` no longer said where they came from — and the serving path needs the
   // difference: `applyNames` drops a config-set `initials` when there IS an override and
-  // keeps it when there is not — one column cannot reproduce both. And `members` carries
-  // neither `initials` nor colour, which every chip renders.
+  // keeps it when there is not, so one column cannot reproduce both answers. Now there are
+  // two columns, plus the `initials` and colour every chip renders.
   const configUsers = [{ email: GUEST, name: "Grace", initials: "GX", color: "#123456", role: "editor" }];
-  const { identity } = await identityFromKv({ "users:roster": { add: {}, remove: [] } }, {
-    configUsers, hashInvite: W.inviteHash,
-  });
+  const { identity } = await identityFromKv({
+    "users:roster": { add: {}, remove: [] },
+    "users:names": { [GUEST]: { name: "Chosen", at: "2026-01-01T00:00:00.000Z" } },
+  }, { configUsers, hashInvite: W.inviteHash });
   const row = identity.members.find((m) => m.email === GUEST);
-  assert.equal(row.name, "Grace", "the config name landed in the column — so it reads as an override");
-  assert.equal("initials" in row, false);
-  assert.equal("color" in row, false);
+  assert.equal(row.name, "Grace", "the durable column holds the FILE's name");
+  assert.deepEqual(row.nameOverlay, { name: "Chosen", at: "2026-01-01T00:00:00.000Z" });
+  assert.equal(row.initials, "GX");
+  assert.equal(row.colour, "#123456");
+  assert.equal(row.source, "config");
 
-  // And the divergence it would cause, demonstrated on the real functions rather than
-  // described: the same person, once with a real override and once without, is rendered
-  // differently — and the members row is identical in both cases.
+  // …and the aliasing case the merge could not reproduce, run on the real functions: the
+  // SAME durable row, one workspace with an override and one without, rendered differently.
   const withOverride = W.applyNames(configUsers, { [GUEST]: { name: "Grace" } });
   const without = W.applyNames(configUsers, {});
   assert.equal(withOverride[0].initials, undefined);
   assert.equal(without[0].initials, "GX");
-  assert.equal(W.KV_CUTOVER.roster, undefined,
-    "the roster was cut over while `members` still cannot tell an override from the file");
+});
+
+test("THE ROSTER ROUND-TRIPS: four documents in, the same four documents out", async () => {
+  // The property that makes "bound and unbound answer the same" structural rather than
+  // hoped for. `rosterRead` answers with the KV documents THEMSELVES, so the serving
+  // pipeline below it is one pipeline fed from either store — not two that agree today.
+  const d = await deployment({ tenants: true });
+  const docs = {
+    roster: {
+      add: { "invited@example.test": {
+        email: "invited@example.test", name: "Invited", role: "editor",
+        initials: "IN", color: "#abcdef", addedAt: "2026-08-01T00:00:00.000Z", addedBy: ADMIN,
+      } },
+      remove: [GUEST],
+    },
+    roles: { [ADMIN]: "editor" },
+    // Both live shapes of `users:names`, because only one of them is honoured and the
+    // round trip must not quietly convert the ignored one into the honoured one.
+    names: { [ADMIN]: { name: "Chosen", at: "2026-08-02T00:00:00.000Z" }, "old@example.test": "Legacy" },
+    avatars: { [ADMIN]: { k: "abc123", mime: "image/png", at: "2026-08-03T00:00:00.000Z" } },
+  };
+  d.object.rosterWrite({ configUsers: ROSTER.map((u) => ({ ...u, passHash: undefined })), ...docs });
+  const back = d.object.rosterRead();
+  assert.equal(back.seeded, true);
+  assert.deepEqual(back.roster.add, docs.roster.add);
+  assert.deepEqual(back.roster.remove.sort(), [GUEST].sort());
+  assert.deepEqual(back.roles, docs.roles);
+  assert.deepEqual(back.names, docs.names);
+  assert.deepEqual(back.avatars, docs.avatars);
+});
+
+test("AN OBJECT THAT WAS NEVER GIVEN THE ROSTER DEFERS TO KV — empty is not the same as unfilled", async () => {
+  // ⚠️ A workspace copied off KV and a workspace whose copy has not run yet both have no
+  // rows, and answering the second from the object would silently un-remove everybody
+  // `users:roster.remove` names. So the object says which it is.
+  const d = await deployment({ tenants: true });
+  assert.equal(d.object.rosterRead().seeded, true, "provisioning is a filling: this workspace was born here");
+
+  // The same object with the marker cleared is the un-copied case, and it defers.
+  d.object.sql.exec("DELETE FROM meta WHERE k = 'identity_seeded:roster'");
+  d.kv.store.set("users:roles", JSON.stringify({ [GUEST]: "viewer" }));
+  d.kv.gets.length = 0;
+  const docs = await W.readRosterDocs({ tenantId: d.id, CONFIG_USERS: ROSTER }, d.env);
+  assert.deepEqual(docs[3], { [GUEST]: "viewer" }, "an unseeded object answered instead of deferring");
+  assert.ok(d.kv.gets.includes("users:roles"), "it did not actually read KV");
+});
+
+test("bound and unbound serve the SAME roster over the same endpoint", async () => {
+  // The VERIFY clause, over `/__people` and `/__admin/users` — never by reading a store.
+  // Every change is made through the real admin routes, which dual-write, so the two
+  // deployments differ in the binding and in nothing else.
+  const answers = [];
+  for (const tenants of [true, false]) {
+    const d = await deployment({ tenants });
+    const headers = { "Content-Type": "application/json", ...(await d.cookieFor(ADMIN)) };
+    const invite = await d.fire("/__admin/users", {
+      method: "POST", headers,
+      body: JSON.stringify({ op: "invite", email: "newcomer@example.test", name: "Newcomer", role: "viewer" }),
+    });
+    assert.equal(invite.status, 200, await invite.text());
+    const role = await d.fire("/__admin/users", {
+      method: "POST", headers, body: JSON.stringify({ op: "role", email: GUEST, role: "viewer" }),
+    });
+    assert.equal(role.status, 200, await role.text());
+    const named = await d.fire("/__me/name", {
+      method: "POST", headers: { "Content-Type": "application/json", ...(await d.cookieFor(ADMIN)) },
+      body: JSON.stringify({ name: "Ada Renamed" }),
+    });
+    assert.equal(named.status, 200, await named.text());
+
+    const list = await d.fire("/__admin/users", { headers: await d.cookieFor(ADMIN) });
+    const body = JSON.parse(await list.text());
+    const people = await d.fire("/__people?names=Newcomer");
+    answers.push({
+      users: body.users.map((u) => `${u.email}/${u.role}/${u.name}/${u.state}`).sort(),
+      people: await people.text(),
+    });
+  }
+  assert.deepEqual(answers[0], answers[1], "the object and KV serve two different rosters");
+  assert.ok(answers[0].users.some((r) => r.startsWith("newcomer@example.test/viewer/")),
+    "the invited person is not in either answer, so this compares nothing");
+  assert.ok(answers[0].users.some((r) => r.includes("/Ada Renamed/")), "the name override reached neither");
+});
+
+test("A REMOVAL STILL REMOVES on the object path — the tombstone crosses", async () => {
+  // The roster overlay is a convenience and `users:secrets` is the boundary, but a removal
+  // that stopped hiding somebody from the list would be a visible regression on the exact
+  // path this item moved. Removal is a CONFIG user, so it is the `remove` list that carries it.
+  for (const tenants of [true, false]) {
+    const d = await deployment({ tenants });
+    const res = await d.fire("/__admin/users", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...(await d.cookieFor(ADMIN)) },
+      body: JSON.stringify({ op: "remove", email: GUEST }),
+    });
+    assert.equal(res.status, 200, await res.text());
+    const list = await d.fire("/__admin/users", { headers: await d.cookieFor(ADMIN) });
+    const users = JSON.parse(await list.text()).users.map((u) => u.email);
+    assert.equal(users.includes(GUEST), false, `a removed person is still on the roster (tenants=${tenants})`);
+  }
+});
+
+test("GATE 4 — THE REFUSAL, ON THE ROSTER: a broken object does not admit an overlay", async () => {
+  // ⚠️ The roster's failure mode is deliberately NOT the invite's. `readRoster` and
+  // `rosterFields` fail OPEN to the config roster on purpose — the item says so, and the
+  // reason is that the `users:secrets` tombstone and not this overlay is the security
+  // boundary. So what has to be proved here is that the fail-open is to the CONFIG LIST and
+  // never to a fall-through onto KV, and that a promotion recorded only in the overlay does
+  // NOT survive the object being unreadable.
+  const d = await deployment({ tenants: true });
+  const promote = await d.fire("/__admin/users", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...(await d.cookieFor(ADMIN)) },
+    body: JSON.stringify({ op: "role", email: GUEST, role: "admin" }),
+  });
+  assert.equal(promote.status, 200, await promote.text());
+  const before = await d.fire("/__admin/users", { headers: await d.cookieFor(GUEST) });
+  assert.equal(before.status, 200, "the promotion did not take, so the case proves nothing");
+
+  d.break();
+  const during = await d.fire("/__admin/users", { headers: await d.cookieFor(GUEST) });
+  assert.equal(during.status, 403,
+    "CRITICAL: an overlay-granted admin role survived the store that grants it being unreadable");
+
+  d.restore();
+  const after = await d.fire("/__admin/users", { headers: await d.cookieFor(GUEST) });
+  assert.equal(after.status, 200, "the promotion did not come back — the outage was a wedge, not a refusal");
 });
 
 // ═══ THE READ VOLUME, MEASURED ═══════════════════════════════════════════════════════
@@ -546,24 +737,54 @@ test("on the cut-over path these families read KV zero times", async () => {
   // the measurement is of a route that reads nothing either way.
   const touched = (d, ...prefixes) =>
     d.kv.gets.filter((k) => prefixes.some((p) => k === p || k.startsWith(p)));
+  const CUT = [W.USER_INVITES_KEY, W.LASTSEEN_PREFIX, W.PUBLISH_TOKENS_KEY,
+    "users:roster", "users:roles", "users:names", "users:avatars"];
 
   const on = await deployment({ tenants: true });
   const token = await inviteVia(on, GUEST);
+  const pub = await tokenVia(on, "one", "backup");
   on.kv.gets.length = 0;
   await on.fire(`/__invite?t=${encodeURIComponent(token)}`);
   await on.fire("/__me", { headers: await on.cookieFor(ADMIN) });
   await on.fire("/__admin/users", { headers: await on.cookieFor(ADMIN) });
-  assert.deepEqual(touched(on, W.USER_INVITES_KEY, W.LASTSEEN_PREFIX), [],
+  await on.fire("/__people?names=Grace");
+  await authFor(on, pub);
+  assert.deepEqual(touched(on, ...CUT), [],
     "the object path is still reading KV for a family it has taken over");
 
   const off = await deployment({ tenants: false });
   const token2 = await inviteVia(off, GUEST);
+  const pub2 = await tokenVia(off, "one", "backup");
   off.kv.gets.length = 0;
   await off.fire(`/__invite?t=${encodeURIComponent(token2)}`);
   await off.fire("/__me", { headers: await off.cookieFor(ADMIN) });
   await off.fire("/__admin/users", { headers: await off.cookieFor(ADMIN) });
-  assert.ok(touched(off, W.USER_INVITES_KEY, W.LASTSEEN_PREFIX).length > 0,
+  await off.fire("/__people?names=Grace");
+  await authFor(off, pub2);
+  assert.ok(touched(off, ...CUT).length > 0,
     "the KV path reads none of these either, so the zero above measures nothing");
+});
+
+test("THE ROSTER TICK: four of its six KV gets are gone, and the two that remain are NAMED", async () => {
+  // ⚠️ THE HONEST NUMBER, not a round one. `rosterFields` spent six KV gets per workspace
+  // per sixty-second tick and that was the site's dominant KV consumer. Four are now one
+  // round trip to the object. The other two are `users:spaces` — which the inventory DROPS
+  // rather than migrates, and which the object must not answer `{}` for, because that
+  // widens a per-space restriction into somebody's global role — and `spaces:icons`, which
+  // has no copy into the object's `settings` table yet. Both are written down in
+  // `KV_CUTOVER`, and this is the assertion that fails if either quietly changes.
+  const count = async (tenants) => {
+    const d = await deployment({ tenants });
+    d.kv.gets.length = 0;
+    await d.fire("/__people?names=Grace");
+    return d.kv.gets.filter((k) => ["users:roster", "users:roles", "users:names",
+      "users:avatars", "users:spaces", "spaces:icons"].includes(k));
+  };
+  assert.deepEqual((await count(false)).sort(),
+    ["spaces:icons", "users:avatars", "users:names", "users:roles", "users:roster", "users:spaces"],
+    "the KV path no longer reads six documents, so the comparison below measures nothing");
+  assert.deepEqual((await count(true)).sort(), ["spaces:icons", "users:spaces"],
+    "the roster tick's KV reads are not the two the constant names");
 });
 
 // ═══ A BACKUP TAKEN EITHER SIDE RESTORES INTO EITHER ═════════════════════════════════
@@ -593,32 +814,41 @@ test("the state export is byte-identical with TENANTS bound and unbound", async 
 
 // ═══ THE REVERT, RUN ═════════════════════════════════════════════════════════════════
 
-test("REVERTING ONE FAMILY restores the KV answer, and touches nothing else", async () => {
-  // ⚠️ RUN, NOT READ. The revert is one word in `KV_CUTOVER`, so this makes the edit —
-  // `invites: true` → `invites: false` — in a copy of the worker, loads that copy, and
-  // drives the same routes through it. A test that asserted about the diff would pass
-  // against a flag nothing consults.
+/**
+ * A COPY of the worker with ONE family's flag flipped back, loaded as its own module.
+ *
+ * ⚠️ RUN, NOT READ. The revert is one word in `KV_CUTOVER`, so this makes the edit, loads
+ * the result and drives the same routes through it. A test that asserted about the diff
+ * would pass against a flag nothing consults. Every sibling module is SYMLINKED rather than
+ * copied, so the reverted worker runs against the same tenant-do.js and the same everything
+ * else — exactly one file differs.
+ */
+async function revertedWorker(family) {
   const src = fileURLToPath(new URL("../src/_worker.js", import.meta.url));
   const text = fs.readFileSync(src, "utf8");
-  assert.equal(text.split("\n  invites: true,").length, 2, "the flag this revert edits has moved");
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "augur-cutover-revert-"));
-  let reverted;
+  const needle = `\n  ${family}: true,`;
+  assert.equal(text.split(needle).length, 2, `the flag this revert edits has moved: ${family}`);
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), `augur-cutover-revert-${family}-`));
   try {
-    // Every sibling module is SYMLINKED rather than copied, so the reverted worker runs
-    // against the same tenant-do.js and the same everything else. One file differs.
     for (const entry of fs.readdirSync(path.dirname(src))) {
       if (entry === "_worker.js") continue;
       fs.symlinkSync(path.join(path.dirname(src), entry), path.join(dir, entry));
     }
-    fs.writeFileSync(path.join(dir, "_worker.js"), text.replace("\n  invites: true,", "\n  invites: false,"));
-    reverted = await import(pathToFileURL(path.join(dir, "_worker.js")).href);
+    fs.writeFileSync(path.join(dir, "_worker.js"), text.replace(needle, `\n  ${family}: false,`));
+    const mod = await import(pathToFileURL(path.join(dir, "_worker.js")).href);
+    const flags = mod.__testables.KV_CUTOVER;
+    assert.equal(flags[family], false, "the edit did not take");
+    for (const other of Object.keys(flags)) {
+      if (other !== family) assert.equal(flags[other], true, `the revert reached ${other}, which it was not for`);
+    }
+    return mod;
   } finally {
-    // Left on disk only for as long as the import needs it.
     setTimeout(() => { try { fs.rmSync(dir, { recursive: true, force: true }); } catch (e) {} }, 0).unref?.();
   }
-  assert.deepEqual(Object.keys(reverted.__testables.KV_CUTOVER).sort(), ["invites", "lastseen"]);
-  assert.equal(reverted.__testables.KV_CUTOVER.invites, false, "the edit did not take");
-  assert.equal(reverted.__testables.KV_CUTOVER.lastseen, true, "the revert reached a family it was not for");
+}
+
+test("REVERTING `invites` restores the KV answer, and touches nothing else", async () => {
+  const reverted = await revertedWorker("invites");
 
   // A link minted while the family WAS cut over is still redeemable after the revert. That
   // is the property the dual write buys, and it is the whole reason one word is a revert.
@@ -639,11 +869,99 @@ test("REVERTING ONE FAMILY restores the KV answer, and touches nothing else", as
   assert.ok(back.kv.gets.includes(W.USER_INVITES_KEY),
     "the reverted worker still is not asking KV, so the flag is decorative");
 
-  // The OTHER family is untouched by the revert: still answering off the object, and still
-  // not reading its KV keys.
+  // The OTHER families are untouched by the revert: still answering off the object, and
+  // still not reading their KV keys.
   back.kv.gets.length = 0;
   await back.fire("/__me", { headers: await back.cookieFor(ADMIN) });
   await back.fire("/__admin/users", { headers: await back.cookieFor(ADMIN) });
+  await back.fire("/__people?names=Grace");
   assert.deepEqual(back.kv.gets.filter((k) => k.startsWith(W.LASTSEEN_PREFIX)), [],
     "reverting invites dragged lastseen back to KV with it");
+  assert.deepEqual(back.kv.gets.filter((k) => k === "users:roster"), [],
+    "reverting invites dragged the roster back to KV with it");
+});
+
+test("REVERTING `publishTokens` restores the KV answer, and touches nothing else", async () => {
+  const reverted = await revertedWorker("publishTokens");
+
+  // Minted while the family was cut over, so it lives in BOTH stores — which is what makes
+  // the flip a revert rather than a rollback to whenever the cut happened.
+  const cut = await deployment({ tenants: true });
+  const scoped = await tokenVia(cut, "one", "backup");
+  const star = await tokenVia(cut, "*", "ci");
+
+  const back = await deployment({
+    tenants: true, kv: Object.fromEntries(cut.kv.store), workerModule: reverted,
+  });
+  const ask = (token, spaceId = "one") => reverted.__testables.publishAuthDetailed(
+    { tenantId: back.id, USERS: ROSTER },
+    new Request(`${ORIGIN}/__publish/${spaceId}/check`, { headers: { Authorization: `Bearer ${token}` } }),
+    back.env, spaceId, false,
+  );
+  back.kv.gets.length = 0;
+  const a1 = await ask(scoped);
+  assert.equal(a1.refusal, null, "the revert lost a token minted during the straddle");
+  assert.equal(a1.entry.space, "one", "and its scope with it");
+  assert.equal((await ask(star)).entry.space, "*");
+  assert.equal((await ask(scoped, "two")).refusal, "wrong-space");
+  assert.ok(back.kv.gets.includes(W.PUBLISH_TOKENS_KEY),
+    "the reverted worker still is not asking KV, so the flag is decorative");
+
+  // The object still HOLDS the rows — a revert loses no data — and the other families are
+  // untouched.
+  assert.ok(back.object.publishTokenList().tokens, "the object's rows went with the flag");
+  back.kv.gets.length = 0;
+  await back.fire("/__me", { headers: await back.cookieFor(ADMIN) });
+  await back.fire("/__people?names=Grace");
+  assert.deepEqual(back.kv.gets.filter((k) => k === "users:roster" || k.startsWith(W.LASTSEEN_PREFIX)), [],
+    "reverting publish tokens dragged another family back to KV with it");
+});
+
+test("REVERTING `roster` restores the KV answer, and touches nothing else", async () => {
+  const reverted = await revertedWorker("roster");
+
+  // Changed through the real admin routes while the family WAS cut over, so both stores
+  // hold it. After the revert KV is the answer, and it is the same answer.
+  const cut = await deployment({ tenants: true });
+  const headers = { "Content-Type": "application/json", ...(await cut.cookieFor(ADMIN)) };
+  const invited = await cut.fire("/__admin/users", {
+    method: "POST", headers,
+    body: JSON.stringify({ op: "invite", email: "newcomer@example.test", name: "Newcomer", role: "viewer" }),
+  });
+  assert.equal(invited.status, 200, await invited.text());
+  const demoted = await cut.fire("/__admin/users", {
+    method: "POST", headers, body: JSON.stringify({ op: "role", email: GUEST, role: "viewer" }),
+  });
+  assert.equal(demoted.status, 200, await demoted.text());
+  const cutList = JSON.parse(await (await cut.fire("/__admin/users", { headers: await cut.cookieFor(ADMIN) })).text())
+    .users.map((u) => `${u.email}/${u.role}`).sort();
+
+  const back = await deployment({
+    tenants: true, kv: Object.fromEntries(cut.kv.store), workerModule: reverted,
+  });
+  back.kv.gets.length = 0;
+  const list = JSON.parse(await (await back.fire("/__admin/users", { headers: await back.cookieFor(ADMIN) })).text())
+    .users.map((u) => `${u.email}/${u.role}`).sort();
+  assert.deepEqual(list, cutList, "the revert lost roster changes made during the straddle");
+  assert.ok(back.kv.gets.includes("users:roster") && back.kv.gets.includes("users:roles"),
+    "the reverted worker still is not asking KV, so the flag is decorative");
+
+  // ⚠️ NOTHING WAS LOST, and the object's own rows are untouched: `cut` still holds them,
+  // and the reverted worker writes neither store's copy of this family but KV's. (That the
+  // ROWS survive a revert on ONE workspace is a claim about persistence, which this harness
+  // cannot make — each deployment here gets a fresh in-memory database. It is
+  // `scripts/tenant-do-rehearsal.mjs` that runs three deployments over one persisted store.)
+  assert.ok(cut.object.rosterRead().roster.add["newcomer@example.test"],
+    "the straddle never wrote the object at all, so there is nothing to revert FROM");
+  const seenByReverted = back.object.rosterRead().roster;
+  assert.deepEqual(seenByReverted.add, {},
+    "the reverted worker is still writing the object for a family it no longer reads");
+
+  // And the other families did not come back with it.
+  const token = await inviteVia(back, GUEST);   // the mint DUAL-WRITES, so it reads KV to update it
+  back.kv.gets.length = 0;
+  await back.fire(`/__invite?t=${encodeURIComponent(token)}`);
+  await back.fire("/__me", { headers: await back.cookieFor(ADMIN) });
+  assert.deepEqual(back.kv.gets.filter((k) => k === W.USER_INVITES_KEY || k.startsWith(W.LASTSEEN_PREFIX)), [],
+    "reverting the roster dragged another family back to KV with it");
 });
