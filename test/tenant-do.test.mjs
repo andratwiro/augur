@@ -196,13 +196,17 @@ test("the store exposes no read or write verb it does not yet need", () => {
   // `renameAway` is the CUT-OVER half of F-subdomain-rename-delete-ux: it marks THIS address
   // dead and moves nothing, because a workspace's address is its object's name and moving is
   // a migration — see test/workspace-rename.test.mjs.
+  // `overlayScopes` is the one overlay read no PAGE wants: every request-path caller already
+  // knows whose scope it is asking about, and a COPY is the caller that cannot. Without it an
+  // export off this backing omitted every person's sidebar and called itself complete — see
+  // test/state-export-absent.test.mjs.
   const names = Object.getOwnPropertyNames(TenantStore.prototype).filter((n) => n !== "constructor");
   assert.deepEqual(names.sort(), [
     "bumpCounter", "clearMeta", "controlResult", "deleteWorkspace", "destroy", "fetch",
     "hasMeta", "importAll", "importOverlay", "init", "isProvisioned", "members",
     "nextPublishVersion",
     "overlayCas", "overlayInsert", "overlayOwner", "overlayRead", "overlayReadRev",
-    "overlayReplace", "overlaySet", "provision",
+    "overlayReplace", "overlayScopes", "overlaySet", "provision",
     "purgeAuthor", "quotas", "readCounter", "readMeta", "renameAway", "resume",
     "resumeOnSignIn", "rotate", "schemaVersion",
     "sessionKey",

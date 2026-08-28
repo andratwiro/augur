@@ -108,6 +108,25 @@ node scripts/board-snapshot.mjs move --from https://old --to https://new --path 
 `lag` reports NODES OUTSTANDING, not seconds. Wait on that number reaching zero; never on a
 clock, because the mirror can be much further behind than its cadence implies.
 
+**And the board step runs AFTER the family diff, so a family diff that fails on correct data
+takes the board step with it.** That is not hypothetical: a family that is empty reads as
+`{}` from shared KV and, on the workspace-object backing, used to read as ABSENT — so the
+diff put `{}` against nothing, called two identical empty families a mismatch, and stopped
+above the one step that reads a board from the room that owns it. On a KV → workspace move,
+which is the only kind this platform does, the board move could therefore never run. The
+rule now, and it is per family rather than blanket:
+
+- a **whole-document** family (`statuses`, the identity documents) is one document. Absent
+  and empty are the same answer — there is no third state — so the two compare equal.
+- a **set-of-documents** family (`c:`, `board:`, `pins:`) reports an empty set as `{}`.
+  Absent there means that export could not ENUMERATE the family, so the run refuses rather
+  than reading it as empty: the copy may well be perfect, and this run cannot say so.
+
+Nothing with content in it is ever waved through — both sides have to hold nothing before
+the kind is even consulted. Note that this is a rule for the VERIFY only: a restore still
+CLEARS a family handed to it as `{}` and LEAVES one it is not given at all, which is the
+asymmetry the checklist below ends on.
+
 **A freeze does not stop canvas editing.** `isFrozenWrite` exempts GET and a WebSocket
 upgrade is a GET, so `/__rt` stays open for the whole window. Somebody with a board open
 can go on moving nodes and pasting images while the migration runs, into a room on the

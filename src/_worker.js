@@ -5972,6 +5972,13 @@ function doOverlay(stub, tenantId) {
   return {
     backing: "do",
     read: async (family, scope = "") => (await call("read", { family, scope })).map,
+    /**
+     * Which scopes this family holds anything under. Read by the EXPORT and by nothing
+     * else — every request-path caller already knows whose scope it wants, and a copy is
+     * the one caller that cannot. On the KV backing the scopes are a key prefix and the
+     * export lists them itself; here they are a column, so the object has to be asked.
+     */
+    scopes: async (family) => (await call("scopes", { family })).scopes || [],
     readKey: async (family, scope, k) => (await call("read-rev", { family, scope, k })).v,
     /**
      * Read, change, write back — and RETRY when somebody else wrote in between.
@@ -6058,7 +6065,30 @@ async function readStateFamily(tctx, env, entry, store, kv) {
         } while (cursor);
         return out;
       }
-      return null; // on the workspace store, pins ride in the `pins` family below
+      // ⚠️ THE SAME FAMILY, ASKED THE OTHER WAY. On the workspace store a person's sidebar
+      // is rows under a SCOPE rather than a key under a prefix, and every other read here
+      // names the scope it wants because every other caller knows it. A copy does not, so it
+      // asks which scopes exist and reads each one — the same object of maps the KV branch
+      // above builds, keyed by the same addresses.
+      //
+      // RETURNING null HERE INSTEAD (which is what this did) was the bug behind two failures
+      // that look unrelated. A migration off KV compared `{}` against a family reported
+      // ABSENT and refused to verify — on correct data, and above the board-move step, so
+      // the one step that reads a board from its room could never run. And an export taken
+      // FROM this backing carried no sidebars at all while reporting itself complete, which
+      // a restore then had nothing to put back.
+      //
+      // Scope "" is excluded on purpose: that is the signed-out visitor's sidebar, which is
+      // the bare `pins` entry in the inventory and is exported by it. KV spells the two
+      // apart the same way — `pins` and `pins:<address>` — so both backings carry the same
+      // split and neither carries anything twice.
+      if (typeof store.scopes !== "function") return null;
+      const out = {};
+      for (const scope of await store.scopes("pins")) {
+        if (!scope) continue;
+        out[scope] = await store.read("pins", scope);
+      }
+      return out;
     }
     if (entry.id === "pt:view" || entry.id === "pt:remarks") {
       return await store.readKey("piti", "", entry.id.slice("pt:".length));
@@ -6093,10 +6123,22 @@ async function readStateFamily(tctx, env, entry, store, kv) {
  * not be read look identical in a JSON blob, and a restore that cannot tell them apart is a
  * restore that silently deletes.
  *
- * ONLY A `key` FAMILY CAN BE ABSENT. A whole-document family either has a document or does
- * not; a PREFIX family is a set of keys, and a set with nothing in it is empty rather than
- * missing — there is no third state to report and inventing one would be a distinction the
- * store cannot make.
+ * ONLY A `key` FAMILY CAN BE ABSENT, WHEREVER THERE IS A STORE TO READ. A whole-document
+ * family either has a document or does not; a PREFIX family is a set of keys, and a set with
+ * nothing in it is empty rather than missing — there is no third state to report and
+ * inventing one would be a distinction the store cannot make.
+ *
+ * ⚠️ THAT IS AN INVARIANT THIS FUNCTION HAS TO KEEP, NOT AN OBSERVATION ABOUT IT. It was
+ * false for `pins:` on the workspace-object backing, which reported absent whether the
+ * family was empty or full, and two things downstream believe it: `augur migrate` treats an
+ * absent `key` family as an empty one and REFUSES to treat an absent prefix family that way,
+ * and `augur restore` clears a family it is given as `{}` while leaving one it is not given
+ * at all. A prefix family reported absent therefore reads as "this copy could not enumerate
+ * it", which is exactly what it means and exactly why it must never be a spelling of empty.
+ * `test/state-export-absent.test.mjs` holds it shut on both backings.
+ *
+ * A deployment with NO store bound at all — a raw engine build — reports everything absent,
+ * prefix families included, and that is the honest answer: there is nothing to enumerate.
  */
 async function exportState(tctx, env) {
   const store = overlayFor(env, tctx);

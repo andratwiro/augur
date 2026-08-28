@@ -1264,6 +1264,23 @@ export class TenantStore {
   }
 
   /**
+   * Every scope a family holds rows under, including the empty one.
+   *
+   * THE ONE READ AN EXPORT NEEDS AND NO PAGE DOES. A scoped family — `pins`, whose scope is
+   * the address a sidebar belongs to — is a set of maps, and every other verb here answers
+   * about ONE scope because every other caller already knows which one it wants: a page load
+   * is one person's. A COPY does not know, and there is no other way to find out from
+   * outside: on the KV backing the scopes are visible as a key prefix, and here they are
+   * rows in a column nothing could list. Without this a backup of a workspace on this
+   * backing omits every person's sidebar and reports itself complete.
+   */
+  overlayScopes(family) {
+    return [...this.sql.exec(
+      `SELECT DISTINCT scope FROM overlay WHERE family = ? ORDER BY scope`, String(family),
+    )].map((row) => String(row.scope));
+  }
+
+  /**
    * Set or clear ONE key. `null` clears — the same signal the KV path uses, where an empty
    * name means "revert to the build default".
    *
@@ -1681,6 +1698,9 @@ export class TenantStore {
       switch (url.pathname) {
         case "/overlay/read":
           return Response.json({ map: this.overlayRead(body.family, scope) });
+        case "/overlay/scopes":
+          // No key and no scope: the question is which scopes exist at all. Only a copy asks.
+          return Response.json({ scopes: this.overlayScopes(body.family) });
         case "/overlay/set":
           if (!body.k) return Response.json({ error: "no-key" }, { status: 400 });
           this.overlaySet(body.family, scope, body.k, body.v === undefined ? null : body.v, null, body.owner);

@@ -43,6 +43,7 @@ import os from "node:os";
 import { mkdtempSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { resolveToken, apiClient } from "./lib/store.mjs";
+import { inventoryEntry } from "../src/state-inventory.mjs";
 
 const SCRIPTS = path.dirname(fileURLToPath(import.meta.url));
 const log = (m) => console.error(`\x1b[35m[migrate]\x1b[0m ${m}`);
@@ -144,20 +145,66 @@ const [before, after] = await Promise.all([
   (await toApi("_state/export")).json(),
 ]);
 
+// ⚠️ EMPTY AND ABSENT ARE THE SAME ANSWER FOR ONE KIND OF FAMILY AND NOT FOR THE OTHER, and
+// a comparison that does not know the difference fails on correct data in one direction and
+// passes over a blind copy in the other. Both happened.
+//
+//   A `key` FAMILY is one document. It is there or it is not, and "not there" is exactly
+//   "holds nothing" — there is no third state either end could be in. So absent on one side
+//   and `{}` on the other is a MATCH, and refusing it is refusing a workspace where nobody
+//   has ever set a status.
+//
+//   A `prefix` FAMILY is a set of documents, and an empty set is `{}`. Absent therefore does
+//   NOT mean empty here: it means that export could not enumerate the family at all, which
+//   is a copy nobody can judge and the one report that must fail. This is not hypothetical
+//   tidying — `pins:` reported absent from the workspace-object backing whether it held two
+//   sidebars or none, so every KV→object migration failed this step on correct data, ABOVE
+//   the board move below, which is the step that reads a board from the room that owns it.
+//   The export keeps the invariant now (see `exportState`); this refuses rather than
+//   assuming, because the next family to break it would otherwise be copied blind.
+//
+// AND NOTHING WITH CONTENT IN IT IS EVER FLATTENED. Both sides have to hold nothing before
+// the kind is even consulted, so no amount of leniency here can make two different families
+// compare equal — which is the failure mode of "just make it pass".
+const holdsNothing = (v) => v === null || v === undefined
+  || (Array.isArray(v) ? v.length === 0
+    : typeof v === "object" && Object.keys(v).length === 0);
+
+/** `match` — the two agree. `blind` — both empty, but one side could not enumerate it. */
+function compareFamily(id, a, b) {
+  if (JSON.stringify(a ?? null) === JSON.stringify(b ?? null)) return "match";
+  if (!holdsNothing(a) || !holdsNothing(b)) return "differ";
+  const entry = inventoryEntry(id);
+  if (entry && entry.kind === "key") return "match";
+  return "blind";
+}
+
 const diffs = [];
-for (const id of new Set([...Object.keys(before.families), ...Object.keys(after.families)])) {
-  const a = JSON.stringify(before.families[id] ?? null);
-  const b = JSON.stringify(after.families[id] ?? null);
-  if (a !== b) diffs.push(id);
+const blind = [];
+const ids = [...new Set([...Object.keys(before.families), ...Object.keys(after.families)])];
+for (const id of ids) {
+  const verdict = compareFamily(id, before.families[id], after.families[id]);
+  if (verdict === "differ") diffs.push(id);
+  if (verdict === "blind") blind.push(id);
 }
 const missingAssets = (before.assets || []).filter((h) => !(after.assets || []).includes(h));
 
-for (const id of Object.keys(before.families)) {
+for (const id of ids) {
   const n = Object.keys(before.families[id] || {}).length;
-  console.log(`  ${diffs.includes(id) ? "\x1b[31m✗\x1b[0m" : "\x1b[32m✓\x1b[0m"} ${id.padEnd(22)} ${n} key(s)`);
+  const bad = diffs.includes(id) || blind.includes(id);
+  const note = blind.includes(id)
+    ? "  \x1b[33mreported absent by one side — a set of documents, so an empty one is {}\x1b[0m"
+    : "";
+  console.log(`  ${bad ? "\x1b[31m✗\x1b[0m" : "\x1b[32m✓\x1b[0m"} ${id.padEnd(22)} ${n} key(s)${note}`);
 }
 console.log(`  ${missingAssets.length ? "\x1b[31m✗\x1b[0m" : "\x1b[32m✓\x1b[0m"} ${"canvas images".padEnd(22)} ${(before.assets || []).length}`);
 
+if (blind.length) {
+  die(`neither end can be judged on ${blind.join(", ")}: one side reported the family ABSENT rather than empty.\n`
+    + `  A family that is a set of documents reports an empty set as {}, so absent there means that\n`
+    + `  export could not enumerate it — not that it holds nothing. The copy may well be correct and\n`
+    + `  this run cannot say so. The source is untouched and still frozen.`);
+}
 if (diffs.length || missingAssets.length) {
   die(`the target does not match the source: ${[...diffs, ...missingAssets.map((h) => `image ${h.slice(0, 8)}`)].join(", ")}.\n`
     + `  The source is untouched and still frozen. Run this again — it is safe to repeat.`);
