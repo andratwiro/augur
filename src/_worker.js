@@ -7798,9 +7798,18 @@ async function purgeDue(env, id) {
  * blank the deployment. It survived the broken filter by coincidence, which is not a
  * property anything was keeping.
  *
+ * ⛔ ONE CASE THIS CANNOT REACH, AND IT IS NOT AN OVERSIGHT. Two workspaces that each
+ * publish a space under the SAME id write the same key — one manifest, one version
+ * history, one object — so erasing either takes the other's content, and no ownership
+ * record can prevent it because both records are correct. This cannot even be DETECTED
+ * from here: an object holds its own claims and there is no list of workspaces in the
+ * engine to compare them against. A gate cannot un-collide a key; only a workspace segment
+ * in the key can. `test/delete-workspace.test.mjs` pins the collision so the day the key
+ * shape lands, a failing test says so.
+ *
  * ⏳ RETIRE THIS WITH THE KEY SHAPE. When the store carries a workspace segment, "which
- * spaces are mine" is answered by the prefix, the unattributable case cannot arise, and
- * this reduces to a listing again.
+ * spaces are mine" is answered by the prefix, the unattributable case cannot arise, the
+ * collision above cannot arise, and this reduces to a listing again.
  */
 async function workspaceSpaces(tctx, env, listed) {
   const id = tctx && tctx.tenantId;

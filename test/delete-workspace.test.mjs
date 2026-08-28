@@ -388,6 +388,31 @@ test("AN OWNERSHIP RECORD THAT CANNOT BE READ IS A REFUSAL, NOT AN EMPTY SELECTI
   assert.equal(env.BUNDLES.store.size, 15, "an unreadable ownership record let an erasure through");
 });
 
+test("⏳ TWO WORKSPACES SHARING A SPACE ID SHARE THE OBJECT, and erasing one takes the other's", async () => {
+  // NOT a description of correct behaviour. This is the one case an ownership record
+  // cannot close, pinned so that the day it does close, a failing test says so.
+  //
+  // Both workspaces published a space called `shop`. `spaces/shop/manifest.json` is ONE
+  // key — one manifest, one version history, one set of bytes — so both records are
+  // truthful and both name the same object. Erasing either takes the other's content, and
+  // nothing here can even detect it: an object holds its own claims and the engine has no
+  // list of workspaces to compare them against. A gate cannot un-collide a key; only a
+  // workspace segment in the key can.
+  const env = twoWorkspaces();
+  await env.BUNDLES.put("spaces/shop/manifest.json", manifest("shop", [SHARED]));
+  await env.BUNDLES.put("spaces/shop/versions/3.json", manifest("shop", [SHARED]));
+  await workspaceHolding(env, ONE, ["shop"]);
+  await workspaceHolding(env, TWO, ["shop"]);
+  tombstoneDue(env, ONE);
+
+  const r = await W.deleteWorkspace(ctxFor(ONE), env, { confirm: ONE, dryRun: false });
+  assert.equal(r.ok, true);
+  assert.deepEqual(keysUnder(env, "spaces/shop/"), [],
+    "the collision closed — the key now carries a workspace segment, so this test is the thing that is stale");
+  // And the neighbour still claims a space that no longer exists anywhere.
+  assert.deepEqual(env.TENANTS.get(env.TENANTS.idFromName(TWO)).store.publishedSpaces().spaces, ["shop"]);
+});
+
 // ── the refusals that were already here ──────────────────────────────────────
 
 test("A SWEEP THAT COULD NOT LOOK REFUSES, rather than reporting everything as orphaned", async () => {
