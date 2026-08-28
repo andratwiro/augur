@@ -1071,7 +1071,7 @@ git commit -m "Bump UI_VERSION to 1.13 for the mobile tab bar shell change"
 git push origin main
 ```
 
-This fires `andratwiro/augur`'s `deploy-trigger.yml`, which dispatches to every instance shell. `demo.augur.works` (the Fulla space, `TRACK: main`) picks up the new engine pin automatically — per the workspace's own `CLAUDE.md`, measured push-to-live latency is ~73s. `delta` does NOT auto-deploy on engine push; it needs its own `engine-bump.yml` run if you want it there too — do not trigger that without being asked, since it's a separate instance's live site.
+This fires the engine's `deploy-trigger.yml`, which dispatches to every instance shell. An instance on `TRACK: main` picks up the new engine pin automatically, typically within a couple of minutes. An instance that pins a release track does NOT auto-deploy on an engine push; it needs its own `engine-bump.yml` run — do not trigger that without being asked, since each instance is somebody's live site.
 
 - [ ] **Step 2: Confirm the live build picked up the change**
 

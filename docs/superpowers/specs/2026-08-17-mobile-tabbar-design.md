@@ -245,7 +245,7 @@ the tailnet):
 1. Load `/` under 860px — bottom bar shows Projects/Playground/DS/Pinned/Profile,
    Projects active; header shows the space's icon + name centered, no hamburger
    anywhere.
-2. Confirm on a second space (e.g. delta vs. fulla, or `OFFLINE_PORT` against both)
+2. Confirm on a second space (two spaces side by side, or `OFFLINE_PORT` against both)
    that the header shows that space's own name/icon, not "augur".
 3. Tap into a prototype — header swaps to back-chevron + prototype title; bottom bar
    unchanged, Projects still marked active.
