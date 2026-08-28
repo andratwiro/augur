@@ -49,6 +49,11 @@ const map = {
   freeze: "freeze.mjs",
   thaw: "freeze.mjs",
   migrate: "migrate.mjs",
+  // NOT a migration either, and the third name in this neighbourhood on purpose: a re-key
+  // moves one workspace's content onto the store's workspace segment WITHOUT it leaving the
+  // instance, the bucket, or its own hostname. `migrate` cannot do it — it is
+  // origin-addressed and a restore lands every space at v1, which would strand the history.
+  "bundle-rekey": "bundle-rekey.mjs",
   // NOT a synonym for migrate, and the names are kept apart on purpose: migrate MOVES a
   // workspace to another instance, adopt copies THIS instance's KV into its own object.
   adopt: "adopt.mjs",

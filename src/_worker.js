@@ -4151,6 +4151,22 @@ async function publishApi(tctx, request, url, env) {
         dryRun: !(body && body.confirm),
       }));
     }
+    // The one-way move onto the workspace segment. Same shape as `delete` and `blob-gc`
+    // above, and for the same structural reason: only something holding `BUNDLES` can
+    // rewrite an R2 key, and the only things holding it are this worker and whoever has the
+    // account credential. This route needs no account credential at all — it is addressed
+    // at the workspace's own hostname with the star token that workspace's admin already
+    // has. See `rekeyToSegment`.
+    if (op === "rekey" && request.method === "POST") {
+      let body = null;
+      try { body = await request.json(); } catch (e) { /* a dry run needs no body */ }
+      return jsonResponse(await rekeyToSegment(tctx, env, {
+        confirm: body && body.confirm,
+        families: body && body.families,
+        limit: body && body.limit,
+        dryRun: !(body && body.confirm),
+      }));
+    }
     if (op === "blob-gc" && request.method === "POST") {
       let body = null;
       try { body = await request.json(); } catch (e) { /* a dry run needs no body */ }
@@ -7455,6 +7471,121 @@ async function blobGc(env, { dryRun = true } = {}) {
   };
 }
 
+// ---- The move onto the segment ----------------------------------------------
+//
+// `B-bundle-store-tenancy`. A deployment that starts writing `t/<workspace>/…` does not
+// thereby start reading what it wrote yesterday: the unprefixed keys stay exactly where
+// they are, and on a Host-resolved deployment there is no read-through fallback to them,
+// deliberately, because an unprefixed key is unattributable there. So a live workspace has
+// to be MOVED onto the segment, and this is the move.
+//
+// ⚠️ IT IS A COPY AND NEVER A CUT. Nothing here deletes the source. Three reasons, and each
+// alone would be enough: it makes the run RE-RUNNABLE after any failure at any point, it
+// makes the per-family flag a real revert (flip the word back and the unprefixed answer is
+// still there), and it means a half-finished run leaves a workspace serving its old keys
+// rather than serving nothing. Reclaiming the originals is a separate act, taken once
+// somebody has looked.
+//
+// ⚠️ AND IT IS CORRECT FOR EXACTLY ONE WORKSPACE PER DEPLOYMENT. An unprefixed key belongs
+// to whichever workspace this deployment served before the segment existed — a question
+// with an answer only where a deployment served ONE. Running this as a SECOND workspace
+// would hand it the FIRST one's content, which is the disclosure the segment exists to
+// close, performed on purpose. `confirm` is the workspace saying its own name out loud, and
+// `guard` below refuses when the deployment already holds more than one prefix.
+//
+// WHAT MOVES, by family. `spaces` is the manifests and the never-pruned version history —
+// the expensive half, and the half that carries the collision. `config` is the one instance
+// document. `assets` is the canvas image bytes, opt-in because `assets/<hash>` is
+// content-addressed and two workspaces pasting one picture wrote one key, so "whose is it"
+// is a question the key genuinely cannot answer.
+//
+// ⛔ `blobs/` AND `spaces/_engine/` DO NOT MOVE, AND MUST NOT. Both are shared by decision
+// (see `bundleKey`), both are already at the key every workspace reads them at, and copying
+// either would be inventing a private copy of something that is deliberately one copy.
+// `bundleKey` maps them to themselves, so `dest === src` for every one of their keys and
+// the loop below skips them by the same test it uses for "already there".
+const REKEY_FAMILIES = Object.freeze(["spaces", "config", "assets"]);
+const REKEY_DEFAULT_FAMILIES = Object.freeze(["spaces", "config"]);
+// One page of copies per call. A re-key is a `get` plus a `put` per object and a workspace's
+// history runs to hundreds; the caller loops until `done`, which is also what makes an
+// interrupted run cost one page rather than the whole move.
+const REKEY_LIMIT = 200;
+
+async function rekeyToSegment(tctx, env, { confirm, families, limit, dryRun = true } = {}) {
+  const id = tctx && tctx.tenantId;
+  if (!id) return { ok: false, reason: "no-workspace" };
+  if (!env.BUNDLES) return { ok: false, reason: "no-store" };
+  const seg = bundleWorkspaceSegment(env, id).workspace;
+  // Nothing to do, and saying so is the honest answer rather than an error: a deployment
+  // that serves one workspace writes no segment, so its keys are already where it reads.
+  if (!seg) return { ok: true, done: true, reason: "no-segment", workspace: id };
+  if (!dryRun && confirm !== id) return { ok: false, reason: "confirm-mismatch", expected: id };
+
+  const want = Array.isArray(families) && families.length ? families : REKEY_DEFAULT_FAMILIES;
+  const unknown = want.filter((f) => !REKEY_FAMILIES.includes(f));
+  if (unknown.length) return { ok: false, reason: "unknown-family", unknown };
+
+  // The guard on "exactly one workspace". A second prefix in the bucket means somebody else
+  // is already here, and then no unprefixed key can be said to be this workspace's.
+  const held = await storeWorkspaceIds(env);
+  if (!held.complete) return { ok: false, reason: "incomplete-listing" };
+  const others = held.ids.filter((w) => w !== seg);
+  if (others.length) return { ok: false, reason: "not-the-only-workspace", others };
+
+  // Every unprefixed key this run would move, in the order the families were asked for.
+  const src = [];
+  const listAll = async (prefix, onKey) => {
+    let cursor;
+    do {
+      const page = await env.BUNDLES.list({ prefix, cursor, limit: 1000 });
+      for (const o of page.objects || []) onKey(o.key);
+      cursor = page.truncated ? page.cursor : null;
+      if (page.truncated && !page.cursor) throw new Error("incomplete-listing");
+    } while (cursor);
+  };
+  try {
+    if (want.includes("config")) await listAll("config/", (k) => src.push(k));
+    if (want.includes("spaces")) await listAll("spaces/", (k) => src.push(k));
+    if (want.includes("assets")) await listAll(ASSET_R2_PREFIX, (k) => src.push(k));
+  } catch (e) { return { ok: false, reason: "incomplete-listing" }; }
+
+  const cap = Number(limit) > 0 ? Math.min(Number(limit), REKEY_LIMIT) : REKEY_LIMIT;
+  const copied = [];
+  let skipped = 0, shared = 0, bytes = 0, pending = 0;
+  for (const key of src) {
+    const dest = bundleKey(key, seg);
+    // `spaces/_engine/…` and anything else the scheme leaves global. Counted rather than
+    // ignored, so a run says out loud how much it deliberately did not move.
+    if (dest === key) { shared++; continue; }
+    // Already there. This is what makes the run idempotent: a second run over a finished
+    // move copies nothing and answers `done`.
+    const there = env.BUNDLES.head ? await env.BUNDLES.head(dest) : await env.BUNDLES.get(dest);
+    if (there) { skipped++; continue; }
+    if (copied.length >= cap) { pending++; continue; }
+    if (dryRun) { copied.push(key); continue; }
+    const obj = await env.BUNDLES.get(key);
+    if (!obj) { skipped++; continue; } // vanished between the listing and now
+    const buf = await obj.arrayBuffer();
+    // The httpMetadata rides along or an image would come back as a download. The bytes are
+    // copied verbatim; nothing here parses or rewrites a manifest, which is why this is
+    // safe to re-run and why it cannot corrupt a document it does not understand.
+    await env.BUNDLES.put(dest, buf, obj.httpMetadata ? { httpMetadata: obj.httpMetadata } : undefined);
+    bytes += buf.byteLength;
+    copied.push(key);
+  }
+  // The isolate that ran this is serving from the old view until it re-reads.
+  if (!dryRun && copied.length) { bustManifests(id); cfgAt = 0; }
+  return {
+    ok: true, dryRun: !!dryRun, workspace: id, segment: BUNDLE_TENANT_PREFIX + seg + "/",
+    families: [...want], considered: src.length,
+    copied: copied.length, skipped, shared, bytes, pending,
+    // `done` is the caller's loop condition and it means what it says: nothing is left to
+    // move for the families asked for.
+    done: pending === 0,
+    keys: copied.slice(0, 20),
+  };
+}
+
 // ---- What a workspace volunteers about itself -------------------------------
 //
 // `B-tenant-status-payload`. The shape is FORCED rather than chosen: the control plane is
@@ -9930,6 +10061,7 @@ export const __testables = Object.freeze({
   exportState, importState,
   quotaBump, quotaMinute, quotaDay, workspaceStatus, touchWorkspaceActivity,
   deleteWorkspace, purgeDue, blobGc, clearFamilies, NEVER_CLEARED,
+  rekeyToSegment, REKEY_FAMILIES, REKEY_DEFAULT_FAMILIES, REKEY_LIMIT,
   capabilityRefusal, CAP_ROUTES,
   runScheduledHealth, adminHealthApi, HEALTH_REPORT_KEY,
   readFreeze, setFreeze, isFrozenWrite, FROZEN_WRITES, FREEZE_KEY,
