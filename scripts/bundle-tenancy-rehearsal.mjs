@@ -627,8 +627,10 @@ async function hostedPhase() {
     blobKeys.objects.map((o) => o.key).join("\n"));
   const engKeys = await r2({ op: "list", prefix: "", delimiter: undefined });
   const engineCopies = engKeys.objects.filter((o) => /(^|\/)spaces\/_engine\//.test(o.key)).map((o) => o.key);
-  check("⚠️ the engine chrome exists ONCE, outside every workspace prefix",
-    engineCopies.length === 1 && engineCopies[0] === "spaces/_engine/manifest.json", engineCopies.join("\n"));
+  check("⚠️ the engine chrome exists ONCE — every one of its keys is outside every workspace prefix",
+    engineCopies.length > 0 && engineCopies.every((k) => k.startsWith("spaces/_engine/"))
+      && engineCopies.filter((k) => k === "spaces/_engine/manifest.json").length === 1,
+    engineCopies.join("\n"));
   const swA = await req("/sw.js", hostA);
   const swB = await req("/sw.js", hostB);
   check("and both workspaces' chrome resolves to the same object",

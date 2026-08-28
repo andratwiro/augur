@@ -270,6 +270,35 @@ it. Assets mode is the local path (`augur dev`, `npm run offline`, a raw engine
 build), not a fallback a live instance can drop back to. Undoing a bad publish is
 `rollback` against the store's version history, not a serving-mode switch.
 
+**⏳ The store's keys carry the WORKSPACE on a deployment that resolves one from the
+Host.** `bundleKey` in `src/_worker.js` — `t/<workspace>/spaces/…`,
+`t/<workspace>/config/instance.json`, `t/<workspace>/assets/…`. It exists because not one
+`BUNDLES` key used to name a workspace: `config/instance.json` was one document for the
+whole bucket and `spaces/<id>/` named a SPACE, so two workspaces publishing a space under
+the same id wrote the same object and the commit CAS, the unpublish guard and the
+stale-base check all evaluated against a stranger's document. A gate cannot un-collide a
+key. **⚠️ `blobs/` and `spaces/_engine/` stay GLOBAL and SHARED, deliberately** — every blob
+write verifies the digest against the key, so a workspace can only write bytes that hash to
+the name it used and dedup is worth keeping; and one worker build serves every workspace, so
+one chrome bundle is correct rather than a leak. Prefix either by accident and you either
+break `blobGc` (which is written for a shared namespace on purpose) or take the chrome off
+every workspace on the deploy that does it. **Unset `TENANT_HOST_SUFFIX` — every instance
+running today — writes NO segment at all**: `bundleStore` returns the binding itself, so
+there is no new code between the worker and R2 and the keys are byte-for-byte the ones they
+have always been. **Which families take the segment is `BUNDLE_TENANCY`, one word each**,
+the same shape and the same per-family revert as `KV_CUTOVER`; writes go to BOTH keys while
+a flag is on, which is what makes flipping it back a revert rather than a rollback. **There
+is NO read-through fallback where the workspace comes from the Host** — an unprefixed key
+there belongs to whichever workspace the deployment served before the segment existed and
+nothing in the key says which — so a live workspace has to be MOVED:
+`augur bundle-rekey` → `POST /__publish/_state/rekey`, a server-side copy that is
+idempotent, dry-runnable, paged, and **never deletes the source**. It refuses outright once a
+second workspace holds a prefix. `test/bundle-tenancy.test.mjs` is the cheap filter;
+`scripts/bundle-tenancy-rehearsal.mjs` is the proof — real workerd, a real R2 bucket, two
+workspaces publishing the SAME space id over HTTP, the migration run, the disclosure probes
+re-run against invented labels, and the per-family revert run against a modified copy of the
+worker. Reach for the rehearsal before trusting a green suite about a key shape.
+
 **A publish may not silently unpublish.** The tree that publishes defines the
 whole space, so a checkout missing a folder REMOVES its public URLs for everyone —
 invisibly, because the gate answers a now-unknown path with the login page and
