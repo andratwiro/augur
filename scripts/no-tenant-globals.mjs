@@ -246,6 +246,8 @@ const ALLOWLIST = {
       "KV_CUTOVER",           // which identity families read from the workspace object; a deploy-wide fact, and one word per family is the revert
       "BUNDLE_TENANCY",       // which bundle-store families carry a workspace segment; the same shape, the same revert, and the same deploy-wide fact
       "IDENTITY_TENANCY",     // which identity KV documents carry a workspace segment; the same shape, the same revert, and the same deploy-wide fact
+      "IDENTITY_KV_FAMILIES", // which KV documents each identity family owns; the worker's own copy of the fact src/kv-identity.mjs also lists
+      "FIRST_RUN_COPY",       // the first-run page's placeholder words; one table so iterating on the copy touches nothing that routes
       "REKEY_FAMILIES",       // which of those families a re-key may be asked to move — the vocabulary of one route, identical for every workspace
       "REKEY_DEFAULT_FAMILIES", // and which it moves when asked for none
       "CAP_ROUTES",           // capability -> the routes it grants; deny-by-default, identical for every workspace

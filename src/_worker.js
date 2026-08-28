@@ -2084,6 +2084,84 @@ async function clearSessionKey(env, email, tctx) {
   } catch (e) { /* see rotateSessionKey: this must never undo a credential write */ }
 }
 
+// ---- The first-run surface ---------------------------------------------------
+// The landing destination after invite redemption, before any workspace content — shown
+// ONCE per person, ever. THE DELIVERABLE IS THE SLOT, NOT THE COPY: the routing here is
+// meant to outlive every rewrite of the page, so the words live in FIRST_RUN_COPY and
+// nothing below reads them.
+//
+// THE RECORD IS THE WORKSPACE'S, NEVER THE BROWSER'S. "Already seen" is a map in the
+// workspace's own store (`users:firstrun`, segmented per workspace like every identity
+// document), so a second device, a fresh cookie jar and a sign-out-and-back-in all agree
+// about it. A cookie would forget on the first new device, the page would show again,
+// and everyone would learn to click past it — the exact failure once-only exists to avoid.
+//
+// IT FAILS TOWARD "/" IN EVERY DEGRADED CASE — flag off, no store, unreadable store,
+// failed write. Two reasons, in order: this surface must never cost anybody a sign-in,
+// and once-only is the property that matters, so nothing is SHOWN that could not first be
+// RECORDED. Shown-but-unrecorded re-shows on the next device; recorded-but-unshown costs
+// one placeholder page nobody has read yet. The write therefore lands before the
+// redirect is issued, the same rotate-before-consume ordering redemption already uses.
+const FIRST_RUN_KEY = "users:firstrun"; // KV {email: ISO stamp of the first landing}
+const FIRST_RUN_PATH = "/__welcome";
+
+async function readFirstRunSeen(kv) {
+  try {
+    const raw = await kv.get(FIRST_RUN_KEY);
+    const parsed = raw ? JSON.parse(raw) : {};
+    // Same shape guard as readSessionKeys: an array passes `typeof === "object"` and
+    // would then miss every address at once.
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return null;
+    return parsed;
+  } catch (e) {
+    return null; // the caller lands on "/" — never re-show, never block
+  }
+}
+
+/**
+ * Where a just-completed redemption lands: FIRST_RUN_PATH the first time ever for this
+ * person, "/" every time after — and "/" in every case where the answer is uncertain.
+ *
+ * ⚠️ CALL THIS ONLY AFTER THE REDEMPTION HAS SUCCEEDED. It writes the once-only record,
+ * and a landing computed before the consume would mark a person seen on a redemption
+ * that then refused.
+ */
+async function firstRunLanding(tctx, env, email) {
+  if (!tctx || !tctx.FIRST_RUN || !email) return "/";
+  const kv = kvFor(env, tctx);
+  if (!kv) return "/";
+  const seen = await readFirstRunSeen(kv);
+  if (seen === null) return "/"; // bound but unreadable — do not risk a second showing
+  // Case-insensitive, like every other address comparison here: a roster entry whose
+  // case changed must not make the same person "new" again.
+  const addr = lcEmail(email);
+  if (Object.keys(seen).some((k) => lcEmail(k) === addr)) return "/";
+  seen[email] = new Date().toISOString();
+  try { await kv.put(FIRST_RUN_KEY, JSON.stringify(seen)); } catch (e) { return "/"; }
+  return FIRST_RUN_PATH;
+}
+
+/**
+ * Forget one address's first-run record, case-insensitively.
+ *
+ * Called when a person is REMOVED (a re-invited address is a new person to the
+ * workspace, so they get the surface again — the reason clearRole and clearName run
+ * there) and by purgeUser (the map keys an ADDRESS, so an erasure must take it).
+ * Best-effort, like clearSessionKey: it runs beside acts that already succeeded.
+ */
+async function clearFirstRunSeen(kv, email) {
+  const addr = lcEmail(email);
+  if (!kv || !addr) return;
+  try {
+    const seen = await readFirstRunSeen(kv);
+    if (!seen) return;
+    const hits = Object.keys(seen).filter((k) => lcEmail(k) === addr);
+    if (!hits.length) return;
+    for (const k of hits) delete seen[k];
+    await kv.put(FIRST_RUN_KEY, JSON.stringify(seen));
+  } catch (e) { /* the removal or erasure beside this already took effect */ }
+}
+
 // ---- Invite / reset tokens ---------------------------------------------------
 // One mechanism serves account setup and password recovery — they differ only in
 // wording. A token is single-use (consumed when a password is set), expires on its
@@ -2447,6 +2525,92 @@ function invitePage(tctx, token, error, email, passwordless = false) {
 </body></html>`;
 }
 
+// ⚠️ THE FIRST-RUN COPY LIVES HERE AND ONLY HERE. Iterating on what the page says means
+// editing these strings — the flag, the route and the once-only record neither read them
+// nor care. The content is DELIBERATELY PLACEHOLDER and the page says so out loud, so
+// nobody mistakes the slot for the welcome it will eventually hold.
+const FIRST_RUN_COPY = Object.freeze({
+  badge: "Placeholder",
+  title: "Welcome",
+  intro: "You&rsquo;re in — your account is set up, and everything here is yours to explore.",
+  placeholder: "This first-run page is a placeholder: the real welcome hasn&rsquo;t been written yet. It appears once, right after your invite is redeemed, and you won&rsquo;t see it again.",
+  cta: "Continue",
+});
+
+// GET FIRST_RUN_PATH — the first-run surface. Same card, same tokens, same mark as
+// loginPage and invitePage: a person meets the gate, the redemption page and this one
+// back to back, so drift between them reads as a phishing page rather than a redesign.
+function firstRunPage(tctx) {
+  const C = FIRST_RUN_COPY;
+  return `<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="robots" content="noindex, nofollow" />
+  <title>${C.title} — Augur</title>
+  <link rel="preload" href="/fonts/inter-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin />
+  <style>
+    /* Self-hosted Inter — KEEP IN SYNC with loginPage(); no external font request. */
+    @font-face { font-family: "Inter"; font-style: normal; font-weight: 100 900; font-display: swap; src: url("/fonts/inter-latin-wght-normal.woff2") format("woff2"); }
+    /* KEEP IN SYNC with loginPage() / invitePage() — same tokens, same card. */
+    :root {
+      --bg: #fbfbfd; --card: #ffffff; --fg: #16171a; --muted: #5b626e; --faint: #9aa0ab;
+      --line: rgba(16,17,26,0.09); --line-2: rgba(16,17,26,0.15);
+      --accent: #2c2150; --accent-solid: #2c2150;
+      color-scheme: light;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; min-height: 100vh; min-height: 100dvh; display: grid; place-items: center; padding: 24px;
+      font: 15px/1.55 "Inter", "Inter Variable", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      letter-spacing: -0.011em; background: var(--bg); color: var(--fg);
+      -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale;
+    }
+    .card {
+      background: var(--card); border: 1px solid var(--line); border-radius: 14px;
+      padding: 30px 30px 28px; max-width: 360px; width: 100%;
+      box-shadow: 0 1px 2px rgba(16,24,40,0.05), 0 10px 28px -22px rgba(16,24,40,0.22);
+    }
+    .logo { display: flex; justify-content: center; margin: 4px 0 24px; }
+    .logo svg, .logo img { width: 40px; height: 40px; display: block; }
+    .logo img { border-radius: 50%; object-fit: cover; }
+    /* The placeholder badge: text, never colour alone, so the page's provisional nature
+       survives every rendering. */
+    .badge {
+      display: inline-block; font-size: 11px; font-weight: 600; letter-spacing: 0.06em;
+      text-transform: uppercase; color: var(--muted); border: 1px dashed var(--line-2);
+      border-radius: 999px; padding: 2px 9px; margin: 0 0 12px;
+    }
+    h1 { font-size: 17px; font-weight: 600; letter-spacing: -0.015em; margin: 0 0 6px; }
+    p { font-size: 13.5px; color: var(--muted); margin: 0 0 10px; }
+    p.placeholder { color: var(--faint); font-style: italic; }
+    a.cta {
+      display: block; text-align: center; margin-top: 16px; font: inherit; font-weight: 600;
+      font-size: 15px; color: #fff; background: var(--accent-solid); text-decoration: none;
+      border: 1px solid transparent; border-radius: 9px; padding: 8px; cursor: pointer;
+      transition: background .12s ease;
+    }
+    a.cta:hover { background: #38295e; }
+    a.cta:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+    @media (max-width: 420px) { .card { padding: 26px 22px; } }
+    @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+  </style>
+</head>
+<body>
+  <main class="card">
+    <div class="logo">
+      ${brandMark(tctx)}
+    </div>
+    <span class="badge">${C.badge}</span>
+    <h1>${C.title}</h1>
+    <p>${C.intro}</p>
+    <p class="placeholder">${C.placeholder}</p>
+    <a class="cta" href="/" autofocus>${C.cta}</a>
+  </main>
+</body></html>`;
+}
+
 async function inviteGet(tctx, url, env) {
   const token = url.searchParams.get("t") || "";
   const email = await readInvite(tctx, env, token);
@@ -2487,10 +2651,14 @@ async function inviteRedeemSession(tctx, token, env, users) {
   // answer with the previous map for up to a minute of edge cache, and a cookie minted
   // on the stale value dies on its very first request — with nothing saying why.
   const token2 = await userToken(env, u, rot.key, true, tctx);
+  // Where a SUCCESSFUL redemption lands. After the consume on purpose: the landing
+  // records the once-only first-run showing, and a refused redemption must record
+  // nothing. "/" whenever the first-run flag is off or the surface has been seen.
+  const landing = await firstRunLanding(tctx, env, u.email);
   return new Response(null, {
     status: 303,
     headers: {
-      Location: "/",
+      Location: landing,
       "Set-Cookie": `${USER_COOKIE}=${u.email}.${token2}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=${MAX_AGE}`,
       "Cache-Control": "no-store",
     },
@@ -2541,10 +2709,13 @@ async function invitePost(tctx, request, url, env, users = tctx.USERS) {
     // credential while identify() checks against the session key, and the person is
     // signed out on their very next request — with nothing saying why.
     const token2 = await userToken(env, u, undefined, tctx.SESSION_KEYS, tctx);
+    // Same landing decision as inviteRedeemSession, for the same reason and in the same
+    // place: after the redemption has succeeded, never before.
+    const landing = await firstRunLanding(tctx, env, u.email);
     return new Response(null, {
       status: 303,
       headers: {
-        Location: "/",
+        Location: landing,
         "Set-Cookie": `${USER_COOKIE}=${u.email}.${token2}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=${MAX_AGE}`,
         "Cache-Control": "no-store",
       },
@@ -2834,6 +3005,10 @@ const IDENTITY_KV_FAMILIES = Object.freeze({
   // Per-person session-binding keys. Inert on a deployment that has not turned
   // `SESSION_KEYS` on — `sessionBinding` reads nothing at all there.
   sessionkeys: Object.freeze(["users:sessionkeys"]),
+  // The once-per-person first-run record. Segmented for the same reason lastseen is: a
+  // person joining a SECOND workspace is new to that one, and one workspace's welcome
+  // must not mark them seen in another.
+  firstrun: Object.freeze([FIRST_RUN_KEY]),
   // Addresses a provider told us to stop mailing. `to: "workspace"` in the inventory, and
   // it is a promise not to mail somebody again rather than a cache.
   mail: Object.freeze(["mail:suppressed"]),
@@ -2853,6 +3028,7 @@ const IDENTITY_TENANCY = Object.freeze({
   avatars: true,
   icons: true,
   sessionkeys: true,
+  firstrun: true,
   mail: true,
 });
 
@@ -6376,6 +6552,9 @@ async function purgeUser(store, ident, kv, users, email) {
   // the other one is the answer.
   try { if (ident) await ident.lastseenForget(addr); } catch (e) {}
   try { if (kv) await kv.delete(LASTSEEN_PREFIX + addr); } catch (e) {}
+  // The first-run record keys an address too — erased for the same reason, best-effort
+  // on the store that holds it (clearFirstRunSeen matches case-insensitively).
+  try { if (kv) await clearFirstRunSeen(kv, addr); } catch (e) {}
 
   return { ok: true, id, redacted, pathsTouched, scanned };
 }
@@ -9807,6 +9986,9 @@ async function adminUsersApi(tctx, request, url, env, me, users = tctx.USERS, co
       // …nor their spaces, least of all one they administered.
       try { await clearSpaces(env, email, tctx); } catch (e) {}
       try { await kv.delete(LASTSEEN_PREFIX + u.email); } catch (e) {}
+      // …and the first-run record: a re-invited address is a new person to the
+      // workspace, so they get the first-run surface again.
+      try { await clearFirstRunSeen(kv, u.email); } catch (e) {}
       // …and from the object, where the family is now read. Both, for revokeInvitesFor's
       // reason: a stamp left in one store comes back the moment the other is the answer.
       try {
@@ -10426,6 +10608,20 @@ async function handleRequest(request, env, ctx, url, trace) {
       });
     }
 
+    // The first-run surface — where an invite redemption LANDS the first time, ever
+    // (firstRunLanding decides, and records before it redirects). Dispatched ONLY when
+    // the instance opted in: with FIRST_RUN off this branch does not exist and the path
+    // answers exactly what it answered before the flag did. Self-guarding like /__me:
+    // on a deployment with members, a stranger is bounced to "/" where the gate already
+    // knows what to say.
+    if (tctx.FIRST_RUN && url.pathname === FIRST_RUN_PATH) {
+      if (request.method !== "GET") return new Response("Method Not Allowed", { status: 405 });
+      if (usersActive && !me) {
+        return new Response(null, { status: 303, headers: { Location: "/", "Cache-Control": "no-store" } });
+      }
+      return htmlResponse(firstRunPage(tctx), 200);
+    }
+
     // Sign out — clear the identity cookie and bounce home.
     if (url.pathname === "/__logout") {
       const out = new Headers({ Location: "/", "Cache-Control": "no-store" });
@@ -10746,6 +10942,8 @@ export const __testables = Object.freeze({
   peopleApi,
   tokenFor, hmacToken, userToken, identify, effectiveSecret,
   sessionBinding, rotateSessionKey, clearSessionKey, SESSION_KEYS_KEY,
+  FIRST_RUN_KEY, FIRST_RUN_PATH, FIRST_RUN_COPY, firstRunLanding, firstRunPage,
+  readFirstRunSeen, clearFirstRunSeen,
   mintInvite, readInvite, consumeInvite, touchLastSeen,
   // B-kv-read-cutover: which identity families read from the workspace object, and the
   // accessor that answers. Exported so test/kv-read-cutover.test.mjs can assert the

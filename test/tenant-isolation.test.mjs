@@ -111,6 +111,10 @@ function instanceDoc(n) {
     // Varied with userImages rather than against it, so a comparison that read the wrong
     // field would still have to be wrong about something.
     sessionKeys: n.charCodeAt(0) % 2 === 0,
+    // Where this workspace's invite redemptions LAND the first time — per workspace for
+    // the same reason sessionKeys is (the flag moves a redirect on the auth surface), and
+    // varied with devicePairing, against the two above.
+    firstRun: n.charCodeAt(0) % 2 !== 0,
     // How long this workspace's publish tokens live. A number rather than a flag, and one
     // a workspace legitimately sets for itself — a demo with a published password wants a
     // shorter one than a private instance.

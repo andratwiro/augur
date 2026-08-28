@@ -654,6 +654,19 @@ name, initials, colour and role. Passwords live in KV as PBKDF2 hashes under
   burn every scanned invite unread). Password sign-in on `/__auth` keeps working
   unchanged for anyone who has one — the flag ADDS a way in, it removes none. Flag off:
   the invite flow is byte-for-byte what predates it.
+- **⚠️ `FIRST_RUN` moves where a successful redemption LANDS, once per person, ever.**
+  With the instance flag on (`firstRun: true`, explicit true only), the first invite a
+  person ever redeems 303s to `/__welcome` — a deliberately placeholder surface whose
+  words live in `FIRST_RUN_COPY` and nowhere else — and every redemption after lands on
+  `/` as always. The once-only record is the WORKSPACE'S (`users:firstrun`, segmented
+  like every identity document), never a cookie: a second device and a sign-out agree
+  about it. It is written BEFORE the redirect is issued, and every degraded case — flag
+  off, no store, unreadable store, failed write — lands on `/`: nothing is SHOWN that
+  could not first be RECORDED, and the surface must never cost anybody a sign-in.
+  `/__auth` never routes there, so an existing member's sign-in is untouched; removal
+  and purge both clear the record (a re-invited address is a new person). Flag off: the
+  path answers exactly what it answered before the flag existed, and no read or write
+  happens at all.
 - **⚠️ `identify()` resolves the effective secret ONCE and passes it to the token
   derivation.** Re-resolving inside `userToken` is not atomic with the guard above: a
   truthy first read passes the guard while a later read returns `""`, and the

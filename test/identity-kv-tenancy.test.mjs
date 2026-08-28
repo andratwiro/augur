@@ -490,7 +490,7 @@ async function revertedWorker(family, table = "IDENTITY_TENANCY") {
   return mod;
 }
 
-for (const family of ["roster", "publishTokens", "icons", "invites", "lastseen", "spaces", "avatars", "sessionkeys", "mail"]) {
+for (const family of ["roster", "publishTokens", "icons", "invites", "lastseen", "spaces", "avatars", "sessionkeys", "firstrun", "mail"]) {
   test(`REVERTING \`${family}\` sends that family's keys back, and touches nothing else`, async () => {
     const mod = await revertedWorker(family);
     const T = mod.__testables;
