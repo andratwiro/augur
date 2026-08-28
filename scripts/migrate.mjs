@@ -101,6 +101,15 @@ log(`working directory: ${OUT}`);
 //    Waiting the cache out is the whole fix and it costs eleven seconds of a migration
 //    somebody scheduled. Shortening the TTL instead would put a KV read in front of every
 //    write on every instance forever, to save eleven seconds on an operation run by hand.
+//
+//    ⚠️ AND A FREEZE DOES NOT STOP CANVAS EDITING. `isFrozenWrite` exempts GET, and a
+//    WebSocket upgrade is a GET, so `/__rt` stays open for the whole window: somebody with
+//    a board open can go on moving nodes, pasting images and renaming it while this runs,
+//    and every one of those edits lands in a room on the instance being retired. The `/__board`
+//    KV rail IS frozen, so what they cannot do is make the mirror this export reads catch
+//    up. That is why the board step below reads the ROOM and why it is allowed to refuse:
+//    an `unstable` read means somebody is editing right now, and the answer is to find them,
+//    not to force it.
 const FREEZE_SETTLE_MS = 11_000;
 if (FREEZE && !DRY) {
   await step("freeze the source", "freeze.mjs",
@@ -154,11 +163,81 @@ if (diffs.length || missingAssets.length) {
     + `  The source is untouched and still frozen. Run this again — it is safe to repeat.`);
 }
 
+// 4b. THE ONE FAMILY THE COMPARISON ABOVE CANNOT JUDGE, and the reason it gets its own step.
+//
+// ⚠️ `board:` IS A MIRROR ON BOTH SIDES. The export reads the KV document a room writes on
+// a dirty alarm; the target's export reads the copy this migration just wrote there. So the
+// two agree the instant the restore lands, and they agree just as readily when the document
+// is nodes behind the room that owns it — which is the normal state of a live board, not an
+// edge case. Measured on a real instance with nobody editing: the mirror held 21 nodes and
+// the room held 24. A verification that says "every family matches" over that is telling the
+// truth about the copy and the wrong thing about the board, and it is the only step of this
+// command that can be green while data is being dropped.
+//
+// So the boards move over a SOCKET, from the room that owns them into the room that will.
+// `board-snapshot move` is that operation, it reads the truth and proves the seed landed,
+// and it never deletes the source. One process per board so a failure names its board.
+//
+// It can legitimately refuse: a board somebody is editing right now reads as `unstable`,
+// and the freeze does NOT stop that — a WebSocket upgrade is a GET, so `/__rt` is open for
+// the whole window. That refusal is the correct answer and it is why this is a step rather
+// than a footnote.
+//
+// AND IT IS SKIPPED, CORRECTLY, ON A DEPLOYMENT WITH NO ROOMS AT ALL. There, no room ever
+// wrote the mirror, so the KV document IS the board and the copy already carried the whole
+// of it. `/__rt` says which: 501 `realtime-not-configured` from a deployment that binds no
+// rooms and names no realtime origin, 426 `expected-websocket` from one that does. A plain
+// GET is enough to ask, which keeps this off the socket path entirely.
+const hasRooms = async (origin) => {
+  try {
+    const r = await fetch(`${origin}/__rt?path=/`, { headers: { Accept: "application/json" } });
+    return r.status !== 501;
+  } catch (e) { return true; } // cannot tell ⇒ do not skip the step that protects the data
+};
+
+const boardPaths = Object.keys((before.families || {})["board:"] || {});
+if (boardPaths.length && !(await hasRooms(FROM))) {
+  log(`${boardPaths.length} canvas board(s): ${FROM} serves no rooms, so the KV document is the `
+    + `whole board and the copy carried it. Nothing to move over a socket.`);
+} else if (boardPaths.length && !(await hasRooms(TO))) {
+  // The one case that is neither a pass nor a retry: the source's boards live in rooms and
+  // the target has nowhere to put them. Restoring the mirror leaves boards that are as
+  // stale as the mirror was and that no room will ever correct.
+  die(`${boardPaths.length} board(s) live in rooms on ${FROM}, and ${TO} has no realtime configured.\n`
+    + `  What landed there is the KV MIRROR, which is not the board. Configure realtime on the\n`
+    + `  target (a ROOMS binding, or rtOrigin in its deploy config) and run this again.`);
+} else if (boardPaths.length) {
+  log(`\x1b[1mmove ${boardPaths.length} canvas board(s) from the room, not the mirror\x1b[0m`);
+  const failedBoards = [];
+  for (const p of boardPaths) {
+    const code = await new Promise((resolve) => {
+      spawn(process.execPath, [path.join(SCRIPTS, "board-snapshot.mjs"), "move",
+        "--from", FROM, "--to", TO, "--path", p], { stdio: "inherit", env: process.env })
+        .on("close", resolve);
+    });
+    if (code !== 0) failedBoards.push(p);
+  }
+  if (failedBoards.length) {
+    die(`${failedBoards.length} board(s) did not move: ${failedBoards.join(", ")}.\n`
+      + `  The content and the state DID land — only these boards are still on the source, and\n`
+      + `  what ${TO} holds for them is the stale KV mirror, which is not the board. Fix and re-run;\n`
+      + `  a board move is safe to repeat and never removes the source.`);
+  }
+  console.log(`  \x1b[32m✓\x1b[0m ${"canvas boards".padEnd(22)} ${boardPaths.length} moved from the room`);
+}
+
 const mins = ((Date.now() - started) / 60000).toFixed(1);
 log(`\x1b[32mevery family matches\x1b[0m — ${Object.keys(before.families).length} famil(y/ies), ${(before.assets || []).length} image(s)`);
 console.log("");
 console.log(`  ${TO} now holds what ${FROM} holds.`);
 console.log(`  Copy took ${mins} minutes. The source is ${FREEZE ? "still FROZEN" : "still accepting writes"}.`);
+console.log("");
+// THE ONE THING THAT DID NOT COME, stated in the success report rather than in a doc.
+// A restore does not replay publish history, so the target starts at v1 per space; saying
+// it here is the difference between a known trade and a discovery mid-incident.
+console.log("\x1b[33m  Publish history did not come with it: every space on the target is at");
+console.log(`  version 1, so \`augur rollback\` there reaches nothing. The archive is on disk`);
+console.log(`  under ${OUT}/versions/ and ${FROM} still holds the live history until it is retired.\x1b[0m`);
 console.log("");
 console.log("  Next, in this order, by hand:");
 console.log(`    1. look at ${TO} and decide`);

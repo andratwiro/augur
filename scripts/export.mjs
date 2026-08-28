@@ -1,7 +1,11 @@
 // export.mjs — take an off-Cloudflare copy of the bundle store.
 //
 //   augur export --out <dir>            the live state of every space + engine chrome
-//   … --history                         every retained version's manifest and blobs too
+//   … --history                         every retained version's manifest and blobs too.
+//                                       ⚠️ A RESTORE DOES NOT REPLAY IT — see restore.mjs.
+//                                       This is an archive of what each past publish was,
+//                                       readable off disk; it does not rebuild the far
+//                                       side's rollback history.
 //   … --space <id>                      one space only
 //   … --full                            AND everything that is not published content:
 //                                       the roster, invites, publish tokens, statuses,
@@ -45,9 +49,40 @@
 //
 // See `docs/2026-08-09-bundle-store-recovery.md`.
 
-import { mkdir, writeFile, readdir } from "node:fs/promises";
+import { mkdir, writeFile, readFile, readdir, rename, unlink, stat } from "node:fs/promises";
 import path from "node:path";
 import { target, apiClient, buildStamp, idsFromStamp } from "./lib/store.mjs";
+
+/**
+ * Write a content-addressed file so that it is either absent or COMPLETE, never short.
+ *
+ * ⚠️ THIS IS WHAT MAKES THE RESUME SAFE, and without it the skip logic below is a lie.
+ * `writeFile` of a multi-megabyte buffer is several `write(2)` calls; a process killed
+ * between two of them leaves a file with the right NAME and the wrong bytes. The next run
+ * sees the name, skips it — "a hash that is present is by definition the right bytes" —
+ * and every run after that reports a complete copy. Nothing finds it until a restore, and
+ * a restore is exactly the moment nobody wants to find it.
+ *
+ * A rename within one directory is atomic on every filesystem this runs on, so the visible
+ * name never refers to a partial file. The `.part` is swept at startup, not left to rot.
+ */
+async function writeAtomic(file, buf) {
+  const tmp = `${file}.part`;
+  await writeFile(tmp, buf);
+  await rename(tmp, file);
+}
+
+/** Leftovers from a killed run: named so they can never be mistaken for a finished blob. */
+async function sweepPartials(dir) {
+  let names = [];
+  try { names = await readdir(dir); } catch (e) { return 0; }
+  let n = 0;
+  for (const f of names) {
+    if (!f.endsWith(".part")) continue;
+    try { await unlink(path.join(dir, f)); n++; } catch (e) {}
+  }
+  return n;
+}
 
 const log = (msg) => console.error(`\x1b[36m[export]\x1b[0m ${msg}`);
 const die = (msg) => { log(msg); process.exit(1); };
@@ -66,6 +101,13 @@ try { ({ origin, token } = target()); } catch (e) { die(e.message); }
 const req = apiClient(origin, token);
 
 const started = Date.now();
+// ⚠️ STAMPED BEFORE THE FIRST READ, never after the last one. `restore` refuses to bury
+// live content published after this moment, so this has to be the moment the copy started
+// describing the instance. Stamped at the END, a publish that landed DURING the export —
+// after its manifest was read, before the copy finished — carries a `publishedAt` EARLIER
+// than the copy's own, and the guard waves the restore through as if the copy were newer.
+// The window is the whole length of the export, which on a real instance is minutes.
+const exportedAt = new Date(started).toISOString();
 log(`${origin} → ${OUT}${HISTORY ? " (with history)" : ""}${FULL ? " (with workspace state)" : ""}`);
 
 const stamp = await buildStamp(origin);
@@ -74,10 +116,21 @@ const ids = (ONE ? [ONE] : idsFromStamp(stamp));
 await mkdir(path.join(OUT, "manifests"), { recursive: true });
 await mkdir(path.join(OUT, "blobs"), { recursive: true });
 
-// Blobs already on disk from an earlier run. Content addressing makes this a safe
-// skip: a hash that is present is by definition the right bytes.
-const have = new Set();
-try { for (const f of await readdir(path.join(OUT, "blobs"))) have.add(f); } catch (e) {}
+// Blobs already on disk from an earlier run, WITH THEIR SIZES. Content addressing makes
+// the skip safe only for a file that is whole: a hash that is present is the right bytes
+// as long as all of them are there, and the manifest records how many that is. So the
+// resume compares the size it finds against the size the manifest declares and re-fetches
+// anything short — which costs one `stat` per blob and closes the one way a resumed copy
+// could report success over bytes a killed run left half-written.
+const partials = await sweepPartials(path.join(OUT, "blobs"));
+if (partials) log(`\x1b[33mswept ${partials} half-written blob(s) from an interrupted run\x1b[0m`);
+const have = new Map();
+try {
+  for (const f of await readdir(path.join(OUT, "blobs"))) {
+    if (f.endsWith(".part")) continue;
+    try { have.set(f, (await stat(path.join(OUT, "blobs", f))).size); } catch (e) {}
+  }
+} catch (e) {}
 if (have.size) log(`${have.size} blobs already present — downloading only what's new`);
 
 // hash → { s: byte size, via: a space id whose manifest references it }.
@@ -122,7 +175,19 @@ for (const id of ids) {
   log(`${id}: ${versions.length} historical version(s)`);
 }
 
-const todo = [...wanted.keys()].filter((h) => !have.has(h));
+// A blob counts as present only if it is present AND the right length. A recorded size of
+// zero means the manifest does not say, and there is nothing to check it against.
+const short = [];
+const todo = [...wanted.keys()].filter((h) => {
+  if (!have.has(h)) return true;
+  const want = wanted.get(h).s;
+  if (want && have.get(h) !== want) { short.push(h); return true; }
+  return false;
+});
+if (short.length) {
+  log(`\x1b[33m⚠ ${short.length} blob(s) on disk are the wrong length — re-fetching. `
+    + `An earlier copy in this directory was INCOMPLETE and reported success.\x1b[0m`);
+}
 const bytes = todo.reduce((n, h) => n + wanted.get(h).s, 0);
 log(`${wanted.size} blobs referenced, ${todo.length} to fetch (${(bytes / 1e6).toFixed(1)} MB)`);
 
@@ -134,7 +199,7 @@ await Promise.all(Array.from({ length: 8 }, async () => {
     for (let attempt = 0; ; attempt++) {
       try {
         const buf = Buffer.from(await (await req(`${wanted.get(h).via}/blob/${h}`)).arrayBuffer());
-        await writeFile(path.join(OUT, "blobs", h), buf);
+        await writeAtomic(path.join(OUT, "blobs", h), buf);
         done++;
         if (done % 200 === 0) log(`${done}/${todo.length} blobs…`);
         break;
@@ -172,17 +237,35 @@ if (FULL) {
   // The canvas images the rows point at. Their bytes are in R2 under a different prefix
   // from the published blobs, so the blob walk above never sees them.
   await mkdir(path.join(OUT, "assets"), { recursive: true });
+  await sweepPartials(path.join(OUT, "assets"));
   const already = new Set();
-  try { for (const f of await readdir(path.join(OUT, "assets"))) already.add(f); } catch (e) {}
+  try { for (const f of await readdir(path.join(OUT, "assets"))) { if (!f.endsWith(".part")) already.add(f); } } catch (e) {}
+
+  // WHAT TYPE OF IMAGE EACH ONE IS, kept beside the bytes.
+  //
+  // The hash addresses the bytes and says nothing about how to serve them. The instance
+  // holds the type separately (R2 object metadata), the restore endpoint takes it from the
+  // request's `content-type` header, and a PUT that sends none is stored as `image/jpeg` —
+  // so without this every restored PNG, GIF and WebP arrives declared as a JPEG, cached
+  // `immutable` for a year, on the far side of a migration that reported every image
+  // present. It is a sidecar rather than a field on `state.json` because two of the three
+  // places an image can live carry no metadata row at all (see the export endpoint), and
+  // the response header is the one answer that exists for all three.
+  let types = {};
+  try { types = JSON.parse(await readFile(path.join(OUT, "assets.json"), "utf8")); } catch (e) {}
   const hashes = (doc.assets || []).filter((h) => !already.has(h));
   let assetFail = 0;
   for (const h of hashes) {
     try {
-      const buf = Buffer.from(await (await req(`_state/asset/${h}`)).arrayBuffer());
-      await writeFile(path.join(OUT, "assets", h), buf);
+      const res = await req(`_state/asset/${h}`);
+      const ct = (res.headers.get("content-type") || "").split(";")[0].trim();
+      const buf = Buffer.from(await res.arrayBuffer());
+      await writeAtomic(path.join(OUT, "assets", h), buf);
+      if (ct) types[h] = ct;
     } catch (e) { assetFail++; log(`asset ${h.slice(0, 12)} failed: ${e.message}`); }
   }
   if (assetFail) die(`${assetFail} canvas image(s) failed — this copy is INCOMPLETE, do not trust it for restore.`);
+  await writeFile(path.join(OUT, "assets.json"), JSON.stringify(types), "utf8");
   state = {
     families: Object.keys(doc.families || {}).length,
     absent: (doc.absent || []).length,
@@ -194,7 +277,8 @@ if (FULL) {
 await writeFile(path.join(OUT, "export.json"), JSON.stringify({
   format: 1,
   origin,
-  exportedAt: new Date().toISOString(),
+  exportedAt,
+  finishedAt: new Date().toISOString(),
   history: HISTORY,
   // `full: false` is written, not omitted: a restore that could not tell a content-only
   // copy from a full one would report "no state to replay" for both.

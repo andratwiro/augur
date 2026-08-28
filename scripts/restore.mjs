@@ -14,6 +14,15 @@
 // the restored state arrives on top. That is deliberate: a restore run by mistake
 // is then undone by `rollback`, not by another restore.
 //
+// ⚠️ AND THE COPY'S OWN HISTORY IS NOT REPLAYED EITHER. `augur export --history` walks
+// every retained version's manifest and downloads every blob any of them referenced; this
+// command reads none of it. The target ends up holding ONE version — the restored one —
+// whatever the copy carries, so a workspace that arrives by restore or by `augur migrate`
+// can be rolled back exactly zero publishes. Said out loud at the end of a run rather than
+// discovered on the day somebody needs to roll one back. The archive is still worth
+// taking: the manifests under `versions/` name every file of every past publish and the
+// blobs are all on disk, so a specific past publish can be reconstructed by hand.
+//
 // Provenance survives. The manifest carries `source` (the space repo sha and the
 // dirty flag) through unchanged, so a restored site still reports honestly in
 // /_build.json what it was built from — including that it came from a working tree
@@ -71,7 +80,14 @@ try {
   const stamp = await buildStamp(origin);
   live = { ...stamp.spaces, _engine: stamp.engine };
 } catch (e) {
-  log("could not read the live build stamp (an empty store looks like this) — proceeding");
+  // ⚠️ NAMED AS A GUARD THAT IS OFF, not as a shrug. An empty store is the expected reason
+  // and it is not the only one — a target behind a 500, a wrong origin, a CDN serving an
+  // error for `/_build.json` all land here, and in every one of those cases the next few
+  // lines will publish over whatever is live without ever comparing dates. "Proceeding" on
+  // its own reads as "nothing to worry about", which is true exactly once.
+  log("\x1b[33m⚠ could not read the live build stamp at " + origin + " — an EMPTY STORE looks "
+    + "like this, and so does a target that is merely unreachable. The newer-than-this-copy "
+    + "guard is OFF for this run: nothing will stop a restore burying live content.\x1b[0m");
 }
 
 let restored = 0;
@@ -84,8 +100,35 @@ for (const id of ids) {
 
   const now = live[id];
   if (now && now.publishedAt && meta.exportedAt && now.publishedAt > meta.exportedAt && !FORCE) {
-    die(`${id}: live content (published ${now.publishedAt}) is NEWER than this copy (${meta.exportedAt}). ` +
-        `Restoring would bury it. Re-run with --force if that is what you mean.`);
+    // ⚠️ "NEWER" IS NOT THE QUESTION — "DIFFERENT" IS, and the difference is what makes a
+    // re-run possible. A restore stamps `publishedAt` at the moment it commits, so its own
+    // result is by definition newer than the copy that produced it. Read literally, the date
+    // guard therefore fires on the SECOND run of any restore — including the one an operator
+    // makes after a run that died halfway, and including `augur migrate`'s, which passes no
+    // `--force` and whose header promises re-running is safe. It was not: a migration that
+    // failed after committing one space of two could not be repeated at all.
+    //
+    // So when the date says bury, ask what would be buried. The live manifest's file map
+    // against this copy's: identical means live IS this copy and there is nothing to lose.
+    // Anything else and the guard stands exactly as it did.
+    // Compared on the CONTENT ADDRESSING and nothing else — path → hash, sorted. The rest
+    // of a file's record is server-assigned: the commit handler stamps `{by, editedAt}` on
+    // every file whose bytes changed, so a live manifest is never field-for-field equal to
+    // the copy that produced it even when every byte it serves came from there. Comparing
+    // whole records would make this recognise nothing and re-runs would stay broken.
+    const addressing = (files) => JSON.stringify(
+      Object.keys(files || {}).sort().map((p) => [p, (files[p] || {}).h]),
+    );
+    let same = false;
+    try {
+      const liveManifest = await (await req(`${id}/manifest`)).json();
+      same = addressing(liveManifest.files) === addressing(m.files);
+    } catch (e) { /* cannot read it ⇒ cannot claim it is the same ⇒ refuse below */ }
+    if (!same) {
+      die(`${id}: live content (published ${now.publishedAt}) is NEWER than this copy (${meta.exportedAt}) ` +
+          `and its files DIFFER from it. Restoring would bury it. Re-run with --force if that is what you mean.`);
+    }
+    log(`${id}: live is newer than this copy but byte-identical to it — this is a re-run, continuing`);
   }
 
   // Ask the store which blobs it is missing, then send only those.
@@ -137,6 +180,7 @@ for (const id of ids) {
 // to have landed: a workspace with its pages back and its comments missing is recoverable
 // by re-running this, and the other way round is a site serving nothing.
 let stateReport = null;
+let boardPaths = [];
 if (STATE) {
   if (!meta.full) {
     die("--state needs a copy taken with `augur export --full`; this one carries content only.");
@@ -148,17 +192,37 @@ if (STATE) {
   // The canvas images first. A board that references an image the store does not have
   // renders a hole, and the board doc is what arrives in the same breath.
   const hashes = doc.assets || [];
+  // The type each image was served as, recorded by the export beside the bytes. The
+  // endpoint takes the type from THIS HEADER and stores anything that is not an image type
+  // as `image/jpeg` — so a PUT that sends none silently re-labels every PNG, GIF and WebP
+  // on the way in, and content addressing cannot notice because the bytes are right. An
+  // older copy has no sidecar; it keeps the old behaviour and says so.
+  let types = {};
+  try { types = JSON.parse(await readFile(path.join(DIR, "assets.json"), "utf8")); } catch (e) {}
+  const untyped = hashes.filter((h) => !types[h]);
+  if (untyped.length) {
+    log(`\x1b[33m⚠ ${untyped.length} of ${hashes.length} image(s) carry no recorded content type `
+      + `(a copy taken before assets.json existed) — they will be stored as image/jpeg. `
+      + `Re-run \`augur export --full\` against the source to record them.\x1b[0m`);
+  }
   let sent = 0, missing = 0;
   for (const h of hashes) {
     const blob = path.join(DIR, "assets", h);
     if (!existsSync(blob)) { missing++; log(`image ${h.slice(0, 12)} is not in this export`); continue; }
     if (DRY) { sent++; continue; }
-    try { await req(`_state/asset/${h}`, { method: "PUT", body: await readFile(blob) }); sent++; }
-    catch (e) { missing++; log(`image ${h.slice(0, 12)} failed: ${e.message}`); }
+    try {
+      await req(`_state/asset/${h}`, {
+        method: "PUT",
+        body: await readFile(blob),
+        ...(types[h] ? { headers: { "content-type": types[h] } } : {}),
+      });
+      sent++;
+    } catch (e) { missing++; log(`image ${h.slice(0, 12)} failed: ${e.message}`); }
   }
   if (missing) die(`${missing} canvas image(s) missing or failed — nothing replayed, live state untouched.`);
 
   const families = Object.keys(doc.families || {});
+  boardPaths = Object.keys((doc.families || {})["board:"] || {});
   log(`workspace state: ${families.length} famil(y/ies), ${hashes.length} image(s)`);
   if (!DRY) {
     const res = await (await req("_state/import", {
@@ -177,4 +241,21 @@ console.log(`${origin}  ${restored} space(s) restored`
   + (stateReport ? `, ${stateReport.written.length} state famil(y/ies) replayed` : ""));
 if (!STATE && meta.full) {
   log("\x1b[33mthis copy also carries the roster, comments, boards and pins — pass --state to replay them\x1b[0m");
+}
+
+// ── the two things a restore does NOT put back, said every time ──────────────
+// Both are silent by nature: the site comes up, everything anybody looks at is there, and
+// what is missing is only missing the day somebody reaches for it. A line each is cheap.
+if (meta.history) {
+  log("\x1b[33m⚠ this copy carries publish HISTORY and a restore does not replay it — "
+    + `${origin} now holds one version per space, so \`augur rollback\` reaches nothing. `
+    + "The archive is intact on disk under versions/.\x1b[0m");
+}
+if (stateReport && boardPaths.length) {
+  log(`\x1b[33m⚠ ${boardPaths.length} canvas board(s) came from the KV MIRROR, which lags the `
+    + "room that owns them and has been measured minutes behind. Nothing here read the room. "
+    + "Per board, against the SOURCE, before you trust this:\x1b[0m");
+  for (const p of boardPaths) {
+    log(`    node scripts/board-snapshot.mjs move --from ${meta.origin || "<source>"} --to ${origin} --path ${p}`);
+  }
 }

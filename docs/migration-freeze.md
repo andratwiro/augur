@@ -82,3 +82,67 @@ real one in whatever you told them.
   and move it there rather than freezing the neighbours.
 - **A freeze is not a backup.** It stops new writes; it does not make the copy you already
   took any more complete. Take the copy AFTER freezing, not before.
+
+## What the copy does not carry, and what a cutover has to do about it
+
+`augur migrate` reports "every family matches" by reading the target back through its own
+export and diffing it against the source's. That is the right check and it is not the whole
+check, because three things are outside what any comparison of two exports can see. They
+were found by attacking this path rather than by exercising it, and each is a step rather
+than a caveat. `test/export-adversarial.test.mjs` holds the repeatable half.
+
+**A board does not travel in the export, and the verification cannot tell.** The export
+reads the `board:` documents out of KV, and KV holds a MIRROR that the room writes on a
+dirty alarm. The target's export reads the copy the restore just wrote there. So the two
+sides agree whether or not the mirror was current — and the normal state of a live board is
+that it is not. Measured on a live instance with nobody editing: the mirror held 21 nodes,
+the room held 24. `migrate` therefore moves each board over a WebSocket with
+`board-snapshot move` after the family diff, and fails if one will not move. Doing it by
+hand, that is one command per board, and `board-snapshot lag` first:
+
+```bash
+node scripts/board-snapshot.mjs lag  --origin https://old --path /some/board/
+node scripts/board-snapshot.mjs move --from https://old --to https://new --path /some/board/
+```
+
+`lag` reports NODES OUTSTANDING, not seconds. Wait on that number reaching zero; never on a
+clock, because the mirror can be much further behind than its cadence implies.
+
+**A freeze does not stop canvas editing.** `isFrozenWrite` exempts GET and a WebSocket
+upgrade is a GET, so `/__rt` stays open for the whole window. Somebody with a board open
+can go on moving nodes and pasting images while the migration runs, into a room on the
+instance being retired. The `/__board` KV rail *is* frozen, so those edits cannot even
+reach the mirror the export reads. This is why the board step is allowed to refuse: a board
+that reads as `unstable` is one somebody is editing right now, and the answer is to find
+them, not to force it.
+
+**Publish history does not come with it.** `augur export --history` walks every retained
+version and downloads every blob any of them referenced; a restore replays none of it. The
+target holds one version per space, so `augur rollback` there reaches nothing until it has
+published a few times of its own. The archive is intact on disk under `versions/` and the
+source keeps its live history until it is retired — so the sequence that preserves a
+rollback target is to keep the old instance up, not to keep the copy.
+
+## The adversarial checklist
+
+Run before trusting this path with a workspace that matters. The automated half is
+`node --test test/export-adversarial.test.mjs`; the rest needs two real instances.
+
+| | What is being attacked | What must happen |
+|---|---|---|
+| 1 | Kill the export mid-download, then re-run it | No file on disk is short or misnamed; the resume completes the copy |
+| 2 | Truncate a blob in an existing copy, re-export | It is re-fetched, loudly — never skipped as "present" |
+| 3 | Corrupt a blob without changing its length, restore | The store refuses on the hash; nothing is committed |
+| 4 | Restore an older copy over newer, different live content | Refused, naming `--force` |
+| 5 | Restore the same copy twice | Second run succeeds, uploads nothing, changes only the version |
+| 6 | Kill a restore between the content and the state, re-run | Converges; no `--force` needed and nothing to undo first |
+| 7 | Restore into a target whose `/_build.json` is unreachable | Proceeds, and SAYS the bury guard is off |
+| 8 | Restore a copy of an instance where a family was never written | An overlay family clears the target's; an identity family is left alone. Know which before you restore onto a workspace that already has people |
+| 9 | Export and restore a PNG canvas image | It arrives still declared a PNG. A copy taken before `assets.json` existed cannot, and the restore says so |
+| 10 | Export a board, then compare it with `board-snapshot read` | They differ whenever the mirror is behind — which is why 1–9 passing is not enough |
+
+Two things this cannot exercise on a small instance, and they should be said rather than
+assumed: **volume** — Delta's board KV is two documents and demo's whole namespace is
+thirteen keys, so nothing here has met a KV listing that paginates or a blob set large
+enough for the concurrency to matter — and **a real interrupted network transfer**, as
+opposed to a killed process.
