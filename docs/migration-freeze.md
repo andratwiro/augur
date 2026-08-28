@@ -161,7 +161,7 @@ Run before trusting this path with a workspace that matters. The automated half 
 | 10 | Export a board, then compare it with `board-snapshot read` | They differ whenever the mirror is behind — which is why 1–9 passing is not enough |
 
 Two things this cannot exercise on a small instance, and they should be said rather than
-assumed: **volume** — Delta's board KV is two documents and demo's whole namespace is
-thirteen keys, so nothing here has met a KV listing that paginates or a blob set large
-enough for the concurrency to matter — and **a real interrupted network transfer**, as
-opposed to a killed process.
+assumed: **volume** — the instances this was exercised against hold a board KV of two
+documents and a namespace of thirteen keys, so nothing here has met a KV listing that
+paginates or a blob set large enough for the concurrency to matter — and **a real
+interrupted network transfer**, as opposed to a killed process.

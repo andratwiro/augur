@@ -47,7 +47,8 @@ off is a real rollback rather than a second sign-out.
 
 ## Turning it on, when you want to
 
-`"sessionKeys": true` in an instance's `deploy.config.json`. Delta first, obviously.
+`"sessionKeys": true` in an instance's `deploy.config.json`. Turn it on somewhere you can
+watch before anywhere you cannot.
 
 **Turning it on signs nobody out.** There is no backfill and no flag day: with the flag on
 and no key stored, the binding still falls back to the credential, so every existing cookie
