@@ -88,6 +88,9 @@ const ONE = "grace@example.test";
 const TWO = "hedy@example.test";
 const THREE = "ida@example.test";
 const FOUR = "jean@example.test";
+// Two more, invited from the overlay rather than seeded in the file — the promotion clause.
+const FIVE = "leah@example.test";
+const SIX = "mae@example.test";
 const PASSWORD = "a properly long password";
 const SESSION_SECRET = "rehearsal-session-secret-not-a-credential";
 const WORKER_NAME = "augur-tenant-do-rehearsal";
@@ -102,6 +105,11 @@ const LASTSEEN_PREFIX = "users:lastseen:";
 const PUBLISH_TOKENS_KEY = "publish:tokens";
 const ROSTER_KEYS = ["users:roster", "users:roles", "users:names", "users:avatars"];
 const DAY_MS = 24 * 60 * 60 * 1000;
+
+// The durable roster exactly as the generated `instance.json` carries it — filled by
+// `generate()` and read by the promotion clause, which has to push a config that is this
+// file PLUS one person. Two copies of a roster is how a fixture starts lying.
+let FILE_ROSTER = null;
 
 // ---- the transcript ---------------------------------------------------------
 
@@ -296,6 +304,7 @@ async function generate() {
     { email: THREE, name: "Ida", initials: "I", role: "editor" },
     { email: FOUR, name: "Jean", initials: "J", role: "editor" },
   ];
+  FILE_ROSTER = roster;
   fs.writeFileSync(path.join(WORK, "assets", "__config", "instance.json"), JSON.stringify({
     users: roster, engineVersion: "0.0.0-rehearsal", updateFeed: "",
     mcpHostSuffixes: [], mcpHostAllowlistUrl: "", vanityRedirects: {}, rtOrigin: "", sentinels: [],
@@ -816,6 +825,89 @@ async function boundPhase() {
   const adminAfter = await req("/__admin/users", { cookie: oneCookie });
   check("THE SAME SESSION IS ADMITTED AGAIN — the outage was a refusal, not a wedge",
     adminAfter.status === 200, `${adminAfter.status}`);
+
+  clause("11 · PROMOTING an overlay member into the config file does not delete them");
+  // ⚠️ TWO SQL PASSES IN ONE REAL DURABLE OBJECT TRANSACTION, AND THE ORDER IS THE BUG.
+  // `rosterWrite` writes the `configUsers` list first and then tombstones every row still
+  // marked `'overlay'` that the incoming `add` no longer carries. Handed the config the
+  // request was LOADED with — the one the push replaces — that first pass does not name the
+  // person being promoted, and the second buries them. It is a live defect on this shape of
+  // deployment, found by running a real migration and not by reading the code.
+  //
+  // WHAT THIS CLAUSE ADDS OVER THE SUITE is the runtime: real workerd SQLite, real bound
+  // parameters, one real `transactionSync`. What it deliberately does NOT assert is the
+  // SERVED roster — this fixture runs in assets mode on purpose (see wranglerConfig), so a
+  // pushed config is written to the store and never becomes the config the front door reads.
+  // `roster/read`'s `remove` list is asserted instead, because that list is the only thing
+  // that can drop a config-named person from the merge, and `test/roster-promotion.test.mjs`
+  // drives the served end in bundle mode.
+  const invitedFive = await req("/__admin/users", {
+    method: "POST", headers: { "content-type": "application/json" }, cookie,
+    body: JSON.stringify({ op: "invite", email: FIVE, name: "Leah", role: "editor" }),
+  });
+  check("an overlay invite lands", invitedFive.status === 200, `${invitedFive.status} ${invitedFive.text.slice(0, 160)}`);
+  const beforeRow = await sql(`SELECT source, removed_at FROM members WHERE email = ?`, [FIVE]);
+  check("their row is an overlay entry with no tombstone",
+    beforeRow.ok && beforeRow.rows[0].source === "overlay" && beforeRow.rows[0].removed_at === null,
+    JSON.stringify(beforeRow.rows[0] || null));
+
+  // THE PUSH. `roster-update` has committed them to the identity file and the deploy sends
+  // that file back over the real route, with the star token minted in clause 8.
+  const pushed = await req("/__publish/_instance/config", {
+    method: "POST",
+    headers: { "content-type": "application/json", authorization: `Bearer ${tStar}` },
+    body: JSON.stringify({
+      users: [...FILE_ROSTER, { email: FIVE, name: "Leah", role: "editor" }],
+      engineVersion: "0.0.0-rehearsal", updateFeed: "",
+      mcpHostSuffixes: [], mcpHostAllowlistUrl: "", vanityRedirects: {}, rtOrigin: "", sentinels: [],
+    }),
+  });
+  check("the deploy's config push is accepted", pushed.status === 200, `${pushed.status} ${pushed.text.slice(0, 160)}`);
+  const afterRow = await sql(`SELECT source, removed_at FROM members WHERE email = ?`, [FIVE]);
+  check("THE PROMOTED PERSON IS NOT TOMBSTONED",
+    afterRow.ok && afterRow.rows[0] && afterRow.rows[0].removed_at === null,
+    JSON.stringify(afterRow.rows[0] || null));
+  check("…and their row now says the durable record names them",
+    afterRow.ok && afterRow.rows[0] && afterRow.rows[0].source === "config",
+    JSON.stringify(afterRow.rows[0] || null));
+  const docs = await identityCall("roster/read", {});
+  const readBack = docs.body ? JSON.parse(docs.body) : {};
+  check("the object's `remove` list — the only thing that can hide a config user — does not name them",
+    Array.isArray(readBack.roster && readBack.roster.remove) && !readBack.roster.remove.includes(FIVE),
+    JSON.stringify((readBack.roster || {}).remove));
+  check("and the overlay half really did retire, so this is a promotion and not a second record",
+    readBack.roster && readBack.roster.add && !readBack.roster.add[FIVE],
+    Object.keys((readBack.roster || {}).add || {}).join(", "));
+  const kvRoster = JSON.parse((await kvGet("users:roster")).value || "{}");
+  check("KV drained with it — the dual write is what keeps the flag a revert",
+    kvRoster.add && !kvRoster.add[FIVE], Object.keys(kvRoster.add || {}).join(", "));
+
+  clause("12 · …and the clause that buries a REAL orphan still buries one");
+  // The tombstone the orphan clause exists to write. Reviving every removed row would have
+  // "fixed" clause 11 by undoing this, and a removed person coming back is the failure that
+  // matters more. An invited person's removal leaves no entry in EITHER half of the KV
+  // document, so their row is the only record that they must not come back.
+  const invitedSix = await req("/__admin/users", {
+    method: "POST", headers: { "content-type": "application/json" }, cookie,
+    body: JSON.stringify({ op: "invite", email: SIX, name: "Mae", role: "editor" }),
+  });
+  check("a second overlay invite lands", invitedSix.status === 200, `${invitedSix.status} ${invitedSix.text.slice(0, 160)}`);
+  const removedSix = await req("/__admin/users", {
+    method: "POST", headers: { "content-type": "application/json" }, cookie,
+    body: JSON.stringify({ op: "remove", email: SIX }),
+  });
+  check("removing them succeeds", removedSix.status === 200, `${removedSix.status} ${removedSix.text.slice(0, 160)}`);
+  const sixRow = await sql(`SELECT source, removed_at FROM members WHERE email = ?`, [SIX]);
+  check("their row IS tombstoned on real workerd",
+    sixRow.ok && sixRow.rows[0] && sixRow.rows[0].removed_at !== null,
+    JSON.stringify(sixRow.rows[0] || null));
+  const listAfter = await adminList(cookie);
+  check("and they are gone from the admin list, which is the served answer",
+    !listAfter.some((l) => l.startsWith(SIX + "/")), listAfter.join(" · "));
+  const fiveStill = await sql(`SELECT removed_at FROM members WHERE email = ?`, [FIVE]);
+  check("the promoted person survived somebody else's removal",
+    fiveStill.ok && fiveStill.rows[0] && fiveStill.rows[0].removed_at === null,
+    JSON.stringify(fiveStill.rows[0] || null));
 
   clause("2 · setup — an answer to compare, and a state only one store holds");
   await req("/__me", { cookie });                       // stamps lastseen on both stores

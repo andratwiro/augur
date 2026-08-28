@@ -1112,17 +1112,33 @@ async function readRosterDocs(ctx, env) {
  * exactly the read-modify-write the content overlay moved off for.
  *
  * Best-effort and never fatal: the KV write has already landed and is still the fallback.
+ *
+ * ⚠️ `configUsers` IS THE CONFIG BEING WRITTEN, NOT THE ONE THIS REQUEST WAS LOADED WITH,
+ * AND THE DIFFERENCE DELETED PEOPLE. It defaults to the request's context because for every
+ * caller but one the config is not moving. The exception is the config PUSH itself, which is
+ * the documented way an overlay member becomes a durable one: the file now names them, so
+ * the drain takes them out of `add` — and `rosterWrite` decides `source` from THIS list
+ * before its orphan clause tombstones every `source = 'overlay'` row that `add` no longer
+ * carries. Handed the OLD config, that pass does not name the person being promoted, their
+ * row stays `'overlay'`, and the ordinary invite → commit → deploy loop tombstones them
+ * permanently: the un-tombstone clause revives only `'config'` rows, and the drain that
+ * would re-run it fires off a KV read that the object's tombstone cannot reach. So the
+ * caller that changes the config passes the new one, and the two passes run in the order
+ * the promotion needs.
  */
-async function mirrorRosterDocs(tctx, env, docs) {
+async function mirrorRosterDocs(tctx, env, docs, configUsers) {
   const ident = identityFor(env, tctx, "roster");
   if (!ident) return;
+  // Resolved AFTER the binding check, not as a default parameter: a deployment with no
+  // workspace object does no work here at all, which is the shape the whole cut-over keeps.
+  const list = configUsers === undefined ? tctx.CONFIG_USERS : configUsers;
   try {
     await ident.rosterWrite({
       // The durable half travels too, so an overlay entry naming somebody this object has
       // no row for can be seeded from the record rather than from a guess. Only the fields
       // `members` has columns for — a config user's `passHash` has no business here and
       // `identityFromKv` does not carry one either.
-      configUsers: (tctx.CONFIG_USERS || []).map((u) => ({
+      configUsers: (Array.isArray(list) ? list : []).filter((u) => u && u.email).map((u) => ({
         email: u.email, name: u.name || null, role: u.role || null,
         initials: u.initials || null, color: u.color || null,
       })),
@@ -4589,7 +4605,13 @@ async function publishApi(tctx, request, url, env) {
         if (Object.keys(add).length !== Object.keys(roster.add).length || remove.length !== roster.remove.length) {
           const drained = { ...roster, add, remove };
           await kv.put(USER_ROSTER_KEY, JSON.stringify(drained));
-          await mirrorRosterDocs(tctx, env, { roster: drained });
+          // ⚠️ `cfg.users`, NOT `tctx.CONFIG_USERS`. This request loaded its context from the
+          // config this push REPLACES, and the whole point of the drain is that the new file
+          // now names somebody the overlay was carrying. The workspace object decides
+          // `source` from the list it is handed and then tombstones the overlay rows the
+          // drained `add` no longer carries, so passing the old list deletes exactly the
+          // people this push exists to promote. See mirrorRosterDocs.
+          await mirrorRosterDocs(tctx, env, { roster: drained }, cfg.users || []);
           bustRosterOverlay(tctx.tenantId);
         }
       }

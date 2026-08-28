@@ -711,6 +711,20 @@ name, initials, colour and role. Passwords live in KV as PBKDF2 hashes under
   gallery pages between the two renderings. `mergeRoster` precedence is unchanged
   (config wins over `add`; `remove` hides both), and none of this touches
   `users:secrets` — the tombstone stays the security boundary.
+  - **⚠️ THE DRAIN MIRRORS THE CONFIG BEING WRITTEN, NEVER `tctx.CONFIG_USERS`.** On a
+    deployment that binds a workspace object, `rosterWrite` decides each row's `source`
+    from the `configUsers` list it is handed and THEN tombstones every row still marked
+    `'overlay'` that the incoming `add` no longer carries. The request was loaded with the
+    config this push REPLACES, so handing that one over means the pass does not name the
+    person being promoted, their row stays `'overlay'`, and this loop deletes them —
+    permanently, because the un-tombstone clause revives only `'config'` rows and the drain
+    that would re-run it is gated on a KV read an object-only tombstone cannot move.
+    `mirrorRosterDocs` takes the list as a fourth argument for that one caller.
+    **Widening the un-tombstone clause is not the alternative**: it would undo the orphan
+    tombstones that clause exists to write, and a removed person coming back is the worse
+    failure. `test/roster-promotion.test.mjs` drives both directions over the real routes;
+    clauses 11–12 of `scripts/tenant-do-rehearsal.mjs` run the same ordering inside a real
+    Durable Object transaction on workerd, where the defect reproduces.
 - **⚠️ The overlay is a convenience; the tombstone is the security boundary.** A failed
   KV read leaves the roster as the config list, which would put a removed CONFIG user
   back in it — so removal ALSO writes the `users:secrets` tombstone, and that read fails
