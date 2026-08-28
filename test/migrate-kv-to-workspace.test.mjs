@@ -154,13 +154,21 @@ async function instance({ seeded = false, workspace = false, rooms = false } = {
   const label = `ws${++nextLabel}`;
   const kv = memKv();
   await kv.put("publish:tokens", JSON.stringify({ [await W.tokenFor("pub:tok")]: { space: "*", label: "ci" } }));
+  // ⚠️ THE STORE KEYS COME FROM THE PRODUCER, NOT FROM THIS FILE. These instances set
+  // `TENANT_HOST_SUFFIX`, which is what makes the bundle store carry a workspace segment
+  // (`bundleKey`), so a fixture spelling `spaces/alpha/manifest.json` by hand would be
+  // seeding a key this deployment shape does not read — and the instance would serve an
+  // empty site while every assertion here still had something to say. `_engine` and
+  // `blobs/` map to themselves, which is the exception being relied on rather than
+  // restated.
+  const K = (k) => W.bundleKey(k, label);
   const r2 = memR2({
-    "spaces/alpha/manifest.json": Buffer.from(JSON.stringify(manifest("alpha", PAGE_H, PAGE.length))),
-    "spaces/_engine/manifest.json": Buffer.from(JSON.stringify(manifest("_engine", CSS_H, CSS.length))),
+    [K("spaces/alpha/manifest.json")]: Buffer.from(JSON.stringify(manifest("alpha", PAGE_H, PAGE.length))),
+    [K("spaces/_engine/manifest.json")]: Buffer.from(JSON.stringify(manifest("_engine", CSS_H, CSS.length))),
     [`blobs/${PAGE_H}`]: PAGE,
     [`blobs/${CSS_H}`]: CSS,
   });
-  await r2.put("config/instance.json", Buffer.from(JSON.stringify({
+  await r2.put(K("config/instance.json"), Buffer.from(JSON.stringify({
     tenantId: label, users: [], ...(rooms ? { rtOrigin: "http://127.0.0.1:9" } : {}),
   })));
   if (seeded) {

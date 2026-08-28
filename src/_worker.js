@@ -582,7 +582,7 @@ async function loadTenantContext(tenantId, env, { prev = null } = {}) {
   // _instance/config) and routing derives from the live manifests.
   if (bundleMode(env)) {
     const [instObj, manifests] = await Promise.all([
-      env.BUNDLES.get("config/instance.json"),
+      bundlesFor(env, tenantId).get("config/instance.json"),
       loadManifests(tenantId, env, true),
     ]);
     // An absent instance document is a store that has never been pushed one — ABSENT.
@@ -790,6 +790,12 @@ async function readInstanceTenantId(env) {
   try {
     let doc = null;
     if (bundleMode(env)) {
+      // ⚠️ DELIBERATELY UNPREFIXED, and it is the one read that must stay so. This is the
+      // STATIC resolver discovering which workspace this deployment is, so it has no
+      // workspace to key by — asking for `t/<workspace>/config/instance.json` here is
+      // asking the answer to name itself. It is also correct: a deployment that reaches
+      // this line has no `TENANT_HOST_SUFFIX`, serves exactly one workspace, and writes
+      // no segment anywhere. The dynamic branch returns before this is ever called.
       const obj = await env.BUNDLES.get("config/instance.json");
       if (obj) doc = JSON.parse(await obj.text());
     } else if (env && env.ASSETS) {
@@ -2684,9 +2690,10 @@ function bundleWorkspaceSegment(env, tenantId) {
  * the segment applied on the way in and stripped on the way out.
  *
  * ⚠️ WITH NO SEGMENT THIS IS THE BINDING ITSELF — not a wrapper around it, the object.
- * That is deliberate and it is the Go Vocal safety property: on every deployment running
- * today this function is an identity, so there is no new code between the worker and R2
- * and nothing to get subtly wrong.
+ * That is deliberate, and it is what makes the change additive for every instance running
+ * today: with no segment this function is the identity, so there is no new code at all
+ * between the worker and R2 and nothing to get subtly wrong on a deployment that never
+ * asked for a segment.
  *
  * Stripping on the way out is what lets every caller keep the key it already had: a
  * listing hands back `spaces/x/versions/3.json`, and handing that straight back to `get`
@@ -2698,9 +2705,33 @@ function bundleStore(env, workspace = "") {
   const seg = BUNDLE_TENANT_PREFIX + workspace + "/";
   const K = (k) => bundleKey(k, workspace);
   const un = (k) => (String(k).startsWith(seg) ? String(k).slice(seg.length) : String(k));
+  // ⚠️ WRITES GO TO BOTH KEYS WHILE THE FAMILY'S FLAG IS ON, AND THAT IS WHAT MAKES THE
+  // FLAG A REVERT. Flipping one word in `BUNDLE_TENANCY` back sends that family's reads to
+  // the unprefixed key, and a straddle that had written only the prefixed one would send
+  // them to content that stops at the day of the cut — a rollback, not a revert. Deletes do
+  // NOT go to both: an unprefixed key on a shared bucket is unattributable, so removing one
+  // is removing an object that may be a neighbour's, and the safe direction of a straddle
+  // is to leave more behind rather than less.
+  //
+  // What the second write is NOT: it is not a second live copy. Nothing reads it while the
+  // flag is on, and on a bucket holding several workspaces two of them publishing the same
+  // space id write that one key last-writer-wins — which is precisely today's collision,
+  // kept alive deliberately, because reverting to today is what a revert to today means.
+  // It costs one extra PUT per publish and the storage of the copy.
+  const reusable = (v) => typeof v === "string" || v instanceof ArrayBuffer || ArrayBuffer.isView(v);
+  const dual = async (k, v, opts) => {
+    const key = K(k);
+    // `_engine` and `blobs/` map to themselves — one write, not two of the same.
+    if (key === k || !reusable(v)) return;
+    try { await (opts === undefined ? r2.put(k, v) : r2.put(k, v, opts)); } catch (e) { /* the prefixed write is the one that serves */ }
+  };
   const store = {
     get: (k, opts) => (opts === undefined ? r2.get(K(k)) : r2.get(K(k), opts)),
-    put: (k, v, opts) => (opts === undefined ? r2.put(K(k), v) : r2.put(K(k), v, opts)),
+    put: async (k, v, opts) => {
+      const res = opts === undefined ? await r2.put(K(k), v) : await r2.put(K(k), v, opts);
+      await dual(k, v, opts);
+      return res;
+    },
     list: async (opts = {}) => {
       const page = await r2.list({ ...opts, prefix: K(opts.prefix || "") });
       return {
@@ -3043,8 +3074,19 @@ async function loadManifests(tenantId, env, force) {
   let settle;
   entry.inflight = new Promise((r) => { settle = r; });
   try {
-    const list = await env.BUNDLES.list({ prefix: "spaces/", delimiter: "/" });
+    const store = bundlesFor(env, tenantId);
+    const list = await store.list({ prefix: "spaces/", delimiter: "/" });
     const ids = (list.delimitedPrefixes || []).map((p) => p.slice("spaces/".length, -1));
+    // ⚠️ THE ENGINE CHROME IS OUTSIDE THIS WORKSPACE'S PREFIX AND SO OUTSIDE THIS LISTING.
+    // On a prefixing deployment the list above returns this workspace's spaces and nothing
+    // else, which is the whole point — but `_engine` is the one space that is every
+    // workspace's, and `derivedRoutingFields` reads the chrome pointer, the service worker
+    // and the runtime-chrome switch off it. Leaving it to the listing would take the chrome
+    // off every workspace on the deploy that shipped this. `bundleKey` keeps its key
+    // global; this keeps it in the set.
+    if (!ids.includes(ENGINE_SPACE_ID) && bundleWorkspaceSegment(env, tenantId).workspace) {
+      ids.push(ENGINE_SPACE_ID);
+    }
     const out = {}, etags = {};
     // Parse cost must not ride the request path: JSON.parse of a multi-MB manifest
     // on the refresh tick is what blew the CPU budget when the 2026-08-22 cascade
@@ -3054,14 +3096,14 @@ async function loadManifests(tenantId, env, force) {
     // callers) still bypasses the parse skip via the etag change it just caused.
     await Promise.all(ids.map(async (id) => {
       const key = `spaces/${id}/manifest.json`;
-      const head = env.BUNDLES.head ? await env.BUNDLES.head(key) : null;
+      const head = store.head ? await store.head(key) : null;
       const etag = head && (head.etag || head.httpEtag);
       if (etag && cur.etags[id] === etag && cur.spaces[id]) {
         out[id] = cur.spaces[id];
         etags[id] = etag;
         return;
       }
-      const obj = await env.BUNDLES.get(key);
+      const obj = await store.get(key);
       if (!obj) return;
       out[id] = JSON.parse(await obj.text());
       etags[id] = etag || (obj.etag || obj.httpEtag) || "";
@@ -3496,7 +3538,7 @@ async function resolveStaleBase(env, tctx, spaceId, mine, live, baseVersion, lab
   // client claiming a version this store never had — which is not a conflict to resolve.
   let base = null;
   try {
-    const obj = await env.BUNDLES.get(`spaces/${spaceId}/versions/${baseVersion}.json`);
+    const obj = await bundlesFor(env, tctx && tctx.tenantId).get(`spaces/${spaceId}/versions/${baseVersion}.json`);
     base = obj ? JSON.parse(await obj.text()) : null;
   } catch (e) { base = null; }
   if (!base) return null;
@@ -3928,6 +3970,10 @@ async function publishApi(tctx, request, url, env) {
   }
 
   if (!env.BUNDLES) return jsonResponse({ error: "bundle-store-not-configured" }, 501);
+  // This workspace's view of the store. `blobs/` is content-addressed and shared, so the
+  // three `blobs/…` operations below deliberately keep using the binding directly — the
+  // key is the digest and the digest means the same thing to every workspace.
+  const bundles = bundlesFor(env, tctx && tctx.tenantId);
 
   // Self-serve token exchange: trade an existing web login for a publish token
   // (no admin distribution step — `augur login` calls this once and saves it).
@@ -4049,7 +4095,7 @@ async function publishApi(tctx, request, url, env) {
       // The bytes the `assets` rows point at. Mirrors `/__publish/<space>/blob/<hash>`,
       // which walks `blobs/` and would never see these.
       if (!/^[0-9a-f]{40}$/.test(arg || "")) return jsonResponse({ error: "bad-input" }, 400);
-      const obj = env.BUNDLES ? await env.BUNDLES.get(ASSET_R2_PREFIX + arg) : null;
+      const obj = bundles ? await bundles.get(ASSET_R2_PREFIX + arg) : null;
       if (obj) {
         return new Response(obj.body, {
           headers: {
@@ -4062,7 +4108,13 @@ async function publishApi(tctx, request, url, env) {
       // pasted before canvas bytes moved to R2 is still a `basset:<hash>` value, and a
       // backup that could not read it would be a backup missing every image on every
       // instance that has been running for a while.
-      const kvStore = kvFor(env);
+      //
+      // ⚠️ AND FOR THE SAME REASON IT IS OFF WHERE THE WORKSPACE COMES FROM THE HOST.
+      // `basset:<hash>` is one flat KV namespace with no segment in it, so on a deployment
+      // holding several workspaces that key is unattributable — reading it would let any
+      // workspace's backup take bytes another workspace pasted. `legacyIsOurs` is the same
+      // judgement the KV overlay makes about the same kind of key.
+      const kvStore = bundleWorkspaceSegment(env, tctx && tctx.tenantId).legacyIsOurs ? kvFor(env) : null;
       const legacy = kvStore ? await kvStore.getWithMetadata(ASSET_PREFIX + arg, { type: "arrayBuffer" }) : null;
       if (!legacy || !legacy.value) return jsonResponse({ error: "not-found" }, 404);
       return new Response(legacy.value, {
@@ -4086,7 +4138,7 @@ async function publishApi(tctx, request, url, env) {
       const hash = [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, "0")).join("").slice(0, 40);
       if (hash !== arg) return jsonResponse({ error: "hash-mismatch", expected: arg, got: hash }, 409);
       const ct = (request.headers.get("content-type") || "").toLowerCase().split(";")[0].trim();
-      await env.BUNDLES.put(ASSET_R2_PREFIX + hash, buf, {
+      await bundles.put(ASSET_R2_PREFIX + hash, buf, {
         httpMetadata: { contentType: /^image\//.test(ct) ? ct : "image/jpeg" },
       });
       return jsonResponse({ ok: true, hash });
@@ -4135,7 +4187,7 @@ async function publishApi(tctx, request, url, env) {
     // one. When live carries an engineVersion, an older or absent incoming one
     // is a stale tree — refuse; the shell's next deploy pushes a current config.
     try {
-      const liveObj = await env.BUNDLES.get("config/instance.json");
+      const liveObj = await bundles.get("config/instance.json");
       const live = liveObj ? JSON.parse(await liveObj.text()) : null;
       if (live && live.engineVersion) {
         const incoming = cfg.engineVersion || "";
@@ -4144,7 +4196,7 @@ async function publishApi(tctx, request, url, env) {
         }
       }
     } catch (e) {}
-    await env.BUNDLES.put("config/instance.json", body);
+    await bundles.put("config/instance.json", body);
     cfgAt = 0;
     // The deploy that ships an updated identity file also retires the roster
     // overlay entries it supersedes: an `add` the config now names is a duplicate
@@ -4226,7 +4278,7 @@ async function publishApi(tctx, request, url, env) {
   // that can overwrite every byte a visitor sees can hardly be trusted less with
   // reading them), so this grants no privilege that wasn't already granted.
   if (op === "manifest" && request.method === "GET") {
-    const obj = await env.BUNDLES.get(`spaces/${spaceId}/manifest.json`);
+    const obj = await bundles.get(`spaces/${spaceId}/manifest.json`);
     if (!obj) return jsonResponse({ error: "unknown-space" }, 404);
     return new Response(obj.body, {
       headers: { "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store" },
@@ -4256,7 +4308,7 @@ async function publishApi(tctx, request, url, env) {
     let cursor;
     try {
       do {
-        const page = await env.BUNDLES.list({ prefix: `spaces/${spaceId}/versions/`, cursor, limit: 1000 });
+        const page = await bundles.list({ prefix: `spaces/${spaceId}/versions/`, cursor, limit: 1000 });
         for (const o of page.objects) {
           const n = parseInt(o.key.slice(o.key.lastIndexOf("/") + 1), 10);
           if (n) versions.push(n);
@@ -4271,7 +4323,7 @@ async function publishApi(tctx, request, url, env) {
   if (op === "version" && request.method === "GET") {
     const v = parseInt(arg, 10);
     if (!v || v < 1) return jsonResponse({ error: "bad-version" }, 400);
-    const obj = await env.BUNDLES.get(`spaces/${spaceId}/versions/${v}.json`);
+    const obj = await bundles.get(`spaces/${spaceId}/versions/${v}.json`);
     if (!obj) return jsonResponse({ error: "unknown-version" }, 404);
     return new Response(obj.body, {
       headers: { "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store" },
@@ -4424,7 +4476,7 @@ async function publishApi(tctx, request, url, env) {
     // commit exactly as before. Checked before the unpublish guard: a stale tree
     // often also drops pages, and "reconcile first" is the useful verdict there —
     // after reconciling, the removal usually turns out not to be one.
-    const curObj = await env.BUNDLES.get(`spaces/${spaceId}/manifest.json`);
+    const curObj = await bundles.get(`spaces/${spaceId}/manifest.json`);
     const cur = curObj ? JSON.parse(await curObj.text()) : null;
     // ── Engine-downgrade guard. `_engine` is the instance's chrome, service
     // worker, and the runtime-chrome switch; a publish from a clone that predates
@@ -4627,8 +4679,8 @@ async function publishApi(tctx, request, url, env) {
       ...m, files: stampedFiles, version, bytesReferenced,
       publishedAt: new Date().toISOString(), publishedBy: who.label || "",
     };
-    await env.BUNDLES.put(`spaces/${spaceId}/versions/${version}.json`, JSON.stringify(out));
-    await env.BUNDLES.put(`spaces/${spaceId}/manifest.json`, JSON.stringify(out));
+    await bundles.put(`spaces/${spaceId}/versions/${version}.json`, JSON.stringify(out));
+    await bundles.put(`spaces/${spaceId}/manifest.json`, JSON.stringify(out));
     bustManifests(tctx.tenantId); cfgAt = 0; // this isolate flips immediately; others within ~1.5s
     // THE HALF THE BROWSER-SESSION STAMP MISSES. `augur publish` carries a bearer token and
     // never touches `/__me`, so a team shipping daily from CI reads as months idle on the
@@ -4647,7 +4699,7 @@ async function publishApi(tctx, request, url, env) {
     let rebake;
     if (spaceId !== "_engine") {
       try {
-        const engObj = await env.BUNDLES.get("spaces/_engine/manifest.json");
+        const engObj = await bundles.get("spaces/_engine/manifest.json");
         const engRef = engObj ? JSON.parse(await engObj.text()) : null;
         const engineSha = (engRef && ((engRef.builtWith && engRef.builtWith.engine) || (engRef.source && engRef.source.sha))) || null;
         const publishedWith = (out.builtWith && out.builtWith.engine) || null;
@@ -4703,7 +4755,7 @@ async function publishApi(tctx, request, url, env) {
     // Read live FRESH, not from the isolate cache: the whole content of a fork is hashes
     // copied out of the live manifest, and a copy taken from a stale one would alias bytes
     // that URL has stopped serving.
-    const curObj = await env.BUNDLES.get(`spaces/${spaceId}/manifest.json`);
+    const curObj = await bundles.get(`spaces/${spaceId}/manifest.json`);
     const cur = curObj ? JSON.parse(await curObj.text()) : null;
     if (!cur) return jsonResponse({ error: "unknown-space" }, 404);
 
@@ -4753,8 +4805,8 @@ async function publishApi(tctx, request, url, env) {
       ...m, version, bytesReferenced,
       publishedAt: new Date().toISOString(), publishedBy: who.label || "",
     };
-    await env.BUNDLES.put(`spaces/${spaceId}/versions/${version}.json`, JSON.stringify(out));
-    await env.BUNDLES.put(`spaces/${spaceId}/manifest.json`, JSON.stringify(out));
+    await bundles.put(`spaces/${spaceId}/versions/${version}.json`, JSON.stringify(out));
+    await bundles.put(`spaces/${spaceId}/manifest.json`, JSON.stringify(out));
     bustManifests(tctx.tenantId); cfgAt = 0; // this isolate flips immediately; others within ~1.5s
     touchWorkspaceActivity(env, tctx, null);
     // No stale-bake dispatch. The forked pages are byte-identical to pages already live, so
@@ -4776,7 +4828,7 @@ async function publishApi(tctx, request, url, env) {
     try { body = await request.json(); } catch (e) { return jsonResponse({ error: "bad-json" }, 400); }
     const v = parseInt(body && body.version, 10);
     if (!v || v < 1) return jsonResponse({ error: "bad-version" }, 400);
-    const prev = await env.BUNDLES.get(`spaces/${spaceId}/versions/${v}.json`);
+    const prev = await bundles.get(`spaces/${spaceId}/versions/${v}.json`);
     if (!prev) return jsonResponse({ error: "unknown-version" }, 404);
     // History is append-only: a rollback republishes the old CONTENT under a NEW
     // version number rather than repointing at the old one. Reusing the number
@@ -4785,7 +4837,7 @@ async function publishApi(tctx, request, url, env) {
     // destroying a point in the history that recovery depends on. It also means
     // a rollback is itself visible in the history, and undone by another one.
     const restored = JSON.parse(await prev.text());
-    const curObj = await env.BUNDLES.get(`spaces/${spaceId}/manifest.json`);
+    const curObj = await bundles.get(`spaces/${spaceId}/manifest.json`);
     const cur = curObj ? JSON.parse(await curObj.text()) : null;
     const issued = await nextPublishVersion(env, tctx, spaceId, cur);
     if (issued.error) return versionUnavailable();
@@ -4795,8 +4847,8 @@ async function publishApi(tctx, request, url, env) {
       publishedAt: new Date().toISOString(),
       publishedBy: `rollback to v${v} by ${who.label || "unknown"}`,
     };
-    await env.BUNDLES.put(`spaces/${spaceId}/versions/${version}.json`, JSON.stringify(out));
-    await env.BUNDLES.put(`spaces/${spaceId}/manifest.json`, JSON.stringify(out));
+    await bundles.put(`spaces/${spaceId}/versions/${version}.json`, JSON.stringify(out));
+    await bundles.put(`spaces/${spaceId}/manifest.json`, JSON.stringify(out));
     bustManifests(tctx.tenantId); cfgAt = 0;
     return jsonResponse({ ok: true, version, restoredFrom: v });
   }
@@ -4820,7 +4872,8 @@ async function publishApi(tctx, request, url, env) {
 // another number to reconcile.
 async function removeFromStore(tctx, env, spaceId, urlPrefix, by) {
   if (!env.BUNDLES) return { skipped: "no-store" };
-  const obj = await env.BUNDLES.get(`spaces/${spaceId}/manifest.json`);
+  const bundles = bundlesFor(env, tctx && tctx.tenantId);
+  const obj = await bundles.get(`spaces/${spaceId}/manifest.json`);
   if (!obj) return { skipped: "unknown-space" };
   const cur = JSON.parse(await obj.text());
   const files = {};
@@ -4867,8 +4920,8 @@ async function removeFromStore(tctx, env, spaceId, urlPrefix, by) {
     publishedAt: new Date().toISOString(),
     publishedBy: `delete by ${by || "admin"}`,
   };
-  await env.BUNDLES.put(`spaces/${spaceId}/versions/${version}.json`, JSON.stringify(out));
-  await env.BUNDLES.put(`spaces/${spaceId}/manifest.json`, JSON.stringify(out));
+  await bundles.put(`spaces/${spaceId}/versions/${version}.json`, JSON.stringify(out));
+  await bundles.put(`spaces/${spaceId}/manifest.json`, JSON.stringify(out));
   bustManifests(tctx.tenantId); cfgAt = 0;
   return { removed, version };
 }
@@ -5010,10 +5063,20 @@ async function adminStorageApi(tenantId, env, me) {
   if (hit && hit.data && Date.now() - hit.at < 5 * 60 * 1000) {
     return jsonResponse(hit.data);
   }
+  // ⚠️ WHAT THIS COUNTS DEPENDS ON WHETHER THE BUCKET IS SHARED, and it has to. With no
+  // segment the bucket IS the workspace, so the whole-bucket listing is the honest number
+  // and stays exactly as it was. With one, an unprefixed listing would report every
+  // workspace's bytes to every workspace's admin — each one seeing the others' growth and
+  // each one hitting the ceiling on it. Scoped to the prefix, the number is this
+  // workspace's own. The shared families are then OUTSIDE it, which is the honest answer
+  // rather than a gap: `blobs/` is deduplicated across workspaces, so no workspace holds a
+  // share of it that could be named, and `spaces/_engine/` is the deployment's chrome.
+  const seg = bundleWorkspaceSegment(env, tenantId).workspace;
+  const scoped = seg ? { prefix: BUNDLE_TENANT_PREFIX + seg + "/" } : {};
   let bytes = 0, objects = 0, cursor;
   try {
     do {
-      const page = await env.BUNDLES.list({ cursor, limit: 1000 });
+      const page = await env.BUNDLES.list({ ...scoped, cursor, limit: 1000 });
       for (const o of page.objects) { bytes += o.size; objects++; }
       cursor = page.truncated ? page.cursor : undefined;
     } while (cursor);
@@ -5693,9 +5756,13 @@ function redactPublishedBy(value, email) {
 /**
  * Sweep this workspace's stored publish history. Bounded to `spaces/<id>/`.
  * Returns {ok, redacted, versions, manifest} or {ok:false, reason}.
+ *
+ * `tenantId` is the workspace whose history this is. An erasure that swept somebody else's
+ * history would be rewriting a stranger's records, which is a larger act than the one that
+ * was asked for — so the sweep is bounded to the workspace as well as to the space.
  */
-async function redactProvenance(env, spaceId, email) {
-  const r2 = env && env.BUNDLES;
+async function redactProvenance(env, spaceId, email, tenantId = "") {
+  const r2 = env && env.BUNDLES ? bundlesFor(env, tenantId) : null;
   if (!r2 || typeof r2.list !== "function") return { ok: false, reason: "no-bundle-store" };
   const addr = lcEmail(email);
   if (!addr) return { ok: false, reason: "bad-address" };
@@ -6527,8 +6594,10 @@ async function exportState(tctx, env) {
   if (env.BUNDLES && typeof env.BUNDLES.list === "function") {
     try {
       let cursor;
+      // This workspace's images, not the deployment's. `assets/` carries the segment.
+      const bundles = bundlesFor(env, tctx && tctx.tenantId);
       do {
-        const page = await env.BUNDLES.list({ prefix: ASSET_R2_PREFIX, cursor });
+        const page = await bundles.list({ prefix: ASSET_R2_PREFIX, cursor });
         for (const o of page.objects || []) assets.add(o.key.slice(ASSET_R2_PREFIX.length));
         cursor = page.truncated ? page.cursor : null;
       } while (cursor);
@@ -7136,17 +7205,25 @@ async function setFreeze(tctx, env, { on, reason, by }) {
 /** Every blob hash a manifest document references. */
 const hashesIn = (m) => Object.values((m && m.files) || {}).map((f) => f && f.h).filter(Boolean);
 
-/** Walk one space's live manifest and every retained version. */
-async function spaceHashes(env, id) {
+/**
+ * Walk one space's live manifest and every retained version.
+ *
+ * `workspace` names whose copy of that space to walk — empty for the unprefixed keys, which
+ * on a single-workspace deployment is all of them and on a shared one is the legacy set
+ * plus `_engine`. `blobGc` walks every workspace's, because the blob namespace is shared
+ * and an orphan is only an orphan when NOBODY references it.
+ */
+async function spaceHashes(env, id, workspace = "") {
+  const store = bundleStore(env, workspace);
   const out = new Set();
   let read = 0;
-  const live = await env.BUNDLES.get(`spaces/${id}/manifest.json`);
+  const live = await store.get(`spaces/${id}/manifest.json`);
   if (live) { read++; for (const h of hashesIn(JSON.parse(await live.text()))) out.add(h); }
   let cursor, truncated = false;
   do {
-    const page = await env.BUNDLES.list({ prefix: `spaces/${id}/versions/`, cursor });
+    const page = await store.list({ prefix: `spaces/${id}/versions/`, cursor });
     for (const o of page.objects || []) {
-      const v = await env.BUNDLES.get(o.key);
+      const v = await store.get(o.key);
       if (!v) continue;
       read++;
       try { for (const h of hashesIn(JSON.parse(await v.text()))) out.add(h); }
@@ -7166,12 +7243,35 @@ async function spaceHashes(env, id) {
  * conclude that all of them are. Both are the same mistake at different scales, and both
  * are silent.
  */
-async function storeSpaceIds(env) {
+async function storeSpaceIds(env, workspace = "") {
+  const store = bundleStore(env, workspace);
   const ids = [];
   let cursor, complete = true;
   do {
-    const page = await env.BUNDLES.list({ prefix: "spaces/", delimiter: "/", cursor });
+    const page = await store.list({ prefix: "spaces/", delimiter: "/", cursor });
     for (const p of page.delimitedPrefixes || []) ids.push(p.slice("spaces/".length, -1));
+    cursor = page.truncated ? page.cursor : null;
+    if (page.truncated && !page.cursor) { complete = false; break; }
+  } while (cursor);
+  return { ids, complete };
+}
+
+/**
+ * Every workspace that holds a prefix in this bucket, and whether that list is COMPLETE.
+ *
+ * The DEPLOYMENT-wide question, and the only place the worker asks one. It exists for
+ * `blobGc` and for nothing else: the blob namespace is shared on purpose, so a hash is an
+ * orphan only when NO workspace references it, and a sweep that could not see every
+ * workspace's manifests would conclude that the ones it missed are orphaned. On a
+ * deployment with no segment there are no prefixes and this answers with nothing, which is
+ * correct — the unprefixed listing is already the whole bucket.
+ */
+async function storeWorkspaceIds(env) {
+  const ids = [];
+  let cursor, complete = true;
+  do {
+    const page = await env.BUNDLES.list({ prefix: BUNDLE_TENANT_PREFIX, delimiter: "/", cursor });
+    for (const p of page.delimitedPrefixes || []) ids.push(p.slice(BUNDLE_TENANT_PREFIX.length, -1));
     cursor = page.truncated ? page.cursor : null;
     if (page.truncated && !page.cursor) { complete = false; break; }
   } while (cursor);
@@ -7236,18 +7336,29 @@ async function deleteWorkspace(tctx, env, { confirm, dryRun = true } = {}) {
 
   // What this workspace referenced — recorded so the sweep has a starting point, and so a
   // dry run can say what it would eventually reclaim.
-  const listed = await storeSpaceIds(env);
+  // Scoped to this workspace's own prefix where there is one — so the listing can no longer
+  // return a neighbour's space at all, and the delete below cannot name one.
+  const ws = bundleWorkspaceSegment(env, id).workspace;
+  const bundles = bundleStore(env, ws);
+  const listed = await storeSpaceIds(env, ws);
   if (!listed.complete) return { ok: false, reason: "incomplete-listing" };
+  // ⏳ THIS FILTER IS STILL WRONG AND IS NOT THIS ITEM'S TO FIX — see
+  // `B-bundle-store-delete-scope`. `listed.ids` are SPACE ids and `id` is the WORKSPACE, so
+  // on any deployment where the two differ it selects nothing and the erasure deletes no
+  // object while answering ok. The prefix above narrows WHAT can be reached, which is what
+  // this item owes; deciding which of the reachable spaces are this workspace's is the
+  // other item, and it takes that answer from the workspace object rather than from a
+  // string comparison that was never written.
   const mine = listed.ids.filter((s) => s === id || s.startsWith(`${id}/`));
   const maybeOrphaned = new Set();
   const keys = [];
   for (const s of mine) {
-    const { hashes } = await spaceHashes(env, s);
+    const { hashes } = await spaceHashes(env, s, ws);
     for (const h of hashes) maybeOrphaned.add(h);
     keys.push(`spaces/${s}/manifest.json`);
     let cursor;
     do {
-      const page = await env.BUNDLES.list({ prefix: `spaces/${s}/versions/`, cursor });
+      const page = await bundles.list({ prefix: `spaces/${s}/versions/`, cursor });
       for (const o of page.objects || []) keys.push(o.key);
       cursor = page.truncated ? page.cursor : null;
     } while (cursor);
@@ -7257,7 +7368,11 @@ async function deleteWorkspace(tctx, env, { confirm, dryRun = true } = {}) {
     return { ok: true, dryRun: true, workspace: id, objects: keys.length, maybeOrphaned: maybeOrphaned.size };
   }
 
-  for (const k of keys) await env.BUNDLES.delete(k);
+  // ⚠️ THROUGH THIS WORKSPACE'S VIEW, so a key collected above is deleted under the same
+  // segment it was listed under. A delete straight at the binding would take the
+  // UNPREFIXED key of the same name — which on a shared bucket is the legacy object nobody
+  // can attribute, and possibly another workspace's.
+  for (const k of keys) await bundles.delete(k);
 
   // The object last: while its storage exists the workspace can still say what it was, and
   // a delete that died between the two halves is better left with the record than with the
@@ -7286,18 +7401,33 @@ async function deleteWorkspace(tctx, env, { confirm, dryRun = true } = {}) {
  */
 async function blobGc(env, { dryRun = true } = {}) {
   if (!env.BUNDLES) return { ok: false, reason: "no-store" };
-  const listed = await storeSpaceIds(env);
-  // The space listing FIRST, and its completeness before anything else: half a list means
-  // the other half's blobs read as orphaned, and no list at all means all of them do.
-  if (!listed.complete) return { ok: false, reason: "incomplete-listing" };
-  const spaces = listed.ids;
+  // ⚠️ EVERY WORKSPACE, DELIBERATELY, AND THIS IS THE ONE SWEEP THAT CROSSES THE SEGMENT.
+  // `blobs/` is shared by decision, so a hash is an orphan only when no workspace anywhere
+  // on this deployment references it — a per-workspace sweep would delete the bytes its
+  // neighbour is serving, which is exactly the failure `assetGc` had. The workspace listing
+  // is therefore held to the same completeness rule as the space listing below: an
+  // unfinished list of workspaces means their blobs read as orphaned.
+  const workspaces = await storeWorkspaceIds(env);
+  if (!workspaces.complete) return { ok: false, reason: "incomplete-listing" };
+  // "" first: the unprefixed keys, which on a single-workspace deployment are the whole
+  // bucket, and on a shared one are the legacy set plus `spaces/_engine/` — the chrome
+  // every workspace serves, and whose blobs a sweep that skipped it would collect.
+  const scopes = ["", ...workspaces.ids];
+  const spaces = [];
   const referenced = new Set();
   let manifestsRead = 0, incomplete = false;
-  for (const s of spaces) {
-    const r = await spaceHashes(env, s);
-    for (const h of r.hashes) referenced.add(h);
-    manifestsRead += r.read;
-    if (r.truncated) incomplete = true;
+  for (const ws of scopes) {
+    const listed = await storeSpaceIds(env, ws);
+    // The space listing FIRST, and its completeness before anything else: half a list means
+    // the other half's blobs read as orphaned, and no list at all means all of them do.
+    if (!listed.complete) return { ok: false, reason: "incomplete-listing" };
+    for (const s of listed.ids) {
+      spaces.push(ws ? `${ws}/${s}` : s);
+      const r = await spaceHashes(env, s, ws);
+      for (const h of r.hashes) referenced.add(h);
+      manifestsRead += r.read;
+      if (r.truncated) incomplete = true;
+    }
   }
   // A sweep that found "everything is orphaned" because it could not look is the single
   // worst outcome available here, so it is the one this refuses to reach.
@@ -8278,7 +8408,15 @@ async function boardApi(tctx, request, url, env, me) {
 const ASSET_GC_GRACE_MS = 24 * 60 * 60 * 1000;
 async function assetGc(env, tctx, { graceMs = ASSET_GC_GRACE_MS, now = Date.now(), dryRun = false } = {}) {
   const store = overlayFor(env, tctx);
-  const r2 = env.BUNDLES || null;
+  // ⚠️ THIS WORKSPACE'S IMAGES ONLY, AND THAT IS THE POINT OF PREFIXING `assets/`. The rows
+  // and the boards this pass reads are already this workspace's; the KEY was not. Two
+  // workspaces pasting the same picture produce the same 40-hex hash and the same bytes, so
+  // an unprefixed delete here removed the object the OTHER workspace was displaying —
+  // cross-workspace data loss with no attacker in it, reachable by a collector doing exactly
+  // its job. `blobGc` was written for a shared namespace and refuses to conclude from a
+  // partial read; this pass never had that care, and the segment is what makes it
+  // unnecessary rather than a second thing to remember.
+  const r2 = (env.BUNDLES && bundlesFor(env, tctx && tctx.tenantId)) || null;
   if (!store || !r2) return { ok: false, reason: "no-store" };
 
   const rows = await store.read("assets");
@@ -8342,7 +8480,7 @@ const ASSET_MAX_BYTES = 4 * 1024 * 1024; // client compresses to ~<1MB; hard sto
 // its own as boards are re-pasted; nothing has to migrate for a board to keep working.
 async function assetApi(tctx, request, url, env) {
   const kv = kvFor(env);
-  const r2 = env.BUNDLES || null;
+  const r2 = (env.BUNDLES && bundlesFor(env, tctx && tctx.tenantId)) || null;
   const store = overlayFor(env, tctx);
   // ⚠️ THE SWITCH IS THE WORKSPACE STORE, NOT THE BUNDLE STORE, and the reason is BACKUPS.
   // Every live instance already binds R2, so keying the write on that alone would move
@@ -8413,7 +8551,13 @@ async function assetApi(tctx, request, url, env) {
         });
       }
     }
-    if (kv) {
+    // ⚠️ THE LEGACY KV BYTES ARE READ ONLY WHERE THEY CAN BE ATTRIBUTED. `basset:<hash>` is
+    // one flat namespace with no segment in it. On a deployment serving one workspace those
+    // bytes are that workspace's and this is the compatibility path it has always been; on
+    // one that resolves the workspace from the Host they belong to whoever pasted them, a
+    // question this key cannot answer — and "the hash is the credential" would then be a
+    // credential that spans workspaces. Same judgement, same word, as the KV overlay's.
+    if (kv && bundleWorkspaceSegment(env, tctx && tctx.tenantId).legacyIsOurs) {
       const got = await kv.getWithMetadata(ASSET_PREFIX + hash, { type: "arrayBuffer" });
       if (got && got.value) {
         return new Response(got.value, {
@@ -8840,7 +8984,7 @@ async function adminUsersApi(tctx, request, url, env, me, users = tctx.USERS, co
         // has to say which half.
         try {
           const sid = (tctx.SPACES.find((sp) => sp.default) || tctx.SPACES[0] || {}).id;
-          purge.provenance = sid ? await redactProvenance(env, sid, email) : { ok: false, reason: "no-space" };
+          purge.provenance = sid ? await redactProvenance(env, sid, email, tctx && tctx.tenantId) : { ok: false, reason: "no-space" };
         } catch (e) {
           purge.provenance = { ok: false, reason: "failed", detail: String((e && e.message) || e).slice(0, 200) };
         }
@@ -9774,6 +9918,8 @@ export const __testables = Object.freeze({
   deleteUrlPrefix, removeFromStore,
   revokePublishTokens, loginThrottled, loginSlowed, loginFail, DUMMY_HASH,
   pathOwnedBySpace, isPublishablePublicPrefix, removedPublicPrefixes, publishApi, loadManifests, LOGIN_MAX_FAILS,
+  bundleKey, bundleFamily, bundleStore, bundlesFor, bundleWorkspaceSegment, storeWorkspaceIds,
+  BUNDLE_TENANCY, BUNDLE_TENANT_PREFIX, ENGINE_SPACE_ID,
   tokenActorRefusal, publishTokenTtlMs, mintPublishToken, adminTokensApi,
   nextPublishVersion, overlayFor, overlayKvKey, statusApi, nameApi, pinsApi,
   currencyApi, currencyRows, freshness, whenWords, parseSince, unitKey, unitProvenance,

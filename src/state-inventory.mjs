@@ -176,6 +176,10 @@ export const STATE_INVENTORY = Object.freeze([
 
   // ── R2, already where it belongs ───────────────────────────────────────────
   {
+    id: "t/", store: "r2", kind: "prefix", to: "stays",
+    why: "The WORKSPACE SEGMENT on a bundle-store key (`B-bundle-store-tenancy`). On a deployment that resolves the workspace from the Host, the three prefixed families below are written under `t/<workspace>/` — so `t/` is not a family of its own, it is where those families live. It carries nothing the entries below do not describe, and a deployment serving one workspace writes no key under it at all. ⚠️ `blobs/` and `spaces/_engine/` are deliberately NOT under it: see `bundleKey` in src/_worker.js.",
+  },
+  {
     id: "config/instance.json", store: "r2", kind: "key", to: "stays",
     why: "The instance's own config, pushed by the deploy shell. `augur export` deliberately skips it — it is the shell's to write, not a workspace's to carry.",
   },

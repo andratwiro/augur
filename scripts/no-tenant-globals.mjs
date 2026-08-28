@@ -244,6 +244,7 @@ const ALLOWLIST = {
       "STATE_KV_PREFIXED",    // which inventory entries are one document per key when exported
       "NEVER_CLEARED",        // families a reset may never empty; a fact about credentials, not a workspace
       "KV_CUTOVER",           // which identity families read from the workspace object; a deploy-wide fact, and one word per family is the revert
+      "BUNDLE_TENANCY",       // which bundle-store families carry a workspace segment; the same shape, the same revert, and the same deploy-wide fact
       "CAP_ROUTES",           // capability -> the routes it grants; deny-by-default, identical for every workspace
       "FROZEN_WRITES",        // the paths a migration freeze closes; the same list for every workspace
       "SUSPENDED_ALLOWED",       // what a paused workspace still answers — the published promise, as a list
