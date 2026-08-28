@@ -57,10 +57,24 @@ a fallback there would answer with somebody else's workspace. Reserved and malfo
 refused in identical words on purpose. The resolver does NOT check whether a workspace
 exists: that answer lives inside the object it would have to reach anyway, and asking here
 would put a round trip in front of every request.
+**One addition rides the miss path: the ALIAS TABLE** (`B-claim-platform-subdomain`).
+When the literal label names nobody, `aliasTenantId` makes ONE KV lookup —
+`host:alias:<full hostname>` → `{workspace}` — written only by the workspace object's
+`claim` verb, which itself refuses any hostname the literal resolver resolves, so the two
+tables are disjoint by construction and a request the literal resolver can answer never
+pays for a lookup. A miss (or an unreadable store, or a corrupt row naming a reserved or
+malformed target) stays the bare 404. Keyed by FULL hostname so a customer's own hostname
+(`B-custom-hostname-alias`, no suffix at all) lands in the same table later — one lookup,
+not two. A claimed workspace's GENERATED address keeps working: the suspension read also
+carries `canonicalHost`, and the front door 302s GET/HEAD requests whose path is not under
+`/_` to the canonical hostname, path and query preserved — the machine surface (`/__*`,
+`/_build.json`) answers in place so publish tokens, probes and CI keep working against the
+origin their config names. A suspension outranks the redirect. `test/tenant-claim.test.mjs`
+pins all of it.
 
 **What can be done TO a workspace from outside it is one list**: `CONTROL_VERBS` in
 `src/tenant-do.js` — `provision`, `status`, `suspend`, `resume`, `rotate`, `delete`,
-`purge`, `rename` — served
+`purge`, `rename`, `claim` — served
 under `/__control/<verb>` on the workspace object and reachable only by code holding the
 namespace binding. Two properties hold across all of them. **Only `provision` may create
 anything**: every other verb reads `meta` and refuses `not-provisioned` before `init()`,
@@ -107,7 +121,15 @@ object behind it (`augur migrate`). The verb marks THIS address dead — `moved_
 a tombstone, idempotent — and **records nowhere it went**, because a forwarding pointer is one
 field away from being served and the usual reason to change an unguessable address is that it
 reached the wrong person. It revokes nothing: this object still holds the only copy until
-something moves it. The list is written twice, here and as `TENANT_RPC` in the
+something moves it. `claim` is the OPPOSITE decision for the opposite case
+(`B-claim-platform-subdomain`): a SECOND, chosen hostname beside the generated one — it
+writes the resolver's `host:alias:` KV row and its own `canonical_host` meta, refuses any
+hostname the literal resolver resolves (so a generated-shape label is never claimable and
+the alias table cannot shadow anybody), refuses a hostname another workspace's alias row
+holds rather than re-pointing it, and allows ONE canonical hostname per workspace. Where a
+rename hides the destination, a claim advertises it: the generated address 302s browsers to
+the canonical one and keeps the machine surface answering in place. The list is written
+twice, here and as `TENANT_RPC` in the
 control plane, because the repos cannot import each other; both suites assert the other's
 copy.
 

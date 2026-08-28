@@ -265,9 +265,13 @@ test("the store exposes no read or write verb it does not yet need", () => {
   // segment, so a listing of that bucket cannot say whose anything is. Without it the
   // erasure inferred ownership from a string prefix no key has ever carried, matched
   // nothing, and reported a clean delete of everything — see test/delete-workspace.test.mjs.
+  // `claimHostname` is the ninth operator verb (`B-claim-platform-subdomain`): a SECOND,
+  // chosen hostname beside the generated one, refused for any hostname the literal
+  // resolver resolves, while the generated address keeps working as a redirect — see
+  // test/tenant-claim.test.mjs.
   const names = Object.getOwnPropertyNames(TenantStore.prototype).filter((n) => n !== "constructor");
   assert.deepEqual(names.sort(), [
-    "bumpCounter", "clearMeta", "controlResult", "deleteWorkspace", "destroy", "fetch",
+    "bumpCounter", "claimHostname", "clearMeta", "controlResult", "deleteWorkspace", "destroy", "fetch",
     "hasMeta", "importAll", "importOverlay", "init",
     "inviteConsume", "inviteMint", "inviteRead", "inviteRevoke",
     "isProvisioned",

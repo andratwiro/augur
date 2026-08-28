@@ -50,6 +50,10 @@ export const STATE_INVENTORY = Object.freeze([
     why: "Password hashes. A credential is ACCOUNT-level — one address, one password, several workspaces — so it must NOT land in any workspace's store: a workspace admin who could reset it would reach every other workspace that address opens.",
   },
   {
+    id: "host:alias:", store: "kv", kind: "prefix", to: "stays",
+    why: "One row per CLAIMED hostname — `host:alias:<hostname>` → `{workspace}` — the table the front-door resolver consults when the literal first label of the Host names nobody (`B-claim-platform-subdomain`, written only by the workspace object's `claim` verb, aimed only by an operator grant). It is DEPLOYMENT-level routing, not any workspace's state, which is why it is unsegmented and stays: a workspace export must not carry it, because the hostname is the operator's to grant on the destination and a restore that imported an alias row would re-point a platform hostname as a side effect of restoring content. The workspace's own record of its claim travels in its object meta (`canonical_host`); the KV row is re-created by re-running the claim.",
+  },
+  {
     id: "users:roster", store: "kv", kind: "key", to: "workspace",
     why: "The invite/remove overlay on top of identity.json. Becomes rows in `members`, where the file and the overlay stop being two records of one thing.",
   },

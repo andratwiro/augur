@@ -50,7 +50,7 @@ import { tenantCache } from "./tenant-cache.mjs";
 // build.js copies it next to the worker (dist/tenant-host.mjs). It holds the reserved-label
 // list too, because the control plane's name GENERATOR has to read the same one — a
 // generator that emits `admin` and a resolver that refuses it are one list disagreeing.
-import { tenantLabelFromHost } from "./tenant-host.mjs";
+import { tenantLabelFromHost, normalizeHost, isReservedLabel, TENANT_LABEL_RE } from "./tenant-host.mjs";
 
 // The mail transport. Same deal again: build.js copies it next to the worker
 // (dist/mail.mjs) so the relative import resolves at the edge. It reads its provider,
@@ -877,6 +877,47 @@ function tenantStub(env, tenantId) {
   return ns.get(ns.idFromName(tenantId));
 }
 
+// ── The alias table: hostnames the literal resolver refuses, resolved by lookup ──────
+//
+// `B-claim-platform-subdomain`, the resolver half. A claimed hostname — `demo.<suffix>`, a
+// label the RESERVED list refuses on the self-service path — is an alias row an OPERATOR
+// wrote (the claim verb on the workspace object; nothing else writes this family), keyed by
+// the FULL normalized hostname. It is consulted ONLY when `tenantLabelFromHost` answers
+// null, so a request the literal resolver can answer never pays for a lookup — and the two
+// tables are disjoint by construction, because the claim verb refuses any hostname the
+// literal resolver resolves. Keying on the full hostname rather than the label is what lets
+// a customer's own hostname (no suffix at all) land in the SAME table later
+// (`B-custom-hostname-alias`): one lookup, not two.
+//
+// A miss stays a miss: the bare 404 an unknown hostname has always had, before any config
+// read. An unreadable store also stays a miss — an alias is an ADDITION to the namespace,
+// and a KV blip must not widen what a hostname resolves to; the claimed hostname going
+// dark for a tick while the generated one keeps serving is the cheap side of that trade.
+//
+// NO PER-ISOLATE MEMO, deliberately. The one keyed-cache shape this repo trusts is keyed
+// by tenantId (scripts/no-tenant-globals.mjs), and this lookup is keyed by HOSTNAME —
+// which is also what a stranger controls, so a memo here is a table strangers grow. The
+// platform's own KV read cache (~60s per key) already absorbs the hot claimed hostname,
+// and the literal path above never reaches this line at all.
+async function aliasTenantId(env, hostHeader) {
+  const kv = kvForRaw(env);
+  if (!kv) return null;
+  const host = normalizeHost(hostHeader);
+  if (!host || host.startsWith("[")) return null;
+  let row = null;
+  try {
+    row = JSON.parse((await kv.get(`host:alias:${host}`)) || "null");
+  } catch (e) {
+    return null; // a miss, never a wider namespace
+  }
+  const label = row && typeof row.workspace === "string" ? row.workspace : "";
+  // The alias must name a workspace the literal resolver COULD have resolved: a legal,
+  // unreserved label. A row naming anything else is a corrupt row, and resolving it would
+  // hand the reserved namespace back out through the side door.
+  if (!TENANT_LABEL_RE.test(label) || isReservedLabel(label)) return null;
+  return label;
+}
+
 async function resolveTenant(request, env) {
   // DYNAMIC — several workspaces, one deployment, told apart by Host. A null answer here
   // is a refusal, never a fall-through to the static branch: see the seam header.
@@ -884,7 +925,12 @@ async function resolveTenant(request, env) {
   if (suffix.trim()) {
     const host = request && request.headers ? request.headers.get("host") : "";
     const tenantId = tenantLabelFromHost(host, suffix);
-    return { tenantId, store: tenantStub(env, tenantId) };
+    if (tenantId) return { tenantId, store: tenantStub(env, tenantId) };
+    // The literal label names nobody. One alias lookup — a claimed hostname resolves to
+    // its workspace; anything else keeps the refusal it has always had.
+    const aliased = await aliasTenantId(env, host);
+    if (aliased) return { tenantId: aliased, store: tenantStub(env, aliased) };
+    return { tenantId: null, store: null };
   }
   // STATIC — one workspace, named by the build. Unchanged.
   if (tenantMemo) {
@@ -7731,7 +7777,11 @@ async function readSuspension(tenantId, env, now = Date.now()) {
       // `moved` counts as an answer worth keeping for the same reason `suspended` does: a
       // workspace whose address has been changed away must not be served here, and dropping
       // the doc because it is not *paused* would cache "fine" for an address that is gone.
-      cur.doc = body && (body.suspended || body.moved) ? body : null;
+      // `canonicalHost` is kept too — not a pause, but the same read carries the claimed
+      // address the front door redirects the generated one to, so a claimed workspace's
+      // redirect costs no read of its own. The suspension gate below keys on `suspended`,
+      // never on the doc being present.
+      cur.doc = body && (body.suspended || body.moved || body.canonicalHost) ? body : null;
       cur.at = now;
     } catch (e) { /* keep the last answer, whatever it was — including "never read" */ }
   }
@@ -8590,7 +8640,9 @@ function touchWorkspaceActivity(env, tctx, ctx) {
  * because a resume did not happen. The next sign-in — or the next isolate — tries again.
  */
 function resumeAfterDormancy(env, tctx, user, paused, ctx) {
-  if (!paused || !user || user.role !== "admin") return;
+  // `paused.suspended`, not the doc: the same read now carries `canonicalHost` for a
+  // claimed-but-live workspace, and a live workspace has nothing to resume.
+  if (!paused || !paused.suspended || !user || user.role !== "admin") return;
   const stub = tenantStub(env, tctx && tctx.tenantId);
   if (!stub) return;
   const p = stub.fetch("https://workspace/resume-on-sign-in", {
@@ -10393,7 +10445,9 @@ async function handleRequest(request, env, ctx, url, trace) {
       if (paused && paused.moved) return unknownHostResponse();
       // `undefined` is "this isolate has never managed to read the flag". It refuses, and
       // that is the one degradation in this file that shuts a door instead of opening one.
-      if (paused === undefined || paused) {
+      // The gate keys on `suspended`, not on the doc existing: the same read now also
+      // carries `canonicalHost` for a claimed-but-live workspace, and a claim is not a pause.
+      if (paused === undefined || (paused && paused.suspended)) {
         if (!isAllowedWhileSuspended(request, url)) {
           if (wantsJson(request, url)) return suspensionRefusal();
           // ⚠️ A MEMBER SEES THE REASON; A STRANGER DOES NOT. Proving membership costs a
@@ -10405,6 +10459,27 @@ async function handleRequest(request, env, ctx, url, trace) {
             ? await isPausedWorkspaceMember(request, env, tenantId)
             : false;
           return suspensionPage(paused === undefined ? null : paused, forMember);
+        }
+      }
+      // ── the claimed hostname ─────────────────────────────────────────────────
+      // `B-claim-platform-subdomain`. A workspace with a claimed canonical hostname keeps
+      // its generated address WORKING — decided, never freed — and the generated address
+      // sends browsers on: a 302 preserving path and query, so every link ever published
+      // keeps landing where the workspace now lives. Three deliberate narrowings:
+      //   · GET/HEAD only. A redirected POST loses its body (302) or its Authorization
+      //     header (cross-origin 307), so a write is served where it was aimed.
+      //   · Never a path under `/_`. That is the machine surface — /__publish, /__auth,
+      //     /_build.json and the rest — and publish tokens, probes and CI hold the
+      //     generated origin in config; the programmatic surface answers in place so no
+      //     stored origin breaks on the day of a claim.
+      //   · Same read as the suspension, so a claim costs the front door nothing new; a
+      //     suspension outranks it (the holding page serves wherever it is asked).
+      if (paused && paused.canonicalHost && (request.method === "GET" || request.method === "HEAD")
+          && !url.pathname.startsWith("/_")) {
+        const canonical = normalizeHost(paused.canonicalHost);
+        const reqHost = normalizeHost(request.headers.get("host"));
+        if (canonical && reqHost && reqHost !== canonical) {
+          return Response.redirect(`https://${canonical}${url.pathname}${url.search}`, 302);
         }
       }
     }
@@ -11010,4 +11085,5 @@ export const __testables = Object.freeze({
   CONFIG_STALE_CEILING_MS,
   resolveTenant, DEFAULT_TENANT_ID, TENANT_MEMO_TTL_MS, __setTenantTestState, tenantStub,
   tenantNamespace,
+  aliasTenantId,
 });

@@ -48,6 +48,7 @@
 import { PLANS, DEFAULT_PLAN, QUOTA_FIELDS, quotasForPlan } from "./tenant-quotas.mjs";
 import { purgeThreads, personIdFor, idCollisions } from "./purge.mjs";
 import { deleteConfirmation, backupRetentionFromEnv } from "./delete-confirmation.mjs";
+import { tenantLabelFromHost, normalizeHost } from "./tenant-host.mjs";
 
 // 1 → 2: `B-kv-read-cutover`'s second slice. `publish_tokens` gained `scope`, and `members`
 // gained the columns that let the roster documents be READ back rather than inferred — see
@@ -449,8 +450,34 @@ export const DELETE_GRACE_MS = 30 * 24 * 60 * 60 * 1000;
  * else, so every control-plane call was a 404 that nothing was watching for.
  */
 export const CONTROL_VERBS = Object.freeze([
-  "provision", "status", "suspend", "resume", "rotate", "delete", "purge", "rename",
+  "provision", "status", "suspend", "resume", "rotate", "delete", "purge", "rename", "claim",
 ]);
+
+/**
+ * The KV document the front door's alias lookup reads, for one hostname. ONE key shape for
+ * every kind of alias — a platform label the resolver refuses (`demo.<suffix>`) and, later,
+ * a customer's own hostname that carries no suffix at all — so the resolver ever makes ONE
+ * lookup, keyed on the full normalized hostname, rather than growing a second table when
+ * custom hostnames arrive.
+ */
+export const HOST_ALIAS_KEY_PREFIX = "host:alias:";
+export const hostAliasKey = (hostname) => `${HOST_ALIAS_KEY_PREFIX}${hostname}`;
+
+/**
+ * A hostname a claim may carry: a normalized, dotted DNS name — at least two labels, each
+ * of legal shape, 253 characters or fewer. Deliberately NARROW: no port, no trailing dot,
+ * no case (normalizeHost has already folded those away for a live request, and a stored
+ * key must hold exactly the form the lookup asks for).
+ */
+export function normalizeClaimHostname(hostname) {
+  const h = normalizeHost(hostname);
+  if (!h || h.length > 253 || h.startsWith("[")) return null;
+  const labels = h.split(".");
+  if (labels.length < 2) return null;
+  const LABEL = /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/;
+  for (const l of labels) if (!LABEL.test(l)) return null;
+  return h;
+}
 
 /**
  * The suspension reasons a member can lift by signing in — an ALLOWLIST, and the WHOLE of
@@ -973,6 +1000,10 @@ export class TenantStore {
       resumedAt: meta.resumed_at || null,
       resumedFrom: meta.resumed_from || null,
       resumedBy: meta.resumed_by || null,
+      // The chosen hostname this workspace also answers at, and when it was claimed.
+      // Public by design — it is in every redirect the generated address serves.
+      canonicalHost: meta.canonical_host || null,
+      canonicalHostAt: meta.canonical_host_at || null,
       plan: meta.plan || DEFAULT_PLAN,
       quotas: this.quotas(),
       members: tables.has("members") ? count(`SELECT COUNT(*) AS n FROM members WHERE removed_at IS NULL`) : 0,
@@ -1250,6 +1281,81 @@ export class TenantStore {
   }
 
   /**
+   * Give this workspace a SECOND, chosen hostname — the canonical one — while its own
+   * generated address keeps working as a redirect.
+   *
+   * `B-claim-platform-subdomain`. The rules, each of which is a decision and not a default:
+   *
+   *   · A CLAIM MAY ONLY TAKE A HOSTNAME THE LITERAL RESOLVER DOES NOT RESOLVE. On a
+   *     deployment with a host suffix, `tenantLabelFromHost` is asked first and a non-null
+   *     answer refuses the claim — so the alias table and the literal resolver are DISJOINT
+   *     by construction. A reserved label (`demo.<suffix>`) is claimable, which is the whole
+   *     point of the verb; a generated-shape label is not, because the literal resolver
+   *     already resolves it, which keeps the generator's namespace clean of aliases and
+   *     means an alias can never shadow or race a workspace that exists or could exist.
+   *     WHO may aim this verb at a reserved name is the caller's question — the operator
+   *     gate in the control plane — not this object's; the resolver's own reserved refusal
+   *     for every self-service path is untouched.
+   *   · THE GENERATED ADDRESS IS NOT FREED. Nothing here touches the registry or the
+   *     resolver's view of this workspace's own label; the front door redirects it (see
+   *     the canonicalHost read in src/_worker.js). A freed label is a label somebody else
+   *     can be handed, and every link ever published to it would then resolve to a
+   *     stranger's workspace — the same reasoning as RELEASE_COOLDOWN_MS.
+   *   · AN EXISTING ALIAS FOR ANOTHER WORKSPACE REFUSES, never re-points. The durable
+   *     compare-and-swap lives in the caller's registry (the alias row's primary key);
+   *     this check is the belt on the store the resolver actually reads.
+   *   · ONE CANONICAL HOSTNAME PER WORKSPACE. A second, different claim refuses rather
+   *     than silently moving the front door; un-claiming is a separate decision nobody
+   *     has made yet.
+   *
+   * Idempotent: re-claiming the SAME hostname re-writes the KV row (so a crashed claim
+   * converges on retry) and reports changed: false.
+   */
+  async claimHostname(hostname, at = new Date().toISOString()) {
+    if (!this.hasMeta()) return { ok: false, error: "not-provisioned" };
+    if (!this.isProvisioned()) return { ok: false, error: "not-provisioned" };
+    if (this.readMeta("deleted_at")) return { ok: false, error: "deleted" };
+    const host = normalizeClaimHostname(hostname);
+    if (!host) return { ok: false, error: "bad-hostname" };
+    const suffix = this.env && typeof this.env.TENANT_HOST_SUFFIX === "string"
+      ? this.env.TENANT_HOST_SUFFIX.trim() : "";
+    // Only a deployment that resolves workspaces by hostname has an alias table to write.
+    if (!suffix) return { ok: false, error: "no-host-routing" };
+    // The disjointness rule. `demo.<suffix>` answers null here (reserved) and is claimable;
+    // `misty-fox-123.<suffix>` answers a label and is not, whoever holds it.
+    if (tenantLabelFromHost(host, suffix) !== null) {
+      return { ok: false, error: "hostname-resolves-literally" };
+    }
+    const ws = this.workspaceId();
+    if (!ws) return { ok: false, error: "not-provisioned" };
+    const current = this.readMeta("canonical_host");
+    if (current && current !== host) {
+      return { ok: false, error: "already-claimed", canonicalHost: current };
+    }
+    // The store the resolver reads. Same binding the worker's kvForRaw answers with; a
+    // deployment that resolves by Host always has one (the login gate depends on it).
+    const kv = this.env && this.env.COMMENTS;
+    if (!kv) return { ok: false, error: "no-alias-store" };
+    let row = null;
+    try {
+      row = JSON.parse((await kv.get(hostAliasKey(host))) || "null");
+    } catch (e) {
+      // An unreadable store is not evidence the hostname is free. Refuse, don't guess.
+      return { ok: false, error: "alias-store-unreadable" };
+    }
+    if (row && row.workspace && row.workspace !== ws) {
+      return { ok: false, error: "alias-taken" };
+    }
+    await kv.put(hostAliasKey(host), JSON.stringify({ workspace: ws, at }));
+    if (current === host) {
+      return { ok: true, changed: false, canonicalHost: host, claimedAt: this.readMeta("canonical_host_at") };
+    }
+    this.writeMeta("canonical_host", host);
+    this.writeMeta("canonical_host_at", at);
+    return { ok: true, changed: true, canonicalHost: host, claimedAt: at };
+  }
+
+  /**
    * A verb's answer, as HTTP.
    *
    * ⚠️ A REFUSAL IS A 4xx, NOT AN `ok: false` INSIDE A 200. The control plane logs a verb's
@@ -1346,7 +1452,7 @@ export class TenantStore {
    */
   suspension() {
     if (!this.hasMeta()) {
-      return { suspended: false, reason: null, at: null, deleted: false, moved: false };
+      return { suspended: false, reason: null, at: null, deleted: false, moved: false, canonicalHost: null };
     }
     return {
       suspended: this.readMeta("suspended") === "1",
@@ -1357,6 +1463,12 @@ export class TenantStore {
       // request; the new address must not, or the old hostname becomes the way to find it.
       // See renameAway.
       moved: !!this.readMeta("moved_at"),
+      // ⚠️ AND THIS ONE IS THE ADDRESS, DELIBERATELY — the opposite decision from `moved`,
+      // for the opposite reason. A rename hides where the workspace went; a claim exists to
+      // ADVERTISE it: the generated address keeps working precisely so every old link can be
+      // walked to the canonical one, and the front door needs the destination to do it.
+      // Riding this answer keeps the redirect free — the front door already pays this read.
+      canonicalHost: this.readMeta("canonical_host") || null,
     };
   }
 
@@ -2226,6 +2338,10 @@ export class TenantStore {
         // No `to` is read off the body, and none may ever be: see renameAway. The caller
         // knows the new address; this object must not.
         case "rename": return this.controlResult(this.renameAway(at));
+        case "claim": {
+          if (!body || !body.hostname) return Response.json({ error: "bad-input" }, { status: 400 });
+          return this.controlResult(await this.claimHostname(body.hostname, at));
+        }
         case "purge": {
           if (!body || !body.email) return Response.json({ error: "bad-input" }, { status: 400 });
           const out = this.purgeAuthor(body.email, at);
