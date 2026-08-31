@@ -6,6 +6,7 @@
 //                                             + push the instance config
 //   … --dry-run                               diff against the store, ship nothing
 //   … --allow-unpublish                       permit taking live public pages down
+//   … --no-config                             skip pushing the instance config (chrome-only refresh)
 //
 // Run from a space repo (a cwd with space.json) the --space flag is inferred.
 // Contract (agents rely on this): synchronous, zero prompts, exit code = truth,
@@ -75,6 +76,12 @@ const TAKEOVER = flag("--takeover");
 // graph, the space icon, and the two canvas aggregates) were in fact derived from
 // space content, and every CI run quietly republished them from its pinned tree.
 const ENGINE_ONLY = flag("--engine");
+// --no-config: do NOT push dist/__config/instance.json. For a chrome-only refresh on a
+// hosted deployment, where the credential (a `chrome`-capability token) is refused on the
+// config route anyway — this skips the job so the one command exits clean instead of failing
+// it. There is no single "the instance" whose roster an engine publish speaks for on a
+// multi-tenant worker; see augur-deploy-hosted/CHROME-PUBLISH-GAP.md.
+const NO_CONFIG = flag("--no-config");
 // --no-self-update: keep a stale engine rather than fast-forwarding it. Off by default
 // (see selfUpdate below) because the alternative is telling a person to run git.
 const NO_SELF_UPDATE = flag("--no-self-update") || process.env.AUGUR_NO_SELF_UPDATE === "1";
@@ -889,7 +896,7 @@ if (ALL || ENGINE_ONLY) {
   // concurrently (each is its own check/upload/commit chain against its own
   // manifest); total time is the slowest chain, not the sum.
   const jobs = [];
-  if (!DRY) {
+  if (!DRY && !NO_CONFIG) {
     jobs.push([null, (async () => {
       const inst = await readFile(path.join(ROOT, "dist", "__config", "instance.json"), "utf8");
       await req(api("_instance/config"), { method: "POST", headers: { "content-type": "application/json" }, body: inst });
