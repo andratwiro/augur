@@ -231,7 +231,7 @@ cosmetic.
 | plain star token, `_engine` write | `403 chrome-not-writable-here` (unchanged, pinned) |
 | `chrome` token, `_engine` check/blob/commit | allowed — the credential's whole job |
 | `chrome` token, any real space / `_state` / `_instance/config` | `403 capability-not-granted` |
-| `chrome` token, `_engine` rollback | `403 chrome-not-writable-here` (not in `CAP_ROUTES.chrome`) |
+| `chrome` token, `_engine` rollback | `403 capability-not-granted` (rollback is not in `CAP_ROUTES.chrome`, so `capabilityRefusal` catches it first — refused either way) |
 | operator grant expired / wrong workspace / missing verb | refused + audit-logged like `suspend` |
 | `chrome` verb on a not-provisioned workspace | `404 not-provisioned`, nothing minted |
 
