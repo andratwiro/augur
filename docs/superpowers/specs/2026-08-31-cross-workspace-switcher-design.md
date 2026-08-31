@@ -218,3 +218,63 @@ live cookies keep validating and their next `/__auth` establishes a key. `/__aut
 Deploy behind flags → enable on the hosted worker → wire keys → set up roberto → run the live
 acceptance (roberto switches demo↔delta via magic link; a non-member 404s). Update the plan
 items (`B-cross-workspace-signin`, `B-signup-flow` where relevant) and ship the plan page.
+
+---
+
+## Current status & handoff (as of 2026-08-31) — READ THIS FIRST if picking up
+
+**The design above is BUILT, reviewed, and DEPLOYED. One live blocker remains and it can lock the
+operator out of a workspace if done wrong — do not guess at it.**
+
+### Where the pieces are
+- Implementation plan (12 tasks, all done): `docs/superpowers/plans/2026-08-31-cross-workspace-switcher.md`.
+- Full execution log + per-task review notes + every commit SHA: `augur/.superpowers/sdd/progress.md`
+  (⚠️ git-IGNORED scratch — on this machine only, not in a fresh clone).
+- Engine straddle documented in `augur/CLAUDE.md` (search "central sign-in", "GET /__enter").
+- Control-plane runbook for the account-key backfill: `augur-control-plane/runbooks/operator-credential.md`.
+
+### What is live (both repos green; committed + pushed)
+- Engine HEAD `f9e58b6b` (hosted worker deployed = version `afbb6d1d`; also auto-propagated to the reference instance, inert).
+- Control-plane HEAD `297b378` (deployed). `augur.works/signin` is LIVE (email-only magic link); signup stays off.
+- Account-store bearers WIRED for `flint-birch-702` (demo) and `stoic-canyon-873` (delta) via the new
+  `account-key` operator verb (`operator-route.js`). Confirmed `ok` live.
+- Flags ON: `SESSION_KEYS` + `accountOrigin` in `augur-deploy-hosted/deploy.config.json`; `SIGNIN_OPEN="true"`
+  in the control-plane `wrangler.toml`. (Fixed a real gap: `sessionKeys` was never threaded from
+  deploy.config into `instance.json` — commit `f9e58b6b`.)
+
+### The blocker (diagnosed via a synthetic live test)
+Drive `/enter` (control plane) → it mints a hand-off and 303s to a workspace's `GET /__enter?handoff=…`.
+The control-plane half works. **`/__enter` returns 404.** Root cause: **delta and demo have NO
+`config/instance.json` in the R2 bundle store** (`t/<ws>/config/instance.json` — key ABSENT). So
+`loadTenantContext` reads config FIELDS from the empty base → `ACCOUNT_ORIGIN=""`, `SESSION_KEYS=false`
+→ `/__enter` is inert. (Roster + credential load from the workspace OBJECT, which is why login still
+works; the flag fields do not.) The `deploy.config.json` flags reach the built dist ASSETS, NOT the
+per-workspace store config the worker actually reads in bundle mode.
+
+⛔ **THE HAZARD — why this was NOT auto-fixed:** setting `accountOrigin`/`sessionKeys` needs a config
+write per workspace (`/__publish/_instance/config`). `augur/CLAUDE.md` and the Delta notes warn a config
+push built from the hosted shell's `identity.json` (`[]`) **"would overwrite the credential and lock him
+out"** of Delta. There is an unresolved contradiction: the R2 config key is ABSENT, yet CLAUDE.md says
+Delta's seeded passHash lives in `config/instance.json`. **Resolve WHERE the Delta credential actually
+lives (workspace object `users:secrets` vs a store config) BEFORE any config write.** The safe shape is
+almost certainly: read the workspace's CURRENT effective config, add only `accountOrigin` +
+`sessionKeys`, write it back without touching `users`/secrets — but confirm the storage first.
+
+### Remaining steps to the acceptance (roberto switches demo↔delta via magic link)
+1. **(blocker)** Safely give delta + demo a config carrying `accountOrigin: "https://augur.works"` and
+   `sessionKeys: true`, WITHOUT blanking the credential. This unblocks `/__enter`.
+2. **Add `roberto@<the operator's domain>` to DEMO's roster** (demo-admin invite; delta already has him),
+   then run the engine's `reconcile-membership` admin op so demo appears in his switcher.
+   (His DELTA `account_workspaces` row is already seeded.)
+3. **The operator clicks the magic link** at `augur.works/signin` — it goes to their own inbox; only they
+   can complete that step.
+4. Then update `B-cross-workspace-signin`/`B-signup-flow` on the hosted plan and ship the plan page.
+
+### Re-verify tool (no email needed)
+The synthetic live test: INSERT an `accounts` row (credential NULL) + a `sessions` row (binding =
+`incarnation:epoch`, token_hash = SHA-256 of the cookie value) in `augur-accounts-eu`, then
+`GET augur.works/enter?workspace=<ws>` with `Cookie: __Host-augur_session=<token>` and follow the 303
+into `/__enter`. A 303 + `Set-Cookie: __Host-augur_user=…` means the whole straddle works live. Creds:
+`.secrets/hosted.env`.
+
+### Known minor (pre-public-launch): no Turnstile on `POST /signin` (bounded by existing rate limits).
