@@ -5525,14 +5525,16 @@ const ADMIN_SECTIONS_JS = `(function(){
   // field exactly as it is today when there isn't one.
   var uEl = document.querySelector('[data-set-url]');
   var uNote = document.querySelector('[data-set-url-note]');
-  fetch('/__admin/custom-domain', {headers:{'Accept':'application/json'}}).then(function(r){
-    return r.ok ? r.json() : null;
-  }).then(function(d){
-    if(d && d.claimed && d.hostname && uEl){
-      uEl.value = d.hostname;
-      if(uNote) uNote.textContent = "This workspace's custom address.";
-    }
-  }).catch(function(){});
+  if(uEl){
+    fetch('/__admin/custom-domain', {headers:{'Accept':'application/json'}}).then(function(r){
+      return r.ok ? r.json() : null;
+    }).then(function(d){
+      if(d && d.claimed && d.hostname){
+        uEl.value = d.hostname;
+        if(uNote) uNote.textContent = "This workspace's custom address.";
+      }
+    }).catch(function(){});
+  }
 
   // ---- workspace icon ------------------------------------------------------
   // Same bargain as a profile photo: the workspace repo's /space-icon.png is the seed,
