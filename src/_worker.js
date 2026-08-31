@@ -1720,6 +1720,47 @@ async function meAvatarApi(tenantId, request, env, me, tctx) {
   return jsonResponse({ error: "method-not-allowed" }, 405);
 }
 
+// GET /__me/workspaces — the cross-workspace switcher's dropdown data
+// (`B-cross-workspace-signin`). Signed-in users only, and always the CALLER'S OWN
+// email — there is no email parameter, the same rule /__me/name and /__me/avatar
+// follow. Proxies `POST ${ACCOUNT_ORIGIN}/__account/workspaces` (the control plane's
+// enumeration guard: it answers with only the workspaces that email actually belongs
+// to) using THIS workspace's own accountKey, the same bearer `/__enter` and
+// `noteMembershipUpstream` authenticate with.
+//
+// Best-effort and inert like both of those: no accountKey, no ACCOUNT_ORIGIN, or the
+// account store erroring/throwing/answering something malformed all fall through to
+// `{workspaces: []}` rather than an error — a deployment that has not wired central
+// sign-in must never have this route betray the seam, and the dropdown simply degrades
+// to showing the current workspace only.
+async function meWorkspacesApi(tctx, request, env, me) {
+  if (!me) return jsonResponse({ error: "unauthorized" }, 401);
+  if (request.method !== "GET") return jsonResponse({ error: "method-not-allowed" }, 405);
+  const origin = tctx.ACCOUNT_ORIGIN;
+  const key = origin ? await tenantAccountKey(tctx.tenantId, env) : null;
+  if (!key || !origin) return jsonResponse({ workspaces: [] });
+  let list = [];
+  try {
+    const res = await fetch(`${origin}/__account/workspaces`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ email: me.email }),
+    });
+    if (res.ok) {
+      const body = await res.json();
+      if (body && Array.isArray(body.workspaces)) list = body.workspaces;
+    }
+  } catch (e) { /* best-effort: the account store's own failure must never surface here */ }
+  const workspaces = list
+    .filter((w) => w && typeof w.workspace === "string" && w.workspace)
+    .map((w) => ({
+      workspace: w.workspace,
+      label: typeof w.label === "string" && w.label ? w.label : w.workspace,
+      current: w.workspace === tctx.tenantId,
+    }));
+  return jsonResponse({ workspaces });
+}
+
 // Serve a self-set photo. The index-backed AVATAR_KEYS check comes FIRST so an ungated
 // route can't be turned into a KV read amplifier by anyone typing hashes at it. It is
 // asked of the CALLING workspace's context, so a hash is only ever served by the
@@ -10961,6 +11002,11 @@ async function handleRequest(request, env, ctx, url, trace) {
     // above: chrome, ahead of the gate, re-checks the session itself (401 without one).
     if (url.pathname === "/__me/name") return meNameApi(tctx.tenantId, request, env, me, tctx);
 
+    // My workspaces — the cross-workspace switcher's dropdown. Same placement as the
+    // two routes above (chrome, ahead of the gate) and the same self-check (401 without
+    // a session); best-effort against the control plane, never an error.
+    if (url.pathname === "/__me/workspaces") return meWorkspacesApi(tctx, request, env, me);
+
     // Comment-author faces, same deal as /__me and /__avatar/ above: this route must
     // stay here, ahead of the auth gate, because intercepting first is what makes it
     // reachable without a session — there's no isPublicPath entry for it, and adding
@@ -11362,6 +11408,7 @@ export const __testables = Object.freeze({
   mergeRoster, readRoster, revokeSecret, revokeInvitesFor,
   applyAvatars, readAvatars, parseAvatarDataUri, avatarHash, clearAvatar,
   meAvatarApi, serveKvAvatar, avatarUrl, USER_AVATARS_KEY, AVATAR_BLOB_PREFIX,
+  meWorkspacesApi,
   meNameApi, applyNames, cleanName, readNames, clearName, USER_NAMES_KEY, NAME_MAX_CHARS,
   AVATAR_MAX_CHARS,
   isEmailish, nameFromEmail, initialsFor,
