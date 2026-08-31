@@ -911,6 +911,50 @@ name, initials, colour and role. Passwords live in KV as PBKDF2 hashes under
   deployment over the real routes; ⚠️ **a `kv.get` through the worker is cached up to sixty
   seconds**, so a live check of a freshly written key can answer missing for that long, and
   a "nothing changed" read of a neighbour is only evidence if the read is fresh.
+- **⏳ A workspace may also be entered by a CENTRAL sign-in, and the split is deliberate:
+  the control plane proves WHO, the workspace decides WHAT.** A magic-link sign-in on the
+  control plane authenticates an email against ITS account store — that is the whole of
+  WHO — and hands the browser a one-time hand-off token for the workspace the person
+  picked. `GET /__enter?handoff=<token>` is where a workspace redeems it: it `POST`s
+  `${ACCOUNT_ORIGIN}/__account/handoff` with `Authorization: Bearer <this workspace's own
+  account-store bearer>` and `{token}`, gets back `{email}`, and only THEN asks the
+  question the control plane cannot answer for it — is that email on ITS OWN roster. A
+  hand-off proving a real, authenticated email that this workspace does not carry gets the
+  identical `unknownHostResponse()` a stranger with no hand-off at all gets, at every step
+  (no key delivered, no `ACCOUNT_ORIGIN` configured, an expired or already-redeemed token,
+  a non-member) — no membership oracle, so nobody can learn "that email exists, just not
+  here" from the reply. A proven member's session is minted the same way
+  `inviteRedeemSession` mints one: `rotateSessionKey` writes a fresh per-person session key
+  and `userToken` binds the cookie to the value JUST WRITTEN, never a re-read.
+  - **The workspace's own account-store bearer lives in `meta`, not KV** — durable, never
+    cleared by a reset, and never exposed on any external/public route. The control plane
+    delivers it with the `account-key` control verb (`CONTROL_VERBS` in `src/tenant-do.js`);
+    `accountKey()` reads it back for the object's own `/account-key` route, which
+    `/__enter` reaches through a stub fetch (a Durable Object stub only speaks HTTP). No key
+    delivered yet — including every self-hosted, single-workspace instance, which has no
+    `TENANTS` binding and so no object to ask — makes `/__enter` inert, refusing with the
+    same answer a stranger gets.
+  - **The relationship runs the other way too, best-effort.** A roster invite or removal
+    fires `noteMembershipUpstream`: a fire-and-forget `POST` to
+    `${ACCOUNT_ORIGIN}/__account/index` (`{verb: "joined"|"left", email, at, label}`,
+    bearer = the same account-store key) so the control plane's cross-workspace switcher
+    lists the right workspaces for that person. It is PRESENTATION-ONLY — nothing in
+    `/__enter` or anywhere else ever consults it for authorization — so a missed or failed
+    notify costs a stale switcher row and nothing else, and it is handed to `ctx.waitUntil`
+    so neither the key read nor the POST sits on the admin operation that triggered it. The
+    `reconcile-membership` admin op backfills every current member with one `joined` each,
+    for a workspace whose memberships predate this existing at all; the account store's own
+    CAS on `at` makes a repeat notify a no-op, so it is safe to re-run.
+  - **Three flags, and all are unset/off on every deployment today — byte-for-byte prior
+    behavior.** `SESSION_KEYS` (this repo, `deploy.config.json` `sessionKeys`) is what lets
+    a session bind to a rotated per-person key instead of a password — required for
+    `/__enter` to hold a session at all, since a hand-off proves an email, never a
+    credential. `ACCOUNT_ORIGIN` (this repo, `deploy.config.json` `accountOrigin`) is the
+    control-plane origin this workspace redeems hand-offs against and reports membership
+    to; unset, both directions are inert before any network call. `SIGNIN_OPEN` gates
+    central sign-in itself and lives on the CONTROL PLANE, the separate repo neither side
+    can import — it is independent of this workspace's own password sign-in, which keeps
+    working unchanged whatever `SIGNIN_OPEN` is.
 
 ## Email
 
