@@ -1029,11 +1029,46 @@ async function revertedPhase() {
     JSON.stringify(dropped).slice(0, 160));
   const gone = await sql(`SELECT initials FROM members LIMIT 1`);
   check("and the object really cannot answer for it", gone.ok === false, JSON.stringify(gone).slice(0, 160));
+
+  // ── AND THE SAME DROP ON THE COLUMN THAT CARRIES AN AUTHORIZATION ─────────────────────
+  //
+  // `publish_tokens.caps` is what keeps a capability-restricted bearer restricted:
+  // `capabilityRefusal` in src/_worker.js is deny-by-default over it, and it is what lets
+  // the control plane hold a purge-only credential instead of a star token that could
+  // publish over every workspace's content. The object had no such column, so a COPY of a
+  // KV record landed here as an ordinary row and the narrow credential came back out of the
+  // read as a FULL star token — a fail-open with no attacker in it.
+  //
+  // The star token here is OBJECT-ONLY (clause 5 deleted it from KV), so there is nothing to
+  // fall through to and the object's own answer is the whole answer. Dropped, the read
+  // cannot state the capability, and the ONLY safe verdict is a refusal.
+  const capsGone = await sql(`ALTER TABLE publish_tokens DROP COLUMN caps`);
+  check("the caps column is dropped too, in the shape a pre-column copy left behind",
+    capsGone.ok, JSON.stringify(capsGone).slice(0, 160));
+  const pBlind = await publishAs(state.tokens.star, "one");
+  check("A TOKEN THE OBJECT CANNOT STATE A CAPABILITY FOR IS REFUSED, never widened",
+    !pBlind.authorized, `${pBlind.status} ${pBlind.body}`);
+
   await req("/__me", { cookie: state.cookie });   // the first request that reaches init()
   const back = await sql(`SELECT email, initials FROM members ORDER BY email`);
   check("a real request re-applied the schema and the column is BACK, rows intact",
     back.ok && back.rows.length > 0 && "initials" in back.rows[0],
     JSON.stringify(back.rows).slice(0, 220));
+  const capsBack = await sql(`SELECT label, caps FROM publish_tokens ORDER BY label`);
+  check("…and so is caps — one list, one pass, both columns",
+    capsBack.ok && capsBack.rows.length > 0 && "caps" in capsBack.rows[0]
+      && capsBack.rows.every((r) => r.caps === null),
+    JSON.stringify(capsBack.rows).slice(0, 220));
+  const pStated = await publishAs(state.tokens.star, "one");
+  check("the column is back and still UNSTATED, so the token is still refused — a column is not an answer",
+    !pStated.authorized, `${pStated.status} ${pStated.body}`);
+  // Back to where the mint left it. A real deployment heals on the next mint or from KV;
+  // this run has neither for this token, and the clauses after this one are about other
+  // families and must not inherit this one's damage.
+  await sql(`UPDATE publish_tokens SET caps = 'null'`);
+  const pHealed = await publishAs(state.tokens.star, "one");
+  check("with the capability stated again the object answers exactly as it did before",
+    pHealed.authorized, `${pHealed.status} ${pHealed.body}`);
 
   const rowStillThere = await inviteRow(state.objectOnly);
   check("the object still HOLDS the object-only invite — the revert loses no data",
