@@ -101,11 +101,36 @@ test("signed-in user → {workspaces:[...]} from the account store, marking THIS
     const body = await res.json();
     assert.deepEqual(body.workspaces, [
       { workspace: TENANT_ID, label: "This One", current: true },
-      { workspace: "other-workspace", label: "Other", current: false },
+      {
+        workspace: "other-workspace",
+        label: "Other",
+        current: false,
+        href: `${ACCOUNT_ORIGIN}/enter?workspace=other-workspace`,
+      },
     ]);
     assert.equal(calls.length, 1);
     // The account key must never leak into the response body.
     assert.ok(!JSON.stringify(body).includes(ACCOUNT_KEY), "the account key leaked into the response body");
+  } finally { restore(); }
+});
+
+test("a workspace id needing URL-encoding gets an encoded href", async () => {
+  const env = envWith();
+  const responder = async () => Response.json({
+    ok: true,
+    workspaces: [
+      { workspace: TENANT_ID, label: "This One" },
+      { workspace: "a workspace/with?odd=chars", label: "Odd" },
+    ],
+  });
+  const { restore } = withStubbedFetch(responder);
+  try {
+    const res = await W.meWorkspacesApi(CTX(), GET_REQ(), env, ME);
+    const body = await res.json();
+    const odd = body.workspaces.find((w) => w.workspace === "a workspace/with?odd=chars");
+    assert.equal(odd.href, `${ACCOUNT_ORIGIN}/enter?workspace=${encodeURIComponent("a workspace/with?odd=chars")}`);
+    const here = body.workspaces.find((w) => w.workspace === TENANT_ID);
+    assert.equal(here.href, undefined, "the current row must carry no href");
   } finally { restore(); }
 });
 

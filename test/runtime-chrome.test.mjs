@@ -7,7 +7,7 @@ import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, rmSync } from "nod
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { renderAppChrome, renderSpaceContextScript } from "../src/chrome/appchrome.mjs";
+import { renderAppChrome, renderSpaceContextScript, UI_VERSION } from "../src/chrome/appchrome.mjs";
 import { __testables as W } from "../src/_worker.js";
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
@@ -90,7 +90,10 @@ test("composeChrome swaps bundle refs and re-renders the rail", async () => {
   assert.match(body, /_chrome\.1\.14\.abc12345\.js/);
   assert.doesNotMatch(body, /1\.11\.deadbeef/);
   assert.doesNotMatch(body, /OLDRAIL/);
-  assert.match(body, /gvside__ver">v1\.14/);
+  // The Changelog badge renders the real imported UI_VERSION, not the ctx's `ui`
+  // fixture (that one only swaps the bundle refs) — assert against the constant so a
+  // future version bump doesn't make this test coincidentally fail again.
+  assert.match(body, new RegExp(`gvside__ver">v${UI_VERSION.replace(/\./g, "\\.")}`));
   assert.match(body, /<!--gv-chrome-start [^>]*data-active="prototypes"[^>]*-->/, "markers preserved");
   assert.equal(out.headers.get("ETag"), null, "stale ETag dropped");
   assert.equal(out.headers.get("Content-Length"), null, "stale Content-Length dropped");

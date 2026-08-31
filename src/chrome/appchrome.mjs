@@ -12,7 +12,7 @@
 
 // The SITE shell version — rail foot, chrome bundle filenames, the marker's data-ui.
 // Single source of truth; build.js imports this rather than redeclaring it.
-export const UI_VERSION = "1.14";
+export const UI_VERSION = "1.15";
 
 // ── Small pure utilities (shared with build.js, which imports them from here) ──
 export const escAttr = (s) =>

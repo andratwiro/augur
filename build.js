@@ -2258,12 +2258,14 @@ const NAV_CSS = `
     .gvadmin__tab { font-weight: 500; }
     .gvadmin__tab.is-on { background: #eef2ff; color: #4f46e5; font-weight: 600; }
 
-    /* Space switcher — active space icon+name+badge with a dropdown of the spaces you
-       belong to. Server-rendered from the build-time space list, which is every space;
-       SPACE_JS hides the rows /__me does not name.
-       The workspace row. Hidden until SPACE_JS confirms you belong to something —
-       it is no longer an admin-only maintainer tool (that was html.gv-admin), it is
-       everyone's, and it names spaces, so it must stay dark to a signed-out visitor. */
+    /* Workspace row — active workspace icon+name. Server-rendered as a plain nameplate
+       (a build cannot know who is looking); SPACE_JS reveals it once /__me confirms
+       membership, and it is no longer an admin-only maintainer tool (that was
+       html.gv-admin) — it is everyone's, and it names a workspace, so it must stay dark
+       to a signed-out visitor. WORKSPACES_JS (below, cross-workspace switcher) is what
+       turns the nameplate into a real dropdown again — not of spaces within this
+       workspace (that model is retired), but of every OTHER workspace the signed-in
+       account belongs to, fetched at runtime since a build has no such list. */
     .gvspace { display: none; position: relative; margin: 2px 0 8px; }
     html.gv-spaces .gvspace { display: block; }
     .gvspace__row { display: flex; align-items: center; gap: 2px; }
@@ -2277,6 +2279,32 @@ const NAV_CSS = `
     .gvspace__icon { flex: none; width: 20px; height: 20px; border-radius: 5px; overflow: hidden; display: grid; place-items: center; background: #fff; }
     .gvspace__icon img { width: 100%; height: 100%; object-fit: cover; display: block; }
     .gvspace__name { flex: 1 1 auto; min-width: 0; font-weight: 600; font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+    /* Cross-workspace dropdown (cross-workspace switcher, Task 11) — WORKSPACES_JS
+       only ever adds this markup when the account has more than one workspace, so an
+       instance with none of this wired never pays for it visually. Styled to match
+       .gvprof__menu/.gvprof__item — same rail, same chrome. */
+    .gvspace__btn[data-space-toggle] { cursor: pointer; }
+    @media (hover: hover) {
+      .gvspace__btn[data-space-toggle]:hover { background: rgba(16,17,26,0.05); }
+    }
+    .gvspace__btn[data-space-toggle]:focus-visible { outline: 2px solid #5e6ad2; outline-offset: 1px; }
+    .gvspace__btn[aria-expanded="true"] { background: rgba(16,17,26,0.06); }
+    .gvspace__menu {
+      position: absolute; top: calc(100% + 4px); left: 0; right: 0; z-index: 5;
+      background: #fff; border: 1px solid rgba(16,17,26,0.12); border-radius: 10px; padding: 5px;
+      box-shadow: 0 1px 2px rgba(16,24,40,0.05), 0 12px 30px -16px rgba(16,24,40,0.30);
+    }
+    .gvspace__item {
+      display: flex; align-items: center; gap: 9px; padding: 7px 8px; border-radius: 7px;
+      text-decoration: none; color: #16171a; font-size: 13px; font-weight: 500;
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+    @media (hover: hover) {
+      a.gvspace__item:hover { background: rgba(16,17,26,0.05); }
+    }
+    .gvspace__item.is-current { color: #5b626e; cursor: default; }
+    .gvspace__item svg { width: 15px; height: 15px; flex: none; color: #4f46e5; }
 
     /* Omni search — one field, filters whatever cards are on the right. Editor-style
        filled input that brightens to white on focus. */
@@ -3480,7 +3508,7 @@ function injectNav(html, active) {
   if (!m) return html;
   return html.replace(
     m[0],
-    `${m[0]}\n  <style>${NAV_CSS}${TABBAR_CSS}</style>\n  ${CHROME_MARK_START(NAV_STATE.activeSpace || "", active, NAV_STATE.hasPlayground)}${renderAppChrome(active, NAV_STATE)}${CHROME_MARK_END}\n  <script>${chromeScript()}</script>\n  <script>${renderSpaceContextScript(NAV_STATE)}</script>\n  <script>${PINS_JS}</script>\n  <script>${PROFILE_JS}</script>\n  <script>${SETTINGS_JS}</script>\n  <script>${SPACE_JS}</script>\n  <script>${TABBAR_JS()}</script>`
+    `${m[0]}\n  <style>${NAV_CSS}${TABBAR_CSS}</style>\n  ${CHROME_MARK_START(NAV_STATE.activeSpace || "", active, NAV_STATE.hasPlayground)}${renderAppChrome(active, NAV_STATE)}${CHROME_MARK_END}\n  <script>${chromeScript()}</script>\n  <script>${renderSpaceContextScript(NAV_STATE)}</script>\n  <script>${PINS_JS}</script>\n  <script>${PROFILE_JS}</script>\n  <script>${SETTINGS_JS}</script>\n  <script>${SPACE_JS}</script>\n  <script>${WORKSPACES_JS}</script>\n  <script>${TABBAR_JS()}</script>`
   );
 }
 
@@ -4981,6 +5009,84 @@ const SPACE_JS = `(function(){
 })();
 `;
 
+// Cross-workspace switcher (`B-cross-workspace-signin`, Task 11) — DISTINCT from
+// SPACE_JS above: that reveals/scopes THIS workspace's own chip, this adds a dropdown
+// of every OTHER workspace the signed-in account belongs to, fetched from
+// /__me/workspaces (Task 10, which builds each row's href — this script never needs
+// to know ACCOUNT_ORIGIN itself). A deployment that has not wired central sign-in
+// (every self-hosted instance today) gets `{workspaces: []}` back, and a single-
+// workspace account gets a one-row list — either way this script touches NO DOM at
+// all, so the chip stays exactly what it always was. Best-effort like SPACE_JS:
+// `.catch(function(){})`, degrade silently.
+const WORKSPACES_JS = `(function(){
+  var box = document.querySelector('[data-space]');
+  if(!box) return;
+  var CHECK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" ' +
+    'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>';
+  fetch('/__me/workspaces', {headers:{'Accept':'application/json'}}).then(function(r){
+    return r.ok ? r.json() : null;
+  }).then(function(d){
+    var list = (d && d.workspaces) || [];
+    // 0 or 1 workspace: nothing to switch between — leave the chip exactly as-is.
+    if(list.length < 2) return;
+    var btn = box.querySelector('.gvspace__btn');
+    if(!btn) return;
+
+    var menu = document.createElement('div');
+    menu.className = 'gvspace__menu';
+    menu.setAttribute('data-space-menu', '');
+    menu.setAttribute('role', 'menu');
+    menu.hidden = true;
+    list.forEach(function(w){
+      if(!w || typeof w.workspace !== 'string') return;
+      var label = (typeof w.label === 'string' && w.label) ? w.label : w.workspace;
+      if(w.current){
+        var cur = document.createElement('div');
+        cur.className = 'gvspace__item is-current';
+        cur.setAttribute('role', 'menuitem');
+        cur.setAttribute('aria-current', 'true');
+        cur.innerHTML = CHECK;
+        var lbl = document.createElement('span');
+        lbl.textContent = label;
+        cur.appendChild(lbl);
+        menu.appendChild(cur);
+      } else if(typeof w.href === 'string' && w.href) {
+        var a = document.createElement('a');
+        a.className = 'gvspace__item';
+        a.setAttribute('role', 'menuitem');
+        a.href = w.href;
+        a.textContent = label;
+        menu.appendChild(a);
+      }
+    });
+    // Fewer than two usable rows survived filtering (a malformed entry, say) — same
+    // degradation as fewer than two workspaces to begin with: no dropdown.
+    if(menu.children.length < 2) return;
+    box.appendChild(menu);
+
+    btn.setAttribute('role', 'button');
+    btn.setAttribute('aria-haspopup', 'true');
+    btn.setAttribute('aria-expanded', 'false');
+    btn.setAttribute('data-space-toggle', '');
+    if(!btn.hasAttribute('tabindex')) btn.tabIndex = 0;
+
+    function close(){ menu.hidden = true; btn.setAttribute('aria-expanded', 'false'); }
+    function open(){ menu.hidden = false; btn.setAttribute('aria-expanded', 'true'); }
+    function toggle(){ if(menu.hidden) open(); else close(); }
+    btn.addEventListener('click', function(e){ e.preventDefault(); toggle(); });
+    btn.addEventListener('keydown', function(e){
+      if(e.key === 'Enter' || e.key === ' '){ e.preventDefault(); toggle(); }
+    });
+    document.addEventListener('mousedown', function(e){
+      if(!menu.hidden && !box.contains(e.target)) close();
+    }, true);
+    document.addEventListener('keydown', function(e){
+      if(!menu.hidden && e.key === 'Escape'){ close(); btn.focus(); }
+    }, true);
+  }).catch(function(){});
+})();
+`;
+
 // Admin page behaviour: a people table (name + email, role, last active) fed by
 // /__admin/users — admin-only; the worker 403s everyone else and gates /admin/ itself.
 // Three actions, all through the same API: INVITE an address (puts it on the runtime
@@ -5899,7 +6005,7 @@ const CHROME_CSS_BODY = `${FONT_CSS}${PAGE_CSS}${NAV_CSS}${TABBAR_CSS}`;
 // IIFEs so concatenation can't trigger ASI call-chaining «…})()(function…».
 const CHROME_JS_BODY = [
   CAROUSEL_JS, chromeScript(), STATUS_JS, CURRENCY_JS, COMP_STATUS_JS, CARD_MENU_JS,
-  PINS_JS, PROFILE_JS, SETTINGS_JS, NEWCANVAS_JS, SPACE_JS, TABBAR_JS(),
+  PINS_JS, PROFILE_JS, SETTINGS_JS, NEWCANVAS_JS, SPACE_JS, WORKSPACES_JS, TABBAR_JS(),
   RESEARCH_JS, FACE_JS, MARKS_JS,
 ].join("\n;\n") + "\n;\n" +
   // Register the service worker (P0), shipped inside the already-cached bundle so

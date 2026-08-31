@@ -1733,6 +1733,12 @@ async function meAvatarApi(tenantId, request, env, me, tctx) {
 // `{workspaces: []}` rather than an error — a deployment that has not wired central
 // sign-in must never have this route betray the seam, and the dropdown simply degrades
 // to showing the current workspace only.
+//
+// Task 11 adds `href` per row: `${ACCOUNT_ORIGIN}/enter?workspace=<id>` (the control
+// plane's own entry point, Task 9 — not this workspace's `/__enter`, which REDEEMS a
+// hand-off rather than starting one) for every NON-current row. The current row gets
+// no href — it names where you already are, not a link to click. Built here, not on
+// the client, because only the SERVER knows `ACCOUNT_ORIGIN`; the chrome must not.
 async function meWorkspacesApi(tctx, request, env, me) {
   if (!me) return jsonResponse({ error: "unauthorized" }, 401);
   if (request.method !== "GET") return jsonResponse({ error: "method-not-allowed" }, 405);
@@ -1753,11 +1759,16 @@ async function meWorkspacesApi(tctx, request, env, me) {
   } catch (e) { /* best-effort: the account store's own failure must never surface here */ }
   const workspaces = list
     .filter((w) => w && typeof w.workspace === "string" && w.workspace)
-    .map((w) => ({
-      workspace: w.workspace,
-      label: typeof w.label === "string" && w.label ? w.label : w.workspace,
-      current: w.workspace === tctx.tenantId,
-    }));
+    .map((w) => {
+      const current = w.workspace === tctx.tenantId;
+      const row = {
+        workspace: w.workspace,
+        label: typeof w.label === "string" && w.label ? w.label : w.workspace,
+        current,
+      };
+      if (!current) row.href = `${origin}/enter?workspace=${encodeURIComponent(w.workspace)}`;
+      return row;
+    });
   return jsonResponse({ workspaces });
 }
 
