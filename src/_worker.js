@@ -6263,15 +6263,17 @@ function loginPage(tctx, redirect, error, requestUrl, opts = {}) {
       <input id="email" name="email" type="email" autocomplete="${ac}" autocapitalize="off" autocorrect="off" spellcheck="false" autofocus required value="${fillEmail}" ${error ? 'aria-invalid="true" aria-describedby="pw-err"' : ""} />`;
   let formBody;
   if (codeMode) {
-    formBody = `<p class="intro">We emailed you a code. Enter it below, or tap the button in the email.</p>
+    formBody = `<div class="code-screen">
+    <p class="intro">We emailed you a 6-digit code. Enter it below, or tap the button in the email.</p>
     <form method="POST" action="/__signin/code">
       <input type="hidden" name="email" value="${fillEmail}" />
-      <label for="code">Code</label>
-      <input id="code" name="code" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]*" maxlength="6" autofocus required ${error ? 'aria-invalid="true" aria-describedby="pw-err"' : ""} />
+      <label for="code" class="code-label">Enter code</label>
+      <input id="code" name="code" type="text" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]*" maxlength="6" placeholder="000000" aria-label="6-digit code" autofocus required ${error ? 'aria-invalid="true" aria-describedby="pw-err"' : ""} />
       <button type="submit">Sign in</button>
       ${errBlock}
     </form>
-    <form method="POST" action="/__signin" class="resend"><input type="hidden" name="email" value="${fillEmail}" /><button type="submit" class="link">Request a new code</button></form>`;
+    <form method="POST" action="/__signin" class="resend"><input type="hidden" name="email" value="${fillEmail}" /><button type="submit" class="link">Request a new code</button></form>
+    </div>`;
   } else if (passwordless) {
     formBody = `<form method="POST" action="/__signin">
       ${emailInput("email")}
@@ -6352,9 +6354,29 @@ function loginPage(tctx, redirect, error, requestUrl, opts = {}) {
       margin: 16px 0 0; padding: 9px 12px; border: 1px dashed var(--line-2);
       border-radius: 9px; color: #667085; font-size: 13px; text-align: center;
     }
-    /* The "we emailed you a code" screen. */
-    .intro { margin: 0 0 18px; color: var(--muted); font-size: 14px; line-height: 1.5; }
-    #code { letter-spacing: 0.35em; text-align: center; font-size: 20px; }
+    /* The "we emailed you a code" screen — a deliberate, centred one-time-code field.
+       ONE input, never segmented boxes: autocomplete="one-time-code", paste, undo and
+       screen-reader support only work on a single field (segmented inputs look tidy but
+       lose all of it and need JS to move the caret). So: make the one field read as a
+       code field — big, centred, tabular, generously tracked. */
+    .code-screen { text-align: center; }
+    .intro { margin: 0 0 20px; color: var(--muted); font-size: 14px; line-height: 1.5; }
+    .code-label {
+      display: block; margin: 0 0 10px; text-align: center; font-size: 12px; font-weight: 600;
+      letter-spacing: 0.06em; text-transform: uppercase; color: var(--faint);
+    }
+    input#code {
+      width: 100%; font: inherit; font-weight: 600; font-size: 30px; line-height: 1.2;
+      text-align: center; letter-spacing: 0.4em; text-indent: 0.4em; /* text-indent recentres
+        the digit group, which the trailing letter-spacing would otherwise nudge left */
+      font-variant-numeric: tabular-nums; font-feature-settings: "tnum" 1;
+      padding: 14px 12px; border-radius: 11px; border: 1px solid var(--line-2);
+      background: #fff; color: var(--fg); transition: border-color .12s ease, box-shadow .12s ease;
+    }
+    input#code::placeholder { color: #d6d9df; }
+    input#code:hover { border-color: rgba(16,17,26,0.28); }
+    input#code:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(44,33,80,0.14); }
+    .code-screen button[type=submit] { margin-top: 18px; }
     .resend { margin-top: 14px; text-align: center; }
     .resend .link {
       width: auto; margin: 0; padding: 0; background: none; border: 0; color: var(--muted);
