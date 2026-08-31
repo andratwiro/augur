@@ -340,7 +340,7 @@ test("⚠️ THE ENGINE'S VERB LIST AND THE CONTROL PLANE'S ARE THE SAME LIST", 
   try {
     const src = await import("node:fs").then((fs) => fs.readFileSync(cp, "utf8"));
     const block = src.slice(src.indexOf("TENANT_RPC = Object.freeze(["));
-    theirs = [...block.slice(0, block.indexOf("]);")).matchAll(/"([a-z]+)"/g)].map((m) => m[1]);
+    theirs = [...block.slice(0, block.indexOf("]);")).matchAll(/"([a-z-]+)"/g)].map((m) => m[1]);
   } catch {
     // The control plane is a separate repo and is not always checked out beside this one.
     // Skipping is correct; failing would make a clone of the engine alone fail its own suite.
@@ -553,4 +553,58 @@ test("chrome refuses a workspace nobody provisioned, and creates nothing", async
 
 test("chrome is on CONTROL_VERBS", () => {
   assert.ok(CONTROL_VERBS.includes("chrome"));
+});
+
+// ── account-key ─────────────────────────────────────────────────────────────────────
+//
+// The control plane delivers a workspace's account-store bearer here (Task 4's
+// `callTenant(ws, "account-key", {accountKey})`), so this object can redeem hand-offs
+// and report membership to the account store itself (cross-workspace switcher).
+
+test("account-key stores the bearer, and accountKey() reads it back", async () => {
+  const { db, store } = await provisioned();
+  const res = await control(store, "account-key", { accountKey: "abc123" });
+  assert.equal(res.status, 200);
+  const out = await res.json();
+  assert.equal(out.ok, true);
+  assert.equal(
+    db.prepare(`SELECT v FROM meta WHERE k = 'account_key'`).get().v,
+    "abc123",
+  );
+  assert.equal(store.accountKey(), "abc123");
+});
+
+test("a second account-key call overwrites — rotation, not accumulation", async () => {
+  const { store } = await provisioned();
+  await control(store, "account-key", { accountKey: "first" });
+  await control(store, "account-key", { accountKey: "second" });
+  assert.equal(store.accountKey(), "second");
+});
+
+test("account-key refuses a workspace nobody provisioned, and creates nothing", async () => {
+  const { db, store } = workspace();
+  const res = await control(store, "account-key", { accountKey: "abc123" });
+  assert.equal(res.status, 404);
+  assert.deepEqual(await res.json(), { ok: false, error: "not-provisioned" });
+  const tables = db.prepare(
+    `SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'`,
+  ).all();
+  assert.deepEqual(tables, [], "an account-key call on a typo brought a workspace into being");
+});
+
+test("account-key with no bearer is a 400, not a stored empty string", async () => {
+  const { store } = await provisioned();
+  assert.equal((await control(store, "account-key", {})).status, 400);
+  assert.equal((await control(store, "account-key", { accountKey: "" })).status, 400);
+  assert.equal((await control(store, "account-key", { accountKey: 42 })).status, 400);
+  assert.equal(store.accountKey(), null);
+});
+
+test("accountKey() is null before it is ever set", async () => {
+  const { store } = await provisioned();
+  assert.equal(store.accountKey(), null);
+});
+
+test("account-key is on CONTROL_VERBS", () => {
+  assert.ok(CONTROL_VERBS.includes("account-key"));
 });

@@ -500,6 +500,7 @@ export const DELETE_GRACE_MS = 30 * 24 * 60 * 60 * 1000;
  */
 export const CONTROL_VERBS = Object.freeze([
   "provision", "status", "suspend", "resume", "rotate", "delete", "purge", "rename", "claim", "chrome",
+  "account-key",
 ]);
 
 /**
@@ -1577,6 +1578,16 @@ export class TenantStore {
     return rows.length ? rows[0].key : null;
   }
 
+  /**
+   * This workspace's account-store bearer, or null before the control plane has
+   * delivered one via the `account-key` verb. What `/__enter` (Task 6) reads to
+   * authenticate to the account store — internal only, never exposed on any
+   * external/public route.
+   */
+  accountKey() {
+    return this.readMeta("account_key");
+  }
+
   /** The admins and editors and viewers who have not been removed. */
   members() {
     return [...this.sql.exec(
@@ -2468,6 +2479,21 @@ export class TenantStore {
             Date.now(),
           );
           return Response.json({ ok: true, token: bearer, expiresAt });
+        }
+        // The control plane delivers this workspace's account-store bearer here (the
+        // cross-workspace switcher's hand-off), so it can be redeemed and membership
+        // reported back without a person's session doing the asking. A per-workspace
+        // secret, durable — `meta`, not KV a reset clears — and never exposed on any
+        // external/public route: `accountKey()` below is read internally only.
+        case "account-key": {
+          if (!this.hasMeta() || !this.isProvisioned()) {
+            return Response.json({ ok: false, error: "not-provisioned" }, { status: 404 });
+          }
+          if (!body || typeof body.accountKey !== "string" || !body.accountKey) {
+            return Response.json({ error: "bad-input" }, { status: 400 });
+          }
+          this.writeMeta("account_key", body.accountKey);
+          return this.controlResult({ ok: true });
         }
       }
     }

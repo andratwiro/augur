@@ -269,9 +269,13 @@ test("the store exposes no read or write verb it does not yet need", () => {
   // chosen hostname beside the generated one, refused for any hostname the literal
   // resolver resolves, while the generated address keeps working as a redirect — see
   // test/tenant-claim.test.mjs.
+  // `accountKey` is the reader for the tenth operator verb, `account-key` (cross-workspace
+  // switcher): the control plane delivers this workspace's account-store bearer, stored in
+  // `meta` like every other operator-verb field above, so `/__enter` can read it later — see
+  // test/tenant-verbs.test.mjs.
   const names = Object.getOwnPropertyNames(TenantStore.prototype).filter((n) => n !== "constructor");
   assert.deepEqual(names.sort(), [
-    "bumpCounter", "claimHostname", "clearMeta", "controlResult", "deleteWorkspace", "destroy", "fetch",
+    "accountKey", "bumpCounter", "claimHostname", "clearMeta", "controlResult", "deleteWorkspace", "destroy", "fetch",
     "hasMeta", "importAll", "importOverlay", "init",
     "inviteConsume", "inviteMint", "inviteRead", "inviteRevoke",
     "isProvisioned",
