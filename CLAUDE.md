@@ -955,6 +955,17 @@ name, initials, colour and role. Passwords live in KV as PBKDF2 hashes under
     central sign-in itself and lives on the CONTROL PLANE, the separate repo neither side
     can import — it is independent of this workspace's own password sign-in, which keeps
     working unchanged whatever `SIGNIN_OPEN` is.
+  - **The switcher is a dropdown on the workspace icon, fed by `GET /__me/workspaces`.**
+    That route asks the control plane (over this workspace's own account-store bearer, for
+    the caller's OWN email only) which workspaces the account belongs to, and stamps each
+    row a server-built `href` to `${ACCOUNT_ORIGIN}/enter?workspace=<id>` — so the browser
+    never learns the control-plane origin and a switch always routes THROUGH central
+    sign-in (which holds the account session and mints the hand-off), never workspace to
+    workspace. Unwired, or an account in one workspace, shows no dropdown — byte-for-byte
+    the current chrome. `GET /enter` is deliberately a GET (the dropdown link is inherently
+    cross-site, `*.augur.page` → the control plane, where only a top-level GET carries the
+    Lax session cookie); its CSRF ceiling is bounded to bouncing an already-signed-in
+    account into a workspace it already belongs to — no escalation, no oracle.
 
 ## Email
 
