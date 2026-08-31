@@ -39,6 +39,26 @@ test("a mounted default space brands the whole preview", () => {
   assert.ok(html.includes(`<meta name="twitter:card" content="summary" />`));
 });
 
+test("an admin-set workspace icon replaces the baked seed on the gate and in the unfurl", () => {
+  // applySpaceIcons stamps `icon` = /__space-icon/<hash> onto the default space when the
+  // workspace has one; the gate mark and the unfurl favicon/og:image must follow it so a
+  // signed-out visitor meets the same icon the rail switcher shows, no deploy required.
+  const ctx = setSpaces([{ ...BOREALIS, icon: "/__space-icon/deadbeef" }]);
+  const html = W.loginPage(ctx, "/", false, "https://borealis.example.com/");
+  assert.ok(html.includes(`<img src="/__space-icon/deadbeef" alt="" width="40" height="40" />`),
+    "the gate mark wears the override, not /space-icon.png");
+  assert.ok(!html.includes(`src="/space-icon.png"`), "the baked seed is not rendered when an override exists");
+  assert.ok(html.includes(`<link rel="icon" href="/__space-icon/deadbeef" />`), "favicon follows the override");
+  assert.ok(html.includes(`<meta property="og:image" content="https://borealis.example.com/__space-icon/deadbeef" />`),
+    "og:image follows the override, absolute");
+});
+
+test("a default space with no override still wears the baked /space-icon.png seed", () => {
+  const ctx = setSpaces([BOREALIS]);
+  const html = W.loginPage(ctx, "/", false, "https://borealis.example.com/");
+  assert.ok(html.includes(`<img src="/space-icon.png" alt="" width="40" height="40" />`));
+});
+
 test("a default space without a description gets the engine tagline", () => {
   const ctx = setSpaces([BOREALIS]);
   const html = W.loginPage(ctx, "/", false, "https://borealis.example.com/");

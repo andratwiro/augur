@@ -2425,18 +2425,23 @@ const AUGUR_MARK_SVG = `<svg viewBox="0 0 1024 1024" xmlns="http://www.w3.org/20
       </svg>`;
 
 // The mark on the front-door pages (the gate and the invite form). A deployment's front
-// door wears the DEPLOYMENT's brand, not the engine's: this is the same /space-icon.png
-// the rail's space switcher shows, so the icon a signed-in user knows is the one that
-// greets them signed out. build.js copies that file from the DEFAULT space's repo root,
-// so it exists exactly when a default space is mounted — an engine-only site has no
-// space branding to wear and keeps the engine's mark. Clipped to a circle here so a
-// square space icon still reads as a front-door avatar.
-// ⚠️ /space-icon.png must stay listed in isPublicPath(): these two pages are for
-// signed-out visitors, so a gated icon would fetch the login HTML into the <img>.
+// door wears the DEPLOYMENT's brand, not the engine's, and specifically the SAME icon the
+// rail's space switcher shows a signed-in member — so the mark that greets you signed out
+// is the one you already know. That is the admin-set workspace icon when one exists
+// (`SPACES[].icon` = `/__space-icon/<hash>`, stamped by applySpaceIcons from the same KV
+// override the switcher reads), falling back to the baked `/space-icon.png` seed. build.js
+// copies that seed from the DEFAULT space's repo root, or the engine's own mark when the
+// space ships none — so a hosted workspace with no repo-baked icon and no override still
+// wears the engine mark, and setting an icon in Settings is what gives it its own face
+// here with no deploy. No default space at all keeps the engine's SVG mark. Clipped to a
+// circle by CSS so a square icon still reads as a front-door avatar.
+// ⚠️ Both `/space-icon.png` and `/__space-icon/<hash>` are ungated (isPublicPath / the
+// pre-gate serveSpaceIcon route): these pages are for signed-out visitors, so a gated icon
+// would fetch the login HTML into the <img>.
 function brandMark(tctx) {
-  return tctx.SPACES.some((s) => s.default)
-    ? `<img src="/space-icon.png" alt="" width="40" height="40" />`
-    : AUGUR_MARK_SVG;
+  const def = tctx.SPACES.find((s) => s.default);
+  if (!def) return AUGUR_MARK_SVG;
+  return `<img src="${def.icon || "/space-icon.png"}" alt="" width="40" height="40" />`;
 }
 
 // The engine's own one-line description, taken from the public repo's summary. The
@@ -2447,8 +2452,9 @@ const ENGINE_TAGLINE = "Real, clickable prototypes and the design system they ar
 // <head> block for the gate: the <title> plus the meta an unfurl bot reads (a link
 // bookmark, a chat card). A gated instance's only public HTML is the gate,
 // so this IS the instance's link preview: the default space's name and description,
-// and the same public, KV-overridable /space-icon.png that brandMark() wears — an
-// icon changed from the admin panel updates the unfurl with no deploy. requestUrl
+// and the same public workspace icon brandMark() wears — the admin-set /__space-icon
+// override when there is one, else the baked /space-icon.png — so an icon changed from
+// the admin panel updates the unfurl with no deploy. requestUrl
 // makes og:url/og:image absolute (unfurl bots require absolute image URLs); callers
 // without one simply get no og:url/og:image. robots stays noindex in the pages that
 // carry this: unfurlers read the meta regardless, search engines stay out.
@@ -2458,11 +2464,12 @@ function previewHead(tctx, requestUrl) {
   const desc = (def && typeof def.description === "string" ? def.description : "").trim() || ENGINE_TAGLINE;
   let page = null;
   try { page = new URL(requestUrl); } catch {}
+  const iconHref = def ? (def.icon || "/space-icon.png") : null;
   const lines = [
     `<title>${escapeHtml(name ? `${name} · Augur` : "Augur")}</title>`,
     `<meta name="description" content="${escapeHtml(desc)}" />`,
   ];
-  if (def) lines.push(`<link rel="icon" href="/space-icon.png" />`);
+  if (def) lines.push(`<link rel="icon" href="${escapeHtml(iconHref)}" />`);
   lines.push(
     `<meta property="og:type" content="website" />`,
     `<meta property="og:site_name" content="Augur" />`,
@@ -2471,7 +2478,7 @@ function previewHead(tctx, requestUrl) {
   );
   if (page) {
     lines.push(`<meta property="og:url" content="${escapeHtml(page.origin + page.pathname)}" />`);
-    if (def) lines.push(`<meta property="og:image" content="${escapeHtml(page.origin + "/space-icon.png")}" />`);
+    if (def) lines.push(`<meta property="og:image" content="${escapeHtml(page.origin + iconHref)}" />`);
   }
   lines.push(
     `<meta name="twitter:card" content="summary" />`,

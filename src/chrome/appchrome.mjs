@@ -12,7 +12,7 @@
 
 // The SITE shell version — rail foot, chrome bundle filenames, the marker's data-ui.
 // Single source of truth; build.js imports this rather than redeclaring it.
-export const UI_VERSION = "1.15";
+export const UI_VERSION = "1.16";
 
 // ── Small pure utilities (shared with build.js, which imports them from here) ──
 export const escAttr = (s) =>
@@ -188,8 +188,11 @@ function spaceSwitcher(state) {
   const spaces = state.spaces || [];
   if (!spaces.length) return "";
   const active = spaces.find((s) => s.id === state.activeSpace) || spaces[0];
-  const iconSrc = "/space-icon.png";
-  const icon = `<span class="gvspace__icon"><img src="${iconSrc}" alt="" width="20" height="20" data-space-icon /></span>`;
+  // The admin-set workspace icon when one exists (the /__space-icon/<hash> stamped onto
+  // the space entry), else the baked seed. The client swap in build.js still corrects it
+  // from /__me, but rendering it here means the right icon on first paint, not a flash.
+  const iconSrc = active.icon || "/space-icon.png";
+  const icon = `<span class="gvspace__icon"><img src="${escAttr(iconSrc)}" alt="" width="20" height="20" data-space-icon /></span>`;
   return `<div class="gvspace" data-space data-space-active="${escAttr(active.id)}">
       <div class="gvspace__row">
         <span class="gvspace__btn">
@@ -522,8 +525,12 @@ export function renderAppChrome(active, state, opts = {}) {
     : active === "playground" ? "Playground"
     : isOpportunity ? titleCase(active)
     : projectsLabelOf(state);
+  // The mobile top bar's home mark. Unlike the rail switcher this has no client swap, so
+  // it must render the workspace's own icon (the admin-set /__space-icon override when set,
+  // else the baked seed) server-side — otherwise a workspace that shipped no space-icon.png
+  // wears the engine mark here even signed in.
   const homeMark = activeSpaceObj
-    ? `<img class="gvtop__logo" src="/space-icon.png" alt="" width="22" height="22" />`
+    ? `<img class="gvtop__logo" src="${escAttr(activeSpaceObj.icon || "/space-icon.png")}" alt="" width="22" height="22" />`
     : `<span class="gvtop__logo gvtop__logo--mark">${GV_MARK}</span>`;
   const S = (p) => baseOf(state) + p;
   const crumbs = `<nav class="gvtop__crumbs" aria-label="Breadcrumb">

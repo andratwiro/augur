@@ -58,6 +58,27 @@ test("spaceSwitcher() itself never emits dropdown markup — that is WORKSPACES_
   }
 });
 
+// ── the workspace's own icon rides the first paint, not just the /__me swap ────────────
+
+import { renderAppChrome } from "../src/chrome/appchrome.mjs";
+
+test("spaceSwitcher renders the admin-set workspace icon when the space carries one", () => {
+  const withIcon = [{ ...ONE_SPACE[0], icon: "/__space-icon/cafe" }];
+  assert.match(makeSwitcher(withIcon, "alpha"), /src="\/__space-icon\/cafe"/,
+    "the override is on first paint, so no flash before WORKSPACES_JS/SPACE_JS runs");
+  assert.match(makeSwitcher(ONE_SPACE, "alpha"), /src="\/space-icon\.png"/,
+    "no override ⇒ the baked seed");
+});
+
+test("the mobile top bar home mark follows the workspace icon (it has no client swap)", () => {
+  const withIcon = { spaces: [{ id: "alpha", name: "Alpha", default: true, base: "", icon: "/__space-icon/beef" }], activeSpace: "alpha" };
+  const seedOnly = { spaces: [{ id: "alpha", name: "Alpha", default: true, base: "" }], activeSpace: "alpha" };
+  assert.match(renderAppChrome("prototypes", withIcon), /class="gvtop__logo" src="\/__space-icon\/beef"/,
+    "signed-in mobile header wears the override, not the engine mark");
+  assert.match(renderAppChrome("prototypes", seedOnly), /class="gvtop__logo" src="\/space-icon\.png"/,
+    "no override ⇒ the baked seed");
+});
+
 // ── the client script exists, is wired into both bundling points, and asks the right route ──
 
 test("build.js defines WORKSPACES_JS and it fetches /__me/workspaces", () => {
