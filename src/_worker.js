@@ -1063,7 +1063,7 @@ function bustRosterOverlay(tenantId) {
   ROSTER_OVERLAY.bust(tenantId);
 }
 // Test hooks: the cadence above is timing state a test can't reach otherwise.
-function __setConfigTestState({ cfgAt: c, cfgGoodAt: g, roster, mcpHostAllowlist: m, manifests, storage, canvasRegistry, pitiRemarks } = {}) {
+function __setConfigTestState({ cfgAt: c, cfgGoodAt: g, roster, mcpHostAllowlist: m, manifests, storage, canvasRegistry, pitiRemarks, suspension } = {}) {
   if (c !== undefined) cfgAt = c;
   // The last-good stamp is set INDEPENDENTLY of the tick stamp, because ageing one past
   // the other is the whole staleness-ceiling story: `{cfgAt: 0}` means "a new tick", and
@@ -1093,6 +1093,9 @@ function __setConfigTestState({ cfgAt: c, cfgGoodAt: g, roster, mcpHostAllowlist
   // leaves one warm is asserting about the previous case's KV.
   if (canvasRegistry !== undefined && !canvasRegistry) CANVAS_REGISTRY.clear();
   if (pitiRemarks !== undefined && !pitiRemarks) PITI_REMARKS.clear();
+  // The suspension/claimed-hostname read behind /__admin/custom-domain, keyed by
+  // workspace like the caches above and cleared the same way.
+  if (suspension !== undefined && !suspension) SUSPENSION_STATE.clear();
 }
 // The roster this isolate last loaded, out of the context rather than out of a module
 // binding — the cadence tests need to see what the config tick settled on, and there is

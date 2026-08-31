@@ -344,7 +344,42 @@ function workspace(n) {
       },
     },
   };
-  return { id: n, env, store, reads, manifests, gauge };
+  // A SEPARATE env, for /__admin/custom-domain only. `overlayFor`/`identityFor` switch
+  // EVERY content and identity family (comments, canvases, pins, statuses, remarks, the
+  // roster overlay…) onto the workspace object the instant `env.TENANTS` exists at all —
+  // unconditionally, not behind a per-family flag — so binding it on the env every other
+  // route already shares would silently reroute all of THEM off the KV fixture above and
+  // answer every one of their witnesses out of a stub that only understands
+  // `/suspension`. `readSuspension()` — what /__admin/custom-domain actually reads — is
+  // the one caller that goes straight to `tenantStub()` and never through either overlay,
+  // so it is the one route that needs this binding, and it is the only one that gets it.
+  // `idFromName` always names THIS workspace's own object (the resolver's memo pins
+  // `tenantId` to `ws.id` before every request), so `canonicalHost` is woven with the
+  // name like every other fixture value, and its own read is logged into this
+  // workspace's own `reads`, same as a KV get. Identity reads this env's config load
+  // still makes (the admin roster, to authorize the request) answer `{}` from the same
+  // stub — no `seeded` flag — which `readRosterDocs` reads as "this object has never
+  // been given the roster" and defers to the KV fixture above, exactly as a real
+  // not-yet-copied workspace object would.
+  const envTenants = {
+    ...env,
+    TENANTS: {
+      idFromName(name) { return { name, toString: () => `id:${name}` }; },
+      get(id) {
+        return {
+          id,
+          async fetch(url) {
+            if (String(url).endsWith("/suspension")) {
+              seen(`TENANTS suspension ${id.name}`);
+              return Response.json({ suspended: false, moved: false, canonicalHost: `${id.name}.claimed.invalid` });
+            }
+            return Response.json({});
+          },
+        };
+      },
+    },
+  };
+  return { id: n, env, envTenants, store, reads, manifests, gauge };
 }
 
 // ---- driving the real worker ----------------------------------------------------------
@@ -364,9 +399,9 @@ function workspace(n) {
 // a "known gap" for as long as a helper in the neighbouring file reset its clock on every
 // call. There are no blanket resets here; `coldIsolate()` is called from a phase's own
 // body, where the reset is visible beside the assertion it stands behind.
-function fire(ws, path, init) {
+function fire(ws, path, init, env) {
   W.__setTenantTestState({ memo: { at: Date.now(), tenantId: ws.id } });
-  return worker.fetch(new Request("https://x.test" + path, init), ws.env, { waitUntil() {} });
+  return worker.fetch(new Request("https://x.test" + path, init), env || ws.env, { waitUntil() {} });
 }
 
 // Every per-isolate cache the request path can reach, back to cold.
@@ -374,6 +409,7 @@ function coldIsolate() {
   W.__setConfigTestState({
     cfgAt: 0, cfgGoodAt: 0, mcpHostAllowlist: null,
     manifests: null, storage: null, canvasRegistry: null, pitiRemarks: null, roster: null,
+    suspension: null,
   });
 }
 
@@ -668,6 +704,17 @@ const ROUTES = [
     cached: () => [],
   }),
 
+  route("custom-domain", {
+    auth: "admin",
+    path: () => "/__admin/custom-domain",
+    // TENANTS-Durable-Object-backed, unlike every other route in this table — see
+    // `envTenants` in workspace() for why this is the one route with its own env.
+    env: (ws) => ws.envTenants,
+    read: asJson,
+    own: (n) => ({ claimed: true, hostname: `${n}.claimed.invalid` }),
+    witness: (n) => [`TENANTS suspension ${n}`],
+  }),
+
   route("kv-backup", {
     auth: "admin",
     path: () => "/__admin/backup",
@@ -700,7 +747,7 @@ const ROUTES = [
 // everything this workspace's own store was asked for while it was served.
 async function ask(ws, r, { auth, path, read }) {
   const before = ws.reads.length;
-  const res = await fire(ws, path, auth);
+  const res = await fire(ws, path, auth, r.env ? r.env(ws) : undefined);
   const status = res.status;
   const seen = await (read || r.read)(res);
   return { seen, status, reads: ws.reads.slice(before) };
