@@ -317,7 +317,29 @@ write verifies the digest against the key, so a workspace can only write bytes t
 the name it used and dedup is worth keeping; and one worker build serves every workspace, so
 one chrome bundle is correct rather than a leak. Prefix either by accident and you either
 break `blobGc` (which is written for a shared namespace on purpose) or take the chrome off
-every workspace on the deploy that does it. **Unset `TENANT_HOST_SUFFIX` — every instance
+every workspace on the deploy that does it.
+**⚠️ SHARED TO SERVE IS NOT SHARED TO WRITE, and that gap was a live cross-workspace hole.**
+The credential that can write `spaces/_engine/` is minted per workspace, from that
+workspace's own Settings panel against its own roster — so the authority was scoped to one
+workspace while its effect was scoped to the deployment, and any hosted workspace's admin
+could rewrite `/admin/index.html` and `/sw.js` for every other customer on it.
+`sharedChromeRefusal` in `src/_worker.js` now refuses `_engine` WRITES wherever the chrome is
+actually shared, at the same chokepoint `capabilityRefusal` uses, to **every** credential —
+there is no capability that satisfies it, because a capability nothing can mint is a comment
+rather than a lock. Its discriminator is `bundleWorkspaceSegment(...).workspace`, the fact the
+sharing itself depends on, and NOT `env.TENANTS`: the preflight refuses a suffix with no
+binding and deliberately allows a binding with no suffix, which serves one workspace and
+shares its chrome with nobody. The op list names the READS (`manifest`, `versions`, `version`,
+`blob` GET, `currency`) so a publishing verb added later is closed by default, and `rollback`
+counts as a WRITE — it bypasses the engine-downgrade guard by design, so leaving it open
+would let any admin re-arm a superseded chrome for everyone. Reads are untouched, because a
+403 there is a backup that skips the chrome and reports success; `restore.mjs` skips a space
+the target declines for that reason, loudly, since a copy from a single-workspace instance
+always carries `_engine` and `augur migrate` is what moves one onto a shared deployment.
+⏳ **A shared deployment therefore has NO way to update its chrome until a narrow credential
+exists** — that is `D-chrome-refresh-fanout`'s to build, and it is the honest state rather
+than a regression: the way that existed was one workspace's admin holding a deployment-wide
+write. **Unset `TENANT_HOST_SUFFIX` — every instance
 running today — writes NO segment at all**: `bundleStore` returns the binding itself, so
 there is no new code between the worker and R2 and the keys are byte-for-byte the ones they
 have always been. **Which families take the segment is `BUNDLE_TENANCY`, one word each**,
@@ -825,7 +847,20 @@ name, initials, colour and role. Passwords live in KV as PBKDF2 hashes under
   durable half and the overlay half in SEPARATE columns (`name`/`role`/`initials`/`colour`
   against `name_overlay`/`role_overlay`/`avatar_*`, plus `source`), because `applyNames`
   drops a config-set `initials` when there is a name override and keeps it when there is
-  not, and one merged column cannot answer both. **`CREATE TABLE IF NOT EXISTS` is not a
+  not, and one merged column cannot answer both.
+  **⚠️ `publish_tokens.caps` IS THE SECOND HALF OF THAT RECORD, and it is
+  `TENANT_SCHEMA_VERSION` 3.** `capabilityRefusal` is deny-by-default over a `caps` field,
+  and it is what lets the control plane hold a purge-only bearer instead of a star token
+  that could publish over every workspace's content — but the object had no column for it,
+  so a COPY of a KV record (a `restore --state`, an `augur migrate`, an operator adding the
+  field to a token the object already held) landed here as an ordinary row and the narrow
+  credential came back out of the read as a FULL star token, because this read answers
+  before KV does. The column holds the JSON of KV's value — `null` is "carries none", a
+  list is a restriction — and SQL NULL is NEITHER: it means a copy wrote the row before the
+  column existed, and it is NO ANSWER, exactly as a null scope is. ⛔ Never "default it to
+  unrestricted": that is the bug, spelled as a convenience. The cost of the straddle is one
+  KV get per publish for tokens minted before the column, and it heals per token on the next
+  mint. **`CREATE TABLE IF NOT EXISTS` is not a
   migration**: `TENANT_SCHEMA_ADDITIONS` + `applySchemaAdditions` add the new columns to
   tables an older object already built, and they ask by ATTEMPTING the `ALTER` rather than by
   reading `PRAGMA table_info`, because a PRAGMA is neither a SELECT nor a plain statement and
