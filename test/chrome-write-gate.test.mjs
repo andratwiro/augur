@@ -36,6 +36,7 @@ import { __testables as W } from "../src/_worker.js";
 const CTX = W.applyInstance({ users: [] });
 const H = "b".repeat(64);
 const TOKEN = "a-plain-star-token";
+const CHROME_TOKEN = "a-chrome-cap-token";
 
 const LIVE_ENGINE = {
   id: "_engine", version: 9, format: 1,
@@ -109,8 +110,12 @@ async function deployment({ suffix = null, tenants = false, tenantId = "acme" } 
   });
   // The token lives at BOTH physical keys — which is what the straddle writes anyway, and
   // it keeps this fixture from having to know which one a shape reads.
-  const hash = await W.tokenFor("pub:" + TOKEN);
-  const doc = JSON.stringify({ [hash]: { space: "*", label: "ci", createdAt: "2026-01-01T00:00:00.000Z" } });
+  const starHash = await W.tokenFor("pub:" + TOKEN);
+  const chromeHash = await W.tokenFor("pub:" + CHROME_TOKEN);
+  const doc = JSON.stringify({
+    [starHash]: { space: "*", label: "ci", createdAt: "2026-01-01T00:00:00.000Z" },
+    [chromeHash]: { space: "*", label: "chrome-refresh", caps: ["chrome"], createdAt: "2026-01-01T00:00:00.000Z" },
+  });
   const kv = memKV({ "publish:tokens": doc, [`t/${tenantId}/publish:tokens`]: doc });
 
   const env = { BUNDLES: r2, GV_ASSET_SOURCE: "r2", COMMENTS: kv };
@@ -143,7 +148,14 @@ async function deployment({ suffix = null, tenants = false, tenantId = "acme" } 
       headers: { Authorization: "Bearer " + TOKEN, ...(init.headers || {}) },
     }), url, env);
   };
-  return { env, r2, kv, fire };
+  const fireAs = (bearer, path, init = {}) => {
+    W.__setConfigTestState({ cfgAt: 0, cfgGoodAt: 0, roster: null, manifests: null, storage: null });
+    const url = new URL("https://x.test" + path);
+    return W.publishApi(tctx, new Request(url, {
+      ...init, headers: { Authorization: "Bearer " + bearer, ...(init.headers || {}) },
+    }), url, env);
+  };
+  return { env, r2, kv, fire, fireAs };
 }
 
 /** The five ops that end in bytes the next request serves. */
@@ -260,14 +272,17 @@ test("the gate reads the SAME fact `bundleKey`'s engine exception reads", async 
     "spaces/_engine/manifest.json");
   assert.equal(!!W.bundleWorkspaceSegment(shared, "acme").workspace, true);
   assert.equal(!!W.bundleWorkspaceSegment(solo, "acme").workspace, false);
-  assert.equal(W.sharedChromeRefusal(shared, { tenantId: "acme" }, "_engine", "commit", "POST"),
+  // `who` is null here — no credential, no capability granted — so these calls keep
+  // asserting the bare fact-check they always did; a chrome-capability `who` is covered
+  // by the dedicated "THE ONE KEY" tests below.
+  assert.equal(W.sharedChromeRefusal(shared, { tenantId: "acme" }, null, "_engine", "commit", "POST"),
     "chrome-not-writable-here");
-  assert.equal(W.sharedChromeRefusal(solo, { tenantId: "acme" }, "_engine", "commit", "POST"), null);
+  assert.equal(W.sharedChromeRefusal(solo, { tenantId: "acme" }, null, "_engine", "commit", "POST"), null);
 });
 
 test("`_engine` is refused as a SPACE ID, not as a prefix", async () => {
   // A space genuinely called `_engine-notes` takes the segment and is its workspace's own.
-  assert.equal(W.sharedChromeRefusal({ TENANT_HOST_SUFFIX: ".x.test" }, { tenantId: "a" }, "_engine-notes", "commit", "POST"), null);
+  assert.equal(W.sharedChromeRefusal({ TENANT_HOST_SUFFIX: ".x.test" }, { tenantId: "a" }, null, "_engine-notes", "commit", "POST"), null);
 });
 
 test("an op added later is refused by default — the list names the READS", async () => {
@@ -275,10 +290,55 @@ test("an op added later is refused by default — the list names the READS", asy
   // would have to be widened in step with every new publishing verb, and the step somebody
   // forgets is the one that opens something.
   const shared = { TENANT_HOST_SUFFIX: ".example.test" };
-  assert.equal(W.sharedChromeRefusal(shared, { tenantId: "a" }, "_engine", "some-future-op", "POST"),
+  assert.equal(W.sharedChromeRefusal(shared, { tenantId: "a" }, null, "_engine", "some-future-op", "POST"),
     "chrome-not-writable-here");
   // And a read verb asked with a writing METHOD is not a read.
-  assert.equal(W.sharedChromeRefusal(shared, { tenantId: "a" }, "_engine", "blob", "PUT"),
+  assert.equal(W.sharedChromeRefusal(shared, { tenantId: "a" }, null, "_engine", "blob", "PUT"),
     "chrome-not-writable-here");
-  assert.equal(W.sharedChromeRefusal(shared, { tenantId: "a" }, "_engine", "blob", "GET"), null);
+  assert.equal(W.sharedChromeRefusal(shared, { tenantId: "a" }, null, "_engine", "blob", "GET"), null);
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 3. THE ONE KEY — a chrome-capability token, and nothing else, may write the chrome
+// ─────────────────────────────────────────────────────────────────────────────
+
+test("a CHROME-CAPABILITY token passes the gate on _engine writes the star token could not", async () => {
+  const d = await deployment({ suffix: ".example.test", tenants: true });
+  // `check` is the publish preflight — a clean pass answers 200 with the missing set.
+  const res = await d.fireAs(CHROME_TOKEN, "/__publish/_engine/check", {
+    method: "POST", body: JSON.stringify({ files: {} }),
+  });
+  assert.equal(res.status, 200, "chrome token was refused on _engine/check");
+});
+
+test("a chrome-capability token may READ the manifest and versions the CAS needs", async () => {
+  const d = await deployment({ suffix: ".example.test", tenants: true });
+  for (const path of ["/__publish/_engine/manifest", "/__publish/_engine/versions", "/__publish/_engine/version/8"]) {
+    const res = await d.fireAs(CHROME_TOKEN, path);
+    assert.equal(res.status, 200, `${path} answered ${res.status} for the chrome token`);
+  }
+});
+
+test("the chrome capability is walled off EVERYTHING but the chrome — content, config, rollback", async () => {
+  const d = await deployment({ suffix: ".example.test", tenants: true });
+  // A real space: refused as capability-not-granted, never granted by the chrome cap.
+  const space = await d.fireAs(CHROME_TOKEN, "/__publish/one/check", { method: "POST", body: JSON.stringify({ files: {} }) });
+  assert.equal(space.status, 403);
+  assert.equal((await space.json()).reason, "capability-not-granted");
+  // The roster document — the hard constraint. Structurally refused before it is reached.
+  const cfg = await d.fireAs(CHROME_TOKEN, "/__publish/_instance/config", { method: "POST", body: JSON.stringify({ users: [] }) });
+  assert.equal(cfg.status, 403);
+  assert.equal((await cfg.json()).reason, "capability-not-granted");
+  // rollback is not in CAP_ROUTES.chrome, so capabilityRefusal catches it first.
+  const rb = await d.fireAs(CHROME_TOKEN, "/__publish/_engine/rollback", { method: "POST", body: JSON.stringify({ version: 8 }) });
+  assert.equal(rb.status, 403);
+  assert.equal((await rb.json()).reason, "capability-not-granted");
+});
+
+test("the star token is STILL refused where the chrome token is admitted", async () => {
+  // The regression that clause 2 of the VERIFY names. Same deployment, same route, no caps.
+  const d = await deployment({ suffix: ".example.test", tenants: true });
+  const res = await d.fireAs(TOKEN, "/__publish/_engine/check", { method: "POST", body: JSON.stringify({ files: {} }) });
+  assert.equal(res.status, 403);
+  assert.equal((await res.json()).reason, "chrome-not-writable-here");
 });

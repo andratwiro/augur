@@ -4572,6 +4572,18 @@ const CAP_ROUTES = Object.freeze({
   // blobs nothing references any more. Not "delete anything" — `deleteWorkspace` asks the
   // workspace object for a second opinion, so this capability alone erases nothing live.
   purge: Object.freeze([["_state", "delete"], ["_state", "blob-gc"]]),
+  // Update the ONE shared chrome bundle (`spaces/_engine/…`) — the rail, the switcher, the
+  // admin screens, `/sw.js`, `404.html` — that one worker build serves to every workspace.
+  // The ops an `--engine` publish performs: the write/preflight trio, plus the manifest and
+  // version reads its base-version CAS needs. NOT `rollback` (it bypasses the downgrade guard
+  // — nobody re-arms a superseded chrome for the whole deployment), NOT any real space, NOT
+  // `_state`, and NOT `_instance/config` — which is what keeps this credential off the roster.
+  // A token carrying this capability is minted ONLY by the control plane's `chrome` operator
+  // verb; see `sharedChromeRefusal`.
+  chrome: Object.freeze([
+    ["_engine", "check"], ["_engine", "blob"], ["_engine", "commit"],
+    ["_engine", "manifest"], ["_engine", "versions"], ["_engine", "version"],
+  ]),
 });
 
 function capabilityRefusal(entry, spaceId, op) {
@@ -4626,12 +4638,12 @@ const PUBLISH_READ_OPS = Object.freeze({
  * is shared with nobody, and refusing that operator's own chrome publish would be this
  * function inventing a cross-tenant problem their deployment does not have.
  *
- * ⚠️ THERE IS NO CAPABILITY THAT SATISFIES IT, on purpose. `CAP_ROUTES` could carry a
- * `chrome` entry in three lines — and nothing could mint a token to match it, because the
- * workspace object's `publish_tokens` row is the record the request path reads and a
- * capability arrives there only from a store that already holds one. A lock whose key
- * cannot exist is a lock; a lock whose key is a comment is not. The narrow credential lands
- * with a mint path, or it does not land.
+ * ⚠️ THERE IS NOW EXACTLY ONE CAPABILITY THAT SATISFIES IT, and it is minted only by the
+ * control plane's `chrome` operator verb. `CAP_ROUTES.chrome` names the write/preflight trio
+ * plus the manifest and version reads its base-version CAS needs — nothing else, and NOT
+ * `rollback`. A workspace's own star-scope token carries no `caps` at all and is still
+ * refused here: `capabilityGrantsRoute` is a positive check, and absence of `caps` is not a
+ * grant, which is the exact inverse of how `capabilityRefusal` treats the same field.
  *
  * ⚠️ `rollback` IS A WRITE HERE. It republishes an old manifest under a NEW version and
  * bypasses the engine-downgrade guard by design, so it is the one path that can put a
@@ -4639,10 +4651,28 @@ const PUBLISH_READ_OPS = Object.freeze({
  * this door was open. With `commit` refused there is nothing legitimate left for it to undo,
  * so closing it costs the deployment nothing and leaving it open costs it the whole gate.
  */
-function sharedChromeRefusal(env, tctx, spaceId, op, method) {
+
+/**
+ * Does this credential's capability list EXPLICITLY name this route? A positive check, and
+ * the exact inverse of `capabilityRefusal`'s "absent caps ⇒ unrestricted": here absence is
+ * NOT a grant. Only a credential whose `caps` name this (space, op) may pass the shared-chrome
+ * gate — for `_engine` writes that is the `chrome` capability and nothing else, so a plain star
+ * token (no `caps`) is not admitted, which is the whole of VERIFY clause 2.
+ */
+function capabilityGrantsRoute(entry, spaceId, op) {
+  const caps = entry && entry.caps;
+  if (!Array.isArray(caps)) return false;
+  return caps.some((c) => (CAP_ROUTES[c] || []).some(([s, o]) => s === spaceId && o === op));
+}
+
+function sharedChromeRefusal(env, tctx, who, spaceId, op, method) {
   if (spaceId !== ENGINE_SPACE_ID) return null;
   if (!bundleWorkspaceSegment(env, tctx && tctx.tenantId).workspace) return null;
   if (PUBLISH_READ_OPS[op] === method) return null;
+  // The one narrow key: a credential explicitly granted this route by a capability may write
+  // the shared chrome. The `chrome` capability is minted only by the operator verb; a star
+  // token carries no capability and is still refused here.
+  if (capabilityGrantsRoute(who, spaceId, op)) return null;
   return "chrome-not-writable-here";
 }
 
@@ -4788,7 +4818,7 @@ async function publishApi(tctx, request, url, env) {
   // chrome bundle is every workspace's, so no workspace's own token may write it however
   // wide its scope. Two refusals rather than one because they fail for different reasons and
   // a holder has to be able to tell them apart. See `sharedChromeRefusal`.
-  const chromeRefusal = sharedChromeRefusal(env, tctx, spaceId, op, request.method);
+  const chromeRefusal = sharedChromeRefusal(env, tctx, who, spaceId, op, request.method);
   if (chromeRefusal) {
     return jsonResponse({
       error: "forbidden",
@@ -11177,7 +11207,7 @@ export const __testables = Object.freeze({
   identityFamily, identityKvView, identityWorkspaceSegment, rekeyIdentityToSegment,
   kvFor, kvForRaw,
   capabilityRefusal, CAP_ROUTES,
-  sharedChromeRefusal, PUBLISH_READ_OPS,
+  sharedChromeRefusal, PUBLISH_READ_OPS, capabilityGrantsRoute,
   runScheduledHealth, adminHealthApi, HEALTH_REPORT_KEY,
   readFreeze, setFreeze, isFrozenWrite, FROZEN_WRITES, FREEZE_KEY,
   readSuspension, isAllowedWhileSuspended, SUSPENDED_ALLOWED, SUSPENDED_ALLOWED_READS,
