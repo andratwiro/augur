@@ -53,7 +53,13 @@ import { tenantLabelFromHost, normalizeHost } from "./tenant-host.mjs";
 // 1 → 2: `B-kv-read-cutover`'s second slice. `publish_tokens` gained `scope`, and `members`
 // gained the columns that let the roster documents be READ back rather than inferred — see
 // `TENANT_SCHEMA_ADDITIONS` for why each one exists and what was wrong without it.
-export const TENANT_SCHEMA_VERSION = 2;
+//
+// 2 → 3: `publish_tokens` gained `caps`, the second half of the same record. Without it a
+// COPY of a capability-restricted token — the control plane's purge-only bearer — landed
+// here as an ordinary row, and since this object is what the request path reads FIRST, the
+// narrow credential came back out of it as a full star token. A missing column read as "no
+// restriction", which is the one reading a deny-by-default capability may never be given.
+export const TENANT_SCHEMA_VERSION = 3;
 
 /**
  * The schema, as a list of statements so a migration can apply them one at a time and a
@@ -131,12 +137,30 @@ export const TENANT_SCHEMA = Object.freeze([
   // column existed and does not know". The read treats such a row as no answer at all and
   // falls through to KV, which still holds the scope — a token is never widened by a
   // missing value and never refused for one.
+  //
+  // ⚠️ `caps` IS THE OTHER HALF OF THE AUTHORIZATION AND IS NOT A LABEL EITHER. KV records
+  // an optional `caps` array on a token, and `capabilityRefusal` in src/_worker.js reads it
+  // deny-by-default: absent means unrestricted, a list means ONLY what those names grant,
+  // and an unknown name grants nothing. It is what lets the control plane hold a purge-only
+  // bearer instead of a star token that could publish over every workspace's content.
+  //
+  // Stored as the JSON of the value KV holds, so the two stores spell the same record: the
+  // text `null` is a token that carries NO `caps` field (unrestricted, and this object knows
+  // it), and `["purge"]` is a restricted one. SQL NULL is neither — see below.
+  //
+  // NULLABLE, and the null is load-bearing for the same reason `scope`'s is, with a sharper
+  // consequence: it means "a copy wrote this row before the column existed and does not
+  // know". The read treats such a row as no answer at all and falls through to KV, which
+  // still holds the field. Reading it as "no caps field, therefore unrestricted" is exactly
+  // how a narrow credential became a full one, and it is the reading a fresh mint avoids by
+  // writing `null` as text rather than leaving the column empty.
   `CREATE TABLE IF NOT EXISTS publish_tokens (
      token_hash TEXT PRIMARY KEY,
      label      TEXT,
      created_at TEXT NOT NULL,
      expires_at TEXT,
-     scope      TEXT
+     scope      TEXT,
+     caps       TEXT
    )`,
 
   // Last connection, shown in the admin list. Its own table rather than a column on
@@ -323,7 +347,32 @@ export const TENANT_SCHEMA_ADDITIONS = Object.freeze([
   { table: "members", column: "name_overlay", type: "TEXT" },
   { table: "members", column: "role_overlay", type: "TEXT" },
   { table: "publish_tokens", column: "scope", type: "TEXT" },
+  { table: "publish_tokens", column: "caps", type: "TEXT" },
 ]);
+
+/**
+ * The text a `caps` column holds, from the value a KV record carries.
+ *
+ * `undefined` — the caller does not know, so the column stays SQL NULL and the read declines
+ * to answer for the row. Anything else, including `null`, is a statement about the token and
+ * is written as JSON: `null` is "no caps field, therefore unrestricted", which is a fact the
+ * mint knows and a copy from a pre-`caps` source does not.
+ */
+function capsColumn(caps) {
+  return caps === undefined ? null : JSON.stringify(caps);
+}
+
+/**
+ * The value a `caps` column states, or `undefined` for a column that cannot answer.
+ *
+ * A row a pre-`caps` copy wrote and a row this build cannot parse are the same thing: no
+ * answer. Neither may be guessed at, because the only guess available — "no restriction" —
+ * is the one that turns a narrow credential into a full one.
+ */
+function capsValue(text) {
+  if (text == null) return undefined;
+  try { return JSON.parse(String(text)); } catch (e) { return undefined; }
+}
 
 /**
  * Add any column in `TENANT_SCHEMA_ADDITIONS` that this object's tables are missing.
@@ -713,14 +762,22 @@ function writeIdentity(sql, identity, at, written = [], refused = []) {
   for (const t of list("publishTokens")) {
     if (!t || !t.tokenHash) continue;
     sql.exec(
-      `INSERT INTO publish_tokens (token_hash, label, created_at, expires_at, scope)
-         VALUES (?1,?2,?3,?4,?5)
+      `INSERT INTO publish_tokens (token_hash, label, created_at, expires_at, scope, caps)
+         VALUES (?1,?2,?3,?4,?5,?6)
          ON CONFLICT(token_hash) DO UPDATE SET label = ?2, created_at = ?3, expires_at = ?4,
            -- COALESCE, so re-running a copy from a source that has no scope cannot blank a
            -- scope a later one carried. A null here means "not known", never "star".
-           scope = COALESCE(?5, publish_tokens.scope)`,
+           scope = COALESCE(?5, publish_tokens.scope),
+           -- The same, and for a sharper reason: a copy that predates the column carries no
+           -- caps key at all, and letting it blank the column would turn the control
+           -- plane's purge-only bearer back into a credential that can publish anything.
+           caps = COALESCE(?6, publish_tokens.caps)`,
       String(t.tokenHash), t.label ?? null, t.createdAt || at, t.expiresAt ?? null,
       t.scope == null ? null : String(t.scope),
+      // ⚠️ ABSENT AND `null` ARE DIFFERENT HERE. No `caps` key is a copy that does not know,
+      // and leaves the column alone; a `caps` of null is the translation saying KV's record
+      // carries no capability, which is a statement this object may hold.
+      Object.prototype.hasOwnProperty.call(t, "caps") ? capsColumn(t.caps) : null,
     );
     n++;
   }
@@ -1841,47 +1898,70 @@ export class TenantStore {
   /**
    * One token by its hash, or null when this object cannot answer for it.
    *
-   * NULL MEANS TWO THINGS AND BOTH ARE "ASK KV": no such row, or a row a pre-`scope` copy
-   * wrote, which knows the token exists and not what it may publish. Answering the second
-   * from here would have to invent a scope, and both available inventions are wrong —
-   * `*` widens a space-scoped token to admin-equivalent, a space id refuses a star one.
+   * NULL MEANS TWO THINGS AND BOTH ARE "ASK KV": no such row, or a row that cannot state one
+   * of the two authorization fields — a pre-`scope` copy, or a pre-`caps` one. Such a row
+   * knows the token exists and not what it may do. Answering from here would have to invent
+   * the missing half, and every available invention is wrong: `*` widens a space-scoped token
+   * to admin-equivalent, a space id refuses a star one, and "no caps" turns the control
+   * plane's purge-only bearer into a credential that can publish over every workspace.
    */
   publishTokenRead(tokenHash) {
     if (!tokenHash) return null;
     const rows = [...this.sql.exec(
-      `SELECT token_hash, label, created_at, expires_at, scope FROM publish_tokens
+      `SELECT token_hash, label, created_at, expires_at, scope, caps FROM publish_tokens
          WHERE token_hash = ?`, String(tokenHash),
     )];
     if (!rows.length || rows[0].scope == null) return null;
-    return {
+    const caps = capsValue(rows[0].caps);
+    if (caps === undefined) return null;
+    const entry = {
       space: String(rows[0].scope), label: rows[0].label ?? null,
       createdAt: rows[0].created_at, expiresAt: rows[0].expires_at ?? null,
     };
+    // Spelled the way KV spells it: an unrestricted token has NO `caps` key at all, which is
+    // the shape `capabilityRefusal` reads as unrestricted. A `null` column value states that
+    // absence rather than being carried through as a field holding null.
+    if (caps !== null) entry.caps = caps;
+    return entry;
   }
 
-  /** Every token as the `{hash: {space,label,createdAt,expiresAt}}` map the panel lists. */
+  /** Every token as the `{hash: {space,label,createdAt,expiresAt,caps?}}` map the panel lists. */
   publishTokenList() {
     const out = {};
     for (const row of this.sql.exec(
-      `SELECT token_hash, label, created_at, expires_at, scope FROM publish_tokens`,
+      `SELECT token_hash, label, created_at, expires_at, scope, caps FROM publish_tokens`,
     )) {
       if (row.scope == null) continue;
       const rec = { space: String(row.scope), label: row.label ?? null, createdAt: row.created_at };
       if (row.expires_at != null) rec.expiresAt = row.expires_at;
+      // The panel shows the union of both stores with these rows winning, so a list that
+      // dropped the field would show an operator a narrow credential as a full one.
+      const caps = capsValue(row.caps);
+      if (caps !== undefined && caps !== null) rec.caps = caps;
       out[String(row.token_hash)] = rec;
     }
     return { seeded: isSeeded(this.sql, "publishTokens"), tokens: out };
   }
 
-  /** Record a minted token. The raw token never reaches this object — only its hash. */
-  publishTokenMint({ tokenHash, space, label = null, createdAt = null, expiresAt = null }, nowMs = Date.now()) {
+  /**
+   * Record a minted token. The raw token never reaches this object — only its hash.
+   *
+   * `caps` DEFAULTS TO `null` AND NOT TO UNKNOWN, deliberately. Every mint the engine has is
+   * a mint of an unrestricted token, and that is a fact this object may state — leaving the
+   * column empty instead would send every read on a cut deployment back to KV, which is the
+   * read volume this family moved to get away from. A caller minting a restricted token
+   * passes the list; there is no such caller yet, and a capability nothing can mint is a
+   * capability that does not exist.
+   */
+  publishTokenMint({ tokenHash, space, label = null, createdAt = null, expiresAt = null, caps = null }, nowMs = Date.now()) {
     if (!tokenHash || space == null) return { ok: false };
     const at = new Date(nowMs).toISOString();
     this.sql.exec(
-      `INSERT INTO publish_tokens (token_hash, label, created_at, expires_at, scope)
-         VALUES (?1,?2,?3,?4,?5)
-         ON CONFLICT(token_hash) DO UPDATE SET label = ?2, created_at = ?3, expires_at = ?4, scope = ?5`,
-      String(tokenHash), label, createdAt || at, expiresAt ?? null, String(space),
+      `INSERT INTO publish_tokens (token_hash, label, created_at, expires_at, scope, caps)
+         VALUES (?1,?2,?3,?4,?5,?6)
+         ON CONFLICT(token_hash) DO UPDATE SET label = ?2, created_at = ?3, expires_at = ?4,
+           scope = ?5, caps = ?6`,
+      String(tokenHash), label, createdAt || at, expiresAt ?? null, String(space), capsColumn(caps),
     );
     markSeeded(this.sql, "publishTokens", at);
     return { ok: true };

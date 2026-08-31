@@ -564,7 +564,9 @@ test("A PUBLISH TOKEN'S SCOPE SURVIVES THE COPY, AND IS NEITHER WIDENED NOR REFU
   const store = new TenantStore({ storage: storage(db), blockConcurrencyWhile: async (f) => f() }, {});
   await store.provision({ workspaceId: "scope-check", adminEmail: ADMIN });
   const cols = db.prepare("PRAGMA table_info(publish_tokens)").all().map((c) => c.name);
-  assert.deepEqual(cols.sort(), ["created_at", "expires_at", "label", "scope", "token_hash"]);
+  // `caps` is the other authorization field and rides the same rule — see
+  // test/token-caps-column.test.mjs, which is where its own no-answer case lives.
+  assert.deepEqual(cols.sort(), ["caps", "created_at", "expires_at", "label", "scope", "token_hash"]);
 
   store.importAll({ overlay: {}, identity });
   assert.equal(store.publishTokenRead("hash-one").space, "one", "a space-scoped token was not widened");

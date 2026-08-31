@@ -201,6 +201,16 @@ export async function identityFromKv(families = {}, opts = {}) {
   // space-scoped token or refuse every star one, and nothing would say so until somebody
   // published. A record with NO `space` copies across as null, which the read treats as
   // "this object cannot answer for this token" rather than as any scope at all.
+  //
+  // ⚠️ AND `caps` TRAVELS BESIDE IT, FOR THE SAME REASON AND WITH A SHARPER FAILURE. KV's
+  // optional `caps` array is what `capabilityRefusal` reads deny-by-default: absent means
+  // unrestricted, a list means ONLY those routes. It is what lets the control plane hold a
+  // purge-only bearer instead of a star token that could publish over every workspace's
+  // content. A copy that dropped it handed the object a row saying `*` and nothing else —
+  // and since the object is what the request path reads FIRST, the narrow credential came
+  // back out of it as a FULL star token. `null` here is not "unknown": it is this
+  // translation stating that KV's record carries no capability, which is a fact it can see
+  // and a pre-`caps` copy could not.
   const publishTokens = [];
   if (has("publish:tokens")) {
     take("publish:tokens");
@@ -212,6 +222,9 @@ export async function identityFromKv(families = {}, opts = {}) {
         label: rec.label ?? null,
         createdAt: rec.createdAt || now,
         expiresAt: rec.expiresAt ?? null,
+        // Verbatim, including a malformed value: `capabilityRefusal` treats anything that is
+        // not a list as absent, and normalising here would decide on its behalf.
+        caps: rec.caps === undefined ? null : rec.caps,
       });
     }
   }
