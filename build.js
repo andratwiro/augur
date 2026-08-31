@@ -7680,6 +7680,11 @@ async function main() {
     // B-cross-workspace-signin). Unset leaves the route inert — see ACCOUNT_ORIGIN in
     // src/tenant-context.mjs.
     accountOrigin: DEPLOY.accountOrigin || "",
+    // Explicit true only (like userImages/devicePairing) — binds sessions to a rotated
+    // per-person key instead of a password, which is what lets a passwordless central
+    // sign-in hold a workspace session (`GET /__enter`). A typo must leave it OFF, since
+    // turning it on changes how every session on the deployment is bound.
+    sessionKeys: DEPLOY.sessionKeys === true,
     sentinels: DEPLOY.sentinels || [],
     // Oldest publish protocol this instance accepts a commit from. Absent = no floor.
     minClientProtocol: DEPLOY.minClientProtocol || 0,
