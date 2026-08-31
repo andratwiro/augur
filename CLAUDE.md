@@ -336,10 +336,16 @@ would let any admin re-arm a superseded chrome for everyone. Reads are untouched
 403 there is a backup that skips the chrome and reports success; `restore.mjs` skips a space
 the target declines for that reason, loudly, since a copy from a single-workspace instance
 always carries `_engine` and `augur migrate` is what moves one onto a shared deployment.
-⏳ **A shared deployment therefore has NO way to update its chrome until a narrow credential
-exists** — that is `D-chrome-refresh-fanout`'s to build, and it is the honest state rather
-than a regression: the way that existed was one workspace's admin holding a deployment-wide
-write. **Unset `TENANT_HOST_SUFFIX` — every instance
+**A shared deployment's chrome now has exactly one way to be updated, and it is not any
+workspace's own credential.** The control plane's `chrome` operator verb — grant-gated,
+expiring, and audit-logged like every other operator verb — mints the ONE token that may: a
+star-scope publish token capped to `caps: ["chrome"]`. `sharedChromeRefusal` admits it by
+`capabilityGrantsRoute`'s POSITIVE check, not by scope, so a workspace's own plain star token
+(no `caps` at all) is still refused `chrome-not-writable-here` — the same door, the same
+regression this closes. It cannot touch `config/instance.json`: `CAP_ROUTES.chrome` names the
+`_engine` write/preflight trio plus the manifest and version reads its own base-version CAS
+needs, and no `_instance` op at all, so the credential that may refresh the rail cannot also
+push the roster. **Unset `TENANT_HOST_SUFFIX` — every instance
 running today — writes NO segment at all**: `bundleStore` returns the binding itself, so
 there is no new code between the worker and R2 and the keys are byte-for-byte the ones they
 have always been. **Which families take the segment is `BUNDLE_TENANCY`, one word each**,

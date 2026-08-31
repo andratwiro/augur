@@ -909,6 +909,125 @@ async function boundPhase() {
     fiveStill.ok && fiveStill.rows[0] && fiveStill.rows[0].removed_at === null,
     JSON.stringify(fiveStill.rows[0] || null));
 
+  clause("13 · the chrome key on real workerd");
+  // Seed a star-scope token capped to `chrome` — minted the ONLY way it may be: the control
+  // plane's `chrome` operator verb, reachable only by code holding the namespace binding.
+  // `/__rehearsal/do` stands in for that binding here, exactly as clause 3's identityCall
+  // does for `/identity/*`: no HTTP route on the front door reaches `/__control/*` at all.
+  // The chrome one completes check → blob PUT → commit against the SHARED `_engine` bundle,
+  // twice — once from nothing (this store has never held one) and once as a genuine refresh
+  // riding the base-version CAS `check.liveVersion` feeds `commit`, the same shape
+  // `scripts/publish.mjs --engine` drives. The plain one (`tStar`, from clause 8) is refused
+  // at the same door. If a read the chrome token itself needs — `manifest`, `versions`,
+  // `version` — were missing from `CAP_ROUTES.chrome`, capabilityRefusal would 403 THIS
+  // RESTRICTED CREDENTIAL on its own reads before sharedChromeRefusal is ever reached, which
+  // is how this clause PINS the op list rather than merely exercising the happy path.
+  // `chrome` refuses `not-provisioned` like every other control verb (only `provision` may
+  // create anything), and nothing earlier in this rehearsal calls it — every prior clause
+  // reached the object through lazy `init()`, which builds the schema but never writes
+  // `meta.provisioned_at`. The insert is `ON CONFLICT … DO NOTHING` throughout, so
+  // provisioning now, with the admin this fixture already signed in as, touches no row any
+  // earlier clause wrote.
+  const provisioned = await rehearse("/__rehearsal/do", {
+    workspace: WORKSPACE, path: "/__control/provision", body: { workspaceId: WORKSPACE, adminEmail: ADMIN },
+  });
+  check("the workspace is provisioned, which the chrome verb requires",
+    provisioned.status === 200, (provisioned.body || "").slice(0, 200));
+
+  const chromeMint = await rehearse("/__rehearsal/do", { workspace: WORKSPACE, path: "/__control/chrome", body: {} });
+  check("the operator verb mints a chrome-capability token", chromeMint.status === 200, (chromeMint.body || "").slice(0, 200));
+  const chromeToken = JSON.parse(chromeMint.body).token;
+
+  const sha256 = (buf) => crypto.createHash("sha256").update(buf).digest("hex");
+  const swBytes = Buffer.from("// rehearsal service worker\n");
+  const cssBytes = Buffer.from("/* rehearsal chrome css */\n");
+  const jsBytes = Buffer.from("// rehearsal chrome js\n");
+  const v1Files = {
+    "/sw.js": { h: sha256(swBytes), ct: "text/javascript", s: swBytes.byteLength },
+    "/_chrome.1.0.rehearsal.css": { h: sha256(cssBytes), ct: "text/css", s: cssBytes.byteLength },
+    "/_chrome.1.0.rehearsal.js": { h: sha256(jsBytes), ct: "text/javascript", s: jsBytes.byteLength },
+  };
+  const v1Routing = {
+    chrome: { css: "_chrome.1.0.rehearsal.css", js: "_chrome.1.0.rehearsal.js", ui: "1.0" },
+    runtimeChrome: true, publicPrefixes: [], versionMap: {},
+  };
+  const v1BuiltWith = { engine: "rehearsal", version: "0.0.0-rehearsal" };
+  const engineBearer = (token) => ({ "content-type": "application/json", authorization: `Bearer ${token}` });
+
+  const check1 = await req("/__publish/_engine/check", {
+    method: "POST", headers: engineBearer(chromeToken), body: JSON.stringify({ files: v1Files }),
+  });
+  check("a chrome token clears the _engine preflight on the real runtime — a FIRST publish, nothing live yet",
+    check1.status === 200, `${check1.status} ${check1.text.slice(0, 200)}`);
+  const missing1 = (JSON.parse(check1.text).missing || []).sort();
+  const want1 = Object.values(v1Files).map((f) => f.h).sort();
+  check("every file in the fresh manifest is reported missing — this store has never held _engine",
+    JSON.stringify(missing1) === JSON.stringify(want1), JSON.stringify({ missing1, want1 }));
+
+  for (const [path, bytes] of [["/sw.js", swBytes], ["/_chrome.1.0.rehearsal.css", cssBytes], ["/_chrome.1.0.rehearsal.js", jsBytes]]) {
+    const h = v1Files[path].h;
+    const put = await req(`/__publish/_engine/blob/${h}`, { method: "PUT", headers: { authorization: `Bearer ${chromeToken}` }, body: bytes });
+    check(`the chrome token PUTs the blob for ${path}`, put.status === 204, `${put.status} ${put.text.slice(0, 160)}`);
+  }
+
+  const commit1 = await req("/__publish/_engine/commit", {
+    method: "POST", headers: engineBearer(chromeToken),
+    body: JSON.stringify({ id: "_engine", files: v1Files, routing: v1Routing, builtWith: v1BuiltWith }),
+  });
+  check("and its commit STICKS — a new _engine version is live", commit1.status === 200, `${commit1.status} ${commit1.text.slice(0, 300)}`);
+  const v1 = JSON.parse(commit1.text).version;
+  check("the first-ever _engine publish is version 1", v1 === 1, String(v1));
+
+  // The chrome token reading its OWN CAS inputs — proof `CAP_ROUTES.chrome`'s three read
+  // entries are pulling weight, since these are refused to a RESTRICTED credential by
+  // capabilityRefusal before sharedChromeRefusal (which exempts every read regardless of
+  // capability) is ever reached.
+  const mAfter1 = await req("/__publish/_engine/manifest", { headers: { authorization: `Bearer ${chromeToken}` } });
+  check("the chrome token reads the manifest it just committed", mAfter1.status === 200, `${mAfter1.status}`);
+  const vsAfter1 = await req("/__publish/_engine/versions", { headers: { authorization: `Bearer ${chromeToken}` } });
+  check("the chrome token lists versions", vsAfter1.status === 200 && (JSON.parse(vsAfter1.text).versions || []).includes(1),
+    `${vsAfter1.status} ${vsAfter1.text.slice(0, 120)}`);
+  const vAfter1 = await req(`/__publish/_engine/version/${v1}`, { headers: { authorization: `Bearer ${chromeToken}` } });
+  check("the chrome token reads that version by number", vAfter1.status === 200, `${vAfter1.status}`);
+
+  // A genuine REFRESH: one more file, riding the base-version CAS `scripts/publish.mjs
+  // --engine` drives (`baseVersion: check.liveVersion`), not a from-nothing publish.
+  const extraBytes = Buffer.from(`rehearsal chrome refresh ${WORKSPACE}`);
+  const v2Files = { ...v1Files, "/_chrome-extra.txt": { h: sha256(extraBytes), ct: "text/plain", s: extraBytes.byteLength } };
+  const check2 = await req("/__publish/_engine/check", {
+    method: "POST", headers: engineBearer(chromeToken), body: JSON.stringify({ files: v2Files }),
+  });
+  const check2Body = JSON.parse(check2.text);
+  check("the second check sees v1 live and only the new file missing",
+    check2.status === 200 && check2Body.liveVersion === v1 && check2Body.missing.length === 1
+      && check2Body.missing[0] === v2Files["/_chrome-extra.txt"].h,
+    `${check2.status} ${check2.text.slice(0, 200)}`);
+  const putExtra = await req(`/__publish/_engine/blob/${v2Files["/_chrome-extra.txt"].h}`, {
+    method: "PUT", headers: { authorization: `Bearer ${chromeToken}` }, body: extraBytes,
+  });
+  check("the chrome token PUTs the refresh's one new blob", putExtra.status === 204, `${putExtra.status}`);
+  const commit2 = await req("/__publish/_engine/commit", {
+    method: "POST", headers: engineBearer(chromeToken),
+    body: JSON.stringify({
+      id: "_engine", files: v2Files, routing: v1Routing, builtWith: v1BuiltWith, baseVersion: check2Body.liveVersion,
+    }),
+  });
+  check("the refresh commit STICKS, on the base-version CAS", commit2.status === 200, `${commit2.status} ${commit2.text.slice(0, 300)}`);
+  const v2 = JSON.parse(commit2.text).version;
+  check("the live version advanced past the first publish", v2 > v1, `${v1} → ${v2}`);
+  const mAfter2 = await req("/__publish/_engine/manifest", { headers: { authorization: `Bearer ${chromeToken}` } });
+  check("the live manifest carries the refreshed file", !!JSON.parse(mAfter2.text).files["/_chrome-extra.txt"],
+    Object.keys(JSON.parse(mAfter2.text).files).join(","));
+
+  // And beside it: the credential that could NOT have done any of this.
+  const refusedCheck = await req("/__publish/_engine/check", {
+    method: "POST", headers: engineBearer(tStar), body: JSON.stringify({ files: {} }),
+  });
+  const refusedBody = JSON.parse(refusedCheck.text);
+  check("a plain star token is STILL refused chrome-not-writable-here — even after a real publish exists to protect",
+    refusedCheck.status === 403 && refusedBody.reason === "chrome-not-writable-here",
+    `${refusedCheck.status} ${refusedCheck.text.slice(0, 160)}`);
+
   clause("2 · setup — an answer to compare, and a state only one store holds");
   await req("/__me", { cookie });                       // stamps lastseen on both stores
   const seenRow = await sql(`SELECT email, at FROM lastseen WHERE email = ?`, [ADMIN]);
