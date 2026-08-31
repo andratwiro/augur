@@ -7992,6 +7992,40 @@ async function tenantAccountKey(tenantId, env) {
 }
 
 /**
+ * Tell the control plane's account store that a person joined or left THIS workspace's
+ * roster, so `/workspaces` (the cross-workspace switcher) lists the right workspaces for
+ * them — `B-cross-workspace-signin`, the write half of the same relationship `/__enter`
+ * reads. PRESENTATION-ONLY: nothing here is ever consulted for authorization, so a missed
+ * or failed notify costs a stale switcher row and nothing else.
+ *
+ * Two cheap, synchronous checks come first — no `ACCOUNT_ORIGIN` (a self-hosted instance,
+ * or a deployment that has not wired central sign-in) and no `ctx` to hand the work to —
+ * either one means the call is answered before any I/O is attempted. What is left,
+ * INCLUDING the workspace's own accountKey read (itself an async round trip to the
+ * workspace object), is wrapped in one promise and handed to `ctx.waitUntil` so NONE of
+ * it — not the key read, not the POST — sits on the caller's critical path. A thrown
+ * error or a non-200 from the account store is swallowed inside that promise: this must
+ * never fail or delay the admin operation that triggered it.
+ */
+function noteMembershipUpstream(env, ctx, tctx, { email, verb, label } = {}) {
+  const origin = tctx && tctx.ACCOUNT_ORIGIN;
+  if (!origin) return; // no central account store configured: inert, like /__enter
+  if (!ctx || typeof ctx.waitUntil !== "function") return; // nowhere to hand off the work; never block on it here
+  const p = (async () => {
+    const key = await tenantAccountKey(tctx.tenantId, env);
+    if (!key) return; // this workspace has never been delivered an accountKey: nothing to authenticate with
+    try {
+      await fetch(`${origin}/__account/index`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ verb, email, at: Date.now(), label: label != null ? label : null }),
+      });
+    } catch (e) { /* best-effort: a failing or unreachable account store must never surface here */ }
+  })();
+  ctx.waitUntil(p);
+}
+
+/**
  * This workspace's suspension, or null. `undefined` means the answer is not known and the
  * caller must refuse — see the fail-closed note above.
  */
@@ -9953,7 +9987,7 @@ function rtProxy(tctx, request, url, env, me) {
 
 // Admin surface: manage PEOPLE, not credentials. There is deliberately no path here
 // that sets, reads or recovers a password — reset re-issues an invite instead.
-async function adminUsersApi(tctx, request, url, env, me, users = tctx.USERS, configUsers = tctx.CONFIG_USERS, spaces = tctx.SPACES) {
+async function adminUsersApi(tctx, request, url, env, me, users = tctx.USERS, configUsers = tctx.CONFIG_USERS, spaces = tctx.SPACES, ctx = null) {
   // Admin of ANY space gets in; every mutation below re-checks the SPECIFIC space it
   // touches. On an instance that never set memberships this is the old global check,
   // because a global admin administers everything by default.
@@ -10045,6 +10079,9 @@ async function adminUsersApi(tctx, request, url, env, me, users = tctx.USERS, co
     const kind = op && op.op;
     if (!kv) return jsonResponse({ error: "no-kv-binding" }, 500);
     const link = (token) => `${url.origin}/__invite?t=${encodeURIComponent(token)}`;
+    // The workspace's own display name for the account-store notify — same source mailLink
+    // uses for its "workspace" mail var, so a switcher row and an invite mail agree.
+    const workspaceLabel = (spaces.find((s) => s.default) || {}).name || url.host;
     // Email the link as well as returning it. NEVER instead of returning it: the panel
     // shows the copy-pasteable link either way, and this verdict — sent, unconfigured,
     // capped, or the provider's own refusal — is what it shows next to it. A deployment
@@ -10122,6 +10159,10 @@ async function adminUsersApi(tctx, request, url, env, me, users = tctx.USERS, co
       await revokeSecret(env, email, tctx);
       const token = await mintInvite(tctx, env, email);
       commitRoster();
+      // Tell the control plane's account store this person now belongs here, so the
+      // cross-workspace switcher lists this workspace for them. Best-effort, off the
+      // critical path — see noteMembershipUpstream.
+      noteMembershipUpstream(env, ctx, tctx, { email, verb: "joined", label: workspaceLabel });
       // One record, not two: ask the deploy shell to commit this person to the
       // identity file. The overlay entry above made them live NOW; the file commit
       // (and the config push its deploy sends back) makes them durable — at which
@@ -10294,6 +10335,10 @@ async function adminUsersApi(tctx, request, url, env, me, users = tctx.USERS, co
         if (identLs) await identLs.lastseenForget(u.email);
       } catch (e) {}
       commitRoster();
+      // Symmetric to invite: tell the account store this person no longer belongs here,
+      // so the switcher stops listing this workspace for them. Best-effort, off the
+      // critical path — see noteMembershipUpstream.
+      noteMembershipUpstream(env, ctx, tctx, { email, verb: "left" });
       // Symmetric to invite: the identity file should stop naming them too. The
       // tombstone above is the security boundary either way — this only keeps the
       // durable record honest.
@@ -10325,6 +10370,23 @@ async function adminUsersApi(tctx, request, url, env, me, users = tctx.USERS, co
         }
       }
       return jsonResponse({ ok: true, email, fileSync, ...(purge ? { purge } : {}) });
+    }
+
+    // Backfill: notify the account store of every CURRENT member, one "joined" each — for
+    // a workspace whose memberships predate `noteMembershipUpstream` existing at all.
+    // Idempotent by construction: the account store's own `at`-CAS makes a repeat notify
+    // for someone already listed a no-op there, so running this twice, or against a
+    // roster that has not changed, costs nothing beyond the calls themselves. Every
+    // notify is fire-and-forget (see noteMembershipUpstream), so this returns as soon as
+    // the calls are QUEUED, not once the account store has answered.
+    if (kind === "reconcile-membership") {
+      let notified = 0;
+      for (const u of users) {
+        if (!u || !u.email) continue;
+        noteMembershipUpstream(env, ctx, tctx, { email: u.email, verb: "joined", label: workspaceLabel });
+        notified++;
+      }
+      return jsonResponse({ ok: true, notified });
     }
 
     return jsonResponse({ error: "unknown-op" }, 400);
@@ -10957,7 +11019,9 @@ async function handleRequest(request, env, ctx, url, trace) {
     }
 
     // Admin users/passwords API — admin-only (adminUsersApi re-checks me.role).
-    if (url.pathname === "/__admin/users") return adminUsersApi(tctx, request, url, env, me);
+    if (url.pathname === "/__admin/users") {
+      return adminUsersApi(tctx, request, url, env, me, undefined, undefined, undefined, ctx);
+    }
 
     // Admin publish-token API — mint/list/revoke per-space publish tokens.
     if (url.pathname === "/__admin/tokens") return adminTokensApi(request, env, me, tctx);
@@ -11350,4 +11414,5 @@ export const __testables = Object.freeze({
   aliasTenantId,
   unknownHostResponse,
   WORKSPACE_ENTER_PATH, enterHandoff, tenantAccountKey,
+  noteMembershipUpstream,
 });
