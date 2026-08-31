@@ -499,7 +499,7 @@ export const DELETE_GRACE_MS = 30 * 24 * 60 * 60 * 1000;
  * else, so every control-plane call was a 404 that nothing was watching for.
  */
 export const CONTROL_VERBS = Object.freeze([
-  "provision", "status", "suspend", "resume", "rotate", "delete", "purge", "rename", "claim",
+  "provision", "status", "suspend", "resume", "rotate", "delete", "purge", "rename", "claim", "chrome",
 ]);
 
 /**
@@ -566,6 +566,19 @@ export function newSigningKey(random = (b) => crypto.getRandomValues(b)) {
   const bytes = new Uint8Array(32);
   random(bytes);
   return [...bytes].map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+/**
+ * How long a chrome-refresh token lives. Long enough to build the engine and publish
+ * `--engine`, short enough that a forgotten one is dead soon. The credential is minted by the
+ * operator `chrome` verb and used once from a laptop; it is not a machine token.
+ */
+export const CHROME_TOKEN_TTL_MS = 60 * 60 * 1000;
+
+const _enc = new TextEncoder();
+async function sha256Hex(s) {
+  const buf = await crypto.subtle.digest("SHA-256", _enc.encode(String(s)));
+  return [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, "0")).join("");
 }
 
 /**
@@ -2430,6 +2443,26 @@ export class TenantStore {
           return out.ok ? Response.json(out) : Response.json(out, {
             status: out.reason === "not-provisioned" ? 404 : 409,
           });
+        }
+        // Mint the ONE credential that may write the shared page chrome: a star-scope token
+        // (for reach) capped to `chrome` (for restraint), short-lived, returned exactly once.
+        // Reachable only here — i.e. only by the control plane holding the namespace binding —
+        // which is what keeps it out of every workspace's own Settings panel. See
+        // `sharedChromeRefusal` and `CAP_ROUTES.chrome` in src/_worker.js.
+        case "chrome": {
+          const s = this.status();
+          if (!s.provisioned) return Response.json({ ok: false, error: "not-provisioned" }, { status: 404 });
+          const bearer = newSigningKey();
+          // The worker's read path hashes as tokenFor("pub:"+bearer), and tokenFor(secret) is
+          // SHA-256("gv:"+secret) — so the stored hash MUST be SHA-256("gv:pub:"+bearer), or
+          // this token authenticates against nothing. See `publishAuthDetailed` in _worker.js.
+          const tokenHash = await sha256Hex("gv:pub:" + bearer);
+          const expiresAt = Date.now() + CHROME_TOKEN_TTL_MS;
+          this.publishTokenMint(
+            { tokenHash, space: "*", caps: ["chrome"], label: "chrome-refresh", expiresAt },
+            Date.now(),
+          );
+          return Response.json({ ok: true, token: bearer, expiresAt });
         }
       }
     }

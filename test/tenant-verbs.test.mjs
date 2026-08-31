@@ -507,3 +507,44 @@ function collidingPair() {
   }
   throw new Error("no colliding pair found in the search window");
 }
+
+// ── chrome ──────────────────────────────────────────────────────────────────────────
+
+test("chrome mints a short-lived, capability-restricted publish token", async () => {
+  const w = await provisioned();
+  const res = await control(w.store, "chrome");
+  assert.equal(res.status, 200);
+  const body = await res.json();
+  assert.equal(body.ok, true);
+  assert.match(body.token, /^[0-9a-f]{64}$/, "a 32-byte hex bearer, returned exactly once");
+  assert.equal(typeof body.expiresAt, "number");
+  assert.ok(body.expiresAt > Date.now(), "and it is in the future");
+  // The stored row is star-scope but chrome-capped — reach plus restraint.
+  const rows = w.db.prepare("SELECT scope, caps, label FROM publish_tokens").all();
+  assert.equal(rows.length, 1);
+  assert.equal(rows[0].scope, "*");
+  assert.equal(rows[0].label, "chrome-refresh");
+  assert.deepEqual(JSON.parse(rows[0].caps), ["chrome"]);
+  // Pinned to the worker's read path: publishAuthDetailed hashes as tokenFor("pub:"+token),
+  // and tokenFor(secret) is SHA-256("gv:"+secret) — so the stored hash must be
+  // SHA-256("gv:pub:"+token), or this token authenticates against nothing.
+  const expectedHash = [...new Uint8Array(
+    await crypto.subtle.digest("SHA-256", new TextEncoder().encode("gv:pub:" + body.token)),
+  )].map((b) => b.toString(16).padStart(2, "0")).join("");
+  const stored = w.db.prepare("SELECT token_hash FROM publish_tokens").get();
+  assert.equal(stored.token_hash, expectedHash,
+    "the stored hash must equal what the worker's read path computes, or the token authenticates against nothing");
+});
+
+test("chrome refuses a workspace nobody provisioned, and creates nothing", async () => {
+  const { db, store } = workspace();
+  const res = await control(store, "chrome");
+  assert.equal(res.status, 404);
+  assert.deepEqual(await res.json(), { ok: false, error: "not-provisioned" });
+  const tables = db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'").all();
+  assert.deepEqual(tables, [], "a chrome call on a typo brought a workspace into being");
+});
+
+test("chrome is on CONTROL_VERBS", () => {
+  assert.ok(CONTROL_VERBS.includes("chrome"));
+});
