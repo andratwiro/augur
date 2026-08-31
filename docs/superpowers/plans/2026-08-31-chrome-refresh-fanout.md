@@ -560,7 +560,7 @@ test("a live chrome grant mints a token and returns it once", async () => {
     // the fake tenant answers /__control/chrome with a minted token
     chrome: () => ({ ok: true, token: "f".repeat(64), expiresAt: Date.now() + 3600_000 }),
   });
-  const bearer = await grant(env, { actor: "rob@x.io", workspace: "acme", verbs: ["chrome"], hours: 1 });
+  const bearer = await grant(env, { actor: "operator@example.test", workspace: "acme", verbs: ["chrome"], hours: 1 });
   const res = await operatorCall(req(`/tenants/acme/chrome`, bearer), env);
   assert.equal(res.status, 200);
   assert.equal(res.body.ok, true);
@@ -575,7 +575,7 @@ test("a live chrome grant mints a token and returns it once", async () => {
 // 2. Wrong workspace → refused-scope, logged, no tenant call.
 test("a chrome grant for another workspace is refused-scope and logged", async () => {
   const { env, tenantCalls } = await harnessWithTenant({ chrome: () => ({ ok: true }) });
-  const bearer = await grant(env, { actor: "rob@x.io", workspace: "acme", verbs: ["chrome"], hours: 1 });
+  const bearer = await grant(env, { actor: "operator@example.test", workspace: "acme", verbs: ["chrome"], hours: 1 });
   const res = await operatorCall(req(`/tenants/other/chrome`, bearer), env);
   assert.equal(res.status, 403);
   assert.equal(res.body.error, "refused-scope");
@@ -586,7 +586,7 @@ test("a chrome grant for another workspace is refused-scope and logged", async (
 // 3. Expired grant → the stranger's answer (null → router 405), still written down.
 test("an expired chrome grant is told nothing and still logged", async () => {
   const { env } = await harnessWithTenant({ chrome: () => ({ ok: true }) });
-  const bearer = await grant(env, { actor: "rob@x.io", workspace: "acme", verbs: ["chrome"], hours: 1, ageMs: 2 * 3600_000 });
+  const bearer = await grant(env, { actor: "operator@example.test", workspace: "acme", verbs: ["chrome"], hours: 1, ageMs: 2 * 3600_000 });
   const res = await operatorCall(req(`/tenants/acme/chrome`, bearer), env);
   assert.equal(res, null); // router turns this into the ordinary 405
   assert.ok(auditRows(env, "acme").some((r) => r.verdict === "refused-expired"));
@@ -671,12 +671,12 @@ In `runbooks/operator-credential.md:49`, change the `--verbs` row to list `chrom
 Write the full procedure (in `operator-credential.md`'s voice — snapshot, not diary):
 
 1. **Why one publish is enough** — `spaces/_engine/` is one shared bundle; publishing through any one live workspace refreshes chrome for every tenant.
-2. **Mint the grant** — `npm run grant -- --actor rob@deltastudio.io --workspace stoic-canyon-873 --verbs chrome --hours 1 --by "chrome refresh, <reason>"`, then run the printed INSERT with `.secrets/hosted.env` creds (the `wrangler d1 execute augur-operator-eu` one-liner).
+2. **Mint the grant** — `npm run grant -- --actor <operator-email> --workspace stoic-canyon-873 --verbs chrome --hours 1 --by "chrome refresh, <reason>"`, then run the printed INSERT with `.secrets/hosted.env` creds (the `wrangler d1 execute augur-operator-eu` one-liner).
 3. **Get the token** — `curl -sS -X POST https://augur.works/tenants/stoic-canyon-873/chrome -H "authorization: Bearer $OPERATOR_BEARER"` → `{ ok, token, expiresAt }`. Note it once.
 4. **Build the engine at the DEPLOYED pin** — from a clean checkout of `augur/` at the sha the worker currently runs (`GET https://stoic-canyon-873.augur.page/_build.json` → `engine.sha` after the worker deploy; or the shell submodule sha).
 5. **Publish** — `AUGUR_ORIGIN=https://stoic-canyon-873.augur.page AUGUR_TOKEN=<token> node scripts/publish.mjs --engine --no-config` (with `GV_IDENTITY_PATH`/`GV_DEPLOY_CONFIG_PATH` pointing at the hosted shell, exactly as the shell's deploy does).
 6. **Verify** — `GET /_build.json` on `demo.augur.page` AND `stoic-canyon-873.augur.page`: both `engine.sha` now equal the deployed pin (were `52c0108a` before). This is the plan item's VERIFY.
-7. **Revoke** — `DELETE FROM operator_grants WHERE actor='rob@deltastudio.io';` The audit lines stay.
+7. **Revoke** — `DELETE FROM operator_grants WHERE actor='<operator-email>';` The audit lines stay.
 
 Include the ⚠️ that a `chrome` token gets `403 capability-not-granted` if pointed at any space or `_instance/config` — that is the guardrail working, not a failure.
 
@@ -721,7 +721,7 @@ Expected: all pass.
 Run: `cd ~/Documents/augur-workspace/augur && node scripts/tenant-do-rehearsal.mjs`
 Expected: all checks pass, including the chrome clause.
 
-- [ ] **Step 4: STOP — the live fan-out is a separate, deploy-gated step.** Do not deploy or publish here. The live VERIFY (both `/_build.json` shas match) requires: (a) both workers deployed with this code, (b) an explicit go from Rob with `.secrets/hosted.env` confirmed, (c) the runbook run once. Surface this as the remaining step; do not perform it inside plan execution.
+- [ ] **Step 4: STOP — the live fan-out is a separate, deploy-gated step.** Do not deploy or publish here. The live VERIFY (both `/_build.json` shas match) requires: (a) both workers deployed with this code, (b) an explicit go from the human operator with `.secrets/hosted.env` confirmed, (c) the runbook run once. Surface this as the remaining step; do not perform it inside plan execution.
 
 - [ ] **Step 5: Mark the plan item done and ship the plan page.**
 
