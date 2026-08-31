@@ -2457,8 +2457,14 @@ export class TenantStore {
           // this token authenticates against nothing. See `publishAuthDetailed` in _worker.js.
           const tokenHash = await sha256Hex("gv:pub:" + bearer);
           const expiresAt = Date.now() + CHROME_TOKEN_TTL_MS;
+          // STORE an ISO string, like every other timestamp in this schema — `stampMs`'s
+          // header is explicit that nothing in this file produces a numeric one, and a
+          // numeric `expiresAt` here binds into the TEXT column as SQLite's double rendering
+          // ("…092.0"), which `Date.parse` in the worker's auth path answers NaN for, so the
+          // TTL this token exists to bound is silently never enforced. The RESPONSE keeps the
+          // numeric epoch-ms: the operator/CLI reading this wants a number, not a re-parse.
           this.publishTokenMint(
-            { tokenHash, space: "*", caps: ["chrome"], label: "chrome-refresh", expiresAt },
+            { tokenHash, space: "*", caps: ["chrome"], label: "chrome-refresh", expiresAt: new Date(expiresAt).toISOString() },
             Date.now(),
           );
           return Response.json({ ok: true, token: bearer, expiresAt });

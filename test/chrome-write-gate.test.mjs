@@ -37,6 +37,7 @@ const CTX = W.applyInstance({ users: [] });
 const H = "b".repeat(64);
 const TOKEN = "a-plain-star-token";
 const CHROME_TOKEN = "a-chrome-cap-token";
+const EXPIRED_CHROME_TOKEN = "an-expired-chrome-cap-token";
 
 const LIVE_ENGINE = {
   id: "_engine", version: 9, format: 1,
@@ -112,9 +113,17 @@ async function deployment({ suffix = null, tenants = false, tenantId = "acme" } 
   // it keeps this fixture from having to know which one a shape reads.
   const starHash = await W.tokenFor("pub:" + TOKEN);
   const chromeHash = await W.tokenFor("pub:" + CHROME_TOKEN);
+  const expiredChromeHash = await W.tokenFor("pub:" + EXPIRED_CHROME_TOKEN);
   const doc = JSON.stringify({
     [starHash]: { space: "*", label: "ci", createdAt: "2026-01-01T00:00:00.000Z" },
     [chromeHash]: { space: "*", label: "chrome-refresh", caps: ["chrome"], createdAt: "2026-01-01T00:00:00.000Z" },
+    // A chrome-capability token whose TTL has already elapsed — the ISO expiry the fixed
+    // mint now stores. `publishAuthDetailed` must refuse it as expired, PROVING the ISO
+    // format is enforced end-to-end rather than merely pinned in a unit test.
+    [expiredChromeHash]: {
+      space: "*", label: "chrome-refresh", caps: ["chrome"],
+      createdAt: "2026-01-01T00:00:00.000Z", expiresAt: "2020-01-01T00:00:00.000Z",
+    },
   });
   const kv = memKV({ "publish:tokens": doc, [`t/${tenantId}/publish:tokens`]: doc });
 
@@ -341,4 +350,19 @@ test("the star token is STILL refused where the chrome token is admitted", async
   const res = await d.fireAs(TOKEN, "/__publish/_engine/check", { method: "POST", body: JSON.stringify({ files: {} }) });
   assert.equal(res.status, 403);
   assert.equal((await res.json()).reason, "chrome-not-writable-here");
+});
+
+test("an EXPIRED chrome-capability token is refused — the TTL is enforced, not just minted", async () => {
+  // The `chrome` verb mints a token with a 1-hour TTL. That TTL is only worth anything if
+  // `publishAuthDetailed` actually reads it: this proves an elapsed one is treated as no
+  // token at all, at the very route the capability exists to admit.
+  const d = await deployment({ suffix: ".example.test", tenants: true });
+  const res = await d.fireAs(EXPIRED_CHROME_TOKEN, "/__publish/_engine/check", {
+    method: "POST", body: JSON.stringify({ files: {} }),
+  });
+  assert.equal(res.status, 403, "an expired chrome token was admitted");
+  assert.deepEqual(await res.json(), {
+    error: "token-expired",
+    message: "This publish token has expired. Run `augur login` again.",
+  });
 });

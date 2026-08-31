@@ -520,11 +520,17 @@ test("chrome mints a short-lived, capability-restricted publish token", async ()
   assert.equal(typeof body.expiresAt, "number");
   assert.ok(body.expiresAt > Date.now(), "and it is in the future");
   // The stored row is star-scope but chrome-capped — reach plus restraint.
-  const rows = w.db.prepare("SELECT scope, caps, label FROM publish_tokens").all();
+  const rows = w.db.prepare("SELECT scope, caps, label, expires_at FROM publish_tokens").all();
   assert.equal(rows.length, 1);
   assert.equal(rows[0].scope, "*");
   assert.equal(rows[0].label, "chrome-refresh");
   assert.deepEqual(JSON.parse(rows[0].caps), ["chrome"]);
+  // The STORED expiry must be an ISO-8601 string, not the numeric epoch-ms the response
+  // returns. `publishAuthDetailed` in _worker.js enforces the TTL with `Date.parse(e.expiresAt)`
+  // — a number bound into this TEXT column comes back out as SQLite's double rendering
+  // ("…092.0"), which Date.parse answers NaN for, so a numeric expiry here is never enforced.
+  assert.match(rows[0].expires_at ?? "", /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/,
+    "expires_at must be ISO, or Date.parse in the worker reads it as NaN and the TTL is never enforced");
   // Pinned to the worker's read path: publishAuthDetailed hashes as tokenFor("pub:"+token),
   // and tokenFor(secret) is SHA-256("gv:"+secret) — so the stored hash must be
   // SHA-256("gv:pub:"+token), or this token authenticates against nothing.
