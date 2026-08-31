@@ -7570,6 +7570,10 @@ async function main() {
     mcpHostAllowlistUrl: DEPLOY.mcpHostAllowlistUrl || "",
     vanityRedirects: DEPLOY.vanityRedirects || {},
     rtOrigin: DEPLOY.realtimeOrigin || "",
+    // The control plane a cross-workspace hand-off is redeemed against (`GET /__enter`,
+    // B-cross-workspace-signin). Unset leaves the route inert — see ACCOUNT_ORIGIN in
+    // src/tenant-context.mjs.
+    accountOrigin: DEPLOY.accountOrigin || "",
     sentinels: DEPLOY.sentinels || [],
     // Oldest publish protocol this instance accepts a commit from. Absent = no floor.
     minClientProtocol: DEPLOY.minClientProtocol || 0,

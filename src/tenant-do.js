@@ -1583,9 +1583,13 @@ export class TenantStore {
    * delivered one via the `account-key` verb. What `/__enter` (Task 6) reads to
    * authenticate to the account store — internal only, never exposed on any
    * external/public route.
+   *
+   * `hasMeta()`-guarded like `suspension()`: an object nobody has ever provisioned has no
+   * `meta` table at all, and reading straight off it would throw instead of answering
+   * "no key yet" — the same distinction `suspension()` draws for the same reason.
    */
   accountKey() {
-    return this.readMeta("account_key");
+    return this.hasMeta() ? this.readMeta("account_key") : null;
   }
 
   /** The admins and editors and viewers who have not been removed. */
@@ -2521,6 +2525,16 @@ export class TenantStore {
     // The request path's question, and the reason it is not /status. No init() either.
     if (url.pathname === "/suspension" && request.method === "GET") {
       return Response.json(this.suspension());
+    }
+    // The workspace's own account-store bearer, for `/__enter` (Task 6, src/_worker.js)
+    // to read via a stub fetch — a Durable Object stub only speaks HTTP, so `accountKey()`
+    // needs a route the same way `status()` and `suspension()` do. NOT a control verb:
+    // asking a workspace what it holds is the request path asking about itself, not
+    // something the outside does TO it — and CONTROL_VERBS is that second list. No
+    // init() either, for the same reason as the two routes above: asking must not create
+    // a workspace nobody provisioned.
+    if (url.pathname === "/account-key" && request.method === "GET") {
+      return Response.json({ accountKey: this.accountKey() });
     }
     // A sign-in that already succeeded, offered to the workspace as a chance to come back.
     //

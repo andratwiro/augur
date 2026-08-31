@@ -94,6 +94,11 @@ function instanceDoc(n) {
     mcpHostAllowlistUrl: `https://${n}.invalid/hosts.json`,
     vanityRedirects: { [`/${n}`]: `/prototypes/${n}-one/` },
     rtOrigin: `https://rt.${n}.invalid`,
+    // The central sign-in origin a cross-workspace hand-off redeems against
+    // (`B-cross-workspace-signin`, `GET /__enter`). Per workspace for the same reason
+    // rtOrigin is: two workspaces sharing an isolate must never share where the other
+    // one's session-minting POST is aimed.
+    accountOrigin: `https://accounts.${n}.invalid`,
     sentinels: [`/prototypes/${n}-one/`],
     minClientProtocol: n.length, // an integer that differs per workspace
     loginHint: `the ${n} hint`,

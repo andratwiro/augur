@@ -84,6 +84,12 @@ const FIELDS = Object.freeze({
   // ---- instance knobs ----------------------------------------------------------
   VANITY_REDIRECTS:        { source: "instance", make: () => ({}) },
   RT_ORIGIN:               { source: "instance", make: () => "" },
+  // The control plane this workspace redeems a cross-workspace hand-off against
+  // (`B-cross-workspace-signin`, `GET /__enter` in src/_worker.js). Unset — every
+  // deployment today — leaves the route inert: enterHandoff refuses before it ever
+  // reaches the network, the same "no seam revealed" refusal a missing account-key
+  // gets. deploy.config.json "accountOrigin", same shape as "rtOrigin" above.
+  ACCOUNT_ORIGIN:          { source: "instance", make: () => "" },
   INSTANCE_SENTINELS:      { source: "instance", make: () => [] },
   MIN_CLIENT_PROTOCOL:     { source: "instance", make: () => 0 },
   LOGIN_HINT:              { source: "instance", make: () => "" },
@@ -197,6 +203,7 @@ export function instanceFields(inst) {
     MCP_HOST_ALLOWLIST_URL: doc.mcpHostAllowlistUrl || "",
     VANITY_REDIRECTS: doc.vanityRedirects || {},
     RT_ORIGIN: doc.rtOrigin || "",
+    ACCOUNT_ORIGIN: doc.accountOrigin || "",
     INSTANCE_SENTINELS: Array.isArray(doc.sentinels) ? doc.sentinels : [],
     MIN_CLIENT_PROTOCOL:
       Number.isInteger(doc.minClientProtocol) && doc.minClientProtocol > 0 ? doc.minClientProtocol : 0,

@@ -2776,6 +2776,86 @@ async function invitePost(tctx, request, url, env, users = tctx.USERS) {
   }
 }
 
+// GET /__enter?handoff=<token> — the cross-workspace switcher's landing point
+// (`B-cross-workspace-signin`). The control plane proves WHO: it hands over an email it
+// has already authenticated itself, redeemed from a one-time hand-off it minted. This
+// workspace decides WHAT: whether that email is on ITS OWN roster. A hand-off is never
+// sufficient by itself — a valid hand-off for an email this workspace does not carry gets
+// the exact same answer a stranger with no hand-off at all gets, `unknownHostResponse()`.
+// No membership oracle: every non-success below is that one response, byte-identical, so
+// nobody can learn "that email exists, just not here" from the reply.
+//
+// Matches the control plane's own spelling of the path.
+const WORKSPACE_ENTER_PATH = "/__enter";
+
+async function enterHandoff(tctx, request, url, env) {
+  // No key delivered yet (or no TENANTS binding at all) → this route is inert on this
+  // deployment. The refusal is the same one a stranger gets everywhere else on this path,
+  // so a probe here learns nothing about whether central sign-in is even wired up.
+  const key = await tenantAccountKey(tctx.tenantId, env);
+  if (!key) return unknownHostResponse();
+  const handoff = url.searchParams.get("handoff") || "";
+  if (!handoff) return unknownHostResponse();
+  // Unset → inert, same refusal as no key: a deployment that names no central sign-in
+  // origin cannot reach one, and answering differently from "no key" would tell a caller
+  // WHICH half of the wiring is missing.
+  const origin = tctx.ACCOUNT_ORIGIN;
+  if (!origin) return unknownHostResponse();
+  let email = "";
+  try {
+    const res = await fetch(`${origin}/__account/handoff`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ token: handoff }),
+    });
+    // Non-200 (expired, already redeemed, unknown token, the account store refusing this
+    // workspace's bearer) is the same refusal as every other failure on this path — a
+    // caller must not learn which kind of "no" it got.
+    if (res.ok) {
+      const body = await res.json();
+      if (body && typeof body.email === "string" && body.email) email = body.email;
+    }
+  } catch (e) { /* a network error to the account store is a "no" like any other */ }
+  if (!email) return unknownHostResponse();
+  // THE membership check, and the whole point of this route. The control plane proved
+  // WHO; this workspace's OWN roster decides WHAT. A non-member is byte-identical to a
+  // stranger — there is no answer here that distinguishes "that email exists elsewhere"
+  // from "no such email at all".
+  const u = userByEmail(email, tctx.USERS);
+  if (!u) return unknownHostResponse();
+  // From here `u` is a PROVEN member, and the hand-off is already spent — the account
+  // store redeemed it inside the POST above, unlike an invite link (which THIS workspace
+  // consumes, and only after rotating). So a rotate failure below cannot un-spend
+  // anything; it is a member hitting an internal hiccup, never a stranger's probe, and it
+  // must say so rather than answering the same silent 404 a stranger gets. Re-clicking
+  // the switcher mints a fresh hand-off, because their account-side session is untouched.
+  const rot = await rotateSessionKey(env, u.email, tctx);
+  if (!rot.ok || !rot.key) {
+    console.error("__enter: rotateSessionKey failed", rot.why || "");
+    return new Response("Something went wrong signing you in. Try again.\n", {
+      status: 500,
+      headers: {
+        "Content-Type": "text/plain; charset=utf-8",
+        "Cache-Control": "no-store",
+        "X-Robots-Tag": "noindex, nofollow, noarchive",
+      },
+    });
+  }
+  // Mint the session exactly as inviteRedeemSession does: bind to the key JUST WRITTEN,
+  // never a re-read — a read-after-write through KV can answer stale for up to a minute
+  // of edge cache, and a cookie minted on that value would die on its first request.
+  const token2 = await userToken(env, u, rot.key, true, tctx);
+  const landing = await firstRunLanding(tctx, env, u.email);
+  return new Response(null, {
+    status: 303,
+    headers: {
+      Location: landing,
+      "Set-Cookie": `${USER_COOKIE}=${u.email}.${token2}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=${MAX_AGE}`,
+      "Cache-Control": "no-store",
+    },
+  });
+}
+
 // Session cookie token: HMAC-SHA-256(SESSION_SECRET, "email:effectiveSecret").
 // SESSION_SECRET is a runtime env var — NEVER baked into the bundle — so a cookie
 // cannot be forged from repo-visible data. Binding to the effective secret means
@@ -7886,6 +7966,32 @@ function isAllowedWhileSuspended(request, url) {
 }
 
 /**
+ * This workspace's account-store bearer, read from its own object — what `/__enter`
+ * authenticates the `/__account/handoff` redemption with. `null` covers every reason it
+ * is unavailable, and `enterHandoff` treats them identically: no `TENANTS` binding (a
+ * self-hosted, single-workspace instance — the whole route this feeds is simply inert),
+ * the object has never been provisioned, or the control plane has never delivered a key
+ * via the `account-key` control verb (see `accountKey()` in src/tenant-do.js).
+ *
+ * Deliberately UNCACHED, unlike `readSuspension` just below: this runs once on a rare
+ * cold path (a hand-off redemption), never on the hot request path, so there is nothing
+ * to protect by caching it — and a stale cached answer here would keep accepting a key
+ * the control plane has since rotated away.
+ */
+async function tenantAccountKey(tenantId, env) {
+  const stub = tenantStub(env, tenantId);
+  if (!stub) return null; // single-workspace instance: the question does not exist
+  try {
+    const res = await stub.fetch("https://workspace/account-key");
+    if (!res.ok) return null;
+    const body = await res.json();
+    return body && typeof body.accountKey === "string" && body.accountKey ? body.accountKey : null;
+  } catch (e) {
+    return null;
+  }
+}
+
+/**
  * This workspace's suspension, or null. `undefined` means the answer is not known and the
  * caller must refuse — see the fail-closed note above.
  */
@@ -10883,6 +10989,17 @@ async function handleRequest(request, env, ctx, url, trace) {
       return new Response("Method Not Allowed", { status: 405 });
     }
 
+    // Cross-workspace hand-off redemption — reachable WITHOUT a session, like /__invite
+    // just above, and for the same reason: it IS how a session gets minted. Already past
+    // the suspension gate above (it is deliberately NOT on SUSPENDED_ALLOWED, the same
+    // choice made for /__invite), so a paused workspace answers the suspension response
+    // and never reaches this branch. GET only — a hand-off token rides the query string,
+    // the switcher's own link shape. See enterHandoff for the trust model.
+    if (url.pathname === WORKSPACE_ENTER_PATH) {
+      if (request.method !== "GET") return new Response("Method Not Allowed", { status: 405 });
+      return enterHandoff(tctx, request, url, env);
+    }
+
     // Login form submission.
     if (request.method === "POST" && url.pathname === "/__auth") {
       const form = await request.formData();
@@ -11231,4 +11348,6 @@ export const __testables = Object.freeze({
   resolveTenant, DEFAULT_TENANT_ID, TENANT_MEMO_TTL_MS, __setTenantTestState, tenantStub,
   tenantNamespace,
   aliasTenantId,
+  unknownHostResponse,
+  WORKSPACE_ENTER_PATH, enterHandoff, tenantAccountKey,
 });
