@@ -5631,11 +5631,29 @@
   var FRAMED = window.top !== window.self;
   function mpConnect() {
     if (FRAMED) return;
+    var qs = "/__rt?path=" + encodeURIComponent(BOARD_PATH) + "&name=" + encodeURIComponent(mpName || "Guest") +
+      (mpAvatar ? "&avatar=" + encodeURIComponent(mpAvatar) : "");
+    // Ask for a signed room ticket first (A-room-tickets). An instance that folds its rooms
+    // into the engine worker mints one and we carry it on the socket; a 501 means this
+    // instance requires none (legacy standalone realtime), so we open the socket directly as
+    // before; a 403 (a restricted board we may not join) or a network miss drops us to solo
+    // and retries. The board still saves via /__board while solo, so a mint failure degrades
+    // rather than breaks.
+    fetch("/__rt?path=" + encodeURIComponent(BOARD_PATH) + "&mint=1", { credentials: "same-origin" })
+      .then(function (r) {
+        if (r.status === 501) return null;              // tickets not required here
+        if (!r.ok) throw new Error("mint-" + r.status);  // 403/5xx → solo + retry
+        return r.json();
+      })
+      .then(function (t) {
+        mpOpenSocket(qs + (t && t.ticket ? "&ticket=" + encodeURIComponent(t.ticket) : ""));
+      })
+      .catch(function () { mpRetryLater(); });
+  }
+  function mpOpenSocket(qs) {
     var ws;
     try {
-      ws = new WebSocket((location.protocol === "https:" ? "wss://" : "ws://") + location.host +
-        "/__rt?path=" + encodeURIComponent(BOARD_PATH) + "&name=" + encodeURIComponent(mpName || "Guest") +
-        (mpAvatar ? "&avatar=" + encodeURIComponent(mpAvatar) : ""));
+      ws = new WebSocket((location.protocol === "https:" ? "wss://" : "ws://") + location.host + qs);
     } catch (e) { mpRetryLater(); return; }
     mp = ws;
     ws.onmessage = mpOnMessage;

@@ -82,6 +82,7 @@
 // The mirror's key, built by the SAME function the /__board rail builds it with. Two
 // writers, one spelling — see src/board-key.mjs.
 import { boardKvKey, RT_WORKSPACE_HEADER } from "./board-key.mjs";
+import { verifyRoomTicket } from "./room-ticket.mjs";
 
 const MAX_MSG = 8 * 1024 * 1024; // a node op can carry an inlined image; KV caps the doc at 20MB
 // Frozen: a fixed palette, read by index and never written. Freezing at the declaration
@@ -224,6 +225,18 @@ export class BoardRoom {
     // every socket has gone, with no request to read it from.
     const ws = (request.headers.get(RT_WORKSPACE_HEADER) || "").slice(0, 128);
     if (ws && ws !== this.workspace) { this.workspace = ws; this.ctx.storage.put("ws", ws); }
+    // Room ticket (A-room-tickets). When the deployment folds the rooms into the engine
+    // worker it configures ROOM_TICKET_SECRET, the worker mints a ticket bound to this
+    // workspace+path after its auth gate, and we refuse the Upgrade without a valid one —
+    // recomputing the MAC from the workspace WE were handed (not one a client can name) and
+    // the path on this URL, so a ticket for another board or another workspace cannot open
+    // this one. With no secret (the standalone realtime worker, offline, a raw build) the
+    // join is accepted exactly as before: tickets exist only where the rooms are bound.
+    if (this.env && this.env.ROOM_TICKET_SECRET) {
+      const ok = path && await verifyRoomTicket(
+        this.env.ROOM_TICKET_SECRET, url.searchParams.get("ticket") || "", { workspace: ws, path });
+      if (!ok) return new Response("forbidden", { status: 403 });
+    }
     const name = (url.searchParams.get("name") || "Guest").slice(0, 60);
     const sid = "p" + Math.random().toString(36).slice(2, 10);
     // `kind=agent` marks a Claude collaboration client — clients render it as Clawd, not the

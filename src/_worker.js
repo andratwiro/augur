@@ -104,6 +104,7 @@ import { composeFork, carriedLineage, assertedLineage } from "./publish-fork.mjs
 // The board document's KV key, shared VERBATIM with the room that mirrors into it
 // (src/board-room.mjs). Two writers, one spelling — see the module header.
 import { BOARD_PREFIX, boardKvKey, RT_WORKSPACE_HEADER } from "./board-key.mjs";
+import { signRoomTicket } from "./room-ticket.mjs";
 
 const COOKIE = "gv_auth";
 const MAX_AGE = 60 * 60 * 24 * 7; // 7 days
@@ -4588,6 +4589,63 @@ function capabilityRefusal(entry, spaceId, op) {
   return "capability-not-granted";
 }
 
+/**
+ * THE PUBLISH OPS ON A SPACE THAT ONLY READ IT, as a map from op to the method that reads.
+ *
+ * These five are the whole backup surface — what `augur export` walks with a publish token
+ * and no account credentials. Everything else a space takes (`check`, `blob` PUT, `commit`,
+ * `fork`, `rollback`) ends in bytes the next request serves.
+ *
+ * ⚠️ IT NAMES THE READS, NOT THE WRITES, and that direction is the whole of why it is
+ * trustworthy. A denylist of writes has to be widened in step with every publishing verb
+ * added later, and the step somebody forgets is the one that opens something — the same
+ * argument `CAP_ROUTES` above is written on. `blob` is in both sets and is told apart by
+ * METHOD, which is why this is a map and not a list of names.
+ */
+const PUBLISH_READ_OPS = Object.freeze({
+  manifest: "GET", versions: "GET", version: "GET", blob: "GET", currency: "GET",
+});
+
+/**
+ * ⚠️ THE SHARED CHROME IS NOT ANY ONE WORKSPACE'S TO WRITE.
+ *
+ * `spaces/_engine/…` is the one key `bundleKey` deliberately leaves global on a prefixing
+ * deployment: one worker build serves every workspace, so one chrome bundle is correct
+ * rather than a leak. The credential that can write it is not shared in the same way — it is
+ * minted per workspace, at that workspace's own Settings panel, against that workspace's own
+ * roster. So the authority was scoped to one workspace while its effect was scoped to the
+ * deployment, and any hosted workspace's admin could rewrite `/admin/index.html` and
+ * `/sw.js` for every other customer on it.
+ *
+ * ⚠️ THE DISCRIMINATOR IS `bundleWorkspaceSegment(...).workspace`, WHICH IS THE FACT THE
+ * SHARING ITSELF DEPENDS ON — one fact about the deployment, not two that could disagree.
+ * The tempting one is `env.TENANTS`, and it is wrong: `wrangler-preflight.mjs` refuses a
+ * suffix with no binding and does NOT refuse a binding with no suffix, which is a legal,
+ * real shape — an instance using the workspace object as its identity store while still
+ * serving the one workspace its build named. There `bundleKey` writes no segment, the chrome
+ * is shared with nobody, and refusing that operator's own chrome publish would be this
+ * function inventing a cross-tenant problem their deployment does not have.
+ *
+ * ⚠️ THERE IS NO CAPABILITY THAT SATISFIES IT, on purpose. `CAP_ROUTES` could carry a
+ * `chrome` entry in three lines — and nothing could mint a token to match it, because the
+ * workspace object's `publish_tokens` row is the record the request path reads and a
+ * capability arrives there only from a store that already holds one. A lock whose key
+ * cannot exist is a lock; a lock whose key is a comment is not. The narrow credential lands
+ * with a mint path, or it does not land.
+ *
+ * ⚠️ `rollback` IS A WRITE HERE. It republishes an old manifest under a NEW version and
+ * bypasses the engine-downgrade guard by design, so it is the one path that can put a
+ * superseded chrome back on every workspace at once — including one somebody pushed while
+ * this door was open. With `commit` refused there is nothing legitimate left for it to undo,
+ * so closing it costs the deployment nothing and leaving it open costs it the whole gate.
+ */
+function sharedChromeRefusal(env, tctx, spaceId, op, method) {
+  if (spaceId !== ENGINE_SPACE_ID) return null;
+  if (!bundleWorkspaceSegment(env, tctx && tctx.tenantId).workspace) return null;
+  if (PUBLISH_READ_OPS[op] === method) return null;
+  return "chrome-not-writable-here";
+}
+
 async function publishApi(tctx, request, url, env) {
   const [spaceId, op, arg] = url.pathname.slice("/__publish/".length).split("/");
   if (!spaceId || !op || !/^[a-z0-9_][a-z0-9-]*$/.test(spaceId)) return jsonResponse({ error: "bad-path" }, 400);
@@ -4724,6 +4782,20 @@ async function publishApi(tctx, request, url, env) {
   // to the control plane: it is the reason it cannot publish.
   if (capabilityRefusal(who, spaceId, op)) {
     return jsonResponse({ error: "forbidden", reason: "capability-not-granted" }, 403);
+  }
+  // AND THE SAME CHOKEPOINT ASKS THE OTHER QUESTION, one line later. The check above is
+  // about the CREDENTIAL — what this token was granted. This one is about the OBJECT — the
+  // chrome bundle is every workspace's, so no workspace's own token may write it however
+  // wide its scope. Two refusals rather than one because they fail for different reasons and
+  // a holder has to be able to tell them apart. See `sharedChromeRefusal`.
+  const chromeRefusal = sharedChromeRefusal(env, tctx, spaceId, op, request.method);
+  if (chromeRefusal) {
+    return jsonResponse({
+      error: "forbidden",
+      reason: chromeRefusal,
+      message: "The page chrome on this deployment is one build shared by every workspace, "
+        + "so no workspace's own publish token may write it. Reading it is unaffected.",
+    }, 403);
   }
 
   // Instance config push (star-scope tokens only): the deploy shell's identity +
@@ -5106,7 +5178,12 @@ async function publishApi(tctx, request, url, env) {
     // chrome) or another space's paths, and shadow them — then run script as the next
     // admin who loads that asset. STAR-scope tokens ("*") are admin/CI-only and already
     // all-powerful (they push instance config, i.e. the user list), so they are exempt —
-    // that is also how the trusted `_engine` chrome publish writes /admin, /404.html, etc.
+    // that is how a single-workspace instance's own CI publishes /admin and /404.html under
+    // `_engine`. ⚠️ IT IS NO LONGER HOW A SHARED DEPLOYMENT'S CHROME IS WRITTEN, and reading
+    // it that way is the mistake this sentence exists to stop: where the chrome bundle is one
+    // object serving every workspace, `sharedChromeRefusal` has already refused the request
+    // before it reaches here, star scope or not. Star scope reaches `_engine` exactly where
+    // `_engine` is this deployment's own.
     if (who.space !== "*") {
       const commitIsDefault = spaceId === ((tctx.SPACES.find((s) => s.default) || {}).id || null);
       const ownsPath = (k) => pathOwnedBySpace(k, spaceId, tctx.SPACES);
@@ -9690,11 +9767,28 @@ function roomName(tctx, path) {
 }
 const workspaceOf = (tctx) => (tctx && tctx.tenantId) || DEFAULT_TENANT_ID;
 
-function rtProxy(tctx, request, url, env) {
+function rtProxy(tctx, request, url, env, me) {
   // Sandbox seal (offline mode without deploy creds): local KV alone is not a sandbox
   // if the canvas still joins the shared rooms — board ops would half-escape while
   // solo saves diverge locally. The flag beats a configured origin on purpose.
   if (env && env.GV_RT_DISABLE) return jsonResponse({ error: "realtime-disabled" }, 501);
+  // Ticket mint (A-room-tickets). A non-Upgrade GET with ?mint=1 is the client asking for a
+  // short-lived signed ticket to carry on the socket open. It rides the SAME authenticated
+  // request the page did and is dispatched only AFTER the restricted-space gate above (which
+  // 403s a non-admin naming a restricted path), so a ticket is minted only for a board this
+  // caller may already reach. No secret ⇒ 501, and the client opens the socket directly
+  // (legacy realtime) or drops to solo — see canvas.js mpConnect. `who` is the caller's
+  // signed-in email or "anon"; it is bound into the ticket, not asserted by the socket.
+  if (request.headers.get("Upgrade") !== "websocket"
+      && request.method === "GET" && url.searchParams.get("mint")) {
+    const secret = env && env.ROOM_TICKET_SECRET;
+    if (!secret) return jsonResponse({ error: "tickets-unconfigured" }, 501);
+    const path = clamp(url.searchParams.get("path"), 600);
+    if (!path) return jsonResponse({ error: "bad-input" }, 400);
+    const who = (me && me.email) ? me.email : "anon";
+    return signRoomTicket(secret, { workspace: workspaceOf(tctx), path, who })
+      .then((t) => jsonResponse(t));
+  }
   if (env && env.ROOMS) {
     if (request.headers.get("Upgrade") !== "websocket") return jsonResponse({ error: "expected-websocket" }, 426);
     // The same clamp /__board applies, so the room the socket joins and the document the
@@ -10932,7 +11026,7 @@ async function handleRequest(request, env, ctx, url, trace) {
     // Canvas multiplayer: same-origin WebSocket proxied to the augur-realtime worker (one
     // BoardRoom Durable Object per board path — cursors/presence/live ops). Public like
     // /__board: the board is the credential. The engine degrades to solo if this fails.
-    if (url.pathname === "/__rt") return rtProxy(tctx, request, url, env);
+    if (url.pathname === "/__rt") return rtProxy(tctx, request, url, env, me);
 
     // Admin-only spaces: seal the whole base path BEFORE the public-prototype
     // door, so nothing under it — not even an og.jpg — leaks. Only an admin
@@ -11083,6 +11177,7 @@ export const __testables = Object.freeze({
   identityFamily, identityKvView, identityWorkspaceSegment, rekeyIdentityToSegment,
   kvFor, kvForRaw,
   capabilityRefusal, CAP_ROUTES,
+  sharedChromeRefusal, PUBLISH_READ_OPS,
   runScheduledHealth, adminHealthApi, HEALTH_REPORT_KEY,
   readFreeze, setFreeze, isFrozenWrite, FROZEN_WRITES, FREEZE_KEY,
   readSuspension, isAllowedWhileSuspended, SUSPENDED_ALLOWED, SUSPENDED_ALLOWED_READS,
