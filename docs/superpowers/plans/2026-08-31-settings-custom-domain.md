@@ -308,14 +308,13 @@ which 302s there) and confirm:
 
 Sign in as an admin at `https://stoic-canyon-873.augur.page/__admin#settings` and
 confirm the row is untouched: empty input, "Not available yet. This workspace is
-served at `stoic-canyon-873.augur.page`." This is the state described in the original
-request — expected until Delta is actually claimed as `deltastudio.augur.page`
-(a separate ops action, not part of this plan).
+served at `stoic-canyon-873.augur.page`." This is the expected state until this
+workspace's own subdomain claim runs — a separate ops action, not part of this plan.
 
 - [ ] **Step 3: Report back**
 
-Confirm both to the user, and that this plan's work is done — Delta's own claim
-(`deltastudio.augur.page`) is the next, separate step.
+Confirm both to the user, and that this plan's work is done — the claim itself is the
+next, separate step.
 
 ## Self-Review Notes
 
