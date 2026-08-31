@@ -48,3 +48,6 @@ pitis/reference/
 
 # superpowers scratch (SDD progress ledger, task briefs, review packages)
 .superpowers/
+
+# Design specs carry product/instance detail — keep them out of the public engine.
+docs/superpowers/specs/
