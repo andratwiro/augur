@@ -5521,6 +5521,19 @@ const ADMIN_SECTIONS_JS = `(function(){
   var oEl = document.querySelector('[data-set-origin]');
   if(oEl) oEl.textContent = location.host;
 
+  // The claimed platform subdomain, if any (B-claim-platform-subdomain) — leaves the
+  // field exactly as it is today when there isn't one.
+  var uEl = document.querySelector('[data-set-url]');
+  var uNote = document.querySelector('[data-set-url-note]');
+  fetch('/__admin/custom-domain', {headers:{'Accept':'application/json'}}).then(function(r){
+    return r.ok ? r.json() : null;
+  }).then(function(d){
+    if(d && d.claimed && d.hostname && uEl){
+      uEl.value = d.hostname;
+      if(uNote) uNote.textContent = "This workspace's custom address.";
+    }
+  }).catch(function(){});
+
   // ---- workspace icon ------------------------------------------------------
   // Same bargain as a profile photo: the workspace repo's /space-icon.png is the seed,
   // this overrides it, removing restores it. Downscaled to 256px before posting so the
@@ -5823,7 +5836,7 @@ function adminSections() {
     <label class="auset__label" for="auset-url">Custom URL</label>
     <input type="text" id="auset-url" data-set-url value="" placeholder="prototypes.yourdomain.com"
            disabled aria-describedby="auset-url-note" />
-    <p class="auset__note" id="auset-url-note">Not available yet. This workspace is
+    <p class="auset__note" id="auset-url-note" data-set-url-note>Not available yet. This workspace is
       served at <b data-set-origin>its built-in address</b>.</p>
   </div>
 
