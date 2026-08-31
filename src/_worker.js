@@ -5818,6 +5818,19 @@ async function adminStorageApi(tenantId, env, me) {
   return jsonResponse(data);
 }
 
+/**
+ * The Settings panel's "Custom URL" field — a workspace's claimed platform subdomain,
+ * if any (`B-claim-platform-subdomain`). Reads `readSuspension`'s existing per-isolate
+ * cache, the same call the front-door redirect already makes every request: no new
+ * store shape, no new KV read.
+ */
+async function adminCustomDomainApi(tenantId, env, me) {
+  if (!me || me.role !== "admin") return jsonResponse({ error: "forbidden" }, 403);
+  const doc = await readSuspension(tenantId, env);
+  const hostname = (doc && doc.canonicalHost) || null;
+  return jsonResponse({ claimed: !!hostname, hostname });
+}
+
 // GET /__admin/backup — the whole KV namespace as one JSON document.
 //
 // The store's own backup (`augur export`) copies published CONTENT. This copies the
@@ -10719,6 +10732,9 @@ async function handleRequest(request, env, ctx, url, trace) {
     // Admin bundle-store gauge — bytes/objects vs the free-tier ceiling.
     if (url.pathname === "/__admin/storage") return adminStorageApi(tctx.tenantId, env, me);
 
+    // Settings panel's "Custom URL" field — a claimed workspace's platform hostname.
+    if (url.pathname === "/__admin/custom-domain") return adminCustomDomainApi(tctx.tenantId, env, me);
+
     // Admin KV export — the other half of durability, next to `augur export`.
     if (url.pathname === "/__admin/backup") return adminBackupApi(env, me);
 
@@ -11073,6 +11089,7 @@ export const __testables = Object.freeze({
   PITI_VIEW_KEY, PITI_REMARKS_KEY,
   publishAuthDetailed, publishRefusalBody,
   adminStorageApi,
+  adminCustomDomainApi,
   isPrefixBacked, backedPublicPrefixes,
   composeFork, carriedLineage, assertedLineage, manifestCeiling, bytesReferencedOf,
   isPublicPath, isTrackPath, isRestrictedPath, versionFor, brandMark,
