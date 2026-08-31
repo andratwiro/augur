@@ -2538,7 +2538,7 @@ function invitePage(tctx, token, error, email, passwordless = false) {
     }
     .logo { display: flex; justify-content: center; margin: 4px 0 24px; }
     .logo svg, .logo img { width: 40px; height: 40px; display: block; }
-    .logo img { border-radius: 50%; object-fit: cover; }
+    .logo img { border-radius: 8px; object-fit: cover; }
     h1 { font-size: 17px; font-weight: 600; letter-spacing: -0.015em; margin: 0 0 6px; }
     h1 + form { margin-top: 20px; }
     /* Live length hint. Reserves its own line so the card doesn't jump as it changes,
@@ -2683,7 +2683,7 @@ function firstRunPage(tctx) {
     }
     .logo { display: flex; justify-content: center; margin: 4px 0 24px; }
     .logo svg, .logo img { width: 40px; height: 40px; display: block; }
-    .logo img { border-radius: 50%; object-fit: cover; }
+    .logo img { border-radius: 8px; object-fit: cover; }
     /* The placeholder badge: text, never colour alone, so the page's provisional nature
        survives every rendering. */
     .badge {
@@ -6217,7 +6217,7 @@ function loginPage(tctx, redirect, error, requestUrl) {
     }
     .logo { display: flex; justify-content: center; margin: 4px 0 24px; }
     .logo svg, .logo img { width: 40px; height: 40px; display: block; }
-    .logo img { border-radius: 50%; object-fit: cover; }
+    .logo img { border-radius: 8px; object-fit: cover; }
     label { display: block; font-size: 13px; font-weight: 500; margin: 0 0 7px; }
     input[type=password], input[type=email] {
       width: 100%; font: inherit; font-size: 15px; padding: 8px 13px; border-radius: 9px;
