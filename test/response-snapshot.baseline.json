@@ -5,7 +5,7 @@
       "cache-control": "no-store",
       "content-type": "text/html; charset=utf-8"
     },
-    "bodyHash": "707920427285c969b7cdfb74d19ec825ebfd802d29ba5361c1ab1fc425493d77"
+    "bodyHash": "531f61e8533b058f57d2acae0210e3d20e5bd26fafaf23611cd2c8ec15b0985b"
   },
   "index-signed-in": {
     "status": 200,
@@ -28,7 +28,7 @@
       "cache-control": "no-store",
       "content-type": "text/html; charset=utf-8"
     },
-    "bodyHash": "592c3bc12bc3e5b796b82dc8cd01798e5dd808dee8c07bb42ffba76645f89b13"
+    "bodyHash": "9a02c3e64ae5c0e6508606842e4fee5f03edb244423b8100a7d54932a77d6a68"
   },
   "restricted-space-signed-out": {
     "status": 200,
@@ -36,7 +36,7 @@
       "cache-control": "no-store",
       "content-type": "text/html; charset=utf-8"
     },
-    "bodyHash": "a8372b53c5783334a7478a1e838f8eefa6d7a257bcec30753d55d0f06b61a02f"
+    "bodyHash": "3aa51e1e3fb480eb148129fdd1b1e14ec86b55169242525fd3dea0f3119b41aa"
   },
   "pages-door": {
     "status": 200,
@@ -67,7 +67,7 @@
       "cache-control": "no-store",
       "content-type": "text/html; charset=utf-8"
     },
-    "bodyHash": "9dcf49ca3586d2199c2cb20f0829cb50f7cf503543769e87e8add77818354cf9"
+    "bodyHash": "6596783b066ec2eaccc63265e6b6422582ac8dbbc0f91092a5274108c7136138"
   },
   "space-icon": {
     "status": 200,
@@ -139,6 +139,6 @@
       "cache-control": "no-store",
       "content-type": "text/html; charset=utf-8"
     },
-    "bodyHash": "b42628160bc26a41e89669b88d4d79249a294c23ccda95580192752761ffb6ab"
+    "bodyHash": "e3a49f7d8ed69ef799efd2b33d2576f5c36c3c5a2bc77e308396750660483cbd"
   }
 }

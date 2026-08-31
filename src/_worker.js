@@ -2915,6 +2915,70 @@ async function enterHandoff(tctx, request, url, env) {
   });
 }
 
+// ── The space's own passwordless login (`B-passwordless-space-sign-in`) ──────────────
+//
+// A hosted space renders `loginPage` in passwordless mode ("Sign in with email") whenever it
+// has a central account store (ACCOUNT_ORIGIN). These two POSTs run the whole flow FROM the
+// space, in the space's skin: the send side asks the control plane to mail a code + link for
+// THIS workspace over this workspace's own account-store bearer, and the code side verifies it
+// and bounces the browser to `/enter-by-code`, which opens the account session and hands off
+// back here. Both are inert (fall through to the ordinary gate) when the store or the key is
+// missing — the same "no central store" degradation `/__enter` has.
+const SIGNIN_FROM_SPACE_PATH = "/__signin";
+const SIGNIN_CODE_PATH = "/__signin/code";
+
+/** POST /__signin {email} — mail a code + link for this workspace, render the code screen. */
+async function signinFromSpace(tctx, request, env) {
+  const form = await request.formData();
+  const email = (form.get("email") || "").toString();
+  const key = await tenantAccountKey(tctx.tenantId, env);
+  const origin = tctx.ACCOUNT_ORIGIN;
+  if (key && origin) {
+    // Neutral and fire-and-report: the code screen renders whatever the control plane says, so
+    // nothing here tells the visitor whether the address is a member. A dead control plane
+    // costs the mail, not the screen.
+    try {
+      await fetch(`${origin}/__account/signin-link`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ email }),
+      });
+    } catch (e) { /* the code screen still renders; the person just gets no mail */ }
+  }
+  return htmlResponse(loginPage(tctx, "/", false, request.url, { code: true, email }), 200);
+}
+
+/** POST /__signin/code {email, code} — verify the code, bounce to /enter-by-code on success. */
+async function signinCodeSubmit(tctx, request, env) {
+  const form = await request.formData();
+  const email = (form.get("email") || "").toString();
+  const code = (form.get("code") || "").toString();
+  const key = await tenantAccountKey(tctx.tenantId, env);
+  const origin = tctx.ACCOUNT_ORIGIN;
+  if (key && origin) {
+    try {
+      const res = await fetch(`${origin}/__account/verify-code`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ email, code }),
+      });
+      if (res.ok) {
+        const body = await res.json().catch(() => null);
+        if (body && body.ok && body.ticket) {
+          return new Response(null, {
+            status: 303,
+            headers: {
+              Location: `${origin}/enter-by-code?ticket=${encodeURIComponent(body.ticket)}`,
+              "Cache-Control": "no-store",
+            },
+          });
+        }
+      }
+    } catch (e) { /* fall through to the error re-render */ }
+  }
+  return htmlResponse(loginPage(tctx, "/", true, request.url, { code: true, email }), 401);
+}
+
 // Session cookie token: HMAC-SHA-256(SESSION_SECRET, "email:effectiveSecret").
 // SESSION_SECRET is a runtime env var — NEVER baked into the bundle — so a cookie
 // cannot be forged from repo-visible data. Binding to the effective secret means
@@ -6179,8 +6243,51 @@ async function adminBackupApi(env, me) {
   });
 }
 
-function loginPage(tctx, redirect, error, requestUrl) {
+function loginPage(tctx, redirect, error, requestUrl, opts = {}) {
   const safeRedirect = String(redirect).replace(/"/g, "&quot;");
+  // Three states in one card, one style block. `code` = the "we emailed you a code" screen;
+  // otherwise passwordless when a central account store is configured (ACCOUNT_ORIGIN), and the
+  // classic email+password only when it is not (a raw self-hosted instance).
+  const codeMode = !!(opts && opts.code);
+  const passwordless = !!tctx.ACCOUNT_ORIGIN;
+  const fillEmail = escapeHtml((opts && opts.email) || tctx.LOGIN_PREFILL_EMAIL || "");
+  const errText = typeof error === "string" ? escapeHtml(error)
+    : codeMode ? "That code didn’t work. Check it, or request a new one." : "Incorrect email or password. Try again.";
+  const errBlock = `<p class="error" id="pw-err" role="alert">
+        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 8v5M12 16.5v.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M10.3 3.9 2.5 18a2 2 0 0 0 1.7 3h15.6a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>
+        <span>${errText}</span>
+      </p>`;
+  // Password mode keeps autocomplete="username" so a manager pairs it with the password field;
+  // passwordless mode is a lone address, so "email" is the right hint.
+  const emailInput = (ac) => `<label for="email">Email</label>
+      <input id="email" name="email" type="email" autocomplete="${ac}" autocapitalize="off" autocorrect="off" spellcheck="false" autofocus required value="${fillEmail}" ${error ? 'aria-invalid="true" aria-describedby="pw-err"' : ""} />`;
+  let formBody;
+  if (codeMode) {
+    formBody = `<p class="intro">We emailed you a code. Enter it below, or tap the button in the email.</p>
+    <form method="POST" action="/__signin/code">
+      <input type="hidden" name="email" value="${fillEmail}" />
+      <label for="code">Code</label>
+      <input id="code" name="code" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]*" maxlength="6" autofocus required ${error ? 'aria-invalid="true" aria-describedby="pw-err"' : ""} />
+      <button type="submit">Sign in</button>
+      ${errBlock}
+    </form>
+    <form method="POST" action="/__signin" class="resend"><input type="hidden" name="email" value="${fillEmail}" /><button type="submit" class="link">Request a new code</button></form>`;
+  } else if (passwordless) {
+    formBody = `<form method="POST" action="/__signin">
+      ${emailInput("email")}
+      <button type="submit">Sign in with email</button>
+      ${errBlock}
+    </form>`;
+  } else {
+    formBody = `<form method="POST" action="/__auth">
+      <input type="hidden" name="redirect" value="${safeRedirect}" />
+      ${emailInput("username")}
+      <label for="password">Password</label>
+      <input id="password" name="password" type="password" autocomplete="current-password" required value="${escapeHtml(tctx.LOGIN_PREFILL_PASSWORD)}" ${error ? 'aria-invalid="true" aria-describedby="pw-err"' : ""} />
+      <button type="submit">Enter</button>
+      ${errBlock}
+    </form>`;
+  }
   return `<!doctype html>
 <html lang="en">
 <head>
@@ -6245,6 +6352,15 @@ function loginPage(tctx, redirect, error, requestUrl) {
       margin: 16px 0 0; padding: 9px 12px; border: 1px dashed var(--line-2);
       border-radius: 9px; color: #667085; font-size: 13px; text-align: center;
     }
+    /* The "we emailed you a code" screen. */
+    .intro { margin: 0 0 18px; color: var(--muted); font-size: 14px; line-height: 1.5; }
+    #code { letter-spacing: 0.35em; text-align: center; font-size: 20px; }
+    .resend { margin-top: 14px; text-align: center; }
+    .resend .link {
+      width: auto; margin: 0; padding: 0; background: none; border: 0; color: var(--muted);
+      font-size: 13px; font-weight: 500; text-decoration: underline; cursor: pointer;
+    }
+    .resend .link:hover { color: var(--fg); background: none; }
     /* Present in the DOM for password managers (Bitwarden pairs username+password),
        but visually hidden so the UI stays password-only. NOT display:none — managers
        skip removed/hidden fields. */
@@ -6261,19 +6377,8 @@ function loginPage(tctx, redirect, error, requestUrl) {
     <div class="logo">
       ${brandMark(tctx)}
     </div>
-    <form method="POST" action="/__auth">
-      <input type="hidden" name="redirect" value="${safeRedirect}" />
-      <label for="email">Email</label>
-      <input id="email" name="email" type="email" autocomplete="username" autocapitalize="off" autocorrect="off" spellcheck="false" autofocus required value="${escapeHtml(tctx.LOGIN_PREFILL_EMAIL)}" ${error ? 'aria-invalid="true" aria-describedby="pw-err"' : ""} />
-      <label for="password">Password</label>
-      <input id="password" name="password" type="password" autocomplete="current-password" required value="${escapeHtml(tctx.LOGIN_PREFILL_PASSWORD)}" ${error ? 'aria-invalid="true" aria-describedby="pw-err"' : ""} />
-      <button type="submit">Enter</button>
-      <p class="error" id="pw-err" role="alert">
-        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 8v5M12 16.5v.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M10.3 3.9 2.5 18a2 2 0 0 0 1.7 3h15.6a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>
-        <span>${typeof error === "string" ? escapeHtml(error) : "Incorrect email or password. Try again."}</span>
-      </p>
-    </form>
-    ${tctx.LOGIN_HINT ? `<p class="hint">${escapeHtml(tctx.LOGIN_HINT)}</p>` : ""}
+    ${formBody}
+    ${tctx.LOGIN_HINT && !passwordless ? `<p class="hint">${escapeHtml(tctx.LOGIN_HINT)}</p>` : ""}
   </main>
 </body>
 </html>`;
@@ -11126,6 +11231,19 @@ async function handleRequest(request, env, ctx, url, trace) {
     if (url.pathname === WORKSPACE_ENTER_PATH) {
       if (request.method !== "GET") return new Response("Method Not Allowed", { status: 405 });
       return enterHandoff(tctx, request, url, env);
+    }
+
+    // The space's own passwordless login — reachable WITHOUT a session, like /__enter and
+    // /__invite above, because it IS how a session gets minted. POST only. The code path is
+    // checked first (more specific), though both are exact matches. Inert when there is no
+    // account store (`signinFromSpace`/`signinCodeSubmit` render the ordinary gate then).
+    if (url.pathname === SIGNIN_CODE_PATH) {
+      if (request.method !== "POST") return new Response("Method Not Allowed", { status: 405 });
+      return signinCodeSubmit(tctx, request, env);
+    }
+    if (url.pathname === SIGNIN_FROM_SPACE_PATH) {
+      if (request.method !== "POST") return new Response("Method Not Allowed", { status: 405 });
+      return signinFromSpace(tctx, request, env);
     }
 
     // Login form submission.
