@@ -575,9 +575,8 @@ export function newSigningKey(random = (b) => crypto.getRandomValues(b)) {
  */
 export const CHROME_TOKEN_TTL_MS = 60 * 60 * 1000;
 
-const _enc = new TextEncoder();
 async function sha256Hex(s) {
-  const buf = await crypto.subtle.digest("SHA-256", _enc.encode(String(s)));
+  const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(String(s)));
   return [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, "0")).join("");
 }
 
