@@ -251,6 +251,7 @@ const ALLOWLIST = {
       "REKEY_FAMILIES",       // which of those families a re-key may be asked to move — the vocabulary of one route, identical for every workspace
       "REKEY_DEFAULT_FAMILIES", // and which it moves when asked for none
       "CAP_ROUTES",           // capability -> the routes it grants; deny-by-default, identical for every workspace
+      "PUBLISH_READ_OPS",     // which publish ops only READ a space, and by which method; a fact about the routes, the same on every deployment
       "FROZEN_WRITES",        // the paths a migration freeze closes; the same list for every workspace
       "SUSPENDED_ALLOWED",       // what a paused workspace still answers — the published promise, as a list
       "SUSPENDED_ALLOWED_READS", // and the read verbs of the bundle store an export walks

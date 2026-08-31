@@ -284,6 +284,15 @@ test("A KV→WORKSPACE MIGRATION VERIFIES WHEN A FAMILY IS GENUINELY EMPTY", asy
     assert.doesNotMatch(r.out, /does not match the source/);
     assert.doesNotMatch(r.out, /can be judged/);
 
+    // ⚠️ AND THE CHROME IS DECLINED BY THE TARGET, OUT LOUD. A copy from a single-workspace
+    // instance always carries `_engine`, and a host-resolved target serves that bundle to
+    // every workspace on it — so no workspace's publish token may write it and a restore has
+    // to skip it. This is exactly the shape `augur migrate` moves, so the skip has to be
+    // ordinary AND visible: a restore that dropped a space silently would be
+    // indistinguishable from a complete one.
+    assert.match(r.out, /_engine: this target serves it from a shared build/);
+    assert.match(r.out, /declined by the target \(_engine\)/);
+
     // And not vacuously: the families that DID hold something arrived.
     const after = await stateOf(to);
     assert.deepEqual(after.families.statuses, before.families.statuses);

@@ -90,6 +90,17 @@ try {
     + "guard is OFF for this run: nothing will stop a restore burying live content.\x1b[0m");
 }
 
+// Spaces the TARGET refuses because they are not a workspace's to hold. Today that is one
+// space and one reason: on a deployment that resolves workspaces from the Host, the engine
+// chrome (`_engine`) is a single bundle serving every workspace, so no workspace's own
+// publish token may write it — see `sharedChromeRefusal` in src/_worker.js. A copy taken
+// from a single-workspace instance always carries `_engine`, and `augur migrate` is exactly
+// the command that moves such a copy onto a shared deployment, so this is the ordinary case
+// rather than an error. Named and counted, never silent: a restore that quietly dropped a
+// space would be indistinguishable from a complete one.
+const declined = [];
+const DECLINED_REASON = "chrome-not-writable-here";
+
 let restored = 0;
 for (const id of ids) {
   const file = path.join(DIR, "manifests", `${id}.json`);
@@ -131,12 +142,28 @@ for (const id of ids) {
     log(`${id}: live is newer than this copy but byte-identical to it — this is a re-run, continuing`);
   }
 
-  // Ask the store which blobs it is missing, then send only those.
-  const check = await (await req(`${id}/check`, {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify({ files: m.files }),
-  })).json();
+  // Ask the store which blobs it is missing, then send only those. This is also the first
+  // request of the space, so it is where a target that will not take this space at all says
+  // so — before a single blob is uploaded.
+  let check;
+  try {
+    check = await (await req(`${id}/check`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ files: m.files }),
+    })).json();
+  } catch (e) {
+    if (!String(e.message).includes(DECLINED_REASON)) throw e;
+    // Explicitly asked for ⇒ a refusal is an answer to the question, not a detour around it.
+    if (ONE === id) {
+      die(`${id}: this target will not take it — the page chrome there is one build shared by `
+        + "every workspace, so no workspace's publish token may write it.");
+    }
+    log(`\x1b[33m⚠ ${id}: this target serves it from a shared build and will not take a `
+      + "workspace's copy of it — SKIPPED, and nothing else in this copy is affected\x1b[0m");
+    declined.push(id);
+    continue;
+  }
   const missing = [...new Set(check.missing || [])];
   log(`${id}: ${total} files, ${missing.length} blobs to upload, live v${check.liveVersion || 0}`);
   if (DRY) continue;
@@ -238,6 +265,7 @@ if (STATE) {
 
 if (DRY) { console.log("(dry run, nothing shipped)"); process.exit(0); }
 console.log(`${origin}  ${restored} space(s) restored`
+  + (declined.length ? `, ${declined.length} declined by the target (${declined.join(", ")})` : "")
   + (stateReport ? `, ${stateReport.written.length} state famil(y/ies) replayed` : ""));
 if (!STATE && meta.full) {
   log("\x1b[33mthis copy also carries the roster, comments, boards and pins — pass --state to replay them\x1b[0m");

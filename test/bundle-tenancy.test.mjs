@@ -115,9 +115,14 @@ test("the family flags are frozen, one word each, and `blobs` is not among them"
 // ─────────────────────────────────────────────────────────────────────────────
 
 test("no TENANT_HOST_SUFFIX means no segment, and an unprefixed key IS ours", () => {
-  // Every instance running today. `wrangler-preflight.mjs` refuses a `TENANTS` binding
-  // without the suffix and the suffix without the binding, so this one fact is the whole
-  // discriminator rather than two that could disagree.
+  // Every instance running today. ⚠️ AND `TENANTS` IS NOT THE SAME QUESTION: the preflight
+  // refuses the SUFFIX with no binding, and deliberately does NOT refuse a BINDING with no
+  // suffix — an instance may use the workspace object as its identity store while still
+  // serving the one workspace its build named. There the bucket holds one workspace's
+  // content, an unprefixed key is unambiguously its, and the chrome is shared with nobody.
+  // So the suffix is the whole discriminator, and anything keying on the binding instead
+  // (a gate, a listing, a usage sum) would be answering a different question than the key
+  // former is.
   assert.deepEqual(W.bundleWorkspaceSegment(SINGLE(memR2()), "anything"),
     { workspace: "", legacyIsOurs: true });
   assert.deepEqual(W.bundleWorkspaceSegment({}, "anything"),
