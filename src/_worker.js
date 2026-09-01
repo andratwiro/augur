@@ -577,6 +577,23 @@ function applyInstance(inst) {
 // Bundle mode is ALL-OR-NOTHING per tick for the same reason: an instance document that
 // parsed is discarded along with the routing derivation that then threw, rather than
 // leaving one half of a tick applied on top of the other half's stale values.
+// Deployment-wide auth defaults. ACCOUNT_ORIGIN and SESSION_KEYS are PLATFORM settings,
+// not per-tenant preferences: on a shared hosted worker (one Worker, many workspaces) a
+// single Worker env value turns passwordless sign-in on for EVERY workspace at once —
+// including ones that have no config document of their own — so onboarding a workspace, or
+// flipping the platform's auth model, never means a per-workspace config write. A
+// workspace's OWN config still wins when it sets either field: a self-hosted single
+// instance carries these in its instance.json and sets no env var, so it is byte-for-byte
+// unchanged (the patch is empty and no field is touched). Env vars are strings, hence the
+// literal "true" test rather than a boolean — the same shape TENANT_HOST_SUFFIX et al use.
+function withEnvAuthDefaults(ctx, env) {
+  if (!env) return ctx;
+  const patch = {};
+  if (!ctx.ACCOUNT_ORIGIN && env.ACCOUNT_ORIGIN) patch.ACCOUNT_ORIGIN = String(env.ACCOUNT_ORIGIN);
+  if (!ctx.SESSION_KEYS && env.SESSION_KEYS === "true") patch.SESSION_KEYS = true;
+  return Object.keys(patch).length ? withTenantFields(ctx, patch) : ctx;
+}
+
 async function loadTenantContext(tenantId, env, { prev = null } = {}) {
   let next = prev && prev.tenantId === tenantId ? prev : emptyTenantContext(tenantId);
   // Bundle mode: instance config lives in the store (pushed via /__publish/
@@ -589,6 +606,7 @@ async function loadTenantContext(tenantId, env, { prev = null } = {}) {
     // An absent instance document is a store that has never been pushed one — ABSENT.
     // A present one that will not parse is a FAILED read, and throws from here.
     if (instObj) next = withTenantFields(next, instanceFields(JSON.parse(await instObj.text())));
+    next = withEnvAuthDefaults(next, env);
     next = withTenantFields(next, derivedRoutingFields(manifests, next.SPACE_ICONS));
     return withTenantFields(next, await rosterFields(next, env));
   }
@@ -605,6 +623,7 @@ async function loadTenantContext(tenantId, env, { prev = null } = {}) {
   };
   const [inst, routing] = await Promise.all([grab("instance.json"), grab("routing.json")]);
   if (inst) next = withTenantFields(next, instanceFields(inst));
+  next = withEnvAuthDefaults(next, env);
   // Assets mode gets the two canvas aggregates pre-merged by the build that shipped them
   // (there is only ever one whole-site build in this mode, so the file is authoritative).
   // Same fields, same serving route as bundle mode.
