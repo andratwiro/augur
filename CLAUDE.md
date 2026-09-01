@@ -349,8 +349,12 @@ push the roster. **Unset `TENANT_HOST_SUFFIX` — every instance
 running today — writes NO segment at all**: `bundleStore` returns the binding itself, so
 there is no new code between the worker and R2 and the keys are byte-for-byte the ones they
 have always been. **Which families take the segment is `BUNDLE_TENANCY`, one word each**,
-the same shape and the same per-family revert as `KV_CUTOVER`; writes go to BOTH keys while
-a flag is on, which is what makes flipping it back a revert rather than a rollback. **There
+the same shape as `KV_CUTOVER`. ⚠️ **A segmented write reaches the segmented key and
+NOTHING ELSE** — it used to straddle the bare key too, "so a flag flip is a revert", and on a
+shared bucket that bought no revert (the bare key is unattributable and unread there; a flip
+reads the collision, not yesterday) while copying every workspace's roster and blob index to
+where every workspace shares. Flipping a family's flag back on a shared bucket is therefore
+a ROLLBACK to what predates the segment, and the rehearsal's `reverted` phase says so. **There
 is NO read-through fallback where the workspace comes from the Host** — an unprefixed key
 there belongs to whichever workspace the deployment served before the segment existed and
 nothing in the key says which — so a live workspace has to be MOVED:

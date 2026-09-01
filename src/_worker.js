@@ -3556,33 +3556,25 @@ function bundleStore(env, workspace = "") {
   const seg = BUNDLE_TENANT_PREFIX + workspace + "/";
   const K = (k) => bundleKey(k, workspace);
   const un = (k) => (String(k).startsWith(seg) ? String(k).slice(seg.length) : String(k));
-  // ⚠️ WRITES GO TO BOTH KEYS WHILE THE FAMILY'S FLAG IS ON, AND THAT IS WHAT MAKES THE
-  // FLAG A REVERT. Flipping one word in `BUNDLE_TENANCY` back sends that family's reads to
-  // the unprefixed key, and a straddle that had written only the prefixed one would send
-  // them to content that stops at the day of the cut — a rollback, not a revert. Deletes do
-  // NOT go to both: an unprefixed key on a shared bucket is unattributable, so removing one
-  // is removing an object that may be a neighbour's, and the safe direction of a straddle
-  // is to leave more behind rather than less.
+  // ⚠️ A WRITE GOES TO THE SEGMENTED KEY AND NOWHERE ELSE. This view used to write the
+  // unprefixed key too, as a straddle meant to keep the per-family flag a revert rather
+  // than a rollback — and on the one kind of deployment that has a segment at all, it was
+  // never that. Where the bucket is shared an unprefixed key is unattributable: the
+  // deployment's own rule (`legacyIsOurs: false`) already refuses to READ one, and flipping
+  // a family's flag back there reads whatever was last written under the bare key by
+  // whichever workspace wrote it last — the collision this scheme exists to close, not
+  // yesterday. So the second write bought no revert, and it cost a real thing: every
+  // workspace's `config/instance.json` — its roster — and every manifest — its blob index,
+  // the disclosure door the header above names — copied to where every workspace shares.
+  // Found on a live shared deployment, attributed by content, the same second as the
+  // segmented write.
   //
-  // What the second write is NOT: it is not a second live copy. Nothing reads it while the
-  // flag is on, and on a bucket holding several workspaces two of them publishing the same
-  // space id write that one key last-writer-wins — which is precisely today's collision,
-  // kept alive deliberately, because reverting to today is what a revert to today means.
-  // It costs one extra PUT per publish and the storage of the copy.
-  const reusable = (v) => typeof v === "string" || v instanceof ArrayBuffer || ArrayBuffer.isView(v);
-  const dual = async (k, v, opts) => {
-    const key = K(k);
-    // `_engine` and `blobs/` map to themselves — one write, not two of the same.
-    if (key === k || !reusable(v)) return;
-    try { await (opts === undefined ? r2.put(k, v) : r2.put(k, v, opts)); } catch (e) { /* the prefixed write is the one that serves */ }
-  };
+  // Deletes never touched the unprefixed key either, for the same reason in the other
+  // direction: removing one is removing an object that may be a neighbour's. That still
+  // holds, so what predates the segment is left exactly where and as it was.
   const store = {
     get: (k, opts) => (opts === undefined ? r2.get(K(k)) : r2.get(K(k), opts)),
-    put: async (k, v, opts) => {
-      const res = opts === undefined ? await r2.put(K(k), v) : await r2.put(K(k), v, opts);
-      await dual(k, v, opts);
-      return res;
-    },
+    put: (k, v, opts) => (opts === undefined ? r2.put(K(k), v) : r2.put(K(k), v, opts)),
     list: async (opts = {}) => {
       const page = await r2.list({ ...opts, prefix: K(opts.prefix || "") });
       return {

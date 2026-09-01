@@ -381,6 +381,30 @@ test("a full `restore --state` into workspace B leaves A's documents BYTE-IDENTI
   assert.match(bDocs["spaces:icons"] || "", /cafebabe/);
 });
 
+test("an instance-config push at A writes A's segment and leaves the shared bucket's bare key alone", async () => {
+  // Found on a live shared deployment: the push wrote `t/<ws>/config/instance.json` AND a
+  // bare `config/instance.json` the same second. Nothing on a host-resolved worker reads
+  // the bare key — and it is one workspace's roster document, in a bucket every workspace
+  // shares.
+  const A = "alfa", B = "bravo";
+  const d = await deployment({ workspaces: [A, B] });
+  // Whatever predates the segment stays exactly as it was: the bare key is unattributable,
+  // so it is nobody's to overwrite.
+  const legacy = Buffer.from(JSON.stringify({ tenantId: "someone-else", users: [] }));
+  await d.r2.put("config/instance.json", legacy);
+  const token = await mintToken(d, A, "*");
+  const pushed = await d.fire(A, "/__publish/_instance/config", {
+    method: "POST", headers: { "Content-Type": "application/json", ...authed(token) },
+    body: JSON.stringify({ tenantId: A, users: ROSTER, pushedBy: "alfa-deploy" }),
+  });
+  assert.equal(pushed.status, 200, await pushed.text());
+  assert.match(d.r2.store.get(W.bundleKey("config/instance.json", A)).toString(), /alfa-deploy/,
+    "the push did not land in A's segment");
+  assert.equal(d.r2.store.get("config/instance.json").toString(), legacy.toString(),
+    "the push rewrote the shared bucket's bare config — one workspace's roster where every workspace shares");
+  assert.doesNotMatch(d.r2.store.get(W.bundleKey("config/instance.json", B)).toString(), /alfa-deploy/);
+});
+
 // ═══ CLAUSE 2 — A RESET OF A CLEARS A AND NOTHING ELSE ═══════════════════════════════
 
 test("a nightly RESET of workspace A leaves B's roster and display names untouched", async () => {

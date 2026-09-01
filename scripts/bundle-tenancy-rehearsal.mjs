@@ -732,18 +732,19 @@ async function revertedPhase() {
     t.exampleKeys.config === `t/${A}/config/instance.json` && t.exampleKeys.asset === `t/${A}/assets/deadbeef`,
     JSON.stringify(t.exampleKeys, null, 1));
 
-  // What the unprefixed key holds is whatever was last written there, because writes went
-  // to BOTH keys for as long as the flag was on — which is what makes the word a revert and
-  // not a rollback. On a bucket holding two workspaces that is last-writer-wins, i.e.
-  // exactly the collision this item closed. Reverting to yesterday means reverting to
-  // yesterday's collision, and saying so out loud is the point of running it.
+  // What the unprefixed key holds is what PREDATES the segment and nothing later: the
+  // `single` phase's publish, which the move copied and never deleted. A segmented write
+  // reaches no unprefixed key (one workspace's document must not sit where every workspace
+  // shares), so flipping the flag on a shared bucket is a ROLLBACK to the day of the cut —
+  // both workspaces answer with A's original page, B's publish is nowhere on that path —
+  // and saying so out loud is the point of running it.
   const a = await req(`/${SPACE}/index.html`, hostA);
   const b = await req(`/${SPACE}/index.html`, hostB);
   check("the unprefixed answer is back, and it is the same one for both workspaces",
     a.status === 200 && a.sha256 === b.sha256, `A ${a.status}/${a.sha256.slice(0, 12)} · B ${b.status}/${b.sha256.slice(0, 12)}`);
-  check("⚠️ which is the collision, restored on purpose — a revert to today is a revert to today",
-    a.sha256 !== sha256(state.pageA) || b.sha256 !== sha256(state.pageB),
-    `A expected ${sha256(state.pageA).slice(0, 12)}, B expected ${sha256(state.pageB).slice(0, 12)}`);
+  check("⚠️ and it is the page from BEFORE the segment — a rollback to the day of the cut, not a revert",
+    a.sha256 === sha256(state.pageA) && b.sha256 !== sha256(state.pageB),
+    `A expected ${sha256(state.pageA).slice(0, 12)}, B must NOT be ${sha256(state.pageB).slice(0, 12)}`);
 
   const asB = await req(`/__asset/${state.assetHash}`, hostB);
   check("`assets` did NOT revert: B's image is still B's and still there", asB.status === 200, `${asB.status}`);

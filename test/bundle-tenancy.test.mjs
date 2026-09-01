@@ -177,13 +177,26 @@ test("the scoped store applies the segment going in and STRIPS it coming out", a
   assert.deepEqual(listed.delimitedPrefixes, ["spaces/site/"]);
 });
 
-test("writes go to BOTH keys while the flag is on — that is what makes the word a revert", async () => {
-  const r2 = memR2();
+test("a write on a shared bucket lands under the segment and NOWHERE ELSE", async () => {
+  // The segment exists only where the bucket is shared — and there an unprefixed key is
+  // unattributable, which is the engine's own rule (`legacyIsOurs: false`). A copy written
+  // there is one workspace's document sitting where every workspace shares: the roster,
+  // in the config family's case, and the blob index in the manifest's. Nothing reads it,
+  // and the "revert" it was kept for restores a collision, not yesterday.
+  const r2 = memR2({ "spaces/site/manifest.json": "{\"someone\":\"else\"}" });
   const s = W.bundleStore(HOSTED(r2), "wren");
   await s.put("spaces/site/manifest.json", "{\"v\":1}");
+  await s.put("config/instance.json", "{\"users\":[]}");
+  await s.put("assets/" + "b".repeat(40), "png-bytes");
   assert.equal(r2.store.get("t/wren/spaces/site/manifest.json"), "{\"v\":1}");
-  assert.equal(r2.store.get("spaces/site/manifest.json"), "{\"v\":1}",
-    "a straddle that wrote only the prefixed key is a rollback, not a revert");
+  assert.equal(r2.store.get("t/wren/config/instance.json"), "{\"users\":[]}");
+  assert.equal(r2.store.get("t/wren/assets/" + "b".repeat(40)), "png-bytes");
+  assert.equal(r2.store.get("spaces/site/manifest.json"), "{\"someone\":\"else\"}",
+    "the write reached the unprefixed key, which may be a neighbour's");
+  assert.equal(r2.store.has("config/instance.json"), false,
+    "one workspace's roster document was written where every workspace shares");
+  assert.equal(r2.store.has("assets/" + "b".repeat(40)), false);
+  assert.deepEqual([...r2.store.keys()].filter((k) => !k.startsWith("t/wren/")), ["spaces/site/manifest.json"]);
 });
 
 test("but DELETES never touch the unprefixed key", async () => {
