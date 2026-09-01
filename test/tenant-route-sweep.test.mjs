@@ -1,4 +1,4 @@
-// The ROUTE SWEEP — two workspaces, one isolate, BUNDLE mode, through the real default
+// The ROUTE SWEEP — three workspaces, one isolate, BUNDLE mode, through the real default
 // export, over every route a leak has somewhere to come out of.
 //
 // ---- WHY THIS FILE EXISTS AND WHAT IT REPLACES ---------------------------------------
@@ -11,7 +11,7 @@
 // The third round then established the two facts this file is built on:
 //
 //   MODULE SCOPE IS CLEAN. Every binding the worker's module graph carries was
-//   enumerated and driven with two workspaces over the real request path. Nothing
+//   enumerated and driven with three workspaces over the real request path. Nothing
 //   crossed. The leaks were never a binding somebody forgot to thread.
 //
 //   THE GUARD IS WHAT LEAKS. Seven genuinely-unsafe shapes were injected into a scratch
@@ -152,8 +152,8 @@ if (!globalThis.HTMLRewriter) {
 
 const { default: worker, __testables: W } = await import("../src/_worker.js");
 
-const NAMES = ["alpha", "beta"];
-const other = (n) => NAMES.find((x) => x !== n);
+const NAMES = ["alpha", "beta", "gamma"];
+const others = (n) => NAMES.filter((x) => x !== n);
 
 // KV keys the worker does not export. Spelled out here on purpose: the sweep asserts each
 // workspace's own key was READ, so a rename that made one of these dead would turn a
@@ -163,10 +163,11 @@ const REMARKS_KEY = "pt:remarks";
 const STATUS_KEY = "statuses";
 const NAMES_KEY = "names";
 
-// ---- the two workspaces ---------------------------------------------------------------
+// ---- the workspaces --------------------------------------------------------------------
 //
 // Every value is woven with the workspace's name, so a leaked one names its owner in the
-// failure message instead of merely being "not what was expected".
+// failure message instead of merely being "not what was expected". Three of them (NAMES),
+// so the neighbour probe and the in-flight shuffle cover more than a single pair.
 
 const PASSWORD = "correct horse battery staple";
 const ADMIN_EMAIL = (n) => `one@${n}.invalid`;
@@ -199,8 +200,12 @@ const ogBytes = (n) => `JPEG-BYTES-OF-${n}`;
 const adminHtml = (n) =>
   `<!doctype html><html><body><main>Admin panel of ${n}</main>` +
   `<script src="/_chrome.0.0.00000000.js"></script></body></html>`;
-const CHROME_CSS = (n) => `_chrome.1.0.${n === "alpha" ? "aaaaaaaa" : "bbbbbbbb"}.css`;
-const CHROME_JS = (n) => `_chrome.1.0.${n === "alpha" ? "aaaaaaaa" : "bbbbbbbb"}.js`;
+// A distinct 8-hex chrome signature per workspace, so a leaked chrome pointer names its
+// owner. One entry per NAME — a name with no hex would bake `undefined` into the manifest
+// and fail its own cold-and-alone assertion loudly, which is the intended tripwire.
+const CHROME_HEX = { alpha: "aaaaaaaa", beta: "bbbbbbbb", gamma: "cccccccc" };
+const CHROME_CSS = (n) => `_chrome.1.0.${CHROME_HEX[n]}.css`;
+const CHROME_JS = (n) => `_chrome.1.0.${CHROME_HEX[n]}.js`;
 
 const proto = (n) => `/prototypes/${n}-one/`;
 const board = (n) => `/boards/${n}-board/`;
@@ -258,15 +263,19 @@ function kvSeed(n) {
     [W.USER_AVATARS_KEY]: JSON.stringify({ [GUEST_EMAIL(n)]: { k: `${n}face`, mime: "image/png", at: 1 } }),
     [W.USER_ROLES_KEY]: JSON.stringify({ [GUEST_EMAIL(n)]: "editor" }),
     [W.SPACE_ICONS_KEY]: JSON.stringify({ [n]: { k: `${n}icon`, mime: "image/png", at: 1 } }),
-    // ⚠️ BOTH stores hold the blob at the NEIGHBOUR's avatar hash too. Avatar blobs are
-    // content-addressed, so anything sharing a namespace shares them; the only thing
+    // ⚠️ EVERY store holds the blob at EVERY OTHER workspace's avatar hash too. Avatar blobs
+    // are content-addressed, so anything sharing a namespace shares them; the only thing
     // standing between a workspace and those bytes is whether its OWN photo index vouches
     // for the hash. A fixture where the blob were simply missing would 404 for a reason
-    // that has nothing to do with the index — and would pass against a leaking worker.
+    // that has nothing to do with the index — and would pass against a leaking worker. With
+    // three workspaces the neighbour probe runs every ordered pair, so each store must carry
+    // all of the others' blobs, not just one.
     [W.AVATAR_BLOB_PREFIX + `${n}face`]: PNG(`${n}-face`),
-    [W.AVATAR_BLOB_PREFIX + `${other(n)}face`]: PNG(`${other(n)}-face`),
     [W.SPACE_ICON_BLOB_PREFIX + `${n}icon`]: PNG(`${n}-icon`),
-    [W.SPACE_ICON_BLOB_PREFIX + `${other(n)}icon`]: PNG(`${other(n)}-icon`),
+    ...Object.fromEntries(others(n).flatMap((m) => [
+      [W.AVATAR_BLOB_PREFIX + `${m}face`, PNG(`${m}-face`)],
+      [W.SPACE_ICON_BLOB_PREFIX + `${m}icon`, PNG(`${m}-icon`)],
+    ])),
     [W.CANVASES_KEY]: JSON.stringify({ [board(n)]: { name: `Board of ${n}`, by: "", t: 1 } }),
     [W.BOARD_PREFIX + board(n)]: JSON.stringify({ name: `Board doc of ${n}`, nodes: [] }),
     [REMARKS_KEY]: JSON.stringify([{ id: 1, path: "/p/", text: `${n}'s queued remark`, kind: "ux", ts: Date.now() }]),
@@ -814,8 +823,7 @@ test("a workspace asking SECOND, inside every TTL, is answered from its OWN stor
   // roster overlay, the board registry and the remark queue all leaked.
   await setup();
   for (const r of ROUTES) {
-    for (const plan of [["alpha", "beta"], ["beta", "alpha"]]) {
-      const [first, second] = plan;
+    for (const first of NAMES) for (const second of others(first)) {
       coldIsolate();
 
       const primed = await ask(WS[first], r, { auth: initFor(r, first), path: r.path(first) });
@@ -855,8 +863,7 @@ test("asking for the NEIGHBOUR's URL gets this workspace's answer, never the nei
   await setup();
   for (const r of ROUTES) {
     if (r.neighbour === undefined) continue;
-    for (const plan of [["alpha", "beta"], ["beta", "alpha"]]) {
-      const [first, second] = plan;
+    for (const first of NAMES) for (const second of others(first)) {
       coldIsolate();
       // Prime the neighbour with the very document being asked for, so the leak has
       // something warm to leak.
