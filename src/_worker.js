@@ -3956,6 +3956,40 @@ async function loadManifests(tenantId, env, force) {
       out[id] = JSON.parse(await obj.text());
       etags[id] = etag || (obj.etag || obj.httpEtag) || "";
     }));
+    // ── _engine chrome: the worker's OWN assets win when they are the newer build ──────
+    // The shared chrome (`spaces/_engine/…` in R2) was republished by per-instance CI on
+    // every engine bump; the shared-worker migration removed that CI, so R2 chrome can now
+    // lag the deployed worker — /_build.json reads the last CHROME publish, not the running
+    // code, and a switcher shipped in the worker stays invisible until a manual refresh
+    // (D-chrome-auto-on-deploy). engine/dist — what wrangler uploads in lockstep with the
+    // worker, reachable through the ASSETS binding — carries the same _engine chrome, so
+    // preferring it means chrome can never lag. R2 still WINS when a chrome-refresh
+    // (D-chrome-refresh-fanout) published it AFTER this worker shipped: compared by wall
+    // clock, the assets manifest carries `builtAt` (stamped at build), the R2 one carries
+    // `publishedAt` (stamped at publish), newer wins.
+    //
+    // Safe against the etag skip above: any real R2 chrome change moves the manifest's
+    // etag and forces a fresh read here, so the assets copy we may have cached in
+    // `out._engine` last tick can never mask a newer R2 publish — a swap only ever happened
+    // because assets was already ≥ R2, and that ordering holds until R2 actually changes.
+    //
+    // An assets manifest with no `builtAt` is an engine built before this landed: it never
+    // wins, so a deployment keeps byte-for-byte its old behaviour until the worker is
+    // redeployed. Gated on bundle mode so assets mode (augur dev/offline/raw build) is
+    // untouched, and the fetch is a local ASSETS read (no network), done only on the
+    // refresh tick loadManifests already throttles to.
+    if (bundleMode(env) && env.ASSETS) {
+      try {
+        const res = await env.ASSETS.fetch("https://config/__manifests/_engine.json");
+        const am = res && res.status === 200 ? JSON.parse(await res.text()) : null;
+        if (am && am.id === ENGINE_SPACE_ID && am.builtAt) {
+          const asAt = Date.parse(am.builtAt) || 0;
+          const r2 = out[ENGINE_SPACE_ID];
+          const r2At = r2 && r2.publishedAt ? (Date.parse(r2.publishedAt) || 0) : 0;
+          if (!r2 || asAt >= r2At) out[ENGINE_SPACE_ID] = { ...am, __fromAssets: true };
+        }
+      } catch (e) {} // no assets _engine manifest, or an unreadable one ⇒ keep R2's, as before
+    }
     entry.spaces = out;
     entry.etags = etags;
     // A store that answered — even with nothing published — IS a view. `filled` is what
@@ -4186,7 +4220,7 @@ function lookupBundleFile(manifests, pathname) {
     .sort((a, b) => (a === "_engine") - (b === "_engine") || a.localeCompare(b));
   for (const id of ids) {
     const f = manifests[id].files && manifests[id].files[pathname];
-    if (f) return f;
+    if (f) return { f, id };
   }
   return null;
 }
@@ -4210,7 +4244,12 @@ function resolveBundlePath(manifests, pathname) {
   try { p = decodeURIComponent(pathname); } catch (e) { return { miss: true }; }
   const direct = lookupBundleFile(manifests, p) ||
     (p.endsWith("/") ? lookupBundleFile(manifests, p + "index.html") : null);
-  if (direct) return { f: direct };
+  // `id` rides along so a caller can tell WHICH space owns the resolved path — assetFetch
+  // uses it to serve _engine chrome from the worker's own assets when those are the newer
+  // build (see the __fromAssets branch there and loadManifests). It is authoritative
+  // because _engine sorts LAST in lookupBundleFile, so a space owning the same path shadows
+  // it and this reports the space, never _engine.
+  if (direct) return { f: direct.f, id: direct.id };
   if (!p.endsWith("/") && lookupBundleFile(manifests, p + "/index.html")) return { redirect: p + "/" };
   return { miss: true };
 }
@@ -4252,6 +4291,15 @@ async function assetFetch(tenantId, env, request) {
   const r = resolveBundlePath(manifests, url.pathname);
   if (r.redirect) return Response.redirect(new URL(r.redirect + url.search, url).toString(), 308);
   if (r.miss) return new Response("Not Found", { status: 404 });
+  // _engine chrome served from the worker's OWN assets (engine/dist) when loadManifests
+  // chose them over R2 — see the __fromAssets swap there (D-chrome-auto-on-deploy). Those
+  // bytes ship in lockstep with the worker code, so chrome cannot lag a deploy; the file
+  // is served by PATH through the ASSETS binding, and the R2 blob is never consulted for
+  // it (the manifest's hashes are the assets copy's, not R2 keys). Only _engine takes this
+  // branch — a space's own content always resolves to a real R2 blob below.
+  if (r.id === "_engine" && env.ASSETS && manifests._engine && manifests._engine.__fromAssets) {
+    return env.ASSETS.fetch(request);
+  }
   const f = r.f;
   const inm = request.headers.get("If-None-Match");
   if (inm && inm.replace(/W\/|"/g, "") === f.h) {
@@ -4451,7 +4499,12 @@ function synthBuildStamp(tctx, manifests) {
     if (m.publishedAt && (!builtAt || m.publishedAt > builtAt)) builtAt = m.publishedAt;
     const src = m.source || {};
     if (id === "_engine") {
-      engine.sha = src.sha || null;
+      // `source.sha` is the git provenance a PUBLISH stamps; the assets copy of the chrome
+      // (served when it is the newer build — D-chrome-auto-on-deploy) was never published,
+      // so it carries none. Fall back to `builtWith.engine`, which build.js stamps from the
+      // engine's own HEAD — for _engine the same commit — so /_build.json reports the
+      // DEPLOYED worker's sha rather than null the moment chrome comes from assets.
+      engine.sha = src.sha || (m.builtWith && m.builtWith.engine) || null;
       if (src.dirty) engine.dirty = true;
       Object.assign(engine, provenance(m));
       continue;

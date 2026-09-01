@@ -8138,6 +8138,19 @@ async function main() {
     m.builtWith = { engine: engineSha, ...(ENGINE_VERSION ? { version: ENGINE_VERSION } : {}) };
   }
 
+  // The _engine chrome carries a wall-clock BUILD STAMP, and only it. wrangler uploads
+  // engine/dist in lockstep with the worker code, so the assets copy of the chrome can
+  // never lag the deployed worker — but R2 also holds a published _engine bundle that a
+  // chrome-refresh (D-chrome-refresh-fanout) can deliberately push AHEAD of a worker
+  // deploy. The worker orders the two by wall clock (loadManifests, D-chrome-auto-on-deploy):
+  // this `builtAt` against R2's `publishedAt`, newer wins. It is the one manifest field
+  // that is a timestamp, which is why __manifests/_engine.json is compared by SHAPE, not
+  // bytes, in test/dist-emission-snapshot.test.mjs — see the VOLATILE set there. Space
+  // manifests get none: they are published from their own repos, where `publishedAt` is
+  // the stamp, and a build-time clock on them would just be noise the snapshot has to
+  // tolerate for no gain.
+  if (manifests._engine) manifests._engine.builtAt = new Date().toISOString();
+
   await fs.mkdir(path.join(DIST, "__manifests"), { recursive: true });
   for (const [id, m] of Object.entries(manifests))
     await fs.writeFile(path.join(DIST, "__manifests", id + ".json"), JSON.stringify(m), "utf8");
