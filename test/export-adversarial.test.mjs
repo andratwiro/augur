@@ -343,6 +343,42 @@ test("a restore REFUSES to bury live content newer than the copy, and --force is
   } finally { fs.rmSync(dir, { recursive: true, force: true }); from.server.close(); to.server.close(); }
 });
 
+test("a restore that would take a live public page down is REFUSED, and --allow-unpublish is the only way past", async () => {
+  // The copy is the truth, and the target may hold pages the source never had — a workspace
+  // restored from last week's copy onto a store that published something since. That is the
+  // same removal a publish from a stale checkout makes, and the store refuses it the same
+  // way. The escape hatch is the same flag, and it is transport-only: nothing is persisted.
+  const from = await seeded();
+  const to = await seeded();
+  const dir = tmp();
+  try {
+    await focus(from);
+    assert.equal((await run("export.mjs", ["--out", dir], from.origin)).code, 0);
+    // The target holds one public page the copy has never heard of. OLDER than the copy,
+    // so the newer-than guard stays out of the way and only the unpublish guard speaks.
+    const live = JSON.parse((await to.r2.get("spaces/alpha/manifest.json")).body.toString());
+    live.files["/toolkit/extra/index.html"] = { h: await sha256(CSS), ct: "text/html", s: CSS.length };
+    live.routing.publicPrefixes = ["/toolkit/w/", "/toolkit/extra/"];
+    await to.r2.put("spaces/alpha/manifest.json", Buffer.from(JSON.stringify(live)));
+
+    await focus(to);
+    const refused = await run("restore.mjs", [dir], to.origin);
+    assert.equal(refused.code, 1, refused.out);
+    assert.match(refused.out, /would REMOVE 1 public page/);
+    assert.match(refused.out, /\/toolkit\/extra\//, "the refusal did not name the page that would go dark");
+    assert.match(refused.out, /--allow-unpublish/, "the refusal did not say how to mean it");
+    const untouched = JSON.parse((await to.r2.get("spaces/alpha/manifest.json")).body.toString());
+    assert.deepEqual(untouched.routing.publicPrefixes, ["/toolkit/w/", "/toolkit/extra/"], "the refusal still committed");
+
+    await focus(to);
+    const allowed = await run("restore.mjs", [dir, "--allow-unpublish"], to.origin);
+    assert.equal(allowed.code, 0, allowed.out);
+    const after = JSON.parse((await to.r2.get("spaces/alpha/manifest.json")).body.toString());
+    assert.deepEqual(after.routing.publicPrefixes, ["/toolkit/w/"], "the page the copy never had is still live");
+    assert.equal("allowUnpublish" in after, false, "the flag was persisted into the live manifest");
+  } finally { fs.rmSync(dir, { recursive: true, force: true }); from.server.close(); to.server.close(); }
+});
+
 test("the newer-than guard is stamped from when the export STARTED, not when it finished", async () => {
   // The window this closes: a publish that lands DURING an export is not in the copy, but
   // stamped at the end the copy's own date is LATER than that publish's, so the guard reads

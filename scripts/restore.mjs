@@ -4,6 +4,8 @@
 //   … --space <id>                      one space
 //   … --dry-run                         report what would ship, send nothing
 //   … --force                           overwrite live content that is NEWER than the copy
+//   … --allow-unpublish                 permit taking live public pages down — the copy is
+//                                       the truth, and the target may hold pages it never had
 //   … --state                           ALSO replay the workspace state a `--full` export
 //                                       carries: roster, invites, publish tokens, statuses,
 //                                       card names, boards, comment threads, pins, images
@@ -58,8 +60,26 @@ const FORCE = flag("--force");
 // putting content back, and the case where somebody wants only the content is real (a
 // content restore onto a workspace whose membership has moved on since).
 const STATE = flag("--state");
+// A restore's commit can legitimately take live pages down — the copy is the truth and
+// the target may hold pages the source never had. Same escape hatch, and the same
+// transport-only field, as publish: nothing is persisted.
+const ALLOW_UNPUBLISH = flag("--allow-unpublish");
 if (!DIR) die("name the export directory: augur restore <dir>");
 if (!existsSync(path.join(DIR, "export.json"))) die(`${DIR} has no export.json — not an augur export.`);
+
+// Lists what would go dark and names the way out. A restore that takes pages down is a
+// real case (the copy predates them), which is why the flag exists — and a restore run
+// against the wrong target is the other case, which is why it is not the default.
+function dieUnpublish(id, removed, count) {
+  const shown = removed.slice(0, 12);
+  die(`${id}: this restore would REMOVE ${count} public page(s) that are live right now:\n` +
+      shown.map((p) => `    ${p}`).join("\n") +
+      (count > shown.length ? `\n    … and ${count - shown.length} more` : "") + "\n\n" +
+      `  ${id} was not committed. The copy does not carry these pages, so restoring it\n` +
+      `  takes them off the site — anyone's shared links and embeds for them would start\n` +
+      `  showing the login page the moment they go. Check this is the target you meant.\n\n` +
+      `  If you really are taking them down, re-run with --allow-unpublish.`);
+}
 
 let origin, token;
 try { ({ origin, token } = target()); } catch (e) { die(e.message); }
@@ -191,13 +211,26 @@ for (const id of ids) {
   // Strip the fields the store assigns on commit; everything else (files, routing,
   // space meta, source) is restored verbatim.
   const { version, publishedAt, publishedBy, ...body } = m;
-  const res = await (await req(`${id}/commit`, {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    // Same protocol declaration a normal publish makes — a restore is an ordinary
-    // publish, so an instance with a floor must be able to judge this client too.
-    body: JSON.stringify({ ...body, clientProtocol: CLIENT_PROTOCOL }),
-  })).json();
+  let res;
+  try {
+    res = await (await req(`${id}/commit`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      // Same protocol declaration a normal publish makes — a restore is an ordinary
+      // publish, so an instance with a floor must be able to judge this client too.
+      body: JSON.stringify({ ...body, clientProtocol: CLIENT_PROTOCOL,
+        ...(ALLOW_UNPUBLISH ? { allowUnpublish: true } : {}) }),
+    })).json();
+  } catch (e) {
+    // The store's unpublish guard, in words rather than a status code — the same guard,
+    // and the same way out, a publish gets. Every space committed before this one stays
+    // restored; this one and the rest are untouched.
+    const refused = /→ 422 (\{.*\})/.exec(String(e && e.message || ""));
+    let detail = null;
+    try { detail = refused && JSON.parse(refused[1]); } catch (x) { /* not the guard */ }
+    if (detail && detail.error === "unpublish-refused") dieUnpublish(id, detail.removed || [], detail.count || 0);
+    throw e;
+  }
   log(`${id}: restored as v${res.version}`);
   restored++;
 }

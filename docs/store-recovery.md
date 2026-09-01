@@ -158,10 +158,14 @@ commits each manifest, so it lands atomically and gets a fresh version number. I
 does not rewrite history — the restored state arrives on top of whatever the store
 already has, which means a mistaken restore is itself undone by `rollback`.
 
-Two guards worth knowing:
+Three guards worth knowing:
 
 - If live content is **newer** than the copy, restore refuses. Pass `--force` when
   burying it is genuinely what you mean.
+- If the restore would take a **live public page** off the site — the target holds a
+  page the copy never had — restore refuses and lists the pages, exactly as a publish
+  from a stale checkout is refused. Pass `--allow-unpublish` when the copy really is
+  the truth. The flag is transport-only; nothing about it is persisted.
 - If the copy is missing a blob that the store also lacks, restore stops before
   committing anything. The live site is untouched and the run can be repeated once
   the copy is complete.

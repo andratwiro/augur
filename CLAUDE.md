@@ -515,7 +515,7 @@ day-one one are one format. No inference dependency, held shut by
 both halves arrived with a `check` meaning different things, and `check` stayed with the
 NAMES because `agents/canon.md` documents it and `init.mjs` bakes it into the `CANON.md`
 every scaffolded space is born with. ·
-`augur export --out <dir> [--full]` / `augur restore <dir> [--state]`
+`augur export --out <dir> [--full]` / `augur restore <dir> [--state] [--force] [--allow-unpublish]`
 (store backup; `--full`/`--state` cover everything that is not published content) ·
 `augur freeze [--reason …] [--status]` / `augur thaw` (read-only while a workspace is
 being moved — writes refused with a 503 that says why, reads and sign-in unaffected;
