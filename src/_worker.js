@@ -3373,36 +3373,27 @@ function identityKvView(env, kv, tctx) {
   const seg = IDENTITY_TENANT_PREFIX + workspace + "/";
   const K = (k) => identityKey(k, workspace);
   const un = (k) => (String(k).startsWith(seg) ? String(k).slice(seg.length) : String(k));
-  // ⚠️ WRITES GO TO BOTH KEYS WHILE THE FAMILY'S FLAG IS ON, AND THAT IS WHAT MAKES THE
-  // FLAG A REVERT. Flipping one word in `IDENTITY_TENANCY` back sends that family's reads
-  // to the unsegmented key, and a straddle that had written only the segmented one would
-  // send them to a document that stops at the day of the cut — a rollback, not a revert.
+  // ⚠️ A WRITE GOES TO THE SEGMENTED KEY AND NOWHERE ELSE — the same rule `bundleStore`
+  // keeps, for the same reason. This view used to write the unsegmented key too, a straddle
+  // meant to keep the per-family flag a revert rather than a rollback, and on the one kind
+  // of deployment that has a segment at all it was never that: where the namespace is
+  // shared an unsegmented key is unattributable, the deployment's own rule
+  // (`legacyIsOurs: false`) already refuses to READ one, and a flag flipped back there
+  // reads whatever was last written under the bare key by whichever workspace wrote it
+  // last — the collision this scheme exists to close, not yesterday. What the second write
+  // did buy was the finding: `augur restore --state` into one workspace overwrote the
+  // shared namespace's bare `publish:tokens` and `users:roster` and created bare roles,
+  // avatars, avatar blobs and last-seen stamps beside them — one workspace's identity
+  // documents where every workspace shares.
   //
-  // WHAT THE SECOND WRITE IS NOT: it is not a second live copy, and it is not isolation.
-  // Nothing reads it while the flag is on, and on a namespace holding several workspaces
-  // two of them write that one key last-writer-wins — which is precisely today's
-  // collision, kept alive deliberately, because reverting to today is what a revert to
-  // today means. An operator reaching for the revert is choosing a known-bad live path
-  // over a broken new one, and that choice needs the old document to still be there.
-  //
-  // ⚠️ DELETES DO NOT GO TO BOTH, and this is the asymmetry that makes the reseed clause
-  // work. An unsegmented key on a shared namespace is unattributable, so deleting one is
-  // deleting a document that may be a neighbour's — and the safe direction of a straddle
-  // is to leave more behind rather than less. It is also the whole of why a nightly reset
-  // that clears `users:roster` for workspace A does not clear it for workspace B.
-  const dual = async (k, v, opts) => {
-    const key = K(k);
-    if (key === k) return; // a family this scheme does not name — one write, not two
-    try { await (opts === undefined ? kv.put(k, v) : kv.put(k, v, opts)); } catch (e) { /* the segmented write is the one that serves */ }
-  };
+  // ⚠️ DELETES NEVER REACHED THE UNSEGMENTED KEY EITHER, and that still holds. Removing one
+  // is removing a document that may be a neighbour's, and it is the whole of why a nightly
+  // reset that clears `users:roster` for workspace A does not clear it for workspace B.
+  // What predates the segment is left exactly where and as it was.
   return {
     get: (k, opts) => (opts === undefined ? kv.get(K(k)) : kv.get(K(k), opts)),
     getWithMetadata: (k, opts) => (opts === undefined ? kv.getWithMetadata(K(k)) : kv.getWithMetadata(K(k), opts)),
-    put: async (k, v, opts) => {
-      const res = opts === undefined ? await kv.put(K(k), v) : await kv.put(K(k), v, opts);
-      await dual(k, v, opts);
-      return res;
-    },
+    put: (k, v, opts) => (opts === undefined ? kv.put(K(k), v) : kv.put(K(k), v, opts)),
     delete: (k) => kv.delete(K(k)),
     list: async (opts = {}) => {
       // ⚠️ A LISTING IS THE OTHER HALF OF THE PREFIX SWEEP, AND IT HAS TO BE SEGMENTED OR

@@ -533,31 +533,104 @@ for (const family of ["roster", "publishTokens", "icons", "invites", "lastseen",
   });
 }
 
-test("the DUAL WRITE is what makes the revert a revert: the unsegmented key keeps its copy", async () => {
+test("a segmented write reaches the segmented key and NOT the unsegmented one", async () => {
+  // The unsegmented key on a shared namespace is unattributable — the same rule that
+  // forbids reading it (`legacyIsOurs: false`). A copy written there is one workspace's
+  // document where every workspace shares, and the "revert" it was kept for reads the
+  // collision back, not yesterday.
   const A = "alfa";
   const d = await deployment({ workspaces: [A, "bravo"] });
+  await d.kv.put("users:names", JSON.stringify({ "someone@elsewhere.test": "Predates the segment" }));
   await d.fire(A, "/__me/name", {
     method: "POST", headers: { "Content-Type": "application/json", ...(await d.cookieFor(A, ADMIN)) },
     body: JSON.stringify({ name: "Ada of Alfa" }),
   });
   assert.match(d.kv.store.get(`t/${A}/users:names`) || "", /Ada of Alfa/);
-  assert.match(d.kv.store.get("users:names") || "", /Ada of Alfa/,
-    "nothing was written to the unsegmented key, so flipping the flag back would be a rollback");
+  assert.equal(d.kv.store.get("users:names"), JSON.stringify({ "someone@elsewhere.test": "Predates the segment" }),
+    "the write reached the unsegmented key, which may be a neighbour's");
 });
 
 test("a DELETE does NOT reach the unsegmented key — which is why one reset is not deployment-wide", async () => {
   const A = "alfa";
   const d = await deployment({ workspaces: [A, "bravo"] });
+  await d.kv.put("users:names", JSON.stringify({ "someone@elsewhere.test": "Predates the segment" }));
   await d.fire(A, "/__me/name", {
     method: "POST", headers: { "Content-Type": "application/json", ...(await d.cookieFor(A, ADMIN)) },
     body: JSON.stringify({ name: "Ada of Alfa" }),
   });
   const shared = d.kv.store.get("users:names");
+  assert.ok(shared, "the fixture lost the pre-segment document");
   const view = W.identityKvView(d.env, d.kv, { tenantId: A });
   await view.delete("users:names");
   assert.equal(d.kv.store.has(`t/${A}/users:names`), false, "the segmented key survived its own delete");
   assert.equal(d.kv.store.get("users:names"), shared,
     "the delete reached the unsegmented key, which may be a neighbour's");
+});
+
+test("a --state restore into A on a shared namespace touches nothing outside t/alfa/", async () => {
+  // Found on a live shared deployment: the import wrote every identity family under the
+  // segment AND overwrote the bare `publish:tokens` and `users:roster`, and CREATED bare
+  // `users:roles`, `users:avatars`, avatar blobs and `users:lastseen:*` beside them.
+  const A = "alfa", B = "bravo";
+  const d = await deployment({ workspaces: [A, B] });
+  const legacy = {
+    "publish:tokens": JSON.stringify({ deadbeef: { space: "*", label: "predates the segment" } }),
+    "users:roster": JSON.stringify({ add: { "someone@elsewhere.test": { email: "someone@elsewhere.test", role: "editor" } }, remove: [] }),
+  };
+  for (const [k, v] of Object.entries(legacy)) await d.kv.put(k, v);
+  const bare = () => [...d.kv.store.keys()].filter((k) => !k.startsWith(W.IDENTITY_TENANT_PREFIX)).sort();
+  const before = bare();
+
+  const token = await mintToken(d, A, "*");
+  const imported = await d.fire(A, "/__publish/_state/import", {
+    method: "POST", headers: { "Content-Type": "application/json", ...authed(token) },
+    body: JSON.stringify({
+      format: 1,
+      families: {
+        "users:roster": { add: { "zoe@alfa.test": { email: "zoe@alfa.test", role: "admin" } }, remove: [] },
+        "users:roles": { "zoe@alfa.test": "admin" },
+        "users:avatars": { "zoe@alfa.test": "u/deadbeef" },
+        "users:names": { "zoe@alfa.test": "Zoe of Alfa" },
+        "publish:tokens": { cafebabe: { space: "*", label: "restored" } },
+        "avatar:": { "u/deadbeef": "png-bytes" },
+        "users:lastseen:": { "zoe@alfa.test": "2026-08-01T00:00:00.000Z" },
+      },
+    }),
+  });
+  assert.equal(imported.status, 200, await imported.text());
+
+  const docs = d.docs(A);
+  assert.match(docs["users:roster"] || "", /zoe@alfa.test/, "the restore did not land in A's segment");
+  assert.match(docs["publish:tokens"] || "", /cafebabe/);
+  assert.match(docs["users:lastseen:zoe@alfa.test"] || "", /2026-08-01/);
+  assert.equal(docs["avatar:u/deadbeef"], "png-bytes");
+
+  assert.deepEqual(bare(), before,
+    `the restore wrote outside the segment: ${JSON.stringify(bare().filter((k) => !before.includes(k)))}`);
+  for (const [k, v] of Object.entries(legacy)) {
+    assert.equal(d.kv.store.get(k), v, `the restore overwrote the shared namespace's bare ${k}`);
+  }
+  assert.equal(Object.keys(d.docs(B)).length, 0, "the restore into A reached B");
+});
+
+test("and on a deployment that serves ONE workspace, the same restore writes the bare keys — the contract every self-hosted instance has", async () => {
+  const kv = memKV();
+  const env = { COMMENTS: kv, BUNDLES: memR2(), GV_ASSET_SOURCE: "r2" }; // no TENANT_HOST_SUFFIX, no TENANTS
+  const tctx = { ...W.applyInstance({ users: [] }), tenantId: "solo" };
+  const res = await W.importState(tctx, env, {
+    format: 1,
+    families: {
+      "users:roster": { add: { "zoe@solo.test": { email: "zoe@solo.test", role: "admin" } }, remove: [] },
+      "publish:tokens": { cafebabe: { space: "*", label: "restored" } },
+      "users:lastseen:": { "zoe@solo.test": "2026-08-01T00:00:00.000Z" },
+    },
+  });
+  assert.equal(res.ok, true, JSON.stringify(res));
+  assert.match(kv.store.get("users:roster") || "", /zoe@solo.test/);
+  assert.match(kv.store.get("publish:tokens") || "", /cafebabe/);
+  assert.match(kv.store.get("users:lastseen:zoe@solo.test") || "", /2026-08-01/);
+  assert.equal([...kv.store.keys()].some((k) => k.startsWith(W.IDENTITY_TENANT_PREFIX)), false,
+    "a single-workspace deployment wrote a segment");
 });
 
 // ═══ CLAUSE 4b — THE LOGIN GATE REFUSES RATHER THAN ADMITS ═══════════════════════════

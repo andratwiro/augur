@@ -904,9 +904,11 @@ name, initials, colour and role. Passwords live in KV as PBKDF2 hashes under
   workspace's housekeeping would delete every workspace's photos. **Unset
   `TENANT_HOST_SUFFIX` — every instance running today — writes no segment at all**:
   `identityKvView` returns the binding itself, so there is no new code between the worker
-  and KV. Writes go to BOTH keys while a flag is on (what makes the word a revert);
-  **deletes do NOT**, which is what keeps one workspace's reset out of a neighbour's
-  documents. There is **no read-through fallback** where the workspace comes from the Host,
+  and KV. ⚠️ A segmented write reaches the segmented key and NOTHING ELSE — the bare key on a shared
+  namespace is unattributable, so a flag flipped back there is a rollback to what predates the
+  segment, never a revert (the straddle that once wrote both is what a `restore --state` leaked
+  through), **and deletes do not reach it either**, which is what keeps one workspace's reset
+  out of a neighbour's documents. There is **no read-through fallback** where the workspace comes from the Host,
   so a live workspace has to be MOVED: `augur identity-rekey` →
   `POST /__publish/_state/identity-rekey`, a copy that is idempotent, dry-runnable, paged,
   never deletes the source, and refuses `not-the-only-workspace`. It is a SEPARATE command
