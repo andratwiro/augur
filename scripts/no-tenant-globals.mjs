@@ -331,6 +331,7 @@ const ALLOWLIST = {
   "src/tenant-host.mjs": {
     frozen: [
       "RESERVED_LABELS",  // hostnames no workspace may be; the same list the name generator reads
+      "NO_EXTRA",         // the empty deployment list, one frozen array so callers need no default alloc
     ],
   },
 

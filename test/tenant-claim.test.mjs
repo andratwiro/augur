@@ -395,3 +395,16 @@ test("a claimed-but-live workspace is NOT treated as paused — the gate keys on
     assert.notEqual(res.status, 302);
   } finally { console.log = quiet; }
 });
+
+test("a label the DEPLOYMENT reserves (RESERVED_LABELS_EXTRA) is claimable, exactly like an engine-reserved one", async () => {
+  const kv = kvStub();
+  const { store } = await provisioned({ ...claimEnv(kv), RESERVED_LABELS_EXTRA: "service, chosen" });
+  const res = await control(store, "claim", { hostname: `chosen${SUFFIX}` });
+  assert.equal(res.status, 200, await res.text());
+  assert.deepEqual(JSON.parse(kv.map.get(hostAliasKey(`chosen${SUFFIX}`))).workspace, "flint-birch-702");
+  // Without the deployment's list the same hostname resolves literally and refuses.
+  const { store: plain } = await provisioned(claimEnv(kvStub()));
+  const refused = await control(plain, "claim", { hostname: `chosen${SUFFIX}` });
+  assert.equal(refused.status, 409);
+  assert.equal((await refused.json()).error, "hostname-resolves-literally");
+});

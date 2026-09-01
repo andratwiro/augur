@@ -159,6 +159,15 @@ GV_ASSET_SOURCE = "r2"
 # `acme.example.com` the workspace `acme`, and a hostname that names no workspace gets a
 # 404 rather than somebody else's site.
 #
+# RESERVED_LABELS_EXTRA adds this deployment's OWN reserved first labels to the engine's
+# list (src/tenant-host.mjs): names that must never become somebody's workspace address —
+# the fallback origin a certificate product points at, an address you intend to alias to a
+# workspace by operator grant. Comma or space separated; anything that is not a legal label
+# is dropped, never widened. A reserved label resolves nobody literally, which is exactly
+# what lets the alias table answer for it.
+#
+# RESERVED_LABELS_EXTRA = "service"
+#
 # The suffix is LITERAL, which is worth a moment. A dotted suffix puts workspaces one level
 # down and needs a wildcard certificate; a hyphenated one (`-team.example.com`) keeps every
 # workspace on a first-level hostname that a universal certificate already covers. Pick

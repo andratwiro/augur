@@ -50,7 +50,7 @@ import { tenantCache } from "./tenant-cache.mjs";
 // build.js copies it next to the worker (dist/tenant-host.mjs). It holds the reserved-label
 // list too, because the control plane's name GENERATOR has to read the same one — a
 // generator that emits `admin` and a resolver that refuses it are one list disagreeing.
-import { tenantLabelFromHost, normalizeHost, isReservedLabel, TENANT_LABEL_RE } from "./tenant-host.mjs";
+import { tenantLabelFromHost, normalizeHost, isReservedLabel, parseReservedLabels, TENANT_LABEL_RE } from "./tenant-host.mjs";
 
 // The mail transport. Same deal again: build.js copies it next to the worker
 // (dist/mail.mjs) so the relative import resolves at the edge. It reads its provider,
@@ -934,8 +934,14 @@ async function aliasTenantId(env, hostHeader) {
   // The alias must name a workspace the literal resolver COULD have resolved: a legal,
   // unreserved label. A row naming anything else is a corrupt row, and resolving it would
   // hand the reserved namespace back out through the side door.
-  if (!TENANT_LABEL_RE.test(label) || isReservedLabel(label)) return null;
+  if (!TENANT_LABEL_RE.test(label) || isReservedLabel(label, deploymentReservedLabels(env))) return null;
   return label;
+}
+
+/** The deployment's own reserved labels (RESERVED_LABELS_EXTRA), parsed per call — a
+ *  string split, and the one memo shape this repo trusts is keyed by tenantId, not env. */
+function deploymentReservedLabels(env) {
+  return parseReservedLabels(env && typeof env.RESERVED_LABELS_EXTRA === "string" ? env.RESERVED_LABELS_EXTRA : "");
 }
 
 async function resolveTenant(request, env) {
@@ -944,7 +950,7 @@ async function resolveTenant(request, env) {
   const suffix = env && typeof env.TENANT_HOST_SUFFIX === "string" ? env.TENANT_HOST_SUFFIX : "";
   if (suffix.trim()) {
     const host = request && request.headers ? request.headers.get("host") : "";
-    const tenantId = tenantLabelFromHost(host, suffix);
+    const tenantId = tenantLabelFromHost(host, suffix, deploymentReservedLabels(env));
     if (tenantId) return { tenantId, store: tenantStub(env, tenantId) };
     // The literal label names nobody. One alias lookup — a claimed hostname resolves to
     // its workspace; anything else keeps the refusal it has always had.

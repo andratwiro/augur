@@ -48,7 +48,7 @@
 import { PLANS, DEFAULT_PLAN, QUOTA_FIELDS, quotasForPlan } from "./tenant-quotas.mjs";
 import { purgeThreads, personIdFor, idCollisions } from "./purge.mjs";
 import { deleteConfirmation, backupRetentionFromEnv } from "./delete-confirmation.mjs";
-import { tenantLabelFromHost, normalizeHost } from "./tenant-host.mjs";
+import { tenantLabelFromHost, normalizeHost, parseReservedLabels } from "./tenant-host.mjs";
 
 // 1 → 2: `B-kv-read-cutover`'s second slice. `publish_tokens` gained `scope`, and `members`
 // gained the columns that let the roster documents be READ back rather than inferred — see
@@ -1393,7 +1393,9 @@ export class TenantStore {
     if (!suffix) return { ok: false, error: "no-host-routing" };
     // The disjointness rule. `demo.<suffix>` answers null here (reserved) and is claimable;
     // `misty-fox-123.<suffix>` answers a label and is not, whoever holds it.
-    if (tenantLabelFromHost(host, suffix) !== null) {
+    const extra = parseReservedLabels(this.env && typeof this.env.RESERVED_LABELS_EXTRA === "string"
+      ? this.env.RESERVED_LABELS_EXTRA : "");
+    if (tenantLabelFromHost(host, suffix, extra) !== null) {
       return { ok: false, error: "hostname-resolves-literally" };
     }
     const ws = this.workspaceId();

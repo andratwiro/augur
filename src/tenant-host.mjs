@@ -99,19 +99,46 @@ export function normalizeHost(hostHeader) {
  * The caller refuses the request; it does not fall back to a default workspace, because a
  * default on a multi-workspace deployment is somebody else's workspace.
  */
-export function tenantLabelFromHost(hostHeader, suffix) {
+export function tenantLabelFromHost(hostHeader, suffix, extra = NO_EXTRA) {
   const s = String(suffix == null ? "" : suffix).trim().toLowerCase();
   if (!s) return null;
   const host = normalizeHost(hostHeader);
   if (!host || host.length <= s.length || !host.endsWith(s)) return null;
   const label = host.slice(0, -s.length);
   if (!TENANT_LABEL_RE.test(label)) return null;
-  if (isReservedLabel(label)) return null;
+  if (isReservedLabel(label, extra)) return null;
   return label;
 }
 
-/** Whether a label is one the resolver must never resolve. Case-folded; nothing else. */
-export function isReservedLabel(label) {
+/**
+ * Whether a label is one the resolver must never resolve. Case-folded; nothing else.
+ * `extra` is the DEPLOYMENT's own reserved list (see parseReservedLabels) and reserves
+ * exactly like the engine's: the literal resolver answers nobody for it.
+ */
+export function isReservedLabel(label, extra = NO_EXTRA) {
   const l = String(label == null ? "" : label).trim().toLowerCase();
-  return l !== "" && RESERVED_LABELS.includes(l);
+  return l !== "" && (RESERVED_LABELS.includes(l) || (extra.length > 0 && extra.includes(l)));
+}
+
+const NO_EXTRA = Object.freeze([]);
+
+/**
+ * The deployment's own reserved labels, from one env string (`RESERVED_LABELS_EXTRA`).
+ *
+ * The frozen list above names what is dangerous on ANY deployment. A deployment also has
+ * names of its own that must never become somebody's first label — the fallback origin it
+ * pointed a certificate product at, an address it intends to alias by operator grant — and
+ * those belong in its config, not in a public engine. Comma or whitespace separated,
+ * case-folded, and anything that is not a legal label is DROPPED rather than widened: a
+ * typo here must not reserve more than it says. Pure string work, like everything in this
+ * file; the caller reads the env, this never does.
+ */
+export function parseReservedLabels(raw) {
+  const s = String(raw == null ? "" : raw).trim().toLowerCase();
+  if (!s) return NO_EXTRA;
+  const out = [];
+  for (const part of s.split(/[\s,]+/)) {
+    if (part && TENANT_LABEL_RE.test(part) && !out.includes(part)) out.push(part);
+  }
+  return Object.freeze(out);
 }

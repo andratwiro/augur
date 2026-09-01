@@ -21,7 +21,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { __testables as W } from "../src/_worker.js";
 import {
-  tenantLabelFromHost, normalizeHost, isReservedLabel, RESERVED_LABELS, TENANT_LABEL_RE,
+  tenantLabelFromHost, normalizeHost, isReservedLabel, RESERVED_LABELS, TENANT_LABEL_RE, parseReservedLabels,
 } from "../src/tenant-host.mjs";
 
 const SUFFIX = ".example.com";
@@ -269,4 +269,40 @@ test("tenantStub does no I/O, so it cannot be the slow or failing part of a reso
   assert.equal(W.tenantStub({}, "acme"), null);
   assert.equal(W.tenantStub({ TENANTS: ns }, null), null);
   assert.equal(W.tenantStub({ TENANTS: ns }, ""), null);
+});
+
+// ── deployment-reserved labels ───────────────────────────────────────────────
+//
+// The frozen list above is the engine's: names that are dangerous on ANY deployment. A
+// deployment has names of its own it must never hand a first label to — a fallback origin
+// it points a certificate product at, an address it intends to alias by operator grant —
+// and those are its business, not the public engine's. `RESERVED_LABELS_EXTRA` is one env
+// string, parsed by pure string work, and it reserves exactly like the list does: the
+// literal resolver answers nobody, so the alias table may answer instead.
+
+test("RESERVED_LABELS_EXTRA parses like a deployment wrote it, and refuses what is not a label", () => {
+  assert.deepEqual(parseReservedLabels("service, Preview-Team\n  billing2 "), ["service", "preview-team", "billing2"]);
+  assert.deepEqual(parseReservedLabels(""), []);
+  assert.deepEqual(parseReservedLabels(undefined), []);
+  assert.deepEqual(parseReservedLabels("a.b, -bad, ok"), ["ok"], "a dotted or malformed entry is dropped, not widened");
+  assert.ok(Object.isFrozen(parseReservedLabels("x")), "the parsed list is frozen like the engine's");
+});
+
+test("an extra reserved label is reserved: the literal resolver answers nobody, so an alias may", async () => {
+  const kv = { async get(k) { return k === "host:alias:service.example.com" ? JSON.stringify({ workspace: "acme" }) : null; } };
+  const env = { TENANT_HOST_SUFFIX: SUFFIX, TENANTS: namespace(), COMMENTS: kv, RESERVED_LABELS_EXTRA: "service, extra" };
+  assert.equal(isReservedLabel("service", parseReservedLabels(env.RESERVED_LABELS_EXTRA)), true);
+  assert.equal(isReservedLabel("service"), false, "the engine's own list is unchanged");
+  assert.equal(tenantLabelFromHost("extra.example.com", SUFFIX, ["extra"]), null);
+  assert.equal(tenantLabelFromHost("extra.example.com", SUFFIX), "extra");
+  // Through the real resolver: `service` no longer names a workspace called service; it
+  // resolves through the alias table, to whatever the operator pointed it at.
+  const r = await W.resolveTenant(req("service.example.com"), env);
+  assert.equal(r.tenantId, "acme");
+  const unaliased = await W.resolveTenant(req("extra.example.com"), env);
+  assert.equal(unaliased.tenantId, null, "reserved and unaliased is nobody, not a workspace");
+  // And an alias row may not point AT a deployment-reserved label either.
+  const bad = { async get() { return JSON.stringify({ workspace: "extra" }); } };
+  const r2 = await W.resolveTenant(req("service.example.com"), { ...env, COMMENTS: bad });
+  assert.equal(r2.tenantId, null, "a corrupt alias row handed the reserved namespace back out");
 });
