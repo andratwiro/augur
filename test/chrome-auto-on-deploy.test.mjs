@@ -202,11 +202,16 @@ test("⚠️ `check` REPORTS THE STORE'S VERSION when assets chrome is the newer
   const res = await W.publishApi(tctx, new Request(url, {
     method: "POST",
     headers: { Authorization: "Bearer tok", "content-type": "application/json" },
-    body: JSON.stringify({ files: { "/admin/index.html": rec("z") } }),
+    // rec("n") is the hash the ASSETS copy holds and the store does not: served-present is
+    // not store-present, and a check that says otherwise makes the client skip the upload
+    // and the commit refuse with `blobs-missing`.
+    body: JSON.stringify({ files: { "/admin/index.html": rec("n"), "/sw.js": rec("z") } }),
   }), url, env);
   const text = await res.text();
   assert.equal(res.status, 200, `check refused: ${text}`);
   const body = JSON.parse(text);
   assert.equal(body.liveVersion, 174, "check reported the served chrome's version, not the store's");
   assert.equal(body.liveSource && body.liveSource.sha, "o".repeat(40), "liveSource is not the store's publish provenance");
+  assert.deepEqual([...body.missing].sort(), [rec("n").h, rec("z").h].sort(),
+    "a blob only the assets copy holds was reported as present in the store");
 });

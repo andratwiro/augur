@@ -5293,26 +5293,32 @@ async function publishApi(tctx, request, url, env) {
     const files = (body && body.files) || {};
     // A blob already referenced by ANY live manifest exists in the store —
     // content addressing means cross-space and engine duplicates never re-upload.
+    //
+    // ⚠️ A PUBLISH IS A CONVERSATION WITH THE STORE, AND THE SERVED VIEW IS NOT IT. The view
+    // swaps `_engine` for the worker's own assets copy when that is the newer build
+    // (D-chrome-auto-on-deploy), and that copy carries no version, no publish provenance, and
+    // hashes that are not R2 keys. Answered from it, `liveVersion` was 0 while the commit's
+    // compare-and-swap compared against the store's real version — every `publish.mjs
+    // --engine` after a worker deploy looped on `stale-base` until it gave up — and blobs
+    // only the assets copy holds were reported present, so the client skipped uploading them
+    // and the commit refused `blobs-missing` (both measured 2026-09-02: v174 in the store, 0
+    // in the answer). So when the served `_engine` is the assets one, the check swaps the
+    // store's own document back in before anything is counted or reported. Unreadable ⇒ no
+    // store document, exactly as before.
+    const all = { ...(await loadManifests(tctx.tenantId, env, true)) };
+    if (all[ENGINE_SPACE_ID] && all[ENGINE_SPACE_ID].__fromAssets) {
+      let stored = null;
+      try {
+        const obj = await bundles.get(`spaces/${ENGINE_SPACE_ID}/manifest.json`);
+        stored = obj ? JSON.parse(await obj.text()) : null;
+      } catch (e) { stored = null; }
+      if (stored) all[ENGINE_SPACE_ID] = stored; else delete all[ENGINE_SPACE_ID];
+    }
     const have = new Set();
-    const all = await loadManifests(tctx.tenantId, env, true);
     for (const id in all) for (const k in all[id].files) have.add(all[id].files[k].h);
     const missing = [...new Set(Object.values(files).map((f) => f && f.h).filter(Boolean))]
       .filter((h) => !have.has(h));
-    // A publish is a conversation with the STORE. The served view swaps `_engine` for the
-    // worker's own assets copy when that is the newer build (D-chrome-auto-on-deploy), and
-    // that copy carries no version and no publish provenance — answered from it, `liveVersion`
-    // is 0 while the commit's compare-and-swap compares against the store's real version, and
-    // every `publish.mjs --engine` after a worker deploy loops on `stale-base` until it gives
-    // up (2026-09-02: v174 in the store, 0 in the answer). So when the served copy is the
-    // assets one, `check` reads the store's own document for the version, the files and the
-    // provenance it reports. Unreadable ⇒ no store document, exactly as before.
-    let cur = all[spaceId];
-    if (cur && cur.__fromAssets) {
-      try {
-        const obj = await bundles.get(`spaces/${spaceId}/manifest.json`);
-        cur = obj ? JSON.parse(await obj.text()) : null;
-      } catch (e) { cur = null; }
-    }
+    const cur = all[spaceId];
     // filesUnchanged + liveSource let the client skip a commit that would change
     // nothing (same content, same provenance) — a version bump with no meaning.
     const curFiles = (cur && cur.files) || null;
