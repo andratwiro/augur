@@ -264,9 +264,16 @@ emits `dist/__manifests/<id>.json` per space (+ pseudo-space `_engine` for share
 chrome): `{files: {path → {sha256, mime, size}}}` + the space's routing fragment.
 
 **Per-file provenance is RECORDED at commit, not derived from git.** The commit
-handler stamps `{by, editedAt}` on every file whose bytes changed and carries the
+handler stamps `{by, editedAt}` on every file whose SOURCE changed and carries the
 previous stamp forward untouched for every file that did not — so a publish
-touching one page cannot restamp the other five hundred. `by` is `personId(email)`,
+touching one page cannot restamp the other five hundred. "Source" is `sh`, the hash
+build.js records of a page's bytes BEFORE it decorates them (verbatim copies carry
+none and compare `h`), because every authored page leaves with the engine's
+fingerprint in it and a stamp keyed on the served bytes called every engine change
+one person's work (2026-09-02: every card "Edited 8 hours ago" by the CI token). A
+publish whose source commit IS live's, clean on both sides — a re-bake — changes
+nothing a person wrote, and a live entry that predates `sh` keeps its stamp once
+rather than being judged on bytes it cannot explain. `by` is `personId(email)`,
 the same one-way hash messages carry, and **never an address**: a manifest is read
 by more things than a comment thread is. This replaces a class of bug rather than
 adding a feature — provenance used to come from `git log` and publishing keeps

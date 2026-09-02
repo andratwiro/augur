@@ -5713,19 +5713,63 @@ async function publishApi(tctx, request, url, env) {
     // half moves that read to the client, against the live manifest). What this buys today
     // is that provenance starts ACCUMULATING truthfully from now, so the render move lands
     // on real history instead of a flag day where every card says "unknown".
+    //
+    // ⚠️ "CHANGED" MEANS THE SOURCE, NOT THE SERVED BYTES. `h` is the address of what is
+    // served, and the engine leaves its fingerprint in every authored page it emits — a
+    // `?v=<version>` on two injected script tags, the unfurl meta, the tab emoji — so a
+    // publish made with a different engine clone than the last one flips every page's `h`.
+    // Keyed on `h` alone, the stamp called all of it one person's work: on 2026-09-02 the
+    // reference instance alternated fourteen times in one night between a collaborator's
+    // clone and the shell's re-bake, each publish restamping 368 of 479 pages, until 158 of
+    // 158 units read "Edited 8 hours ago" by the CI token. build.js therefore records `sh`,
+    // the hash of the SOURCE bytes, on every file it transforms, and that is what decides
+    // here whenever both sides carry one. A file with no `sh` on either side (an image, a
+    // script, a generated index) compares `h` exactly as before.
+    //
+    // Two belts. A live entry that PREDATES `sh` cannot be judged against a new one — the
+    // bytes moved and nothing says whether the source did — so it keeps what it had and
+    // records `sh` for next time; the alternative is one publish that restamps the whole
+    // site on the day this ships, which is the symptom. And a publish whose source commit
+    // IS the live one, clean on both sides, changed nothing a person wrote whatever its
+    // bytes say: that is exactly what a re-bake is.
+    //
+    // A stamp in the BODY is an assertion anybody can type and is discarded — except on the
+    // first publish into an empty store, where there is no prior record to protect and the
+    // body IS the record: `augur restore` replaying an export. Stamping every file with the
+    // restorer there launders a whole history into one person on the day of a migration.
+    // Same trust-on-first-publish footing lineage has below, same shape checks.
     const editedAt = new Date().toISOString();
     const stampedBy = who.label ? personId(who.label) : null;
     const priorFiles = (cur && cur.files) || {};
+    const sameSource = !!(cur && cur.source && m.source && cur.source.sha
+      && cur.source.sha === m.source.sha && !cur.source.dirty && !m.source.dirty);
+    const carriedStamp = (f) => {
+      if (!f || typeof f.by !== "string" || !f.by || f.by.includes("@")) return null;
+      if (typeof f.editedAt !== "string" || !Number.isFinite(Date.parse(f.editedAt))) return null;
+      return { by: f.by, editedAt: f.editedAt };
+    };
     const stampedFiles = {};
     for (const [p2, f] of Object.entries(m.files || {})) {
       const prior = priorFiles[p2];
-      const unchanged = prior && f && prior.h === f.h;
-      // Unchanged bytes keep whatever the last publish recorded — including nothing, for a
-      // file that predates this field. Absent is the honest answer for those, and the
-      // renderer's fallback, not a stamp invented at the first publish that touches nothing.
-      stampedFiles[p2] = unchanged
-        ? { ...f, ...(prior.by ? { by: prior.by } : {}), ...(prior.editedAt ? { editedAt: prior.editedAt } : {}) }
-        : { ...f, ...(stampedBy ? { by: stampedBy } : {}), editedAt };
+      const { by: _b, editedAt: _e, ...bytes } = f || {};
+      let unchanged = false;
+      if (prior && f) {
+        if (sameSource) unchanged = true;
+        else if (f.sh && prior.sh) unchanged = prior.sh === f.sh;
+        else if (f.sh && !prior.sh) unchanged = true;
+        else unchanged = prior.h === f.h;
+      }
+      // Unchanged keeps whatever the last publish recorded — including nothing, for a file
+      // that predates this field. Absent is the honest answer for those, and the renderer's
+      // fallback, not a stamp invented at the first publish that touches nothing.
+      if (unchanged) {
+        stampedFiles[p2] = { ...bytes, ...(prior.by ? { by: prior.by } : {}), ...(prior.editedAt ? { editedAt: prior.editedAt } : {}) };
+        continue;
+      }
+      const asserted = cur ? null : carriedStamp(f);
+      stampedFiles[p2] = asserted
+        ? { ...bytes, ...asserted }
+        : { ...bytes, ...(stampedBy ? { by: stampedBy } : {}), editedAt };
     }
     // ── unit lineage + ownership: carried by the server, never read from the body ───────
     //

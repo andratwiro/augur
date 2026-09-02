@@ -731,6 +731,16 @@ async function isDir(p) {
 // Two lists would eventually disagree, and the disagreement would show up as one card
 // claiming two different ages of itself.
 
+// dist-relative path → sha256 of the SOURCE bytes, for every file the build transforms
+// on its way to dist. The manifest carries it as `sh` beside `h` (the hash of the served
+// bytes), and the commit handler prefers it when deciding whether a person changed a file.
+// Why: every authored page leaves with the engine's fingerprint in it — `?v=<version>`
+// on two injected script tags, the unfurl meta, the tab emoji — so a publish made with a
+// different engine clone than the last one flips EVERY page's `h`, and a stamp keyed on
+// `h` alone called all of it one person's work (2026-09-02: 368 of 479 pages restamped
+// per publish, fourteen times in one night, until every card read "Edited 8 hours ago"
+// by the CI token). A verbatim copy records nothing here: its `h` already IS the source.
+const SOURCE_HASHES = new Map();
 const SPACE_DATES = new Map(); // space root → parsed maps (one git pass per space per build)
 function spaceDates(repoRoot) {
   if (SPACE_DATES.has(repoRoot)) return SPACE_DATES.get(repoRoot);
@@ -1004,7 +1014,10 @@ async function copyDir(src, dest, exclude, titleEmoji) {
       latest = Math.max(latest, await copyDir(srcPath, destPath, exclude, titleEmoji));
     } else if (entry.isFile()) {
       if (entry.name.endsWith(".html")) {
-        let html = await fs.readFile(srcPath, "utf8");
+        const raw = await fs.readFile(srcPath);
+        SOURCE_HASHES.set(path.relative(DIST, destPath).split(path.sep).join("/"),
+          createHash("sha256").update(raw).digest("hex"));
+        let html = raw.toString("utf8");
         // Live-link rewrite: a prototype that IMPORTS canonical assets references
         // them as ../../../skills/<ui-skill>/X (resolves on disk when opened
         // directly). In dist the shared export lives at <space>/skills/<ui-skill>/, so
@@ -8031,7 +8044,8 @@ async function main() {
       : manifestDefaultId;
     const body = await fs.readFile(path.join(DIST, rel));
     const h = createHash("sha256").update(body).digest("hex");
-    (manifests[owner] ||= { id: owner, format: 1, files: {} }).files["/" + rel] = { h, ct: ctFor(rel), s: body.length };
+    const sh = SOURCE_HASHES.get(rel);
+    (manifests[owner] ||= { id: owner, format: 1, files: {} }).files["/" + rel] = { h, ct: ctFor(rel), s: body.length, ...(sh ? { sh } : {}) };
   }
   // Chrome purity. An engine-only build has no space on disk, so EVERY file it
   // emitted must be engine chrome. If one isn't, ENGINE_CHROME has gone stale

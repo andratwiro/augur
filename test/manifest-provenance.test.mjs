@@ -43,12 +43,17 @@ function memR2(initial = {}) {
 }
 
 const file = (body) => ({ h: sha(body), ct: "text/html; charset=utf-8", s: body.length });
+// Every manifest is a DIFFERENT clean commit. A publish whose bytes differ from live under
+// the SAME clean commit is what a re-bake looks like, and the handler carries every stamp
+// through one (test/provenance-source-hash.test.mjs) — a fixture that republished "changed"
+// files under one constant sha was modelling something no tree can produce.
+let commitSeq = 0;
 const manifest = (units) => {
   const files = {};
   for (const [u, body] of Object.entries(units)) files[`${u}index.html`] = file(body);
   return {
     id: "alpha", format: 1, space: { id: "alpha", default: true },
-    source: { sha: "abc", dirty: false }, files,
+    source: { sha: `commit-${++commitSeq}`, dirty: false }, files,
     routing: { publicPrefixes: Object.keys(units), versionMap: {} },
   };
 };
