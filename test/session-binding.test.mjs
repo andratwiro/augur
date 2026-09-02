@@ -143,19 +143,25 @@ test("ROTATING ENDS EVERY SESSION WITHOUT TOUCHING THE CREDENTIAL", async () => 
 
 test("rotating twice gives two different keys — it is random, not derived", async () => {
   const env = { ...ENV_SECRET, COMMENTS: memKv() };
+  const name = await W.sessionKeyName(U.email);
   await W.rotateSessionKey(env, U.email);
-  const first = JSON.parse(env.COMMENTS.m.get(W.SESSION_KEYS_KEY))[U.email];
+  const first = JSON.parse(env.COMMENTS.m.get(name)).key;
   await W.rotateSessionKey(env, U.email);
-  const second = JSON.parse(env.COMMENTS.m.get(W.SESSION_KEYS_KEY))[U.email];
+  const second = JSON.parse(env.COMMENTS.m.get(name)).key;
   assert.notEqual(first, second);
   assert.match(first, /^[0-9a-f]{64}$/);
 });
 
-test("rotating one person leaves everybody else's sessions alone", async () => {
+test("rotating one person leaves everybody else's sessions alone — on a record of their own, or still on the old document", async () => {
   const other = { email: "b@x.test", passHash: "pbkdf2$b" };
-  const env = { ...ENV_SECRET, COMMENTS: memKv({ [W.SESSION_KEYS_KEY]: JSON.stringify({ [other.email]: "keep-me" }) }) };
+  const third = { email: "c@x.test", passHash: "pbkdf2$c" };
+  const env = { ...ENV_SECRET, COMMENTS: memKv({
+    [W.SESSION_KEYS_KEY]: JSON.stringify({ [other.email]: "keep-me" }),
+    [await W.sessionKeyName(third.email)]: JSON.stringify({ key: "keep-me-too" }),
+  }) };
   await W.rotateSessionKey(env, U.email);
   assert.equal(await W.sessionBinding(env, other, "pbkdf2$b", true), "keep-me");
+  assert.equal(await W.sessionBinding(env, third, "pbkdf2$c", true), "keep-me-too");
 });
 
 // ── the regression this seam could introduce, and the guard against it ───────
@@ -175,10 +181,16 @@ test("⚠️ A CREDENTIAL CHANGE STILL ENDS SESSIONS, even once a key is stored"
   assert.equal(afterClear, "pbkdf2$old", "the binding did not fall back to the credential");
 });
 
-test("clearing a key nobody has is a no-op, not a write", async () => {
+test("clearing a key nobody has still writes the tombstone — absent would mean 'ask the old document'", async () => {
+  // A clear used to be a no-op for somebody with no key. It cannot be any more: the only
+  // way to know nobody has one is a read, and a stale read that saw nothing would skip
+  // the write a concurrent rotate had just made necessary. The tombstone is one small
+  // record per person, written blind, and it is what shadows the retired document.
   const kv = memKv();
   await W.clearSessionKey({ ...ENV_SECRET, COMMENTS: kv }, U.email);
-  assert.equal(kv.m.size, 0);
+  assert.equal(kv.m.size, 1);
+  assert.deepEqual(JSON.parse(kv.m.get(await W.sessionKeyName(U.email))), { key: null });
+  assert.equal(kv.m.has(W.SESSION_KEYS_KEY), false, "the retired document was written");
 });
 
 test("rotation and clearing never throw, even with a store that fails", async () => {

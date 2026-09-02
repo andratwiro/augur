@@ -163,17 +163,19 @@ test("FLAG ON: a broken session-key read is a REFUSAL, never an admission", asyn
 
   // Corrupt shape: an array passes `typeof === "object"` — the seam must refuse, not
   // fall through to a credential this person does not have (or worse, to nothing).
-  const good = env.COMMENTS.m.get(W.SESSION_KEYS_KEY);
-  await env.COMMENTS.put(W.SESSION_KEYS_KEY, "[]");
+  const record = await W.sessionKeyName(INVITEE.email);
+  const good = env.COMMENTS.m.get(record);
+  assert.ok(good, "the redemption wrote this person's own record");
+  await env.COMMENTS.put(record, "[]");
   assert.equal(await identifyAs(env, CTX_ON, cookie), null, "corrupt store refuses");
 
   // A store that throws on the read refuses too.
-  await env.COMMENTS.put(W.SESSION_KEYS_KEY, good);
+  await env.COMMENTS.put(record, good);
   const throwing = {
     ...env,
     COMMENTS: {
       ...env.COMMENTS,
-      async get(k) { if (k === W.SESSION_KEYS_KEY) throw new Error("kv down"); return env.COMMENTS.get(k); },
+      async get(k) { if (k === record) throw new Error("kv down"); return env.COMMENTS.get(k); },
     },
   };
   assert.equal(await identifyAs(throwing, CTX_ON, cookie), null, "unreadable store refuses");
