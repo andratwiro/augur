@@ -27,6 +27,18 @@ export const SEED_ACTOR = "augur:seed";
 /** The namespace no real actor may occupy. */
 export const RESERVED_ACTOR_PREFIX = "augur:";
 
+/** What a screen shows where it would show the publisher's name, for a platform write. */
+export const SEED_DISPLAY_NAME = "Augur";
+
+/**
+ * Is this publish-token label the platform's? The label-shaped twin of `isSeedSource`, for
+ * the one field that carries a label rather than a source object (`publishedBy`). Same
+ * rule, same namespace, so a second platform actor is still one edit in one file.
+ */
+export function isSeedActor(label) {
+  return typeof label === "string" && label.toLowerCase().startsWith(RESERVED_ACTOR_PREFIX);
+}
+
 /**
  * Clean an actor string coming from the environment. Anything claiming the reserved
  * namespace loses it, so a real publish can never present itself as a platform write.

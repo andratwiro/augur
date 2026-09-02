@@ -133,6 +133,34 @@ twice, here and as `TENANT_RPC` in the
 control plane, because the repos cannot import each other; both suites assert the other's
 copy.
 
+**A freshly provisioned workspace is FURNISHED, not empty, and the content lands BEFORE the
+commit that creates the workspace** (`F-seed-pack-at-provision`, `src/seed-pack.mjs`). The
+content is `seed/` — the three start-here prototypes, the worked examples, the starter design
+system, `threads.json` — built ONCE PER ENGINE PIN by every engine-only build into one sealed
+document, `dist/__seed/pack.json` (`scripts/lib/seed-pack-build.mjs`; a child build of
+`seed/`, exactly what a publish of a clone would compose, with the git author stamp STRIPPED
+so the engine author is not the author of every workspace's welcome content). `provision
+{seedPack: true}` makes the workspace object write that pack into its own segment of the
+bundle store — blobs, `versions/1.json`, `manifest.json`, version 1 of the workspace's space,
+the connect page's `CONNECT_COMMAND` slot filled with the workspace's real `npx augur connect
+--origin …` line — and THEN commit the admin, the restamped threads and the `publish_versions`
+row in one transaction. The control plane asks and carries nothing: no content, no store name,
+one boolean on the one verb it already had. Every seed version reads as the platform's
+(`seedSource()`, `SEED_ACTOR` as `publishedBy`, the sentinel in `unitSources`, no per-file
+`by`), and the write REFUSES over a manifest with real provenance. **What makes content-first
+safe is the front door**: `suspension()` now answers `provisioned`, `readSuspension` keeps a
+`false`, and the router gives an unprovisioned workspace `unknownHostResponse()` — the bare
+answer a hostname naming nobody gets — so a provisioning that dies between the content and the
+commit leaves bytes at keys no request can reach, never a half-furnished site, and the next
+provisioning of that object writes its own pack over them. A deployment asked for the pack
+with none in its bundle refuses the create (`seed-pack-unavailable`, 503) rather than opening
+an empty room; `wrangler-preflight` refuses a hosted deploy whose built dist lacks the pack.
+⚠️ The gate means a TENANTS-bound deployment serves ONLY provisioned workspaces — the order
+the migration runbook already mandates (provision, then move content in), and what
+`test/migrate-kv-to-workspace.test.mjs`'s target now does. `bundleKey`/`bundleStore` moved
+to `src/bundle-keys.mjs` so the object writes exactly where the front door reads; the worker
+re-exports them. `test/seed-pack.test.mjs` pins all of it.
+
 **A suspension is enforced at the front door, once, before the config load** —
 `readSuspension` + `SUSPENDED_ALLOWED` in `src/_worker.js`, checked right after the resolve
 so a paused workspace never reads its own store to find out it is paused. **What it stops is
@@ -319,7 +347,8 @@ build), not a fallback a live instance can drop back to. Undoing a bad publish i
 `rollback` against the store's version history, not a serving-mode switch.
 
 **⏳ The store's keys carry the WORKSPACE on a deployment that resolves one from the
-Host.** `bundleKey` in `src/_worker.js` — `t/<workspace>/spaces/…`,
+Host.** `bundleKey` in `src/bundle-keys.mjs` (imported by the worker and by the workspace
+object) — `t/<workspace>/spaces/…`,
 `t/<workspace>/config/instance.json`, `t/<workspace>/assets/…`. It exists because not one
 `BUNDLES` key used to name a workspace: `config/instance.json` was one document for the
 whole bucket and `spaces/<id>/` named a SPACE, so two workspaces publishing a space under

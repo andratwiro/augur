@@ -50,6 +50,11 @@ import { purgeThreads, personIdFor, idCollisions } from "./purge.mjs";
 import { deleteConfirmation, backupRetentionFromEnv } from "./delete-confirmation.mjs";
 import { tenantLabelFromHost, normalizeHost, parseReservedLabels } from "./tenant-host.mjs";
 import { nameFromEmail, initialsFor, colorFor } from "./roster-chip.mjs";
+// The seed pack a fresh workspace is furnished with at provisioning, and the store key shape
+// it lands under — the worker's own module, so the object writes exactly where the front
+// door reads. See src/seed-pack.mjs for the order and the failure it is shaped around.
+import { bundleStore } from "./bundle-keys.mjs";
+import { loadSeedPack, publishSeedPack, seedOverlayFrom, workspaceOrigin } from "./seed-pack.mjs";
 
 // 1 → 2: `B-kv-read-cutover`'s second slice. `publish_tokens` gained `scope`, and `members`
 // gained the columns that let the roster documents be READ back rather than inferred — see
@@ -863,6 +868,7 @@ function seedOverlay(sql, seed, at) {
 
 export function applyProvisioning(sql, {
   workspaceId, adminEmail, adminName = "", plan = DEFAULT_PLAN, now, sessionKey, seed = null,
+  seedVersions = [],
 } = {}) {
   if (!workspaceId) throw new Error("provisioning needs a workspace id");
   if (!adminEmail) throw new Error("provisioning needs an admin address");
@@ -922,10 +928,48 @@ export function applyProvisioning(sql, {
   // everywhere else here — publish the content FIRST, then provision; content nobody can
   // reach yet is invisible, an admin with no content is a promise broken on the first screen.
   seedOverlay(sql, seed, at);
+  // THE VERSION ROW FOR THE SEED PUBLISH, in the same transaction. The pack's manifest and
+  // version file are already in the bundle store by the time this runs (`F-seed-pack-at-
+  // provision` — content first, then this commit); what makes that content THIS workspace's
+  // is a `publish_versions` row, the only record of which spaces a workspace owns
+  // (`publishedSpaces`), which a delete walks and the next real publish counts up from. A
+  // MAX rather than an insert: an object re-provisioned after a crash keeps whatever it
+  // had, and a counter can never move backwards to a version file that already exists.
+  for (const v of Array.isArray(seedVersions) ? seedVersions : []) {
+    if (!v || !v.space || !Number.isInteger(v.version) || v.version < 1) continue;
+    sql.exec(
+      `INSERT INTO publish_versions (space, version) VALUES (?1, ?2)
+         ON CONFLICT(space) DO UPDATE SET version = MAX(publish_versions.version, excluded.version)`,
+      String(v.space), v.version,
+    );
+  }
   sql.exec(`INSERT INTO meta (k, v) VALUES ('created_at', ?) ON CONFLICT(k) DO NOTHING`, at);
   // LAST. Everything above is invisible until this row exists.
   sql.exec(`INSERT INTO meta (k, v) VALUES ('provisioned_at', ?) ON CONFLICT(k) DO NOTHING`, at);
   return { provisionedAt: at, created: true, seeded: seedCount(seed) };
+}
+
+/** A provisioning that asked for the seed pack on a deployment that cannot supply one. */
+class SeedPackUnavailable extends Error {
+  constructor(detail) { super(`seed-pack-unavailable: ${detail}`); this.code = "seed-pack-unavailable"; }
+}
+
+/**
+ * A caller's overlay seed and the pack's, as one. Per family, per scope, the caller's keys
+ * win — a control plane that hands over a thread of its own is not overridden by the pack's.
+ */
+function mergeSeed(mine, packs) {
+  if (!packs || typeof packs !== "object") return mine || null;
+  if (!mine || typeof mine !== "object") return packs;
+  const out = { ...packs };
+  for (const [family, scopes] of Object.entries(mine)) {
+    if (!scopes || typeof scopes !== "object" || Array.isArray(scopes)) continue;
+    out[family] = { ...(out[family] || {}) };
+    for (const [scope, map] of Object.entries(scopes)) {
+      out[family][scope] = { ...((out[family] || {})[scope] || {}), ...(map || {}) };
+    }
+  }
+  return out;
 }
 
 /**
@@ -993,12 +1037,56 @@ export class TenantStore {
    */
   async provision(opts = {}) {
     await this.init(opts.workspaceId, { plan: opts.plan });
-    const body = () => applyProvisioning(this.sql, opts);
-    const run = () => (this.ctx.storage.transactionSync
-      ? this.ctx.storage.transactionSync(body)
-      : body());
-    if (this.ctx.blockConcurrencyWhile) return this.ctx.blockConcurrencyWhile(async () => run());
-    return run();
+    // ONE instant for everything this provisioning writes — the content's stamps in the
+    // store, the threads' timestamps, the rows below — so the seed is born all at once and
+    // Start Here sorts first (seed/README.md).
+    const at = opts.now || new Date().toISOString();
+    const go = async () => {
+      // ── the seed pack, BEFORE the transaction ────────────────────────────────────────
+      //
+      // `F-seed-pack-at-provision`. Published content lives in the bundle store, not in this
+      // object, and no transaction spans the two; so the content goes FIRST and the commit
+      // that makes this workspace exist goes second. Content nobody can reach is invisible:
+      // an object left unprovisioned by a crash here is refused at the front door, and a
+      // later provisioning of the same object rewrites these keys with its own pack. Never
+      // on a workspace that already exists — re-provisioning keeps the first admin, and it
+      // keeps the first content for the same reason.
+      let furnished = null;
+      if (opts.seedPack === true && !this.isProvisioned()) furnished = await this.furnish(opts.workspaceId, at);
+      const body = () => applyProvisioning(this.sql, {
+        ...opts, now: at,
+        seed: furnished ? mergeSeed(opts.seed, furnished.overlay) : opts.seed,
+        seedVersions: furnished ? [{ space: furnished.space, version: furnished.version }] : [],
+      });
+      const out = this.ctx.storage.transactionSync ? this.ctx.storage.transactionSync(body) : body();
+      if (furnished && out.created) {
+        const { overlay: _o, ...written } = furnished;
+        out.seedPack = written;
+      }
+      return out;
+    };
+    if (this.ctx.blockConcurrencyWhile) return this.ctx.blockConcurrencyWhile(go);
+    return go();
+  }
+
+  /**
+   * Write the deployed engine's seed pack into this workspace's segment of the bundle store.
+   *
+   * Refuses rather than provisioning an empty room: a deployment that was asked for the
+   * pack and has none (`seed-pack-unavailable`) is misconfigured, and a signup that quietly
+   * produced a bare workspace would be the failure Phase F was written to design out. The
+   * store's own refusals (`seed-over-real-content`, `seed-pack-corrupt`) surface as they are.
+   */
+  async furnish(workspaceId, at) {
+    // The id off the call: the `workspace` meta row is written by the commit this precedes.
+    const store = bundleStore(this.env, workspaceId);
+    const pack = await loadSeedPack(this.env);
+    if (!pack) throw new SeedPackUnavailable("no pack in this deployment's asset bundle");
+    if (!store) throw new SeedPackUnavailable("no bundle store binding");
+    const written = await publishSeedPack({
+      store, pack, workspaceId, at, origin: workspaceOrigin(this.env, workspaceId),
+    });
+    return { ...written, overlay: seedOverlayFrom(pack, at) };
   }
 
   /**
@@ -1545,9 +1633,15 @@ export class TenantStore {
    */
   suspension() {
     if (!this.hasMeta()) {
-      return { suspended: false, reason: null, at: null, deleted: false, moved: false, canonicalHost: null };
+      return { provisioned: false, suspended: false, reason: null, at: null, deleted: false, moved: false, canonicalHost: null };
     }
     return {
+      // ⚠️ THE ONE EXISTENCE ANSWER THE FRONT DOOR READS. `F-seed-pack-at-provision` writes a
+      // workspace's content to the store BEFORE the commit that creates the workspace, and
+      // that order is only safe if an uncommitted workspace serves nothing: the front door
+      // turns `provisioned: false` into the answer a hostname naming nobody gets. It rides
+      // this document because the front door already pays this read on every request.
+      provisioned: !!this.readMeta("provisioned_at"),
       suspended: this.readMeta("suspended") === "1",
       reason: this.readMeta("suspended_reason"),
       at: this.readMeta("suspended_at"),
@@ -2458,7 +2552,20 @@ export class TenantStore {
           }
           // `seed` rides in the SAME call, so it lands in the same transaction — see
           // applyProvisioning. A second request to seed would be the exact gap this closes.
-          const out = await this.provision(body);
+          // `seedPack: true` asks for the deployed engine's own pack as well — written to the
+          // store first, then committed with the rest — and a pack that cannot be written is
+          // a REFUSAL, 4xx/5xx and no workspace, never an empty workspace wearing a 200.
+          let out;
+          try {
+            out = await this.provision(body);
+          } catch (e) {
+            const code = (e && e.code) || "";
+            if (code === "seed-over-real-content") return Response.json({ ok: false, error: code }, { status: 409 });
+            if (code === "seed-pack-unavailable" || code === "seed-pack-invalid" || code === "seed-pack-corrupt") {
+              return Response.json({ ok: false, error: code }, { status: 503 });
+            }
+            throw e;
+          }
           return Response.json({ ok: true, ...out });
         }
         case "suspend": return this.controlResult(this.suspend(body && body.reason, at));

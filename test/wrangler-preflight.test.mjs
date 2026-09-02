@@ -41,7 +41,7 @@ bucket_name = "b"
 `;
 
 /** Run the preflight over a scratch shell that mimics a real one: shell/ + shell/engine/. */
-function check(toml, { withRoster = true, withAssetsIgnore = true } = {}) {
+function check(toml, { withRoster = true, withAssetsIgnore = true, withSeedPack = true } = {}) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), "preflight-"));
   try {
     const dist = path.join(dir, "engine", "dist");
@@ -51,6 +51,12 @@ function check(toml, { withRoster = true, withAssetsIgnore = true } = {}) {
     fs.writeFileSync(path.join(dist, "_worker.js"), "// worker\n");
     if (withAssetsIgnore) fs.writeFileSync(path.join(dist, ".assetsignore"), "_worker.js\n");
     if (withRoster) fs.writeFileSync(path.join(dist, "__config", "instance.json"), '{"users":[{"email":"a@b.c","pass":"hunter2"}]}');
+    // What an engine-only build emits beside __config/: the seed pack a hosted deployment
+    // furnishes every new workspace from (F-seed-pack-at-provision).
+    if (withSeedPack) {
+      fs.mkdirSync(path.join(dist, "__seed"), { recursive: true });
+      fs.writeFileSync(path.join(dist, "__seed", "pack.json"), '{"format":1}');
+    }
     const cfg = path.join(dir, "wrangler.toml");
     fs.writeFileSync(cfg, toml);
     try { return { ok: true, out: execFileSync(process.execPath, [SCRIPT, "-c", cfg], { encoding: "utf8" }) }; }
@@ -131,6 +137,19 @@ test("with both halves it passes", () => {
     + '\n[[durable_objects.bindings]]\nname = "TENANTS"\nclass_name = "TenantStore"\n'
     + '\n[[migrations]]\ntag = "v1"\nnew_sqlite_classes = ["TenantStore"]\n'
     + '\n[vars]\nTENANT_HOST_SUFFIX = ".example.com"\n');
+});
+
+test("⚠️ A HOSTED DEPLOYMENT WHOSE BUILT DIST HAS NO SEED PACK IS REFUSED — its every provisioning would be", () => {
+  const hosted = GOOD
+    + '\n[[durable_objects.bindings]]\nname = "TENANTS"\nclass_name = "TenantStore"\n'
+    + '\n[[migrations]]\ntag = "v1"\nnew_sqlite_classes = ["TenantStore"]\n'
+    + '\n[vars]\nTENANT_HOST_SUFFIX = ".example.com"\n';
+  const out = rejects(hosted, { withSeedPack: false });
+  assert.match(out, /seed-pack/);
+  assert.match(out, /seed-pack-unavailable/);
+  assert.match(out, /GV_ENGINE_ONLY=1/);
+  // A single-workspace deployment provisions nothing and is not asked for one.
+  accepts(GOOD, { withSeedPack: false });
 });
 
 test("an EMPTY suffix is refused rather than quietly meaning single-workspace", () => {

@@ -72,6 +72,13 @@ const SPACES_ROOT = process.env.GV_SPACES_ROOT
 // incapable of overwriting a direct publish, however stale its checkout. The
 // manifest writer asserts the result really is chrome-only (see ENGINE_CHROME).
 const ENGINE_ONLY = process.env.GV_ENGINE_ONLY === "1";
+// The seed pack — what a freshly provisioned hosted workspace is furnished with — rides in
+// the asset bundle as ONE document, dist/__seed/pack.json, built by a child build of seed/
+// (scripts/lib/seed-pack-build.mjs). It ships with every ENGINE-ONLY build, because that is
+// the build a deploy shell runs and a multi-workspace deployment is the only thing that
+// provisions. GV_SEED_PACK=1 forces it on any build, GV_SEED_PACK=0 skips it (the child
+// build sets that itself, so a pack build can never recurse). See src/seed-pack.mjs.
+const SEED_PACK = process.env.GV_SEED_PACK === "1" || (ENGINE_ONLY && process.env.GV_SEED_PACK !== "0");
 // GV_LOCAL=1 marks a build that is only ever served from this machine (offline preview,
 // `augur dev`). It gates the one folder whose contents are NOT ours to put on the web:
 // a space's session music (see the tracks/ block in buildSpace).
@@ -8082,7 +8089,11 @@ async function main() {
     // Leaving it in would also fail the GV_ENGINE_ONLY purity assertion, since it is not
     // in ENGINE_CHROME and would land under the default space's manifest.
     if (rel === "_worker.js" || rel === "_build.json" || rel === ".assetsignore") continue;
-    if (rel.startsWith("__config/") || rel.startsWith("__manifests/")) continue;
+    // `__seed/` is the pack a provisioning reads through the ASSETS binding — the worker's
+    // own document like `__config/`, sealed from external requests like it, and never a
+    // space's content nor the chrome's. It is written AFTER this walk, and skipped here so a
+    // rebuild over an existing dist does not fold it into a manifest.
+    if (rel.startsWith("__config/") || rel.startsWith("__manifests/") || rel.startsWith("__seed/")) continue;
     const sp = nonDefaultBases.find((b) => rel.startsWith(b.prefix));
     const owner = sp ? sp.id
       : ENGINE_CHROME.some((p) => rel === p || rel.startsWith(p)) ? "_engine"
@@ -8214,6 +8225,16 @@ async function main() {
   await fs.mkdir(path.join(DIST, "__manifests"), { recursive: true });
   for (const [id, m] of Object.entries(manifests))
     await fs.writeFile(path.join(DIST, "__manifests", id + ".json"), JSON.stringify(m), "utf8");
+
+  // The seed pack, last: a child build of seed/ into a scratch dir, folded into one document.
+  // After the manifests so it can never land in one, and after everything else so a pack
+  // build that fails fails the whole build loudly rather than leaving a deploy with no pack —
+  // a hosted worker without one refuses every provisioning (seed-pack-unavailable).
+  if (SEED_PACK) {
+    const { writeSeedPack } = await import("./scripts/lib/seed-pack-build.mjs");
+    const { pack } = writeSeedPack(DIST, { engineRoot: ROOT });
+    console.log(`Seed pack: ${Object.keys(pack.files).length} files, ${(pack.routing.publicPrefixes || []).length} prototypes → __seed/pack.json`);
+  }
 
   console.log(`Built dist/ — ${plural(spaces.length, "space")} (${spaces.map((s) => s.id).join(", ")}).`);
 }

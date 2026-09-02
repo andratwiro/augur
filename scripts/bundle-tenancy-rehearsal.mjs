@@ -263,9 +263,11 @@ async function generate() {
   // clause that passes for the wrong reason.
   const revertedSrc = path.join(WORK, "reverted-src");
   fs.cpSync(src, revertedSrc, { recursive: true });
-  const wf = path.join(revertedSrc, "_worker.js");
+  // The constant lives in src/bundle-keys.mjs since the workspace object started writing the
+  // store too (the seed pack at provisioning); the worker imports it from there.
+  const wf = path.join(revertedSrc, "bundle-keys.mjs");
   const before = fs.readFileSync(wf, "utf8");
-  const after = before.replace(/(const BUNDLE_TENANCY = Object\.freeze\(\{[\s\S]{0,3000}?\n)(\s*)spaces: true,/,
+  const after = before.replace(/(export const BUNDLE_TENANCY = Object\.freeze\(\{[\s\S]{0,3000}?\n)(\s*)spaces: true,/,
     (_m, head, indent) => `${head}${indent}spaces: false,`);
   if (after === before) throw new Error("the revert edit did not apply — has BUNDLE_TENANCY moved or been renamed?");
   fs.writeFileSync(wf, after);
