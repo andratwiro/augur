@@ -49,6 +49,7 @@ import { PLANS, DEFAULT_PLAN, QUOTA_FIELDS, quotasForPlan } from "./tenant-quota
 import { purgeThreads, personIdFor, idCollisions } from "./purge.mjs";
 import { deleteConfirmation, backupRetentionFromEnv } from "./delete-confirmation.mjs";
 import { tenantLabelFromHost, normalizeHost, parseReservedLabels } from "./tenant-host.mjs";
+import { nameFromEmail, initialsFor, colorFor } from "./roster-chip.mjs";
 
 // 1 → 2: `B-kv-read-cutover`'s second slice. `publish_tokens` gained `scope`, and `members`
 // gained the columns that let the roster documents be READ back rather than inferred — see
@@ -89,7 +90,10 @@ export const TENANT_SCHEMA = Object.freeze([
   //   source                                      — 'config' or 'overlay': where the
   //     MEMBERSHIP came from, which is what tells a `users:roster` `add` entry from a row
   //     the file already named. Reconstructing it by inference is exactly the guess this
-  //     column exists to refuse.
+  //     column exists to refuse. ⚠️ ONLY 'overlay' ROWS ARE SERVED FROM HERE: `rosterRead`
+  //     emits them into `add`, and a 'config' row is the mirror of a file the serving
+  //     path reads for itself. A membership that came from no file — the first admin
+  //     `applyProvisioning` writes — is therefore 'overlay', or it is invisible.
   `CREATE TABLE IF NOT EXISTS members (
      email        TEXT PRIMARY KEY,
      role         TEXT NOT NULL CHECK (role IN ('admin','editor','viewer')),
@@ -873,10 +877,27 @@ export function applyProvisioning(sql, {
        ON CONFLICT(purpose) DO NOTHING`,
     sessionKey || newSigningKey(), at,
   );
+  // ⚠️ THE FIRST ADMIN IS AN OVERLAY ROW, AND THAT IS THE WHOLE OF HOW THEY ARE SERVED.
+  // `source` says where a MEMBERSHIP came from, and this one came from provisioning — the
+  // first invitation a workspace ever issues — not from a config file, which a workspace born
+  // here has never had. The serving read (`rosterRead`) emits `'overlay'` rows into the `add`
+  // document and nothing else, because a `'config'` row is the MIRROR of a file and the file
+  // is what serves it. Written `'config'`, this row existed in the table and nowhere the
+  // serving path looks: `/__people` did not resolve the admin, the people list was empty,
+  // and their own invite link answered "no longer valid". Measured on a live signup.
+  //
+  // It is spelled exactly the way the admin invite spells an entry — a name, initials and a
+  // colour, stamped by the same three functions — so the first person a workspace has is a
+  // chip like everybody else's and not a blank. The row promotes to `'config'` the day a
+  // config push names them and drains like any invite; nothing about it is special after
+  // this INSERT, and nothing needs to be.
+  const email = String(adminEmail).trim().toLowerCase();
+  const name = String(adminName || "").trim() || nameFromEmail(email);
   sql.exec(
-    `INSERT INTO members (email, role, name, added_at, source) VALUES (?, 'admin', ?, ?, 'config')
+    `INSERT INTO members (email, role, name, added_at, initials, colour, source)
+       VALUES (?1, 'admin', ?2, ?3, ?4, ?5, 'overlay')
        ON CONFLICT(email) DO NOTHING`,
-    String(adminEmail).trim().toLowerCase(), adminName || "", at,
+    email, name, at, initialsFor(name), colorFor(email),
   );
   // A workspace PROVISIONED here has no KV era behind it, so this object is the record for
   // both identity families from its first moment and there is nothing to fall back to. A

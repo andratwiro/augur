@@ -235,7 +235,6 @@ const ALLOWLIST = {
       "LEGACY_USER_COOKIES",  // ⏳ the two names the session cookie used to be issued under
       "ROLES",                // admin, editor, viewer
       "AVATAR_MIMES",         // accepted avatar formats and their magic-byte tests
-      "ROSTER_COLORS",        // the presence-chip palette, indexed by a hash of the address
       "ENGINE_CHROME_PATHS",  // the shared chrome paths no space may write
       "MCP_PROXY_PATHS",      // the three paths the MCP/OAuth protocol speaks
       "VALID_STATUS",         // the prototype status vocabulary
@@ -323,6 +322,14 @@ const ALLOWLIST = {
     frozen: [
       "STATE_INVENTORY",  // the list itself; the export endpoint walks it
       "INVENTORY_IDS",    // the ids, derived from the list at load
+    ],
+  },
+
+  // How a member's chip reads when nobody typed it. Pure string work, shared by the two
+  // writers of a `members` row — the worker's invite and the object's provisioning.
+  "src/roster-chip.mjs": {
+    frozen: [
+      "ROSTER_COLORS",  // the presence-chip palette, indexed by a hash of the address
     ],
   },
 
