@@ -111,10 +111,26 @@ const cwdSpaceOrigin = (() => {
   try { return JSON.parse(readFileSync(path.join(process.cwd(), "space.json"), "utf8")).siteOrigin || ""; }
   catch (e) { return ""; }
 })();
-const ORIGIN = (process.env.AUGUR_ORIGIN || DEPLOY_ENV.AUGUR_ORIGIN ||
+let ORIGIN = (process.env.AUGUR_ORIGIN || DEPLOY_ENV.AUGUR_ORIGIN ||
   deployConfig(ROOT, originHost(cwdSpaceOrigin)).siteOrigin || cwdSpaceOrigin || "")
   .replace(/\/+$/, "");
 if (!ORIGIN) die("no target origin — set AUGUR_ORIGIN, or add \"siteOrigin\" to space.json.");
+// A WORKSPACE THAT MOVED answers its old address with a redirect. A checkout that still
+// names the old address (space.json not yet pulled, a stale AUGUR_ORIGIN) would otherwise
+// POST through that redirect and read the answer as a bad token. One GET with redirects
+// off says where the workspace lives now; from here on that is the origin.
+async function followMovedOrigin(origin) {
+  let r;
+  try { r = await fetch(`${origin}/_build.json`, { redirect: "manual", signal: AbortSignal.timeout(6000) }); }
+  catch (e) { return origin; }
+  if (r.status < 300 || r.status >= 400) return origin;
+  let to;
+  try { to = new URL(r.headers.get("location") || "", origin); } catch (e) { return origin; }
+  if (!to.host || to.host === new URL(origin).host || !/^https?:$/.test(to.protocol)) return origin;
+  log(`${new URL(origin).host} now redirects to ${to.host} — publishing there.`);
+  return `${to.protocol}//${to.host}`;
+}
+ORIGIN = await followMovedOrigin(ORIGIN);
 // Keep the engine current BEFORE anything below can refuse. Every refusal this file prints
 // is a place a stale clone would stop and never reach the update at all — so a fix to the
 // refusal itself (what to say, what to do instead) would never arrive on the one machine
@@ -323,8 +339,12 @@ if (targetSpace && !byId[targetSpace]) die(`unknown space "${targetSpace}" (have
     // A dead credential is the one refusal a person can repair on the spot — and where the
     // instance offers pairing, without typing anything here. One attempt: a second refusal
     // after a fresh token is a different problem, and gets the messages below.
-    if (attempt === 0 && (expired || !(body && body.message))
-        && await pairHere(expired ? "this publish token has EXPIRED" : `${ORIGIN} rejected the publish token`)) continue;
+    // Any refusal but a viewer's: a token minted under an address the roster no longer
+    // lists first, a revoked one, an unexplained 403 — a fresh pairing settles all of them,
+    // and a person who cannot sign in cannot approve one, so nothing is bypassed.
+    if (attempt === 0 && !(body && body.error === "viewer-role")
+        && await pairHere(expired ? "this publish token has EXPIRED"
+          : `${ORIGIN} rejected the publish token${body && body.message ? ` (${body.message})` : ""}`)) continue;
     if (expired) {
       die(`this publish token has EXPIRED.\n\n`
         + `  Run \`augur login\` (or \`augur connect\`) again — that is the whole fix, and it\n`

@@ -63,6 +63,24 @@ test("A TOKEN FOLLOWS THE MOVE when the old host redirects to the new one", asyn
   } finally { next.server.close(); old.server.close(); fs.rmSync(dir, { recursive: true, force: true }); }
 });
 
+test("A STALE ORIGIN IS FOLLOWED TOO — a checkout that still names the old address publishes to the new one", async () => {
+  const seen = [];
+  const next = await serve((req, res) => {
+    if (req.url.endsWith("/check")) { seen.push(req.headers.authorization); return json(res, 403, { error: "forbidden", message: "reached the new home" }); }
+    json(res, 404, {});
+  });
+  const old = await serve((req, res) => { res.writeHead(302, { location: `${next.origin}${req.url}` }); res.end(); });
+  const dir = home();
+  fs.writeFileSync(path.join(dir, ".config", "augur", "tokens.json"), JSON.stringify({ [old.host]: { token: "carried", space: "*" } }));
+  try {
+    const r = await run(["--engine", "--dry-run"], { HOME: dir, AUGUR_ORIGIN: old.origin, AUGUR_TOKEN: "", AUGUR_NO_PAIR: "1" });
+    assert.match(r.out, /now redirects to .* — publishing there/, r.out);
+    assert.match(r.out, /reached the new home/, r.out);
+    assert.deepEqual(seen, ["Bearer carried"]);
+    assert.equal(tokensOf(dir)[next.host].token, "carried", "the token did not follow to the new host");
+  } finally { next.server.close(); old.server.close(); fs.rmSync(dir, { recursive: true, force: true }); }
+});
+
 test("a host that does NOT redirect proves nothing — its token is never sent elsewhere", async () => {
   const sent = [];
   const next = await serve((req, res) => { sent.push(req.url); json(res, 403, { error: "forbidden" }); });
@@ -121,6 +139,40 @@ test("NO TOKEN AT ALL pairs too — a first publish never starts with a login le
     assert.match(r.out, /no publish token for .* — pairing this machine/, r.out);
     assert.match(r.out, /the FRESH token reached the check/);
     assert.ok(!/Run `augur login` once/.test(r.out), r.out);
+  } finally { inst.server.close(); fs.rmSync(dir, { recursive: true, force: true }); }
+});
+
+test("A TOKEN WHOSE ADDRESS THE ROSTER NO LONGER LISTS FIRST pairs too — the approval decides, not the label", async () => {
+  const inst = await serve((req, res) => {
+    if (req.url === "/__publish/_pair/start") return json(res, 200, { code: "ABCD1234", deviceSecret: "s", approveUrl: `${inst.origin}/__connect`, expiresInMs: 60000 });
+    if (req.url === "/__publish/_pair/claim") return json(res, 200, { status: "approved", token: "fresh", space: "*" });
+    if (req.url.endsWith("/check")) {
+      if (req.headers.authorization === "Bearer fresh") return json(res, 403, { error: "forbidden", message: "the FRESH token reached the check" });
+      return json(res, 403, { error: "forbidden", message: "This token's account is no longer a member of this workspace." });
+    }
+    json(res, 404, {});
+  });
+  const dir = home();
+  fs.writeFileSync(path.join(dir, ".config", "augur", "tokens.json"), JSON.stringify({ [inst.host]: { token: "old-address", space: "*" } }));
+  try {
+    const r = await run(["--engine", "--dry-run"], { HOME: dir, AUGUR_ORIGIN: inst.origin, AUGUR_TOKEN: "" });
+    assert.match(r.out, /no longer a member.*— pairing this machine/s, r.out);
+    assert.match(r.out, /the FRESH token reached the check/, r.out);
+  } finally { inst.server.close(); fs.rmSync(dir, { recursive: true, force: true }); }
+});
+
+test("a VIEWER is not sent to pair — the approval would refuse the same way", async () => {
+  const inst = await serve((req, res) => {
+    if (req.url === "/__publish/_pair/start") return json(res, 200, { code: "ABCD1234", deviceSecret: "s", approveUrl: "x", expiresInMs: 60000 });
+    json(res, 403, { error: "viewer-role", message: "This account can look around but not publish." });
+  });
+  const dir = home();
+  fs.writeFileSync(path.join(dir, ".config", "augur", "tokens.json"), JSON.stringify({ [inst.host]: { token: "look", space: "*" } }));
+  try {
+    const r = await run(["--engine", "--dry-run"], { HOME: dir, AUGUR_ORIGIN: inst.origin, AUGUR_TOKEN: "" });
+    assert.equal(r.code, 1);
+    assert.match(r.out, /look around but not publish/);
+    assert.ok(!/pairing this machine/.test(r.out), r.out);
   } finally { inst.server.close(); fs.rmSync(dir, { recursive: true, force: true }); }
 });
 

@@ -1997,6 +1997,15 @@ function userByEmail(email, users) {
   const e = String(email == null ? "" : email).trim().toLowerCase();
   return users.find((u) => u.email.toLowerCase() === e) || null;
 }
+// A roster user by one of their OTHER addresses (`emails`: the git-attribution aliases a
+// person accumulates, and their previous primary after a swap). Deliberately not folded
+// into userByEmail: sign-in and invites resolve a primary address, and an alias is an
+// attribution fact, not a credential — only the publish-token holder check consults it.
+function userByAliasEmail(email, users) {
+  const e = String(email == null ? "" : email).trim().toLowerCase();
+  if (!e) return null;
+  return users.find((u) => Array.isArray(u.emails) && u.emails.some((a) => String(a || "").toLowerCase() === e)) || null;
+}
 
 // Safe-to-expose view of a user — never includes the password.
 // initials/color use the EXACT same fallbacks as peopleApi below — the two must
@@ -4555,7 +4564,11 @@ function tokenActorRefusal(tctx, e) {
   const label = e && e.label ? String(e.label).trim() : "";
   if (!label) return null;                 // an unlabelled token names nobody to re-check
   if (!label.includes("@")) return null;   // an admin typed this; there is no person behind it
-  const u = userByEmail(label, tctx.USERS);
+  // The label is the address the token was minted under. A person's PRIMARY address can
+  // change (the roster carries the old one in `emails` from then on, for attribution), and
+  // a token they minted last month still names the old one — that is the same person,
+  // not a stranger. Primary first, then the aliases; the roster is the only thing consulted.
+  const u = userByEmail(label, tctx.USERS) || userByAliasEmail(label, tctx.USERS);
   // The case the `u && …` short-circuit used to skip: the address is gone from the roster.
   if (!u) return "not-a-member";
   const role = roleOf(u);
@@ -11670,7 +11683,7 @@ async function handleRequest(request, env, ctx, url, trace) {
 // __testables — it exists only so test/worker.test.mjs can import them.
 export const __testables = Object.freeze({
   applyInstance,
-  hashPassword, verifyPassword, isPassHash, safeEqual, userByEmail,
+  hashPassword, verifyPassword, isPassHash, safeEqual, userByEmail, userByAliasEmail,
   personId, avatarKey, publicUser, stampAuthor, sanitizeMsg, applyOp, reviewApi, reviewExport,
   purgeThreads, purgeUser, PURGED_AUTHOR,
   redactPublishedBy, redactProvenance, PURGED_PUBLISHER,
