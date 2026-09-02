@@ -64,7 +64,7 @@ export function target({ root = ENGINE_ROOT, needToken = true } = {}) {
   }
   const token = resolveToken(origin, root);
   if (needToken && !token) {
-    throw new Error("no publish token — run `augur login` once (uses your web credentials).");
+    throw new Error("no publish token — run `augur connect` (or `augur login`, which uses your web credentials) once.");
   }
   return { origin, token };
 }

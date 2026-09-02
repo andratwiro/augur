@@ -19,7 +19,8 @@
 
 import { spawn, spawnSync, execFileSync } from "node:child_process";
 import { sanitizeActor } from "../src/provenance.mjs";
-import { existsSync, readFileSync, readdirSync, realpathSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync, realpathSync, mkdirSync, writeFileSync } from "node:fs";
+import os from "node:os";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -114,23 +115,90 @@ const ORIGIN = (process.env.AUGUR_ORIGIN || DEPLOY_ENV.AUGUR_ORIGIN ||
   deployConfig(ROOT, originHost(cwdSpaceOrigin)).siteOrigin || cwdSpaceOrigin || "")
   .replace(/\/+$/, "");
 if (!ORIGIN) die("no target origin — set AUGUR_ORIGIN, or add \"siteOrigin\" to space.json.");
+// Keep the engine current BEFORE anything below can refuse. Every refusal this file prints
+// is a place a stale clone would stop and never reach the update at all — so a fix to the
+// refusal itself (what to say, what to do instead) would never arrive on the one machine
+// that needs it. Both may re-exec and never return; both are throttled and never fatal.
+await maybeRefreshEngine();               // periodic sweep
+await refreshIfInstanceIsAhead(ORIGIN);   // and the exact case: the instance is newer
 // Token: env/instance file, else the saved `augur login` credential for this origin.
-let TOKEN = process.env.AUGUR_TOKEN || DEPLOY_ENV.AUGUR_TOKEN || "";
+// An AUGUR_TOKEN set to the empty string is a statement, not an absence: "the saved
+// login, not this machine's .env.deploy" — which is how a person's publish is kept apart
+// from a shell's on the same laptop, and how a test isolates itself from the checkout.
+let TOKEN = "AUGUR_TOKEN" in process.env ? process.env.AUGUR_TOKEN : (DEPLOY_ENV.AUGUR_TOKEN || "");
+// A token handed in by the environment belongs to a machine (CI, a shell's .env.deploy).
+// It is never paired for below: a pairing prints a code and waits for a person.
+const TOKEN_FROM_ENV = !!TOKEN;
+const HOST = new URL(ORIGIN).host;
+const TOKENS_FILE = path.join(os.homedir(), ".config", "augur", "tokens.json");
+const readSavedTokens = () => { try { return JSON.parse(readFileSync(TOKENS_FILE, "utf8")); } catch (e) { return {}; } };
+const saveTokens = (all) => {
+  try { mkdirSync(path.dirname(TOKENS_FILE), { recursive: true }); writeFileSync(TOKENS_FILE, JSON.stringify(all, null, 2), { mode: 0o600 }); }
+  catch (e) {}
+};
 // Read once, and keep it: the refusal below names the OTHER hosts you have tokens for,
 // which is the difference between "you never logged in" and "this workspace moved".
-let savedTokens = {};
-try {
-  const os = await import("node:os");
-  savedTokens = JSON.parse(readFileSync(path.join(os.homedir(), ".config", "augur", "tokens.json"), "utf8"));
-} catch (e) {}
-if (!TOKEN) TOKEN = (savedTokens[new URL(ORIGIN).host] || {}).token || "";
-if (!TOKEN) {
+let savedTokens = readSavedTokens();
+if (!TOKEN) TOKEN = (savedTokens[HOST] || {}).token || "";
+
+// A WORKSPACE THAT MOVED HOSTNAME takes its token map with it (the store carries it), so
+// the credential still works — only this file's key is stale. Nobody should have to
+// learn that: when a host we hold a token for now redirects to this one, that redirect
+// is the instance itself saying "same place, new address", and the token follows it.
+// A token is never tried against a host that did not prove the move that way — sending
+// one instance's credential to another would be worse than asking.
+async function tokenAcrossMove() {
+  for (const other of Object.keys(savedTokens)) {
+    if (other === HOST || !(savedTokens[other] || {}).token) continue;
+    for (const scheme of ["https", "http"]) {
+      let r;
+      try { r = await fetch(`${scheme}://${other}/_build.json`, { redirect: "manual", signal: AbortSignal.timeout(6000) }); }
+      catch (e) { continue; }
+      if (r.status < 300 || r.status >= 400) break;
+      let to = "";
+      try { to = new URL(r.headers.get("location") || "", `${scheme}://${other}`).host; } catch (e) {}
+      if (to !== HOST) break;
+      savedTokens[HOST] = { ...savedTokens[other], movedFrom: other, at: new Date().toISOString() };
+      saveTokens(savedTokens);
+      log(`${other} now redirects to ${HOST} — the publish token followed the move.`);
+      return savedTokens[HOST].token;
+    }
+  }
+  return "";
+}
+if (!TOKEN) TOKEN = await tokenAcrossMove();
+
+// NO TOKEN, OR A DEAD ONE, IS NOT A QUESTION FOR THE PERSON. When the instance offers device
+// pairing, the fix is a link and a code in a browser they are already signed in to —
+// no password, nothing typed here — so it runs right here, inside the publish, and the
+// publish carries on. Off for machine tokens (see TOKEN_FROM_ENV), in CI, or by flag.
+const NO_PAIR = flag("--no-pair") || process.env.AUGUR_NO_PAIR === "1" || !!process.env.CI;
+async function pairHere(why) {
+  if (NO_PAIR || TOKEN_FROM_ENV) return false;
+  let start;
+  try {
+    start = await fetch(`${ORIGIN}/__publish/_pair/start`, {
+      method: "POST", headers: { "content-type": "application/json" }, body: "{}", signal: AbortSignal.timeout(8000),
+    });
+  } catch (e) { return false; }
+  if (start.status !== 200) return false; // the instance has not switched pairing on
+  log(`${why} — pairing this machine with a browser that is signed in to ${HOST}. Nothing is typed here.`);
+  const code = await new Promise((resolve) => {
+    spawn(process.execPath, [path.join(ROOT, "scripts", "connect.mjs"), "--origin", ORIGIN],
+      { stdio: ["ignore", process.stderr, "inherit"] }).on("close", resolve);
+  });
+  if (code !== 0) return false;
+  savedTokens = readSavedTokens();
+  TOKEN = (savedTokens[HOST] || {}).token || "";
+  return !!TOKEN;
+}
+if (!TOKEN && !(await pairHere(`no publish token for ${HOST}`))) {
   // NAME THE HOSTS YOU DO HAVE, because the commonest way to arrive here is a MOVE. A
   // workspace that changed hostname leaves a token file full of entries for the old one,
   // and "no publish token" on its own reads as "you never logged in" — which sends
   // somebody looking for a problem they solved months ago.
-  const others = Object.keys(savedTokens).filter((h) => h !== new URL(ORIGIN).host);
-  die(`no publish token for ${new URL(ORIGIN).host}.\n`
+  const others = Object.keys(savedTokens).filter((h) => h !== HOST);
+  die(`no publish token for ${HOST}.\n`
     + (others.length
       ? `  You have one for ${others.join(", ")} — if this workspace moved, that is why.\n`
         + `  Run \`augur login --origin ${ORIGIN}\` to get one for its new home.\n\n  ${MEANWHILE}`
@@ -232,25 +300,32 @@ if (targetSpace && !byId[targetSpace]) die(`unknown space "${targetSpace}" (have
 // "just a blip": if publishing can't be verified as possible, nothing gets built.
 {
   const probeSpace = targetSpace || "_engine";
-  let r;
-  try {
-    r = await fetch(`${ORIGIN}/__publish/${probeSpace}/check`, {
-      method: "POST",
-      headers: { Authorization: `Bearer ${TOKEN}`, "content-type": "application/json" },
-      body: JSON.stringify({ files: {} }),
-    });
-  } catch (e) {
-    die(`can't reach ${ORIGIN} to verify the publish token (${e.message}) — check your connection ` +
-        `or AUGUR_ORIGIN. ${MEANWHILE}`);
-  }
-  if (r.status === 401 || r.status === 403) {
+  for (let attempt = 0; ; attempt++) {
+    let r;
+    try {
+      r = await fetch(`${ORIGIN}/__publish/${probeSpace}/check`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${TOKEN}`, "content-type": "application/json" },
+        body: JSON.stringify({ files: {} }),
+      });
+    } catch (e) {
+      die(`can't reach ${ORIGIN} to verify the publish token (${e.message}) — check your connection ` +
+          `or AUGUR_ORIGIN. ${MEANWHILE}`);
+    }
+    if (r.status !== 401 && r.status !== 403) break;
     // The instance usually knows exactly what is wrong, and saying so beats a list of
     // three guesses. A publish token expires now (30 days by default), so "it's likely
     // expired, revoked, or not scoped" is about to become the message every holder sees
     // on the one failure that has a fix they can run themselves.
     let body = null;
     try { body = await r.json(); } catch (e) {}
-    if (body && body.error === "token-expired") {
+    const expired = !!(body && body.error === "token-expired");
+    // A dead credential is the one refusal a person can repair on the spot — and where the
+    // instance offers pairing, without typing anything here. One attempt: a second refusal
+    // after a fresh token is a different problem, and gets the messages below.
+    if (attempt === 0 && (expired || !(body && body.message))
+        && await pairHere(expired ? "this publish token has EXPIRED" : `${ORIGIN} rejected the publish token`)) continue;
+    if (expired) {
       die(`this publish token has EXPIRED.\n\n`
         + `  Run \`augur login\` (or \`augur connect\`) again — that is the whole fix, and it\n`
         + `  takes a few seconds. Nothing published is affected.\n\n  ${MEANWHILE}`);
@@ -431,8 +506,6 @@ async function runBuild(label) {
   });
   if (code !== 0) die(`build failed (exit ${code}). ${MEANWHILE}`);
 }
-await maybeRefreshEngine();               // periodic sweep; may re-exec and never return
-await refreshIfInstanceIsAhead(ORIGIN);   // and the exact case: the instance is newer
 await runBuild();
 
 // Who forked, for conflict folder names — what git will actually sign as, not the

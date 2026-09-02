@@ -218,30 +218,39 @@ Adding pages is never blocked; only losing them is.
 
 ## One-time sign-in
 
-The first publish says it has no token:
+The first publish on a machine pairs it with your browser, on its own:
 
 ```
-node ../augur/scripts/login.mjs          # or: augur login
+[publish] no publish token for <host> — pairing this machine with a browser that is
+          signed in to <host>. Nothing is typed here.
+
+  Open   https://<host>/__connect
+  Type   ABCD-1234
 ```
 
-Enter the **web email + password** for the site — the password you chose when you
-opened your invite link (the maintainer sends a single-use `/__invite?t=…` link;
-there are no issued passwords). Agents: ask your human to run it — never have a
-password pasted into chat. It saves a publish token to `~/.config/augur/`, and
-prints the date it stops working.
+Open the link in a browser where you are already signed in to the site, type the
+code, and the publish carries on. No password goes near the terminal, the shell
+history, or an agent transcript. `node ../augur/scripts/connect.mjs` (`augur connect`)
+runs that step by itself when you want it ahead of time. Agents: relay the link and
+the code to your human; that is the whole hand-off.
 
-**⚠️ A PUBLISH TOKEN EXPIRES.** It used to last forever, which meant a laptop
-lost two years ago could still publish. Thirty days is the default and the
-instance sets it, so the token in your config is not a permanent credential and
-a publish that has worked for weeks can stop. Run `augur login` again — that is
-the whole fix, and it is the fix for most of these:
+`augur login` (web email + password) still exists for two cases: CI and scripts,
+where there is no browser to type into, and an instance that has not switched
+pairing on (`devicePairing: true` in its deploy config). Agents: never have a
+password pasted into chat — ask your human to run it.
+
+**A PUBLISH TOKEN EXPIRES** (thirty days by default; the instance sets it, and can
+set it to never). When it does, the next publish pairs again exactly as above. The
+same when the workspace moves to a new hostname: the old address redirects to the
+new one, and the token follows the move without anyone doing anything.
 
 | The refusal says | What happened | What to do |
 |---|---|---|
-| **EXPIRED** | the token aged out | `augur login` |
+| pairing this machine … Open … Type … | no token here, or it ran out | open the link, type the code |
+| **EXPIRED** (and no pairing offered) | the token aged out on an instance without pairing | `augur login` |
 | no longer a member of this workspace | the account was removed | ask an admin |
-| no publish token for `<host>` — you have one for `<other>` | the workspace moved to a new hostname | `augur login --origin https://<host>` |
-| no publish token, and you have none at all | you have not signed in on this machine | `augur login` |
+| no publish token for `<host>` — you have one for `<other>` | the workspace moved and the old address does not redirect | `augur login --origin https://<host>` |
+| no publish token, and you have none at all (no pairing offered) | you have not signed in on this machine | `augur login` |
 
 The messages name which one it is; a bare `403` means the instance is running an
 engine too old to say, and `augur login` is still the first thing to try.
