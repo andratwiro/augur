@@ -382,6 +382,10 @@ function workspace(n) {
               seen(`TENANTS suspension ${id.name}`);
               return Response.json({ suspended: false, moved: false, canonicalHost: `${id.name}.claimed.invalid` });
             }
+            if (String(url).endsWith("/onboarding/status")) {
+              seen(`TENANTS onboarding ${id.name}`);
+              return Response.json({ connected: true, firstPublishAt: `${id.name}-first-publish`, members: { converted: 1, active: 2 }, viewersBecameEditors: 0, me: null });
+            }
             return Response.json({});
           },
         };
@@ -722,6 +726,18 @@ const ROUTES = [
     read: asJson,
     own: (n) => ({ claimed: true, hostname: `${n}.claimed.invalid` }),
     witness: (n) => [`TENANTS suspension ${n}`],
+  }),
+
+  route("onboarding-status", {
+    auth: "admin",
+    path: () => "/__onboarding/status",
+    // TENANTS-backed like custom-domain above: the signal lives on the workspace object and
+    // nowhere else, so this is the second route that takes `envTenants`.
+    env: (ws) => ws.envTenants,
+    read: async (res) => { const b = await asJson(res); return { connected: b.connected, at: b.firstPublishAt, backing: b.backing }; },
+    own: (n) => ({ connected: true, at: `${n}-first-publish`, backing: "workspace-object" }),
+    witness: (n) => [`TENANTS onboarding ${n}`],
+    cached: () => [],
   }),
 
   route("kv-backup", {
