@@ -219,3 +219,67 @@ test("BUILD.JS RECORDS THE SOURCE HASH ON EVERY PAGE IT TRANSFORMS, AND ONLY THO
     if (f.sh !== undefined && !p.endsWith(".html")) assert.fail(`${p} carries sh but is not a transformed page`);
   }
 });
+
+// ── The stamp records the EDIT, not the publish ─────────────────────────────────────────
+//
+// "Who last changed this and when" is a question about the source, and git already answers
+// it per file — author and commit time of the last real change, with the poster, mechanical
+// and shallow-graft guards build.js carries. A stamp of `{publisher, now}` answers a
+// different question: who pushed the button. The two diverge whenever somebody publishes a
+// colleague's pushed commits, restores a copy, or ships on Friday what they wrote on Monday
+// — and on a busy instance that put one person's face and one minute on every card. So
+// build.js records git's answer on every entry it can, and the commit handler adopts it for
+// a file whose SOURCE changed, keeping `{publisher, now}` only as the fallback for a file
+// git cannot vouch for (no repo, untracked, or edited and not yet committed).
+
+test("A CHANGED FILE TAKES THE EDIT'S OWN AUTHOR AND TIME when the build recorded them", async () => {
+  const env = envWith(null);
+  await commit(env, manifest({ "/a/index.html": entry("<p>hi</p><!--e1-->", "<p>hi</p>") }));
+  await tick();
+  const edit = { by: "someone", editedAt: "2026-08-30T09:15:00.000Z" }; // the commit, days before this publish
+  await commit(env, manifest({ "/a/index.html": { ...entry("<p>hello</p><!--e1-->", "<p>hello</p>"), ...edit } }, { sha: "def", dirty: false }));
+  assert.deepEqual(stampOf(liveNow(env).files["/a/index.html"]), edit, "the publish overwrote the edit's own provenance with the publisher's");
+});
+
+test("a changed file with no recorded edit falls back to the publisher, now", async () => {
+  const env = envWith(null);
+  await commit(env, manifest({ "/a/index.html": entry("<p>hi</p>", "<p>hi</p>") }));
+  const t0 = liveNow(env).files["/a/index.html"].editedAt;
+  await tick();
+  await commit(env, manifest({ "/a/index.html": entry("<p>hello</p>", "<p>hello</p>") }, { sha: "def", dirty: false }));
+  const f = liveNow(env).files["/a/index.html"];
+  assert.notEqual(f.editedAt, t0);
+  assert.equal(f.by, W.personId("bootstrap"));
+});
+
+test("an UNCHANGED file ignores a body-carried stamp — the recorded one is the record", async () => {
+  const env = envWith(null);
+  await commit(env, manifest({ "/a/index.html": entry("<p>hi</p>", "<p>hi</p>") }));
+  const before = stampOf(liveNow(env).files["/a/index.html"]);
+  await tick();
+  await commit(env, manifest({ "/a/index.html": { ...entry("<p>hi</p><!--e2-->", "<p>hi</p>"), by: "forged", editedAt: "2030-01-01T00:00:00.000Z" } }, { sha: "def", dirty: false }));
+  assert.deepEqual(stampOf(liveNow(env).files["/a/index.html"]), before);
+});
+
+test("BUILD.JS RECORDS GIT'S AUTHOR AND COMMIT TIME PER FILE, and nothing for an uncommitted edit", () => {
+  const dir = makeSpace();
+  const git = (...a) => execFileSync("git", ["-C", dir, ...a], { stdio: ["ignore", "pipe", "pipe"], env: { ...process.env, GIT_AUTHOR_DATE: "2026-08-30T09:15:00Z", GIT_COMMITTER_DATE: "2026-08-30T09:15:00Z" } });
+  git("init", "-q");
+  git("-c", "user.email=someone@example.test", "-c", "user.name=Someone", "add", ".");
+  git("-c", "user.email=someone@example.test", "-c", "user.name=Someone", "commit", "-q", "-m", "first");
+  // A second file, edited after the commit and not committed: git cannot vouch for it.
+  writeFileSync(path.join(dir, "demo", "prototypes", "hello", "app.js"), "console.log(2)\n");
+  const out = path.join(dir, "__dist");
+  execFileSync(process.execPath, ["build.js"], {
+    cwd: ROOT, env: { ...process.env, GV_SPACES_ROOT: dir, GV_DIST: out },
+    stdio: ["ignore", "pipe", "pipe"],
+  });
+  const m = JSON.parse(readFileSync(path.join(out, "__manifests", "acme.json"), "utf8"));
+  const page = m.files["/demo/hello/index.html"];
+  assert.equal(page.editedAt, "2026-08-30T09:15:00.000Z", "the page's stamp is not its commit time");
+  assert.equal(page.by, W.personId("someone@example.test"), "the page's stamp is not its author's id");
+  assert.ok(!JSON.stringify(m).includes("someone@example.test"), "an address leaked into the manifest");
+  const script = m.files["/demo/hello/app.js"];
+  assert.equal(script.editedAt, undefined, "a file with uncommitted edits was stamped from a commit that predates them");
+  assert.equal(script.by, undefined);
+});

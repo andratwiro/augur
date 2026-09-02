@@ -741,6 +741,43 @@ async function isDir(p) {
 // per publish, fourteen times in one night, until every card read "Edited 8 hours ago"
 // by the CI token). A verbatim copy records nothing here: its `h` already IS the source.
 const SOURCE_HASHES = new Map();
+// dist-relative path → {by, editedAt}: git's answer to "who last changed this file, and
+// when" — author (as a one-way person id) and commit time of the last real change, with the
+// poster / mechanical-commit / shallow-graft guards spaceDates carries. The manifest carries
+// it beside `sh`, and the commit handler ADOPTS it for a file whose source changed, so the
+// recorded stamp is the EDIT and not the publish: a publisher shipping a colleague's pushed
+// commits, a restore of a copy, a Friday publish of Monday's work all keep the real author
+// and the real day. Nothing for a file git cannot vouch for — untracked, or edited and not
+// yet committed — and the handler then falls back to the publisher, now, which for an
+// uncommitted edit is the truth.
+const SOURCE_STAMPS = new Map();
+const DIRTY_PATHS = new Map(); // space root → Set of repo-relative paths with uncommitted changes
+function dirtyPaths(repoRoot) {
+  if (DIRTY_PATHS.has(repoRoot)) return DIRTY_PATHS.get(repoRoot);
+  const set = new Set();
+  try {
+    const raw = execFileSync("git", ["-C", repoRoot, "status", "--porcelain", "-z", "--untracked-files=all"], {
+      encoding: "utf8", stdio: ["ignore", "pipe", "ignore"], maxBuffer: 64 * 1024 * 1024,
+    });
+    const tok = raw.split("\0");
+    for (let i = 0; i < tok.length; i++) {
+      const t = tok[i];
+      if (t.length < 4) continue;
+      set.add(t.slice(3));
+      if (t[0] === "R" || t[0] === "C") i++; // the rename's origin path follows as its own record
+    }
+  } catch { /* no git — nothing is known to be dirty, and dateFor answers null anyway */ }
+  DIRTY_PATHS.set(repoRoot, set);
+  return set;
+}
+function recordSourceStamp(srcPath, distRel) {
+  if (!WS_ROOT) return;
+  const d = dateFor(srcPath);
+  if (!d || !d.email || !d.t) return;
+  const rel = path.relative(WS_ROOT, srcPath).split(path.sep).join("/");
+  if (dirtyPaths(WS_ROOT).has(rel)) return;
+  SOURCE_STAMPS.set(distRel, { by: personIdOf(d.email), editedAt: new Date(d.t).toISOString() });
+}
 const SPACE_DATES = new Map(); // space root → parsed maps (one git pass per space per build)
 function spaceDates(repoRoot) {
   if (SPACE_DATES.has(repoRoot)) return SPACE_DATES.get(repoRoot);
@@ -1013,10 +1050,11 @@ async function copyDir(src, dest, exclude, titleEmoji) {
     if (entry.isDirectory()) {
       latest = Math.max(latest, await copyDir(srcPath, destPath, exclude, titleEmoji));
     } else if (entry.isFile()) {
+      const distRel = path.relative(DIST, destPath).split(path.sep).join("/");
+      recordSourceStamp(srcPath, distRel);
       if (entry.name.endsWith(".html")) {
         const raw = await fs.readFile(srcPath);
-        SOURCE_HASHES.set(path.relative(DIST, destPath).split(path.sep).join("/"),
-          createHash("sha256").update(raw).digest("hex"));
+        SOURCE_HASHES.set(distRel, createHash("sha256").update(raw).digest("hex"));
         let html = raw.toString("utf8");
         // Live-link rewrite: a prototype that IMPORTS canonical assets references
         // them as ../../../skills/<ui-skill>/X (resolves on disk when opened
@@ -8045,7 +8083,8 @@ async function main() {
     const body = await fs.readFile(path.join(DIST, rel));
     const h = createHash("sha256").update(body).digest("hex");
     const sh = SOURCE_HASHES.get(rel);
-    (manifests[owner] ||= { id: owner, format: 1, files: {} }).files["/" + rel] = { h, ct: ctFor(rel), s: body.length, ...(sh ? { sh } : {}) };
+    const stamp = SOURCE_STAMPS.get(rel);
+    (manifests[owner] ||= { id: owner, format: 1, files: {} }).files["/" + rel] = { h, ct: ctFor(rel), s: body.length, ...(sh ? { sh } : {}), ...(stamp || {}) };
   }
   // Chrome purity. An engine-only build has no space on disk, so EVERY file it
   // emitted must be engine chrome. If one isn't, ENGINE_CHROME has gone stale

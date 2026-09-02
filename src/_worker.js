@@ -5753,11 +5753,18 @@ async function publishApi(tctx, request, url, env) {
     // IS the live one, clean on both sides, changed nothing a person wrote whatever its
     // bytes say: that is exactly what a re-bake is.
     //
-    // A stamp in the BODY is an assertion anybody can type and is discarded — except on the
-    // first publish into an empty store, where there is no prior record to protect and the
-    // body IS the record: `augur restore` replaying an export. Stamping every file with the
-    // restorer there launders a whole history into one person on the day of a migration.
-    // Same trust-on-first-publish footing lineage has below, same shape checks.
+    // THE STAMP RECORDS THE EDIT, NOT THE PUBLISH. "Who last changed this and when" is a
+    // question about the source, and build.js answers it per file from git — author as a
+    // one-way id, commit time of the last real change, the poster / mechanical / graft guards
+    // applied — and sends it in the entry. A file whose source CHANGED adopts that answer;
+    // `{publisher, now}` is only the fallback for a file git could not vouch for (no repo,
+    // untracked, edited and not yet committed — where the publisher, now, is the truth).
+    // Without this the stamp answered "who pushed the button": a publisher shipping a
+    // colleague's pushed commits, a restore of a copy, a Friday publish of Monday's work
+    // all put the wrong person and the wrong day on the card. A file whose source did NOT
+    // change ignores whatever the body claims — the recorded stamp is the record, and an
+    // unchanged file is exactly where a claim would be a forgery. Shape-checked, never an
+    // address.
     const editedAt = new Date().toISOString();
     const stampedBy = who.label ? personId(who.label) : null;
     const priorFiles = (cur && cur.files) || {};
@@ -5786,7 +5793,7 @@ async function publishApi(tctx, request, url, env) {
         stampedFiles[p2] = { ...bytes, ...(prior.by ? { by: prior.by } : {}), ...(prior.editedAt ? { editedAt: prior.editedAt } : {}) };
         continue;
       }
-      const asserted = cur ? null : carriedStamp(f);
+      const asserted = carriedStamp(f);
       stampedFiles[p2] = asserted
         ? { ...bytes, ...asserted }
         : { ...bytes, ...(stampedBy ? { by: stampedBy } : {}), editedAt };

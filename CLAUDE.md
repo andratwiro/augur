@@ -273,7 +273,13 @@ fingerprint in it and a stamp keyed on the served bytes called every engine chan
 one person's work (2026-09-02: every card "Edited 8 hours ago" by the CI token). A
 publish whose source commit IS live's, clean on both sides — a re-bake — changes
 nothing a person wrote, and a live entry that predates `sh` keeps its stamp once
-rather than being judged on bytes it cannot explain. `by` is `personId(email)`,
+rather than being judged on bytes it cannot explain. **And the stamp records the
+EDIT, not the publish**: build.js sends git's answer per file — author id and
+commit time of the last real change, guards applied — and a changed file adopts
+it; `{publisher, now}` is only the fallback for a file git cannot vouch for
+(untracked, or edited and not yet committed). Otherwise a publisher shipping a
+colleague's pushed commits, or a restore, put the wrong person and the wrong day
+on every card. `by` is `personId(email)`,
 the same one-way hash messages carry, and **never an address**: a manifest is read
 by more things than a comment thread is. This replaces a class of bug rather than
 adding a feature — provenance used to come from `git log` and publishing keeps
