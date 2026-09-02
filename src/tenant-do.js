@@ -65,7 +65,13 @@ import { loadSeedPack, publishSeedPack, seedOverlayFrom, workspaceOrigin } from 
 // here as an ordinary row, and since this object is what the request path reads FIRST, the
 // narrow credential came back out of it as a full star token. A missing column read as "no
 // restriction", which is the one reading a deny-by-default capability may never be given.
-export const TENANT_SCHEMA_VERSION = 3;
+//
+// 3 → 4: `members` gained `first_publish_at` — the per-person half of the onboarding
+// completion signal (`C-first-publish-signal`). The workspace's own half is a `meta` row,
+// which needs no column. Nullable and additive like every other addition: a row that
+// predates it reads as "never published from here", which is the honest answer for a
+// member nobody has watched publish.
+export const TENANT_SCHEMA_VERSION = 4;
 
 /**
  * The schema, as a list of statements so a migration can apply them one at a time and a
@@ -113,7 +119,8 @@ export const TENANT_SCHEMA = Object.freeze([
      source       TEXT,
      added_by     TEXT,
      name_overlay TEXT,
-     role_overlay TEXT
+     role_overlay TEXT,
+     first_publish_at TEXT
    )`,
   // A REMOVED member is a tombstone, never a deleted row. The KV design learned this the
   // hard way on the credential side: a removal that merely deletes is undone by any
@@ -355,6 +362,7 @@ export const TENANT_SCHEMA_ADDITIONS = Object.freeze([
   { table: "members", column: "added_by", type: "TEXT" },
   { table: "members", column: "name_overlay", type: "TEXT" },
   { table: "members", column: "role_overlay", type: "TEXT" },
+  { table: "members", column: "first_publish_at", type: "TEXT" },
   { table: "publish_tokens", column: "scope", type: "TEXT" },
   { table: "publish_tokens", column: "caps", type: "TEXT" },
 ]);
@@ -1183,6 +1191,10 @@ export class TenantStore {
       // Public by design — it is in every redirect the generated address serves.
       canonicalHost: meta.canonical_host || null,
       canonicalHostAt: meta.canonical_host_at || null,
+      // The onboarding completion signal's workspace half — the first REAL publish, never a
+      // seed write. Reported here so an operator can count connected workspaces without
+      // asking each one a second question; the member half is `onboardingStatus()`.
+      firstPublishAt: meta.first_publish_at || null,
       plan: meta.plan || DEFAULT_PLAN,
       quotas: this.quotas(),
       members: tables.has("members") ? count(`SELECT COUNT(*) AS n FROM members WHERE removed_at IS NULL`) : 0,
@@ -2198,6 +2210,98 @@ export class TenantStore {
     return { provisioned: this.isProvisioned(), spaces: rows.map((r) => String(r.space)) };
   }
 
+  // ── the onboarding completion signal ──────────────────────────────────────
+  //
+  // `C-first-publish-signal`. Onboarding ends when the workspace has published something
+  // REAL — not the seed pack the platform wrote on the person's behalf, and not a CLI
+  // process's exit code or an agent's own report of success. The worker decides "real"
+  // through `isSeedSource()`, the one predicate, and calls here only for a publish that
+  // passed it; this object records the answer and never re-derives it.
+  //
+  // Two stamps, each written ONCE and never moved: the workspace's (`meta.first_publish_at`
+  // — "is this workspace connected") and the member's (`members.first_publish_at` — "did
+  // THIS person convert", because the conversion event is somebody's first publish and a
+  // second person's first publish is a second conversion). Plus one counter,
+  // `meta.viewers_became_editors`, bumped where the role-change verb writes. Three numbers
+  // a launch retro can read, kept where the counter every commit already goes through is.
+
+  /**
+   * A real publish landed, credited to `email` (the publish token's resolved actor; null or
+   * a non-member label — a CI token — stamps the workspace and nobody).
+   *
+   * `DO NOTHING` on both writes: the first stamp wins, and a later publish — a second
+   * person's, a re-bake, a restore — leaves it exactly where it was. A removed member is
+   * not stamped: the row is a tombstone, and a re-invite must not inherit the last holder's
+   * conversion any more than their role.
+   */
+  noteFirstPublish(email, at = new Date().toISOString()) {
+    const when = typeof at === "string" && Number.isFinite(Date.parse(at)) ? at : new Date().toISOString();
+    const ws = [...this.sql.exec(
+      `INSERT INTO meta (k, v) VALUES ('first_publish_at', ?) ON CONFLICT(k) DO NOTHING RETURNING v`, when,
+    )];
+    const addr = lcAddr(email);
+    let member = null;
+    if (addr) {
+      const rows = [...this.sql.exec(
+        `UPDATE members SET first_publish_at = ?
+          WHERE email = ? AND removed_at IS NULL AND first_publish_at IS NULL
+          RETURNING email`,
+        when, addr,
+      )];
+      member = { email: addr, wrote: rows.length > 0 };
+    }
+    return { firstPublishAt: this.readMeta("first_publish_at"), wrote: ws.length > 0, member };
+  }
+
+  /**
+   * A role change took effect. Counted only when a VIEWER became something more — the
+   * transition onboarding is watching for, because a viewer is the role whose password
+   * may be public knowledge and an editor is somebody who can publish. Every other change
+   * is a role change, not a conversion, and is not counted here.
+   */
+  noteRoleTransition(from, to) {
+    if (from !== "viewer" || !["editor", "admin"].includes(to)) return { counted: false };
+    const n = Number(this.readMeta("viewers_became_editors") || 0) + 1;
+    this.writeMeta("viewers_became_editors", n);
+    return { counted: true, viewersBecameEditors: n };
+  }
+
+  /**
+   * The signal, as `GET /__onboarding/status` answers it. `email` is the caller's own, for
+   * the `me` half; the workspace half is the same for every member.
+   *
+   * NO init(), for `status()`'s reason: a read must not bring a workspace into being. An
+   * object with no schema answers "not connected", which is what it can honestly say.
+   */
+  onboardingStatus(email) {
+    const none = { connected: false, firstPublishAt: null, members: { converted: 0, active: 0 }, viewersBecameEditors: 0, me: null };
+    if (!this.hasMeta()) return { provisioned: false, ...none };
+    const count = (sql) => {
+      const rows = [...this.sql.exec(sql)];
+      return rows.length ? Number(rows[0].n) : 0;
+    };
+    const firstPublishAt = this.readMeta("first_publish_at");
+    const addr = lcAddr(email);
+    let me = null;
+    if (addr) {
+      const rows = [...this.sql.exec(
+        `SELECT first_publish_at FROM members WHERE email = ? AND removed_at IS NULL`, addr,
+      )];
+      me = { firstPublishAt: rows.length && rows[0].first_publish_at != null ? String(rows[0].first_publish_at) : null };
+    }
+    return {
+      provisioned: this.isProvisioned(),
+      connected: !!firstPublishAt,
+      firstPublishAt,
+      members: {
+        converted: count(`SELECT COUNT(*) AS n FROM members WHERE removed_at IS NULL AND first_publish_at IS NOT NULL`),
+        active: count(`SELECT COUNT(*) AS n FROM members WHERE removed_at IS NULL`),
+      },
+      viewersBecameEditors: Number(this.readMeta("viewers_became_editors") || 0),
+      me,
+    };
+  }
+
   // ── the content overlay ────────────────────────────────────────────────────
   // Four verbs, each the shape one of the four families actually needs. Reading them
   // together: `read` is what a page load does, `set` is a single edit, `insert` is a
@@ -2632,6 +2736,28 @@ export class TenantStore {
       }
     }
 
+    // The onboarding completion signal — see noteFirstPublish. The two writes init() like
+    // `/activity` and `/publish-version` do: a publish or a role change that reached a
+    // workspace reached one that exists. The read does NOT, for `/status`'s reason.
+    if (url.pathname === "/onboarding/note-publish" && request.method === "POST") {
+      let body = null;
+      try { body = await request.json(); } catch (e) { /* handled below */ }
+      if (!body) return Response.json({ error: "bad-input" }, { status: 400 });
+      await this.init(body.workspaceId);
+      return Response.json(this.noteFirstPublish(body.email, body.at));
+    }
+    if (url.pathname === "/onboarding/note-role" && request.method === "POST") {
+      let body = null;
+      try { body = await request.json(); } catch (e) { /* handled below */ }
+      if (!body) return Response.json({ error: "bad-input" }, { status: 400 });
+      await this.init(body.workspaceId);
+      return Response.json(this.noteRoleTransition(body.from, body.to));
+    }
+    if (url.pathname === "/onboarding/status" && request.method === "POST") {
+      let body = null;
+      try { body = await request.json(); } catch (e) { /* an empty body asks about nobody */ }
+      return Response.json(this.onboardingStatus(body && body.email));
+    }
     if (url.pathname === "/publish-version" && request.method === "POST") {
       let body = null;
       try { body = await request.json(); } catch (e) { /* handled below */ }

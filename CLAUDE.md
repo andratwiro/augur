@@ -486,6 +486,36 @@ the mass-commit failure per-file provenance exists to retire. ⏳ **Nothing rend
 yet** — 'forked from' and 'forks of this' chips ride `C-manifest-provenance`'s client-side
 manifest read when it lands, not a second one.
 
+**The first REAL publish is the onboarding completion signal, and the server is the only
+thing that may say it happened** (`C-first-publish-signal`). On every successful `commit`
+the worker asks `isSeedSource(out.source)` — the ONE predicate in `src/provenance.mjs`,
+never a string compare — and for a version that is not the platform's seed write it stamps
+the workspace object once (`meta.first_publish_at`, `DO NOTHING` on conflict, so a second
+publish neither resets nor duplicates it) and the publishing member once
+(`members.first_publish_at`, keyed by the publish token's resolved actor — a CI token with
+no address stamps the workspace and nobody). The role-change verb bumps
+`meta.viewers_became_editors` when a viewer becomes an editor or an admin, and nothing
+else counts. Three numbers a launch retro can read: workspaces connected, members
+converted, viewers become editors. `_engine` never counts (chrome is the deployment's,
+shipped by CI); `fork`, `rollback` and `delete` never count either — only `commit` adds
+something a person made. The commit response carries `firstPublish: true` on exactly the
+publish that connected the workspace. **`GET /__onboarding/status`** →
+`{connected, firstPublishAt, members: {converted, active}, viewersBecameEditors, me:
+{firstPublishAt}, backing}` — what the browser-side connect step and the seeded start-here
+page poll. Its auth is A SIGNED-IN MEMBER, ANY ROLE: a stranger gets 401 and no field,
+because whether a gated workspace is in use is a fact about it they were not given; `me` is
+the caller's own conversion, with no email parameter, the rule every `/__me/*` route
+follows. **It degrades by saying so**: a deployment with no `TENANTS` binding — every
+self-hosted instance — keeps no such record (the onboarding it serves does not exist there,
+and a KV copy would be a second definition of "connected" nothing reads) and answers
+`backing: "none"` rather than a `false` that looks like it looked; an unreadable object is
+a 503, never `connected: false`, because a poller reading that would tell the person their
+publish did not land. The stamp is AWAITED on the commit path, not fire-and-forget, and can
+never fail the publish — the version is already written when it runs. ⏳ Neither stamp nor
+the counter travels with `augur migrate` / `restore --state`: they are operational meta,
+like `last_activity_at`, and a moved workspace reads as unconnected until its next real
+publish. `test/first-publish-signal.test.mjs` drives all of it over the real routes.
+
 **Durability.** The store is the only copy of live content, and R2 has no
 point-in-time restore. In-store: manifest versions are never pruned and blobs are
 never garbage-collected, so `rollback` reaches any past publish. Off-Cloudflare:

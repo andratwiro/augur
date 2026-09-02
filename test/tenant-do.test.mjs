@@ -278,6 +278,12 @@ test("the store exposes no read or write verb it does not yet need", () => {
   // workspace's segment of the bundle store, so a fresh workspace opens with content —
   // see test/seed-pack.test.mjs. Not a control verb: the outside asks for it through
   // `provision`, and nothing may furnish a workspace that already exists.
+  // `noteFirstPublish`, `noteRoleTransition` and `onboardingStatus` are the onboarding
+  // completion signal (`C-first-publish-signal`): two once-only stamps and one counter,
+  // written from the commit path and the role-change verb and read by
+  // `GET /__onboarding/status`. The seed-versus-real decision is the WORKER's, through
+  // `isSeedSource()`; the object records and never re-derives it — see
+  // test/first-publish-signal.test.mjs.
   const names = Object.getOwnPropertyNames(TenantStore.prototype).filter((n) => n !== "constructor");
   assert.deepEqual(names.sort(), [
     "accountKey", "bumpCounter", "claimHostname", "clearMeta", "controlResult", "deleteWorkspace", "destroy", "fetch",
@@ -286,7 +292,7 @@ test("the store exposes no read or write verb it does not yet need", () => {
     "isProvisioned",
     "lastseenForget", "lastseenRead", "lastseenTouch",
     "members",
-    "nextPublishVersion",
+    "nextPublishVersion", "noteFirstPublish", "noteRoleTransition", "onboardingStatus",
     "overlayCas", "overlayInsert", "overlayOwner", "overlayRead", "overlayReadRev",
     "overlayReplace", "overlayScopes", "overlaySet", "provision",
     "publishTokenList", "publishTokenMint", "publishTokenRead", "publishTokenRevoke",

@@ -112,6 +112,7 @@ import { composeFork, carriedLineage, assertedLineage } from "./publish-fork.mjs
 import { BOARD_PREFIX, boardKvKey, RT_WORKSPACE_HEADER } from "./board-key.mjs";
 import { signRoomTicket } from "./room-ticket.mjs";
 import { nameFromEmail, initialsFor, colorFor } from "./roster-chip.mjs";
+import { isSeedSource } from "./provenance.mjs";
 
 const COOKIE = "gv_auth";
 const MAX_AGE = 60 * 60 * 24 * 7; // 7 days
@@ -5829,6 +5830,8 @@ async function publishApi(tctx, request, url, env) {
     // per-person clock — and a dormancy sweep keyed on that would suspend a workspace
     // somebody uses every day.
     touchWorkspaceActivity(env, tctx, null);
+    // ── The onboarding completion signal: the first REAL publish, once. See noteFirstPublish.
+    const firstPublish = await noteFirstPublish(env, tctx, spaceId, out.source, who);
     // ── Stale-bake self-heal. Pages are baked with the PUBLISHER's engine clone,
     // and nothing constrains how old that clone is — runtime chrome recomposes
     // marker-wrapped chrome at serve time, but pages baked before the markers
@@ -5870,6 +5873,9 @@ async function publishApi(tctx, request, url, env) {
       ok: true, version,
       ...(rebake ? { rebake } : {}),
       ...(serverForks && serverForks.length ? { forks: serverForks } : {}),
+      // Present only on the publish that connected the workspace — the CLI's one chance
+      // to say so from the server's mouth rather than its own.
+      ...(firstPublish && firstPublish.wrote ? { firstPublish: true } : {}),
     });
   }
 
@@ -9198,6 +9204,121 @@ function touchWorkspaceActivity(env, tctx, ctx) {
   if (ctx && typeof ctx.waitUntil === "function") ctx.waitUntil(p);
 }
 
+// ── The onboarding completion signal ─────────────────────────────────────────
+//
+// `C-first-publish-signal`. Onboarding is over when the workspace has published something
+// REAL, and the only thing that can say so is the server that took the publish — not the
+// CLI's exit code, not an agent's report of its own success. So the commit path records
+// the first real publish, once, on the workspace object, and `GET /__onboarding/status`
+// reads it back for the browser-side connect step and the seeded start-here page to poll.
+//
+// REAL IS DECIDED HERE, ONCE, THROUGH `isSeedSource()`. A provisioned workspace arrives
+// carrying seed prototypes the platform wrote on the person's behalf, stamped
+// `seedSource()`; a version whose `source` answers to that predicate is not a person's
+// publish and must never flip the signal. Anything else is real — including a publisher
+// whose `$USER` began with the reserved namespace, because `sanitizeActor` stripped it at
+// the write and what arrives here is a plain actor. Nothing compares strings: the
+// predicate is the one place the sentinel is defined.
+//
+// WHAT COUNTS AS A PUBLISH: `commit`, and only `commit`. `_engine` is the deployment's
+// chrome, shipped by CI, and says nothing about whether a workspace has published; `fork`
+// copies bytes already live (a fork of seed content carries the seed's own `source`); and
+// `rollback` and `delete` re-arrange history rather than add to it.
+//
+// WHERE IT LIVES, AND HOW IT DEGRADES. The stamp is on the workspace Durable Object, beside
+// the version counter every commit already goes through, because that is the one store
+// whose rows belong to exactly one workspace by construction. A deployment with no
+// `TENANTS` binding — every self-hosted instance — has no object and NO SIGNAL: the stamp
+// is deliberately not written to KV there, because the thing this signal serves (a hosted
+// signup's onboarding, seed pack and all) does not exist on such a deployment, and a KV
+// copy would be a second definition of "connected" that no onboarding reads. The status
+// route says so (`backing: "none"`) rather than answering `connected: false` as if it had
+// looked. Awaited, not fire-and-forget: a stamp that may not land is exactly the "trust the
+// client" this replaces, and it costs one stub round trip on a path that already made one.
+// It never fails the publish — the version is already written by the time this runs.
+async function noteFirstPublish(env, tctx, spaceId, source, who) {
+  if (spaceId === "_engine" || isSeedSource(source)) return null;
+  const stub = tenantStub(env, tctx && tctx.tenantId);
+  if (!stub) return null;
+  // The token's resolved actor is its label, which is the holder's address unless the
+  // mint named something else (a CI token). Only an address can name a roster row; a label
+  // that is not one stamps the workspace and nobody.
+  const label = who && typeof who.label === "string" ? who.label : "";
+  const email = label.includes("@") ? lcEmail(label) : null;
+  try {
+    const res = await stub.fetch("https://workspace/onboarding/note-publish", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ workspaceId: tctx.tenantId, email, at: new Date().toISOString() }),
+    });
+    return res.ok ? await res.json() : null;
+  } catch (e) {
+    return null; // the publish is already persisted; a lost stamp is retried by the next real publish
+  }
+}
+
+// A viewer became an editor (or an admin) — the third number. Fire-and-forget like the
+// activity stamp: the role change already took effect, and a count must never refuse it.
+function noteRoleTransition(env, tctx, from, to, ctx) {
+  const stub = tenantStub(env, tctx && tctx.tenantId);
+  if (!stub) return;
+  const p = stub.fetch("https://workspace/onboarding/note-role", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ workspaceId: tctx.tenantId, from, to }),
+  }).catch(() => {});
+  if (ctx && typeof ctx.waitUntil === "function") ctx.waitUntil(p);
+}
+
+// GET /__onboarding/status → {connected, firstPublishAt, backing, members, viewersBecameEditors, me}
+//
+// AUTH: A SIGNED-IN MEMBER, ANY ROLE. The floor, and deliberately not lower: "has this
+// workspace published anything real" tells a stranger whether a gated workspace is in use,
+// which is a fact about it they were not given. Not higher either — the connect step runs
+// in the browser of whoever just signed up, who may be the only member, and the seeded
+// start-here page is read by everyone the admin invites. Same placement as `/__me/*`:
+// ahead of the gate, re-checking the session itself, because the page that polls it is one
+// a signed-in person can already see.
+//
+// `me` is the CALLER's own conversion and nobody else's — there is no email parameter, the
+// same rule `/__me/name` and `/__me/avatar` follow. The workspace numbers are per
+// workspace, never across the deployment: a member of one workspace learns nothing about a
+// neighbour, and the launch retro reads each workspace's status through the operator's
+// `status` verb, which carries the same `firstPublishAt`.
+async function onboardingStatusApi(tctx, request, env, me) {
+  if (!me) return jsonResponse({ error: "unauthorized" }, 401);
+  if (request.method !== "GET") return jsonResponse({ error: "method-not-allowed" }, 405);
+  const none = { connected: false, firstPublishAt: null, members: { converted: 0, active: 0 }, viewersBecameEditors: 0, me: null };
+  const stub = tenantStub(env, tctx && tctx.tenantId);
+  if (!stub) {
+    // Said out loud: this deployment keeps no such record, which is a different answer
+    // from "looked, and nothing has been published".
+    return jsonResponse({ ...none, backing: "none" });
+  }
+  try {
+    const res = await stub.fetch("https://workspace/onboarding/status", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ workspaceId: tctx.tenantId, email: me.email }),
+    });
+    if (!res.ok) throw new Error(`workspace store answered ${res.status}`);
+    const body = await res.json();
+    return jsonResponse({
+      connected: !!body.connected,
+      firstPublishAt: body.firstPublishAt || null,
+      members: body.members || none.members,
+      viewersBecameEditors: Number(body.viewersBecameEditors) || 0,
+      me: body.me || null,
+      backing: "workspace-object",
+    });
+  } catch (e) {
+    // An unreadable object is an absence of an answer, not "not connected": a poller that
+    // read a 503 as "keep waiting" would be right, one that read `false` would tell the
+    // person their publish did not land.
+    return jsonResponse({ error: "status-unavailable" }, 503);
+  }
+}
+
 /**
  * An admin signed in successfully. Offer the workspace the chance to come back.
  *
@@ -10606,6 +10727,10 @@ async function adminUsersApi(tctx, request, url, env, me, users = tctx.USERS, co
       // is no third one writing the module slot here either (see commitRoster).
       commitRoster();
 
+      // The onboarding signal's third number — a viewer became an editor. Counted in the
+      // workspace object, best-effort, after the change has taken effect.
+      noteRoleTransition(env, tctx, from, role, ctx);
+
       // identity.json stays the durable record: ask the shell to commit the new role,
       // and the config push its deploy sends back drains the overlay entry above.
       // Best-effort, like invite and remove — the change already took effect.
@@ -11303,6 +11428,11 @@ async function handleRequest(request, env, ctx, url, trace) {
     // a session); best-effort against the control plane, never an error.
     if (url.pathname === "/__me/workspaces") return meWorkspacesApi(tctx, request, env, me);
 
+    // The onboarding completion signal — has this workspace published anything real, and
+    // have I. Same placement and the same self-check as the /__me routes above (401
+    // without a session); see onboardingStatusApi for the auth decision.
+    if (url.pathname === "/__onboarding/status") return onboardingStatusApi(tctx, request, env, me);
+
     // Comment-author faces, same deal as /__me and /__avatar/ above: this route must
     // stay here, ahead of the auth gate, because intercepting first is what makes it
     // reachable without a session — there's no isPublicPath entry for it, and adding
@@ -11772,4 +11902,5 @@ export const __testables = Object.freeze({
   unknownHostResponse,
   WORKSPACE_ENTER_PATH, enterHandoff, tenantAccountKey,
   noteMembershipUpstream,
+  noteFirstPublish, noteRoleTransition, onboardingStatusApi,
 });
