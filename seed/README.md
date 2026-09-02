@@ -30,29 +30,50 @@ seed/
 
 ## How it reaches a workspace
 
-Provisioning copies this tree into the new tenant in the same write that creates
-the first admin, and writes each entry in `threads.json` under the comment key for
-its page. There is no intermediate state where a workspace exists with an admin and
-no content.
+It is built ONCE PER ENGINE PIN, not composed per signup. Every engine-only build
+(what a deploy shell runs) composes this tree with the real build — a child
+`build.js` over `seed/`, exactly what `augur publish` would run over a clone of it —
+and folds the result into one document, `dist/__seed/pack.json`, which ships inside
+the worker's own asset bundle and is sealed from the outside like `/__config/`
+(`scripts/lib/seed-pack-build.mjs`; `node scripts/build-seed-pack.mjs --print` shows
+what is in it).
+
+At provisioning, the workspace object writes that pack into its own segment of the
+bundle store FIRST — every blob, then `versions/1.json`, then `manifest.json`, as
+version 1 of the workspace's space — and only then commits the first admin, the
+threads and the version row in one transaction (`src/seed-pack.mjs`; the control
+plane asks for it with `seedPack: true` on `provision` and carries none of the
+content). Published content and the workspace's own rows live in two stores with no
+transaction between them, so the order is what makes it safe: a workspace the front
+door will serve is one whose commit landed, and an object left unprovisioned by a
+crash in between resolves to nobody, content or no content. There is no state where a
+workspace exists with an admin and no content.
+
+Every seed version is stamped as the platform's, never as a person's: `source` is
+the seed sentinel (`src/provenance.mjs`), `publishedBy` is the seed actor, each
+unit's `routing.unitSources` entry is the sentinel too, and no file carries an author
+id — the pack builder strips the git-derived stamp, so the engine's author is not the
+author of every workspace's welcome content.
 
 Three things are substituted on the way in:
 
 | What | Where | Substituted with |
 | --- | --- | --- |
-| Workspace id and name | `space.json` | the tenant's own |
-| The connect command | `CONNECT_COMMAND` in `start-here/prototypes/connect-your-terminal/index.html` | the real one-line command for that workspace |
+| The connect command | `CONNECT_COMMAND` in `start-here/prototypes/connect-your-terminal/index.html` | `npx augur connect --origin https://<label><suffix>`, the workspace's real address, filled the moment the page is published |
 | Comment timestamps | `at` in `threads.json` | the provisioning time, so day-one threads do not read as months old |
+| File timestamps | `editedAt` on every file in the manifest | the same provisioning time, all of them |
 
-Nothing else needs rewriting. The connect page falls back to deriving the
-workspace name from the URL it is served on, so it is never wrong, only less
-specific.
+The space id and name are the pack's own (`space.json` here): the workspace IS the
+space, and a workspace's label is its address, not its space id. The connect page
+falls back to deriving the command from the URL it is served on, so with no
+substitution it is never wrong, only less specific.
 
 **Start Here has to be the first card.** The gallery orders projects
 most-recently-worked-on first and falls back to A→Z, which is why the second
 folder is named `worked-examples` rather than `examples`: with one timestamp
 across the whole seed — what a single atomic write produces — Start Here leads
-and the examples follow. Provisioning that stamps files as it writes them should
-give them all the same time, or write Start Here last.
+and the examples follow. Provisioning stamps every file with the one provisioning
+instant, which is that single timestamp.
 
 ## Rules for editing it
 

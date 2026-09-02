@@ -194,6 +194,20 @@ async function instance({ seeded = false, workspace = false, rooms = false } = {
     COMMENTS: kv, BUNDLES: r2, GV_ASSET_SOURCE: "r2", TENANT_HOST_SUFFIX: SUFFIX,
     ...(workspace ? { TENANTS: namespace() } : {}),
   };
+  if (workspace) {
+    // ⚠️ A HOSTED TARGET IS PROVISIONED BEFORE ANYTHING IS MOVED INTO IT — the order the
+    // migration runbook mandates, and since `F-seed-pack-at-provision` the order the front
+    // door ENFORCES: an object nobody has provisioned resolves to nobody, however much
+    // content sits under its keys, because a provisioning writes its content first and
+    // commits second. So this fixture does what an operator does: create the workspace
+    // (a first admin the copy never names; the roster the target serves after the restore
+    // is the copy's, and the comparison below still holds), then hold the publish
+    // credential in the object, which is where a provisioned workspace's tokens live. The
+    // KV token above stays for the KV-shaped instances.
+    const { store } = env.TENANTS.get(env.TENANTS.idFromName(label));
+    await store.provision({ workspaceId: label, adminEmail: "owner@x.test" });
+    store.publishTokenMint({ tokenHash: await W.tokenFor("pub:tok"), space: "*", label: "ci" });
+  }
   const server = http.createServer((req, res) => {
     const chunks = [];
     req.on("data", (c) => chunks.push(c));

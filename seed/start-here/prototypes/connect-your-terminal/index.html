@@ -369,7 +369,7 @@
     var host = location.hostname || "";
     var label = host.split(".")[0];
     var named = host.indexOf(".") > 0 && label && label !== "localhost" && !/^\d+$/.test(label);
-    return "npx augur connect " + (named ? label : "your-workspace");
+    return named ? "npx augur connect --origin https://" + host : "npx augur connect your-workspace";
   }
 
   var cmd = connectCommand();

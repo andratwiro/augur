@@ -51,6 +51,12 @@ import { tenantCache } from "./tenant-cache.mjs";
 // list too, because the control plane's name GENERATOR has to read the same one — a
 // generator that emits `admin` and a resolver that refuses it are one list disagreeing.
 import { tenantLabelFromHost, normalizeHost, isReservedLabel, parseReservedLabels, TENANT_LABEL_RE } from "./tenant-host.mjs";
+// The platform's own actor — what a seeded version's `publishedBy` reads as on a screen.
+import { isSeedActor, SEED_DISPLAY_NAME } from "./provenance.mjs";
+// The store's key shape — one module, shared with the workspace object. See src/bundle-keys.mjs.
+import {
+  BUNDLE_TENANT_PREFIX, ENGINE_SPACE_ID, BUNDLE_TENANCY, bundleFamily, bundleKey, bundleStore,
+} from "./bundle-keys.mjs";
 
 // The mail transport. Same deal again: build.js copies it next to the worker
 // (dist/mail.mjs) so the relative import resolves at the edge. It reads its provider,
@@ -3544,77 +3550,6 @@ function identityKvView(env, kv, tctx) {
 // store can be seeded before serving is flipped.
 const bundleMode = (env) => !!(env && env.GV_ASSET_SOURCE === "r2" && env.BUNDLES);
 
-// ---- The workspace segment on a bundle-store key ----------------------------
-//
-// `B-bundle-store-tenancy`. Not one key above carries a workspace: `config/instance.json`
-// is one document for the whole bucket, `spaces/<id>/…` names a SPACE, and one deployment
-// serving several workspaces therefore has them all writing the same keys. Two workspaces
-// publishing a space under the same id write the same object, so the commit CAS, the
-// unpublish guard and the stale-base check all evaluate against a stranger's document —
-// and a route-level gate cannot un-collide a key. So the key gains the segment.
-//
-// THE SHAPE, decided rather than discovered (`DECISION-bundle-store-tenancy.md`, option 1):
-// a tenant PREFIX in the one bucket. `t/<workspace>/spaces/…`,
-// `t/<workspace>/config/instance.json`, `t/<workspace>/assets/…`.
-//
-// ⚠️ TWO FAMILIES STAY GLOBAL AND SHARED, DELIBERATELY. Both exceptions are written out
-// below rather than left to fall out of the change, because falling out of a change is
-// exactly how they would be got wrong.
-//
-//   `blobs/<sha256>` — published bytes. Every write verifies the digest against the key
-//   before storing, so a workspace can only ever write bytes that hash to the name it
-//   used: an overwrite is a no-op by construction and there is nothing to poison. Dedup
-//   across workspaces is load-bearing (a migration's frozen pass uploaded 0 blobs of 854
-//   already present), and `blobGc` is written FOR a shared namespace — it reads every
-//   remaining manifest before deleting anything, because only the sweep can tell an
-//   orphan from a blob another workspace is serving. Prefixing them would break that
-//   design and buy nothing: a SHA-256 is not enumerable, so the disclosure door is the
-//   INDEX, not the bytes — and the index is `spaces/`, which is prefixed.
-//
-//   `spaces/_engine/` — the engine chrome. ONE worker build serves every workspace on a
-//   deployment, so one chrome bundle is correct rather than a leak. Prefix it by accident
-//   and every workspace loses its chrome on the deploy that does it.
-const BUNDLE_TENANT_PREFIX = "t/";
-const ENGINE_SPACE_ID = "_engine";
-// Which families take the segment. One word each, and flipping one back is the revert for
-// that family alone — the shape `KV_CUTOVER` uses, for the same reason: a change that has
-// to be reverted as a unit is a change nobody wants to make on a live instance.
-const BUNDLE_TENANCY = Object.freeze({
-  spaces: true,   // spaces/<id>/manifest.json + spaces/<id>/versions/<n>.json
-  config: true,   // config/instance.json
-  assets: true,   // assets/<sha256[0:40]> — canvas image bytes
-  // blobs: NOT HERE, AND NOT AN OMISSION. See the header above.
-});
-
-/** Which family a bundle-store key belongs to, or "" for one this scheme does not name. */
-function bundleFamily(key) {
-  const k = String(key || "");
-  if (k.startsWith("blobs/")) return "blobs";
-  if (k.startsWith("assets/")) return "assets";
-  if (k.startsWith("config/")) return "config";
-  if (k.startsWith("spaces/")) return "spaces";
-  return "";
-}
-
-/**
- * The physical store key for a logical one.
- *
- * `workspace` is the second argument and it DEFAULTS TO NONE, which is the whole of the
- * straddle: a deployment that serves one workspace passes nothing and gets back the string
- * it has always got back, byte for byte. Only a prefixing deployment passes a segment —
- * see `bundleWorkspaceSegment`.
- */
-function bundleKey(key, workspace = "") {
-  if (!workspace) return key;
-  const family = bundleFamily(key);
-  if (!family || !BUNDLE_TENANCY[family]) return key;
-  // ⚠️ THE ENGINE EXCEPTION, WRITTEN OUT. `spaces/_engine/…` is the chrome one worker
-  // build serves to every workspace on this deployment. It is not this workspace's to
-  // hold and it is not another's to be kept from.
-  if (family === "spaces" && key.startsWith(`spaces/${ENGINE_SPACE_ID}/`)) return key;
-  return BUNDLE_TENANT_PREFIX + workspace + "/" + key;
-}
-
 /**
  * Which workspace segment this request's bundle-store keys carry, and whether an
  * UNPREFIXED key in this bucket can be read as this workspace's.
@@ -3641,59 +3576,6 @@ function bundleWorkspaceSegment(env, tenantId) {
     workspace: hostResolved ? (tenantId || DEFAULT_TENANT_ID) : "",
     legacyIsOurs: !hostResolved,
   };
-}
-
-/**
- * The bundle store as ONE workspace sees it: the same five verbs over LOGICAL keys, with
- * the segment applied on the way in and stripped on the way out.
- *
- * ⚠️ WITH NO SEGMENT THIS IS THE BINDING ITSELF — not a wrapper around it, the object.
- * That is deliberate, and it is what makes the change additive for every instance running
- * today: with no segment this function is the identity, so there is no new code at all
- * between the worker and R2 and nothing to get subtly wrong on a deployment that never
- * asked for a segment.
- *
- * Stripping on the way out is what lets every caller keep the key it already had: a
- * listing hands back `spaces/x/versions/3.json`, and handing that straight back to `get`
- * or `delete` re-applies the segment rather than double-prefixing it.
- */
-function bundleStore(env, workspace = "") {
-  const r2 = env && env.BUNDLES;
-  if (!r2 || !workspace) return r2 || null;
-  const seg = BUNDLE_TENANT_PREFIX + workspace + "/";
-  const K = (k) => bundleKey(k, workspace);
-  const un = (k) => (String(k).startsWith(seg) ? String(k).slice(seg.length) : String(k));
-  // ⚠️ A WRITE GOES TO THE SEGMENTED KEY AND NOWHERE ELSE. This view used to write the
-  // unprefixed key too, as a straddle meant to keep the per-family flag a revert rather
-  // than a rollback — and on the one kind of deployment that has a segment at all, it was
-  // never that. Where the bucket is shared an unprefixed key is unattributable: the
-  // deployment's own rule (`legacyIsOurs: false`) already refuses to READ one, and flipping
-  // a family's flag back there reads whatever was last written under the bare key by
-  // whichever workspace wrote it last — the collision this scheme exists to close, not
-  // yesterday. So the second write bought no revert, and it cost a real thing: every
-  // workspace's `config/instance.json` — its roster — and every manifest — its blob index,
-  // the disclosure door the header above names — copied to where every workspace shares.
-  // Found on a live shared deployment, attributed by content, the same second as the
-  // segmented write.
-  //
-  // Deletes never touched the unprefixed key either, for the same reason in the other
-  // direction: removing one is removing an object that may be a neighbour's. That still
-  // holds, so what predates the segment is left exactly where and as it was.
-  const store = {
-    get: (k, opts) => (opts === undefined ? r2.get(K(k)) : r2.get(K(k), opts)),
-    put: (k, v, opts) => (opts === undefined ? r2.put(K(k), v) : r2.put(K(k), v, opts)),
-    list: async (opts = {}) => {
-      const page = await r2.list({ ...opts, prefix: K(opts.prefix || "") });
-      return {
-        ...page,
-        objects: (page.objects || []).map((o) => ({ ...o, key: un(o.key) })),
-        delimitedPrefixes: (page.delimitedPrefixes || []).map(un),
-      };
-    },
-  };
-  if (typeof r2.head === "function") store.head = (k) => r2.head(K(k));
-  if (typeof r2.delete === "function") store.delete = (k) => r2.delete(K(k));
-  return store;
 }
 
 /** The store this request's workspace sees. The one accessor every call site below uses. */
@@ -4487,6 +4369,9 @@ async function assetPathExists(tenantId, env, url) {
  */
 function publisherDisplayName(tctx, label) {
   if (!label) return "";
+  // The platform's own writes (the seed pack) are nobody on the roster and read as the
+  // platform, never as a label with a colon in it.
+  if (isSeedActor(label)) return SEED_DISPLAY_NAME;
   const u = userByEmail(label, tctx.USERS);
   return u ? u.name : String(label).split("@")[0];
 }
@@ -8476,7 +8361,12 @@ async function readSuspension(tenantId, env, now = Date.now()) {
       // address the front door redirects the generated one to, so a claimed workspace's
       // redirect costs no read of its own. The suspension gate below keys on `suspended`,
       // never on the doc being present.
-      cur.doc = body && (body.suspended || body.moved || body.canonicalHost) ? body : null;
+      // `provisioned: false` is kept for the reason `moved` is: an object that has never been
+      // provisioned must serve nothing — its content may already sit in the store, written
+      // ahead of a commit that never came (`F-seed-pack-at-provision`) — and dropping the doc
+      // would cache "fine" for an address that names nobody. An older object that does not
+      // answer the field at all reads exactly as before.
+      cur.doc = body && (body.suspended || body.moved || body.canonicalHost || body.provisioned === false) ? body : null;
       cur.at = now;
     } catch (e) { /* keep the last answer, whatever it was — including "never read" */ }
   }
@@ -11131,8 +11021,11 @@ async function handleRequest(request, env, ctx, url, trace) {
     // BEFORE any asset serving, unconditionally (even in open/legacy mode).
     // `/__manifests/` likewise: the engine's own manifest rides in the asset bundle for the
     // worker's chrome-currency read, and is nobody else's to fetch.
+    // `/__seed/` too: the seed pack a provisioning reads through the ASSETS binding is the
+    // worker's own document, not a page anybody fetches.
     if (url.pathname === "/__config" || url.pathname.startsWith("/__config/")
-        || url.pathname === "/__manifests" || url.pathname.startsWith("/__manifests/")) {
+        || url.pathname === "/__manifests" || url.pathname.startsWith("/__manifests/")
+        || url.pathname === "/__seed" || url.pathname.startsWith("/__seed/")) {
       // Context-free by construction: the refusal predates the resolve, so there is no
       // workspace to answer for and it does not reach for one. See configSealedResponse —
       // this used to render the branded 404 out of the module slot, i.e. out of whichever
@@ -11185,6 +11078,16 @@ async function handleRequest(request, env, ctx, url, trace) {
       // allow-list: nothing answers here, not sign-in and not the export. Both still run at
       // the workspace's own address, which is where its members are.
       if (paused && paused.moved) return unknownHostResponse();
+      // ── the workspace that does not exist yet ────────────────────────────────
+      // An object the store may already hold content for, ahead of the one commit that
+      // makes it a workspace (`F-seed-pack-at-provision` writes the seed pack first, then
+      // provisions). Until that commit lands the label resolves to NOBODY — the same bare
+      // answer a reserved or malformed hostname gets, nothing on the allow-list, nothing
+      // served — so a provisioning that dies after the content publish leaves no
+      // half-furnished site behind, only bytes at a key no request can reach. Same read as
+      // the suspension, so it costs the front door nothing new, and cached like it: a
+      // workspace's first visitor arrives after its provisioning returned, never before.
+      if (paused && paused.provisioned === false) return unknownHostResponse();
       // `undefined` is "this isolate has never managed to read the flag". It refuses, and
       // that is the one degradation in this file that shuts a door instead of opening one.
       // The gate keys on `suspended`, not on the doc existing: the same read now also

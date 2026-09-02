@@ -11,9 +11,10 @@
 // else, so this test goes first: from here on, any step that alters what Pages serves has
 // to say so as a baseline diff, in the same commit, on purpose.
 //
-// TWO FILES ARE NOT BYTE-STABLE and are compared by key shape instead:
+// THREE FILES ARE NOT BYTE-STABLE and are compared by key shape instead:
 //   · _build.json           — carries `builtAt`, a timestamp
 //   · __manifests/_engine.json — carries the engine sha and the same timestamp
+//   · __seed/pack.json      — the seed pack: a timestamp, the engine sha, and page bytes
 // Everything else is byte-exact, INCLUDING the content-hashed chrome bundle names. That
 // is deliberate: `_chrome.<UI_VERSION>.<hash>.css` moving is a real event — it renames a
 // cache key, evicts every visitor's service-worker precache, and is a legitimate thing to
@@ -33,8 +34,10 @@ import { discoverModules } from "../scripts/no-tenant-globals.mjs";
 const ENGINE = fileURLToPath(new URL("..", import.meta.url));
 const BASELINE = fileURLToPath(new URL("./dist-emission.baseline.json", import.meta.url));
 
-// Compared by SHAPE, not bytes: these carry a build timestamp.
-const VOLATILE = new Set(["_build.json", "__manifests/_engine.json"]);
+// Compared by SHAPE, not bytes: these carry a build timestamp. `__seed/pack.json` — the
+// seed pack a provisioning furnishes a fresh workspace with — carries one too, plus the
+// engine sha and page bytes whose cache-busting tokens follow file mtimes.
+const VOLATILE = new Set(["_build.json", "__manifests/_engine.json", "__seed/pack.json"]);
 
 function buildEngineOnly() {
   // NEVER the shared dist/ — `node --test` runs files in parallel and other tests read it.

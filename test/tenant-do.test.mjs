@@ -273,10 +273,15 @@ test("the store exposes no read or write verb it does not yet need", () => {
   // switcher): the control plane delivers this workspace's account-store bearer, stored in
   // `meta` like every other operator-verb field above, so `/__enter` can read it later — see
   // test/tenant-verbs.test.mjs.
+  // `furnish` is the seed-pack write `provision({seedPack: true})` runs BEFORE its
+  // transaction (`F-seed-pack-at-provision`): the deployed engine's pack into this
+  // workspace's segment of the bundle store, so a fresh workspace opens with content —
+  // see test/seed-pack.test.mjs. Not a control verb: the outside asks for it through
+  // `provision`, and nothing may furnish a workspace that already exists.
   const names = Object.getOwnPropertyNames(TenantStore.prototype).filter((n) => n !== "constructor");
   assert.deepEqual(names.sort(), [
     "accountKey", "bumpCounter", "claimHostname", "clearMeta", "controlResult", "deleteWorkspace", "destroy", "fetch",
-    "hasMeta", "importAll", "importOverlay", "init",
+    "furnish", "hasMeta", "importAll", "importOverlay", "init",
     "inviteConsume", "inviteMint", "inviteRead", "inviteRevoke",
     "isProvisioned",
     "lastseenForget", "lastseenRead", "lastseenTouch",

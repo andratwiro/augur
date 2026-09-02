@@ -243,7 +243,6 @@ const ALLOWLIST = {
       "STATE_KV_PREFIXED",    // which inventory entries are one document per key when exported
       "NEVER_CLEARED",        // families a reset may never empty; a fact about credentials, not a workspace
       "KV_CUTOVER",           // which identity families read from the workspace object; a deploy-wide fact, and one word per family is the revert
-      "BUNDLE_TENANCY",       // which bundle-store families carry a workspace segment; the same shape, the same revert, and the same deploy-wide fact
       "IDENTITY_TENANCY",     // which identity KV documents carry a workspace segment; the same shape, the same revert, and the same deploy-wide fact
       "IDENTITY_KV_FAMILIES", // which KV documents each identity family owns; the worker's own copy of the fact src/kv-identity.mjs also lists
       "FIRST_RUN_COPY",       // the first-run page's placeholder words; one table so iterating on the copy touches nothing that routes
@@ -279,6 +278,12 @@ const ALLOWLIST = {
         proof: "test/tenant-isolation.test.mjs",
       },
     },
+  },
+
+  "src/bundle-keys.mjs": {
+    frozen: [
+      "BUNDLE_TENANCY",       // which bundle-store families carry a workspace segment; one word per family is the revert, and a deploy-wide fact — moved here from the worker so the workspace object shares the key shape
+    ],
   },
 
   "src/tenant-context.mjs": {

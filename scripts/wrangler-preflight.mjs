@@ -147,6 +147,18 @@ if (suffix !== null && suffix.trim() !== "" && !dos.includes("TENANTS")) {
   fail("tenants-binding",
     `TENANT_HOST_SUFFIX = "${suffix}" makes the workspace come from the Host header, but there is no TENANTS Durable Object binding for those workspaces to live in. Every hostname would resolve to a workspace with nowhere to keep anything.`);
 }
+// A deployment that provisions workspaces furnishes each one from the seed pack in its own
+// asset bundle (`F-seed-pack-at-provision`). A worker deployed without one refuses every
+// provisioning (`seed-pack-unavailable`) — loud, but a signup door that refuses everybody
+// is still a broken signup door, and the build that forgot the pack is the one to stop.
+// build.js emits it on every engine-only build; a hand-rolled or stale dist does not have it.
+if (suffix !== null && suffix.trim() !== "" && dos.includes("TENANTS") && assetsDir) {
+  const abs = path.resolve(SHELL, assetsDir);
+  if (fs.existsSync(path.join(abs, "__config")) && !fs.existsSync(path.join(abs, "__seed", "pack.json"))) {
+    fail("seed-pack",
+      `${assetsDir} is built but carries no __seed/pack.json. This deployment provisions workspaces (TENANT_HOST_SUFFIX + TENANTS), and every provisioning furnishes the new workspace from that pack — without it the workspace object refuses every create with seed-pack-unavailable. Build with GV_ENGINE_ONLY=1 (which emits it), or GV_SEED_PACK=1.`);
+  }
+}
 if (suffix !== null && suffix.trim() === "") {
   fail("tenants-suffix-empty",
     'TENANT_HOST_SUFFIX is set to an empty string. That reads as "multi-workspace" to a person and as "single workspace" to the resolver. Delete the line, or give it the real suffix.');
