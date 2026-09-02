@@ -2145,7 +2145,53 @@ async function effectiveSecret(env, u) {
 // no longer ends that person's sessions by itself. That is not a regression as long as
 // every credential change ALSO rotates the key — which is why `clearSessionKey` is called
 // beside every write to users:secrets, and why a test asserts a reset still ends a session.
-const SESSION_KEYS_KEY = "users:sessionkeys";
+//
+// ⚠️ ONE RECORD PER PERSON, WRITTEN BLIND. `users:sessionkeys` used to be ONE document
+// holding every person's key, rebuilt read-modify-write by rotate and clear — and a KV
+// read serves a cache that can be a minute stale, so rotating person A could read a map
+// that predated person B's fresh key and write B's OLD key back. That killed B's live
+// session (their cookie was bound to the new key) and un-did the invalidation the verb
+// exists to guarantee: a key cleared to end sessions came back and the old cookie
+// verified again. Two writes inside one cache window is exactly what an invite flow does.
+// Shortening the window or retrying does not close it; a record nobody else's write can
+// carry does. `users:sessionkeys:<digest of the address>` holds `{key}` — a fresh key, or
+// `null` for a clear — and rotate and clear each write their own record without reading
+// anything. Keyed by a digest so no address sits in a key name, and by the LOWERCASED
+// address so a roster entry whose case changed is not a second person.
+//
+// THE OLD DOCUMENT IS READ, NEVER WRITTEN, AND ONLY WHEN A PERSON HAS NO RECORD YET.
+// That read-through is the migration: a cookie minted before the shape changed keeps
+// verifying on its first request after the deploy, with nothing backfilled and nothing
+// written — a write on the read path would be the same stale-copy race in a new place.
+// A person leaves the document the first time something rotates or clears their key,
+// and a clear writes a TOMBSTONE rather than deleting for exactly that reason: absent
+// means "ask the old document", and the old document holds the key the clear is ending.
+const SESSION_KEYS_KEY = "users:sessionkeys"; // the retired shared document — read-through only
+const SESSION_KEY_PREFIX = "users:sessionkeys:"; // + digest of the address → {key}
+
+/** The record's key for one person. A digest, not an address; case-insensitive. */
+async function sessionKeyName(email) {
+  return SESSION_KEY_PREFIX + toHex(await crypto.subtle.digest("SHA-256", encodeUtf8(lcEmail(email))));
+}
+
+/**
+ * This person's record: `{present: false}` when they have none, `{present: true, key}`
+ * with the key a rotate wrote or `""` for a clear — and `null` when the store could not
+ * answer or the record is not the shape a rotate or clear writes. The caller turns null
+ * into a refusal, never into a fallback.
+ */
+async function readSessionKey(kv, email) {
+  try {
+    const raw = await kv.get(await sessionKeyName(email));
+    if (raw === null || raw === undefined) return { present: false };
+    const rec = JSON.parse(raw);
+    if (!rec || typeof rec !== "object" || Array.isArray(rec)) return null;
+    if (rec.key !== null && typeof rec.key !== "string") return null;
+    return { present: true, key: rec.key || "" };
+  } catch (e) {
+    return null;
+  }
+}
 
 async function readSessionKeys(kv) {
   try {
@@ -2168,12 +2214,39 @@ async function sessionBinding(env, u, authenticator, enabled, tctx) {
   // No binding at all is the offline/raw-build case, as it is for effectiveSecret: there
   // is no store to hold a key, so the authenticator is the whole story. Not a failure.
   if (!kv) return authenticator;
+  const rec = await readSessionKey(kv, u.email);
+  if (rec === null) return ""; // bound but unreadable — FAIL CLOSED
+  // A record decides on its own. A cleared one falls back to the credential, which is what
+  // a clear has always meant: it is written beside a credential change, so the value it
+  // falls back to is one nobody's old cookie was built on.
+  if (rec.present) return rec.key || authenticator;
+  // No record: the document that predates per-person records, read as it always was.
   const keys = await readSessionKeys(kv);
-  if (keys === null) return ""; // bound but unreadable — FAIL CLOSED
+  if (keys === null) return "";
   // Present-and-falsy is a revocation, exactly as in users:secrets: "signed out
   // everywhere, and not yet signed back in" must not fall through to the credential.
   if (Object.prototype.hasOwnProperty.call(keys, u.email)) return keys[u.email] || "";
   return authenticator;
+}
+
+/**
+ * Which of these people hold a session key — the admin list's "accepted" for somebody
+ * signed in by invite link, who holds no credential. One read per person, in parallel,
+ * and the old document once, only if somebody has no record yet. A read that fails
+ * leaves that person on the credential answer.
+ */
+async function sessionKeyHolders(kv, emails) {
+  const holders = new Set();
+  const recs = await Promise.all(emails.map((e) => readSessionKey(kv, e)));
+  let legacy;
+  for (let i = 0; i < emails.length; i++) {
+    const rec = recs[i];
+    if (rec === null) continue;
+    if (rec.present) { if (rec.key) holders.add(emails[i]); continue; }
+    if (legacy === undefined) legacy = await readSessionKeys(kv);
+    if (legacy && legacy[emails[i]]) holders.add(emails[i]);
+  }
+  return holders;
 }
 
 /**
@@ -2189,15 +2262,15 @@ async function sessionBinding(env, u, authenticator, enabled, tctx) {
 async function rotateSessionKey(env, email, tctx) {
   const kv = kvFor(env, tctx);
   if (!kv || !email) return { ok: false, why: "no store" };
-  const keys = (await readSessionKeys(kv)) || {};
   const bytes = new Uint8Array(32);
   crypto.getRandomValues(bytes);
-  keys[email] = [...bytes].map((b) => b.toString(16).padStart(2, "0")).join("");
-  // The success verdict carries the key just written. A caller issuing a cookie on the
-  // spot (invite redemption) binds to THIS value rather than re-reading the store — a
-  // read-after-write through KV can answer with the previous map for up to a minute of
-  // edge cache, and a cookie minted on the stale key dies on its very first request.
-  try { await kv.put(SESSION_KEYS_KEY, JSON.stringify(keys)); return { ok: true, key: keys[email] }; }
+  const key = [...bytes].map((b) => b.toString(16).padStart(2, "0")).join("");
+  // Written BLIND — no read, so nothing stale can be carried into the write. The success
+  // verdict carries the key just written. A caller issuing a cookie on the spot (invite
+  // redemption) binds to THIS value rather than re-reading the store — a read-after-write
+  // through KV can answer with the previous record for up to a minute of edge cache, and a
+  // cookie minted on the stale value dies on its very first request.
+  try { await kv.put(await sessionKeyName(email), JSON.stringify({ key })); return { ok: true, key }; }
   catch (e) { return { ok: false, why: String((e && e.message) || e).slice(0, 120) }; }
 }
 
@@ -2212,12 +2285,12 @@ async function rotateSessionKey(env, email, tctx) {
 async function clearSessionKey(env, email, tctx) {
   const kv = kvFor(env, tctx);
   if (!kv || !email) return;
-  try {
-    const keys = await readSessionKeys(kv);
-    if (!keys || !Object.prototype.hasOwnProperty.call(keys, email)) return;
-    delete keys[email];
-    await kv.put(SESSION_KEYS_KEY, JSON.stringify(keys));
-  } catch (e) { /* see rotateSessionKey: this must never undo a credential write */ }
+  // A TOMBSTONE, written blind, even for somebody who holds no key: absent means "ask the
+  // old document", and a read of that document to decide whether to write would be the
+  // stale read this record exists to remove — a clear that skipped its write because a
+  // stale read saw nothing would leave a key a concurrent rotate had just written.
+  try { await kv.put(await sessionKeyName(email), JSON.stringify({ key: null })); }
+  catch (e) { /* see rotateSessionKey: this must never undo a credential write */ }
 }
 
 // ---- The first-run surface ---------------------------------------------------
@@ -3289,9 +3362,10 @@ const IDENTITY_KV_FAMILIES = Object.freeze({
   // the destruction a content-addressed key cannot protect against.
   avatars: Object.freeze(["avatar:"]),
   icons: Object.freeze(["spaces:icons", "spaceicon:"]),
-  // Per-person session-binding keys. Inert on a deployment that has not turned
+  // Per-person session-binding keys — one record per person, and the retired shared
+  // document they are read through from. Inert on a deployment that has not turned
   // `SESSION_KEYS` on — `sessionBinding` reads nothing at all there.
-  sessionkeys: Object.freeze(["users:sessionkeys"]),
+  sessionkeys: Object.freeze([SESSION_KEYS_KEY, SESSION_KEY_PREFIX]),
   // The once-per-person first-run record. Segmented for the same reason lastseen is: a
   // person joining a SECOND workspace is new to that one, and one workspace's welcome
   // must not mark them seen in another.
@@ -7733,7 +7807,7 @@ function doIdentity(stub, tenantId) {
 // a `map` family is one object, a `keyed` family is an object of objects. Everything else
 // — the identity documents the accessor does not own — is read from KV as it is written,
 // which is what makes this a faithful copy rather than an interpretation.
-const STATE_KV_PREFIXED = Object.freeze(["users:lastseen:", "avatar:", "spaceicon:"]);
+const STATE_KV_PREFIXED = Object.freeze(["users:lastseen:", "avatar:", "spaceicon:", SESSION_KEY_PREFIX]);
 
 /** Read one inventory entry out of whatever store holds it. */
 async function readStateFamily(tctx, env, entry, store, kv) {
@@ -10380,8 +10454,7 @@ async function adminUsersApi(tctx, request, url, env, me, users = tctx.USERS, co
     // so the credential alone would report them "pending" forever. Redeemed-by-link IS
     // accepted, and the stored session key is the record the redemption left. One read
     // for the whole list, and a read that fails leaves the credential answer standing.
-    let keyMap = null;
-    if (tctx.SESSION_KEYS && kv) keyMap = await readSessionKeys(kv);
+    const keyed = tctx.SESSION_KEYS && kv ? await sessionKeyHolders(kv, inScope.map((u) => u.email)) : new Set();
     const out = [];
     for (const u of inScope) {
       let lastSeen = null;
@@ -10394,7 +10467,7 @@ async function adminUsersApi(tctx, request, url, env, me, users = tctx.USERS, co
         email: u.email, name: u.name, role: scope ? roleIn(u, scope) : roleOf(u),
         initials: u.initials || "", color: u.color || "#4f46e5",
         avatar: avatarUrl(u),
-        state: (secret || (keyMap && keyMap[u.email])) ? "accepted" : "pending",
+        state: (secret || keyed.has(u.email)) ? "accepted" : "pending",
         lastSeen,
         // Whether THIS admin may reset THIS person — the panel hides the action rather
         // than offering one the API will refuse. See mayResetPassword.
@@ -11692,7 +11765,8 @@ export const __testables = Object.freeze({
   redactPublishedBy, redactProvenance, PURGED_PUBLISHER,
   peopleApi,
   tokenFor, hmacToken, userToken, identify, effectiveSecret,
-  sessionBinding, rotateSessionKey, clearSessionKey, SESSION_KEYS_KEY,
+  sessionBinding, rotateSessionKey, clearSessionKey, SESSION_KEYS_KEY, SESSION_KEY_PREFIX,
+  sessionKeyName, readSessionKey, sessionKeyHolders, USER_COOKIE,
   FIRST_RUN_KEY, FIRST_RUN_PATH, FIRST_RUN_COPY, firstRunLanding, firstRunPage,
   readFirstRunSeen, clearFirstRunSeen,
   mintInvite, readInvite, consumeInvite, touchLastSeen,

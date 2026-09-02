@@ -91,12 +91,36 @@ introduce, and it is closed by calling `clearSessionKey` beside every write to
 stage one and it changes how people actually get in, which is not something to ship
 unwatched. Do it as its own change, after this one has been live for a while.
 
-**`users:sessionkeys` has no table in the workspace object.** It is declared in
+**The session keys have no table in the workspace object.** They are declared in
 `UNMAPPED_WORKSPACE_FAMILIES` with the reason: the object has `signing_keys`, which is the
 *workspace's* own key, and a per-person key belongs in the same schema decision rather than
 in two. `B-cross-workspace-signin` is the item that makes it, because minting a session on
 a workspace host is what decides what a session binds to. Losing this family in a copy
 signs that workspace's people out once, which is the recoverable direction to be wrong in.
+
+## One record per person, since `B-sessionkeys-lost-update`
+
+The keys first landed as ONE document, `users:sessionkeys`, every person's key in a map that
+`rotateSessionKey` and `clearSessionKey` rebuilt read-modify-write. A KV read serves a cache
+that can be a minute stale, so rotating person A could read a map that predated person B's
+fresh key and write B's *old* key back — which both killed B's live session and un-did the
+invalidation the verb exists to guarantee. Two writes inside one window is what an invite
+flow does, and it cost two admin sessions on staging.
+
+Now each person has a record of their own — `users:sessionkeys:<sha256 of the lowercased
+address>` → `{key}`, or `{key: null}` for a clear — and rotate and clear each write theirs
+**blind**, reading nothing. There is no shared document, so there is nothing a stale read can
+carry into a write. `test/session-key-lost-update.test.mjs` drives both verbs through a
+store whose reads lag its writes and asserts each person's newest key is the stored one.
+
+**The old document is read, never written, and only for a person who has no record yet.**
+That read-through is the migration: a cookie minted before the change verifies on its first
+request after the deploy, with nothing backfilled and nothing written on the read path. A
+person leaves the document the first time something rotates or clears their key — which is
+why a clear writes a tombstone rather than deleting: absent means "ask the old document",
+and the old document holds the key the clear is ending. Rolling the engine back below this
+change re-exposes the document: everybody rotated since would fall back to their old entry
+(or their credential) and be signed out once, and a cleared entry would verify again.
 
 ## Merging
 
