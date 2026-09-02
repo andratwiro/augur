@@ -105,6 +105,7 @@ import { composeFork, carriedLineage, assertedLineage } from "./publish-fork.mjs
 // (src/board-room.mjs). Two writers, one spelling — see the module header.
 import { BOARD_PREFIX, boardKvKey, RT_WORKSPACE_HEADER } from "./board-key.mjs";
 import { signRoomTicket } from "./room-ticket.mjs";
+import { nameFromEmail, initialsFor, colorFor } from "./roster-chip.mjs";
 
 const COOKIE = "gv_auth";
 const MAX_AGE = 60 * 60 * 24 * 7; // 7 days
@@ -1020,7 +1021,10 @@ const lcEmail = (e) => String(e == null ? "" : e).trim().toLowerCase();
 // invite scribble on every later read.
 const emptyRoster = () => ({ add: {}, remove: [] });
 
-async function readRoster(env, tctx) {
+// The KV document, as KV holds it. The serving read's fallback and the unbound path's
+// whole answer; a failed read is an empty overlay, and the tombstone above is why that is
+// survivable on a READ.
+async function readRosterKv(env, tctx) {
   const kv = kvFor(env, tctx);
   if (!kv) return emptyRoster();
   try {
@@ -1030,6 +1034,44 @@ async function readRoster(env, tctx) {
     const remove = Array.isArray(doc.remove) ? doc.remove : [];
     return { add, remove };
   } catch (e) { return emptyRoster(); }
+}
+
+/**
+ * The roster document a WRITE starts from — invite, remove, role change, the config drain.
+ *
+ * ⚠️ IT COMES FROM WHEREVER THE SERVING READ COMES FROM. Every roster write is a
+ * read-modify-write of the whole document, and `rosterWrite` in the workspace object then
+ * tombstones every overlay row the written `add` no longer carries. So the base of the write
+ * has to be the roster being SERVED, or the orphan clause is fed a document that never knew
+ * about somebody the object does. That was a live defect: a freshly provisioned workspace's
+ * first admin exists only in the object (no KV era, nothing ever written there), the first
+ * invite they sent read KV's EMPTY document, wrote `{add: {invitee}}`, and the mirror buried
+ * the admin who had just sent it. `readRosterDocs` already answers the serving read from the
+ * object wherever it is seeded; this is the same rule for the write's base. KV still receives
+ * every write, so the copy that makes the flag a revert only gets MORE complete — after the
+ * first write it carries the provisioned admin too.
+ *
+ * An unreadable object THROWS, and the write with it. Falling through to KV here would write
+ * a document missing everybody KV never saw and hand the next mirror a roster to orphan them
+ * from — the exact fail-open the read path refuses (`test/kv-read-cutover.test.mjs`, GATE 4),
+ * one write later. A refused invite is retried; a buried admin is not.
+ */
+async function readRoster(env, tctx) {
+  const ident = identityFor(env, tctx, "roster");
+  if (ident) {
+    const docs = await ident.rosterRead();
+    if (docs && docs.seeded && docs.roster && typeof docs.roster === "object") {
+      const add = docs.roster.add && typeof docs.roster.add === "object" && !Array.isArray(docs.roster.add) ? docs.roster.add : {};
+      const remove = Array.isArray(docs.roster.remove) ? docs.roster.remove : [];
+      // A fresh object every time — the write ops mutate what this returns (see emptyRoster).
+      return { add: { ...add }, remove: [...remove] };
+    }
+    // Unseeded: KV still holds this workspace's overlay, and it is the answer — the same
+    // deferral `readRosterDocs` makes. `seeded` is the object's own word for whether it has
+    // ever been given the family; the rows alone cannot tell an empty overlay from an
+    // un-copied one.
+  }
+  return readRosterKv(env, tctx);
 }
 
 // Config first, overlay second: an address the config names can never be shadowed by an
@@ -1164,12 +1206,12 @@ async function readRosterDocs(ctx, env) {
     }
     // Unseeded: KV still holds this workspace's overlay, and it is the answer.
     const [roster, avatars, names, roles] = await Promise.all([
-      readRoster(env, ctx), readAvatars(env, ctx), readNames(env, ctx), readRoles(env, ctx),
+      readRosterKv(env, ctx), readAvatars(env, ctx), readNames(env, ctx), readRoles(env, ctx),
     ]);
     return [roster, avatars, names, roles, spaces, icons];
   }
   return Promise.all([
-    readRoster(env, ctx), readAvatars(env, ctx), readNames(env, ctx), readRoles(env, ctx),
+    readRosterKv(env, ctx), readAvatars(env, ctx), readNames(env, ctx), readRoles(env, ctx),
     readSpaces(env, ctx), readSpaceIcons(env, ctx),
   ]);
 }
@@ -1820,24 +1862,9 @@ async function serveKvAvatar(tctx, env, k) {
 // config refresh. Config rosters are unaffected by this ceiling.
 const ROSTER_ADD_MAX = 500;
 const isEmailish = (e) => typeof e === "string" && e.length <= 254 && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e);
-// "ada.lovelace@example.org" → "Ada Lovelace". Only a default; the admin can type one.
-function nameFromEmail(email) {
-  return String(email).split("@")[0].split(/[._-]+/).filter(Boolean)
-    .map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(" ") || String(email);
-}
-function initialsFor(name) {
-  const parts = String(name).trim().split(/\s+/).filter(Boolean);
-  if (!parts.length) return "?";
-  return (parts.length === 1 ? parts[0].slice(0, 2) : parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
-}
-// Stable per address, so an invitee's chip colour never changes under them.
-const ROSTER_COLORS = Object.freeze(["#4f46e5", "#0e7490", "#b45309", "#be123c", "#15803d", "#7c3aed", "#0369a1", "#a21caf"]);
-function colorFor(email) {
-  let h = 0;
-  const s = lcEmail(email);
-  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0;
-  return ROSTER_COLORS[h % ROSTER_COLORS.length];
-}
+// `nameFromEmail`, `initialsFor`, `colorFor` — the chip defaults an invite stamps onto an
+// overlay entry — live in src/roster-chip.mjs, because the workspace object's provisioning
+// writes the first admin's entry and must stamp the same three the same way.
 
 // A stable, one-way id for a person, used to attribute comments to a face without
 // putting an address in KV or on the wire. Deliberately NOT avatarKey(): that hashes

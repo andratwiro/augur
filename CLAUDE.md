@@ -824,6 +824,32 @@ name, initials, colour and role. Passwords live in KV as PBKDF2 hashes under
     failure. `test/roster-promotion.test.mjs` drives both directions over the real routes;
     clauses 11–12 of `scripts/tenant-do-rehearsal.mjs` run the same ordering inside a real
     Durable Object transaction on workerd, where the defect reproduces.
+  - **⚠️ A WORKSPACE BORN IN THE OBJECT HAS NO FILE, AND ITS FIRST ADMIN IS AN OVERLAY ROW.**
+    `rosterRead` emits `'overlay'` rows into `add` and nothing else — a `'config'` row is the
+    MIRROR of a config file and the file is what serves it. `applyProvisioning` therefore
+    writes the first admin `'overlay'`, stamped with the same name/initials/colour an invite
+    stamps (`src/roster-chip.mjs`, the one definition both writers import). Written `'config'`,
+    as it once was, the admin existed in the table and nowhere the serving path looks: a fresh
+    signup's admin did not resolve through `/__people`, the people list was empty, and their
+    own invite link answered "no longer valid". The row is not special afterwards — a config
+    push naming them promotes it, a drain drains it, exactly as any invite. The alternative
+    (emitting `'config'` rows from the object) was rejected on evidence: those rows carry no
+    tombstone when a file stops naming somebody, so serving them keeps a person the config
+    dropped — the property "the push AFTER it" in `test/roster-promotion.test.mjs` pins.
+    **AND THE WRITE'S BASE COMES FROM WHEREVER THE SERVING READ COMES FROM.** Every roster
+    write is a read-modify-write of the whole document followed by the orphan clause, so
+    `readRoster` — the base of invite, remove, role change and the drain — answers from the
+    object wherever it is `seeded`, as `readRosterDocs` already did for the read. It used to
+    read KV unconditionally, and on a provisioned workspace (no KV era) the first invite the
+    admin ever sent read an EMPTY document, wrote `{add: {invitee}}`, and the mirror
+    tombstoned the admin who sent it. An unreadable object REFUSES the write rather than
+    falling through to KV, for the same reason GATE 4 refuses the read: a base missing
+    everybody KV never saw is a roster to orphan them from, one write later. KV still takes
+    every write, so the copy behind the flag only grows more complete.
+    `test/first-admin-roster.test.mjs` drives the signup shape — no config document at all,
+    the admin's only way in an object-minted invite — over the real routes. ⚠️ **The revert is
+    not a revert for a workspace born here**: flip `KV_CUTOVER.roster` off and a provisioned
+    admin who has never been written to KV by a later roster write is not in KV to fall back to.
 - **⚠️ The overlay is a convenience; the tombstone is the security boundary.** A failed
   KV read leaves the roster as the config list, which would put a removed CONFIG user
   back in it — so removal ALSO writes the `users:secrets` tombstone, and that read fails

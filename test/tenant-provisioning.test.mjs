@@ -271,7 +271,9 @@ test("A SEEDED WORKSPACE ARRIVES COMPLETE — admin, key, quotas AND content, in
   assert.equal(r.created, true);
   assert.equal(r.seeded, 3);
   assert.ok(store.isProvisioned());
-  assert.deepEqual(plain(store.members()), [{ email: ADMIN, role: "admin", name: "" }]);
+  // Nobody typed a name, so the row carries the same default an invite would — the first
+  // admin is an overlay entry served like any other, and a blank chip is not an entry.
+  assert.deepEqual(plain(store.members()), [{ email: ADMIN, role: "admin", name: "First" }]);
   assert.deepEqual(store.overlayRead("comments", "")["/welcome/"][0].messages[0].body, "Try replying here.");
   assert.equal(store.overlayRead("statuses", "")["/welcome/"], "wip");
   assert.equal(store.overlayRead("names", "")["/welcome/"], "Start here");
@@ -320,7 +322,9 @@ test("⚠️ RE-PROVISIONING DOES NOT RE-SEED — a month-old board is not repla
   const again = await store.provision({ workspaceId: "acme", adminEmail: "someone@example.test", seed: SEED });
   assert.equal(again.created, false);
   assert.equal(store.overlayRead("comments", "")["/welcome/"][0].messages[0].body, "a real conversation");
-  assert.deepEqual(plain(store.members()), [{ email: ADMIN, role: "admin", name: "" }]);
+  // Nobody typed a name, so the row carries the same default an invite would — the first
+  // admin is an overlay entry served like any other, and a blank chip is not an entry.
+  assert.deepEqual(plain(store.members()), [{ email: ADMIN, role: "admin", name: "First" }]);
 });
 
 test("a family that is not seedable is skipped, not a failed signup", async () => {

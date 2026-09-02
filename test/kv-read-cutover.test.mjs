@@ -966,8 +966,11 @@ test("REVERTING `roster` restores the KV answer, and touches nothing else", asyn
   // `scripts/tenant-do-rehearsal.mjs` that runs three deployments over one persisted store.)
   assert.ok(cut.object.rosterRead().roster.add["newcomer@example.test"],
     "the straddle never wrote the object at all, so there is nothing to revert FROM");
+  // The object was PROVISIONED with the admin, and provisioning writes them as the overlay
+  // row the serving read emits (`B-first-admin-roster-visibility`) — so that one entry is
+  // the object's state before the reverted worker ran, and anything beyond it is a write.
   const seenByReverted = back.object.rosterRead().roster;
-  assert.deepEqual(seenByReverted.add, {},
+  assert.deepEqual(Object.keys(seenByReverted.add), [ADMIN],
     "the reverted worker is still writing the object for a family it no longer reads");
 
   // And the other families did not come back with it.
