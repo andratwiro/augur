@@ -563,6 +563,16 @@ async function boundPhase() {
     rt.sqliteVersion && rt.sqliteVersion.ok === false && /not authorized/i.test(rt.sqliteVersion.error || ""),
     JSON.stringify(rt.sqliteVersion));
 
+  // The front door serves nothing for a workspace that is not provisioned — a touched object
+  // is not a workspace (`F-seed-pack-at-provision`) — so the sign-in every later clause
+  // rides has to follow a real `provision`. The insert is `ON CONFLICT … DO NOTHING`, so the
+  // second call in the chrome clause below touches no row this one wrote.
+  const provisionedFirst = await rehearse("/__rehearsal/do", {
+    workspace: WORKSPACE, path: "/__control/provision", body: { workspaceId: WORKSPACE, adminEmail: ADMIN },
+  });
+  check("the workspace is provisioned before anybody signs in, because an unprovisioned one serves nothing",
+    provisionedFirst.status === 200, (provisionedFirst.body || "").slice(0, 200));
+
   clause("1 · the cut families answer from the object, and the read is not vacuous");
   const cookie = await signIn(ADMIN);
   check("the login gate admits the admin over the real form", !!cookie, cookie.slice(0, 34) + "…");
