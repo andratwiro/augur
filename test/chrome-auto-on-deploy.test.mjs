@@ -179,3 +179,34 @@ test("assets mode (bundleMode false) is untouched: assetFetch delegates straight
   assert.equal(await res.text(), "raw");
   assert.equal(got, "/admin/index.html");
 });
+
+test("⚠️ `check` REPORTS THE STORE'S VERSION when assets chrome is the newer build — a chrome publish must be able to commit", async () => {
+  // `check` answered from the served view, where _engine is the assets copy and carries no
+  // version, so `liveVersion` came back 0 while the commit's compare-and-swap compared
+  // against the store's real version: every `publish.mjs --engine` after a worker deploy
+  // looped on `stale-base` until it gave up (measured 2026-09-02, v174 in the store, 0 in
+  // the answer). A publish is a conversation with the STORE; the served view is not it.
+  const r2Engine = { ...engineManifest({ src: "old", kind: "r2" }), version: 174 };
+  const { env } = bundleEnv({ r2Engine, assetsEngine: engineManifest({ src: "new", kind: "assets" }) });
+  // A real star token in KV: the bootstrap binding is refused in bundle mode by design.
+  const doc = { [await W.tokenFor("pub:tok")]: { space: "*", label: "ci", createdAt: "2026-01-01T00:00:00.000Z" } };
+  const kv = new Map([["publish:tokens", JSON.stringify(doc)]]);
+  env.COMMENTS = {
+    get: async (k) => (kv.has(k) ? kv.get(k) : null),
+    put: async (k, v) => { kv.set(k, v); },
+    delete: async (k) => { kv.delete(k); },
+    list: async ({ prefix = "" } = {}) => ({ keys: [...kv.keys()].filter((k) => k.startsWith(prefix)).map((name) => ({ name })), list_complete: true }),
+  };
+  const url = new URL("https://example.test/__publish/_engine/check");
+  const tctx = Object.freeze({ ...W.applyInstance({ users: [] }), tenantId: tenant() });
+  const res = await W.publishApi(tctx, new Request(url, {
+    method: "POST",
+    headers: { Authorization: "Bearer tok", "content-type": "application/json" },
+    body: JSON.stringify({ files: { "/admin/index.html": rec("z") } }),
+  }), url, env);
+  const text = await res.text();
+  assert.equal(res.status, 200, `check refused: ${text}`);
+  const body = JSON.parse(text);
+  assert.equal(body.liveVersion, 174, "check reported the served chrome's version, not the store's");
+  assert.equal(body.liveSource && body.liveSource.sha, "o".repeat(40), "liveSource is not the store's publish provenance");
+});

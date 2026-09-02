@@ -5298,7 +5298,21 @@ async function publishApi(tctx, request, url, env) {
     for (const id in all) for (const k in all[id].files) have.add(all[id].files[k].h);
     const missing = [...new Set(Object.values(files).map((f) => f && f.h).filter(Boolean))]
       .filter((h) => !have.has(h));
-    const cur = all[spaceId];
+    // A publish is a conversation with the STORE. The served view swaps `_engine` for the
+    // worker's own assets copy when that is the newer build (D-chrome-auto-on-deploy), and
+    // that copy carries no version and no publish provenance — answered from it, `liveVersion`
+    // is 0 while the commit's compare-and-swap compares against the store's real version, and
+    // every `publish.mjs --engine` after a worker deploy loops on `stale-base` until it gives
+    // up (2026-09-02: v174 in the store, 0 in the answer). So when the served copy is the
+    // assets one, `check` reads the store's own document for the version, the files and the
+    // provenance it reports. Unreadable ⇒ no store document, exactly as before.
+    let cur = all[spaceId];
+    if (cur && cur.__fromAssets) {
+      try {
+        const obj = await bundles.get(`spaces/${spaceId}/manifest.json`);
+        cur = obj ? JSON.parse(await obj.text()) : null;
+      } catch (e) { cur = null; }
+    }
     // filesUnchanged + liveSource let the client skip a commit that would change
     // nothing (same content, same provenance) — a version bump with no meaning.
     const curFiles = (cur && cur.files) || null;
