@@ -108,6 +108,13 @@ test("a shell WITH a wrangler.toml builds, passes preflight, and dry-runs a depl
     assert.match(built, /Built dist/);
     assert.ok(fs.existsSync(path.join(dist, ".assetsignore")),
       "no .assetsignore — wrangler refuses to upload a Pages worker as an asset");
+    // The engine's own manifest must RIDE in the upload: the worker reads it through its
+    // ASSETS binding to know its chrome is newer than the store's. Ignored, chrome stays
+    // pinned to the last store publish however often the worker is redeployed.
+    const ignore = fs.readFileSync(path.join(dist, ".assetsignore"), "utf8");
+    assert.match(ignore, /^__manifests\/\*$/m, "other manifests are not deploy content");
+    assert.match(ignore, /^!__manifests\/_engine\.json$/m, "the engine manifest was ignored — chrome can never track the worker");
+    assert.match(ignore, /^_worker\.js$/m);
 
     // 2. Preflight. This is what stands between a config and an open site.
     const pre = execFileSync(process.execPath,

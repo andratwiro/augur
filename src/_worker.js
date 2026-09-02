@@ -11029,7 +11029,10 @@ async function handleRequest(request, env, ctx, url, trace) {
     // Runtime config is data served alongside the assets, for the worker's own
     // reads only — instance.json carries the user list. Reject external requests
     // BEFORE any asset serving, unconditionally (even in open/legacy mode).
-    if (url.pathname === "/__config" || url.pathname.startsWith("/__config/")) {
+    // `/__manifests/` likewise: the engine's own manifest rides in the asset bundle for the
+    // worker's chrome-currency read, and is nobody else's to fetch.
+    if (url.pathname === "/__config" || url.pathname.startsWith("/__config/")
+        || url.pathname === "/__manifests" || url.pathname.startsWith("/__manifests/")) {
       // Context-free by construction: the refusal predates the resolve, so there is no
       // workspace to answer for and it does not reach for one. See configSealedResponse —
       // this used to render the branded 404 out of the module slot, i.e. out of whichever

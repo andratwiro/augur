@@ -7819,7 +7819,14 @@ async function main() {
     "_worker.js",
     "*.mjs",
     "chrome/",
-    "__manifests/",
+    // The manifests stay out — except the engine's own. The worker reads
+    // `__manifests/_engine.json` through its ASSETS binding to learn that the chrome it
+    // was deployed with is newer than the store's, and serve its own (see the assets-vs-R2
+    // swap in src/_worker.js). Ignored, that read 404s and chrome silently stays pinned to
+    // the last store publish, however often the worker is redeployed. Still not a public
+    // URL: the worker refuses external `/__manifests/` requests like `/__config/`.
+    "__manifests/*",
+    "!__manifests/_engine.json",
     "",
   ].join("\n"), "utf8");
 
