@@ -1,6 +1,8 @@
 # Users, login, avatars
 
-The engine has per-user accounts (login by email + password). The engine repo
+The engine has per-user accounts. Sign-in is email + password on a self-hosted
+instance, or an emailed code from the central account store on a hosted one (no
+password exists there; see `ACCOUNT_ORIGIN` / `SESSION_KEYS`). The engine repo
 itself carries **no users** — `src/identity.json` is an empty placeholder; the
 live list lives in the instance's deploy shell repo as `identity.json` (NOT in
 this engine repo). Editing it is a config change: it only reaches the live site
@@ -114,8 +116,10 @@ one, by construction rather than by care.
 What is already true, and what a doc reader should not be surprised by:
 
 - **A publish token expires.** Thirty days by default, set per instance. It used
-  to last forever. See [publishing.md](./publishing.md) for the four refusals and
-  which of them `augur login` fixes.
+  to last forever. Where the instance offers device pairing, a missing or expired
+  token pairs itself inside the publish (`augur connect`: a link and a code for a
+  signed-in browser); see [publishing.md](./publishing.md) for the refusals and
+  what each one does.
 - **A viewer cannot hold one at all**, and a demotion invalidates the tokens the
   account already minted rather than leaving old privilege alive in a credential.
 - **Removal is not erasure.** Removing somebody revokes their access and leaves

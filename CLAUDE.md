@@ -217,7 +217,7 @@ outside `prototypes/` — internal, never copied to `/dist`.
 `.github/workflows/deploy-trigger.yml` (an `engine-updated` dispatch); the shell
 moves the engine pin and its `deploy.yml` ships worker code + engine chrome
 (~1 min). **Space content does NOT ship on push, and cannot** — spaces publish via
-`augur publish` (seconds, atomic; token from `augur login`).
+`augur publish` (seconds, atomic; token from `augur connect` or `augur login`).
 
 **One source of content, structurally.** A shell builds with `GV_ENGINE_ONLY=1`:
 space discovery is skipped, no space is on disk, and the manifest writer THROWS if
@@ -499,8 +499,10 @@ space in the current dir: `space.json` + one starter prototype at
 `<project>/prototypes/<name>/`, the nesting `discoverSpaces()` actually looks in;
 refuses to overwrite) ·
 `augur dev` (standalone shell — single space folder, dev identity fallback) ·
-`npm run offline` (multi-space workspace) · `augur login` (trade web credentials for a
-publish token, once per instance) · `npm run deploy` (build + direct upload to Pages;
+`npm run offline` (multi-space workspace) · `augur connect` (pair a terminal with a
+signed-in browser for a publish token, no password; `publish` runs it itself when it
+has no token) · `augur login` (trade web credentials for a publish token: CI, scripts,
+instances without pairing) · `npm run deploy` (build + direct upload to Pages;
 `--check`, `--preview`) — in bundle mode this ships CHROME, so reserve it for
 engine/worker verification; content goes out with `ship`/`publish` ·
 `augur ship [-m msg] [--no-push]` (the default path) ·

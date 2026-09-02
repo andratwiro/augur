@@ -55,7 +55,7 @@ if (existsSync(protoPath)) die(`${rel} already exists. Pass --prototype <name> f
 // scaffolded as noise — `default: true` because a fresh space is a one-space
 // site until something else mounts beside it.
 const space = { id, name, default: true };
-// siteOrigin is what lets `augur login` and `augur publish` work from a bare
+// siteOrigin is what lets `augur connect`/`augur login` and `augur publish` work from a bare
 // clone with no deploy shell around it, so write it when we know it.
 if (origin) space.siteOrigin = origin;
 
@@ -117,5 +117,5 @@ log(`space "${id}" scaffolded:`);
 log(`  space.json`);
 log(`  ${rel}`);
 if (wroteCanon) log(`  CANON.md`);
-if (!origin) log(`no siteOrigin set — add one to space.json (or pass --origin) so login/publish work from this clone.`);
+if (!origin) log(`no siteOrigin set — add one to space.json (or pass --origin) so connect/login/publish work from this clone.`);
 log(`next: edit the prototype, then \`augur ship\`.`);

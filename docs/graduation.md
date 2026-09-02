@@ -55,7 +55,7 @@ that is a git repository, or a hosted one that never had one.
 # a workspace you have a clone of — no credentials, no network
 augur clone --prototype <name> --from <space-dir> --out <dir>
 
-# a workspace with no repo — reads the live publish; needs `augur login` once
+# a workspace with no repo — reads the live publish; needs a publish token once (`augur connect`, or `augur login`)
 augur clone --prototype <name> --space <id> --out <dir>
 ```
 

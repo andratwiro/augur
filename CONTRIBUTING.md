@@ -14,7 +14,7 @@ The contribution filter, in one table:
 |---|---|
 | Build, worker, overlays, canvas, offline tooling | **this repo** |
 | Your site's origin, realtime worker URL, redirects, MCP hosts | your shell's `deploy.config.json` |
-| Your users + passwords | your shell's `identity.json` |
+| Your users (the roster) | your shell's `identity.json` (credentials never live in a repo) |
 | Space name, the `default` flag, design-system override, ignores, the exact MCP hosts its own prototypes need (`mcpAllowlists`) | the space's `space.json` |
 
 If a PR hardcodes a URL, a product name, or any single instance's value into the

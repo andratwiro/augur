@@ -18,7 +18,7 @@ GET https://<your-site>/__publish/<workspace>/currency
 Authorization: Bearer $AUGUR_TOKEN
 ```
 
-Same token `augur login` already saved for publishing; scoped to your workspace,
+Same token `augur connect` (or `augur login`) already saved for publishing; scoped to your workspace,
 so it answers about that one and no other. (A signed-in browser reads the same
 answer from `/__currency` — one function, two doors, because a person has a
 session and you have a token.)
