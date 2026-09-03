@@ -22,8 +22,18 @@
 /** Gallery tiers: authored folders whose URL is their source path. */
 export const TIERS = Object.freeze(["base", "components", "pages", "patterns"]);
 
-/** Files at the root of a space that are real source. */
-const ROOT_SOURCE = new Set(["space-icon.png", "space-icon.svg"]);
+/**
+ * Files at the root of a space that are real source.
+ *
+ * `registry.json` is the overlay catalog — the design system's contract, which the build
+ * REQUIRES beside a skill and refuses to build without — and `prototype-status.json` is
+ * the dev-status baseline every project index is rendered from. Both ship with the publish
+ * for exactly this reason (`C-clone-publish-roundtrip`): a clone that came back without them
+ * was a tree that could not be published again — the build said so only after the clone had
+ * said everything was fine — or one that rebuilt into a different site. The rule is the
+ * build's own: what it READS to reproduce a space travels; what it WRITES is skipped here.
+ */
+const ROOT_SOURCE = new Set(["space-icon.png", "space-icon.svg", "registry.json", "prototype-status.json"]);
 
 /** Generated pages a publish carries that no source tree contains. */
 const GENERATED_EXACT = new Set(["/index.html", "/__search.json"]);
@@ -104,11 +114,25 @@ export function materializePlan(manifest) {
 }
 
 /**
- * A minimal space.json for a cloned tree. space.json is not a served asset and is not in
- * any manifest, so it has to be synthesized — and it is deliberately minimal: anything
- * inferred rather than known (a display name, a projects label) would be a guess written
- * into the file that decides how the space builds.
+ * A space.json for a cloned tree. space.json is not a served asset and is in no manifest
+ * as a file, so it has to be synthesized — and it is deliberately minimal: anything
+ * INFERRED rather than known would be a guess written into the file that decides how the
+ * space builds.
+ *
+ * What the manifest does KNOW is carried (`C-clone-publish-roundtrip`): the build records
+ * the space's own record on every manifest (`manifest.space` — name, badge, description,
+ * projects label, help sections), and each of those is baked into the generated pages, so
+ * a tree without them rebuilds into a site with a different name on it. They are copied
+ * only when the record actually carries them; an empty value is the build's default, not
+ * a fact about the space. `siteOrigin` is always the origin this clone was taken from —
+ * the address the workspace answers at now — never one recorded before a move.
  */
-export function synthesizeSpaceJson(id, origin) {
-  return { id, default: true, siteOrigin: origin };
+export function synthesizeSpaceJson(id, origin, space = null) {
+  const out = { id, default: true, siteOrigin: origin };
+  const s = space && typeof space === "object" ? space : {};
+  for (const k of ["name", "badge", "description", "projectsLabel"]) {
+    if (typeof s[k] === "string" && s[k].trim()) out[k] = s[k];
+  }
+  if (Array.isArray(s.help) && s.help.length) out.help = s.help;
+  return out;
 }
