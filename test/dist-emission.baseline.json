@@ -41,7 +41,7 @@
   "pitis/piti.build.js": "sha256:6ee6033f9248adff",
   "pitis/piti.js": "sha256:5623ffd1e768d08a",
   "provenance.mjs": "sha256:18bdc6b7fe595e5b",
-  "publish-compose.mjs": "sha256:243f9db662f7f966",
+  "publish-compose.mjs": "sha256:8a09db46de0c40ad",
   "publish-fork.mjs": "sha256:fbaa8ddcac244fab",
   "publish-units.mjs": "sha256:5dc770ed37332a65",
   "purge.mjs": "sha256:272239e7b2e381d2",

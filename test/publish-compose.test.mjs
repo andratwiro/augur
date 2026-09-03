@@ -173,6 +173,9 @@ test("my new unit ships; their live-only unit stays — implicit unpublish is im
   assert.deepEqual(manifest.routing.publicPrefixes, ["/toolkit/new/", "/toolkit/theirs/"]);
   assert.equal(manifest.files["/toolkit/theirs/index.html"].h, H("t"));
   assert.deepEqual(summary.newUnits, ["/toolkit/new/"]);
+  // and it is REPORTED as kept: live is not this tree, so the publisher's cache must not
+  // fast-path the whole tree next time (that path would drop the unit the guard then catches)
+  assert.deepEqual(summary.kept, ["/toolkit/theirs/"]);
 });
 
 test("an evidenced deletion drops only with --allow-unpublish; otherwise it stays, loudly", async () => {
