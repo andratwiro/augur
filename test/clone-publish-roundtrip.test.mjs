@@ -12,18 +12,24 @@
 // The CLI talks to it over the same routes it talks to a deployment, from a cloned folder
 // with no `.git`, which is what a hosted workspace may never have anything else of.
 //
-// THE COMPARISON IS AGAINST THE BUILT MANIFEST, NOT THE COMMIT. A publish from a tree
-// with no git evidence composes conservatively and can keep live's bytes for every unit
-// it cannot prove it edited — so "0 blobs to upload" can be true of a build that produced
-// something quite different, and the count is composition's verdict, not the clone's.
-// What this file asserts is that the tree the clone wrote REBUILDS into what is live:
-// every URL present on both sides, every non-HTML file byte-identical (the composition
-// graph is the registry's whole footprint, and it is a .js file), and every page equal
-// once two things the build stamps from the CLOCK are set aside — the volatile head (og
-// meta from an origin the seed did not know; the same tolerance the publish applies when
-// it asks whether a unit really changed) and the "Edited 12 minutes ago" caption an index
-// card bakes as its baseline, which two builds of one unchanged tree never agree on and
-// which `CURRENCY_JS` replaces at load from the recorded stamp anyway.
+// THREE CLAIMS, in the order a person meets them:
+//
+//   1. THE SOURCE ROUND-TRIPS. The tree the clone wrote REBUILDS into what is live: every
+//      URL present on both sides, every authored file — the prototypes, the skill, the
+//      root documents — byte-identical or different in the volatile head alone (og meta
+//      stamped from an origin the seed did not know; the tolerance the publish itself
+//      applies), and the composition graph byte-identical, because it is derived from the
+//      catalog and the skill inventory and is the whole footprint of both. Judged on the
+//      BUILT manifest, not the commit. The generated indexes are held to presence only:
+//      their card order is recency, which for a repo-less tree is file mtime — the clone
+//      moment — so two builds of one tree can order a status group differently.
+//   2. AN UNCHANGED PUBLISH LEAVES LIVE ALONE. The seed yields to a real publish only where
+//      the SOURCE changed (`F-seed-yields-to-real-publish`, judged on the pre-decoration
+//      hash `sh`), so after a publish of the untouched clone every unit still carries the
+//      seed pack's bytes AND its seed marker. Asserted directly on live, per unit.
+//   3. AN EDIT LANDS, AND ONLY THE EDIT. After one file changes, that unit is the person's
+//      — new bytes, no seed marker — while every other unit is still the seed's, bytes and
+//      marker alike. A plain publish, no flags: the command a person actually runs.
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
@@ -36,8 +42,11 @@ import { createHash } from "node:crypto";
 
 import worker, { __testables as W } from "../src/_worker.js";
 import { publishSeedPack } from "../src/seed-pack.mjs";
+import { isSeedSource } from "../src/provenance.mjs";
+import { unitPaths } from "../src/publish-units.mjs";
 import { buildSeedPack } from "../scripts/lib/seed-pack-build.mjs";
 import { stripVolatileHead } from "../scripts/lib/publish-conflict.mjs";
+import { classify } from "../scripts/lib/materialize.mjs";
 
 const ENGINE = fileURLToPath(new URL("..", import.meta.url));
 const TOKEN = "startok";
@@ -159,17 +168,21 @@ const run = (engineRoot, script, args, { cwd, origin, home, env = {} }) => new P
   }, (err, stdout, stderr) => resolve({ code: err ? err.code || 1 : 0, out: `${stdout}${stderr}` }));
 });
 
-// The two clock readings a page carries. The head is what the publish itself ignores; the
-// caption is the baked baseline of a card's currency line, relative to build time.
-const settled = (html) => stripVolatileHead(html)
-  .replace(/(<span class="proto-when"[^>]*>)[^<]*(<\/span>)/g, "$1$2");
+// ── comparators ────────────────────────────────────────────────────────────────────
+
+/** The one clock reading an authored page carries: the head the publish itself ignores. */
+const settled = (html) => stripVolatileHead(html);
+
+/** Every URL a source tree would own, plus the graph derived from its catalog and skill. */
+const isAuthored = (url, prefixes) => classify(url, prefixes).kind === "source" || url.endsWith("/graph.js");
 
 /**
  * Does `built` (a manifest the build wrote, with bytes under `distRoot`) rebuild what `live`
- * holds? Returns the differences, grouped, or an empty report.
+ * holds? Presence is judged over every URL; bytes over the authored ones only.
  */
-async function compareBuilt({ built, distRoot, live, blob }) {
-  const report = { missing: [], extra: [], bytes: [], pages: [], pagesVolatileOnly: [] };
+async function rebuildReport({ built, distRoot, live, blob }) {
+  const prefixes = live.routing.publicPrefixes;
+  const report = { missing: [], extra: [], bytes: [], pages: [], pagesVolatileOnly: [], generatedDiffer: [] };
   const liveUrls = Object.keys(live.files), builtUrls = new Set(Object.keys(built.files));
   for (const u of liveUrls) if (!builtUrls.has(u)) report.missing.push(u);
   for (const u of builtUrls) if (!(u in live.files)) report.extra.push(u);
@@ -177,6 +190,7 @@ async function compareBuilt({ built, distRoot, live, blob }) {
     if (!builtUrls.has(u)) continue;
     const mine = built.files[u].h, theirs = live.files[u].h;
     if (mine === theirs) continue;
+    if (!isAuthored(u, prefixes)) { report.generatedDiffer.push(u); continue; }
     if (!/\.html?$/i.test(u)) { report.bytes.push(u); continue; }
     const a = fs.readFileSync(path.join(distRoot, u.slice(1)), "utf8");
     const b = (await blob(theirs)).toString("utf8");
@@ -186,13 +200,26 @@ async function compareBuilt({ built, distRoot, live, blob }) {
   return report;
 }
 
+/** The units of `after` that still hold `before`'s bytes, file for file, and their markers. */
+function unitsAgainst(before, after) {
+  const same = [], changed = [], seed = [], person = [];
+  for (const u of before.routing.publicPrefixes) {
+    const bp = unitPaths(before, u), ap = unitPaths(after, u);
+    const identical = bp.length === ap.length && bp.every((p) => after.files[p] && after.files[p].h === before.files[p].h);
+    (identical ? same : changed).push(u);
+    (isSeedSource((after.routing.unitSources || {})[u]) ? seed : person).push(u);
+  }
+  return { same, changed, seed, person };
+}
+
 const PACK = buildSeedPack({ engineRoot: ENGINE });
 const SPACE = PACK.space.id;
+const EDIT_UNIT = "/start-here/sample-with-comments/";
 const EDIT_FILE = "start-here/prototypes/sample-with-comments/index.html";
-const EDIT_URL = "/start-here/sample-with-comments/index.html";
+const EDIT_URL = `${EDIT_UNIT}index.html`;
 const MARKER = "ROUNDTRIP_EDIT_7f3a";
 
-test("⚠️ A CLONE OF A SEEDED WORKSPACE PUBLISHES BACK — no build error, and the rebuilt tree is what is live", async () => {
+test("⚠️ A CLONE OF A SEEDED WORKSPACE PUBLISHES BACK — the source round-trips, live keeps the seed, one edit lands alone", async () => {
   const inst = await instance();
   const engineCopy = isolatedEngineCopy();
   const work = fs.mkdtempSync(path.join(os.tmpdir(), "augur-roundtrip-"));
@@ -204,76 +231,75 @@ test("⚠️ A CLONE OF A SEEDED WORKSPACE PUBLISHES BACK — no build error, an
     await publishSeedPack({ store: inst.env.BUNDLES, pack: PACK, workspaceId: "local", origin: inst.origin, at: "2026-09-02T10:00:00.000Z" });
     const live1 = await inst.manifest(SPACE);
     assert.equal(live1.version, 1);
+    const units = live1.routing.publicPrefixes;
+    assert.equal(unitsAgainst(live1, live1).seed.length, units.length, "the pack did not mark every unit as the seed's");
 
     // ── 1. clone ──────────────────────────────────────────────────────────────────
     const cloned = await run(engineCopy, "clone.mjs", ["--space", SPACE, "--out", cloneDir], { cwd: work, origin: inst.origin, home });
     assert.equal(cloned.code, 0, cloned.out);
     assert.ok(fs.existsSync(path.join(cloneDir, "space.json")), "no space.json in the clone");
     assert.ok(!fs.existsSync(path.join(cloneDir, ".git")), "a clone is repo-less on purpose");
-    // The overlay catalog is a source file of the tree and it came with it.
-    assert.ok(fs.existsSync(path.join(cloneDir, "registry.json")),
-      `registry.json did not travel with the clone:\n${cloned.out}`);
-    assert.ok(!/cannot recover[^\n]*registry\.json/i.test(cloned.out),
-      `clone still says it cannot recover registry.json:\n${cloned.out}`);
+    // The build's own inputs are source files of the tree and they came with it.
+    for (const f of ["registry.json", "prototype-status.json", "skills/starter-ui/skill.json"]) {
+      assert.ok(fs.existsSync(path.join(cloneDir, f)), `${f} did not travel with the clone:\n${cloned.out}`);
+    }
+    assert.ok(!/cannot recover[^\n]*registry\.json/i.test(cloned.out), `clone still says it cannot recover registry.json:\n${cloned.out}`);
 
-    // ── 2. publish --dry-run, changing nothing ────────────────────────────────────
+    // ── 2. publish --dry-run, changing nothing: THE SOURCE ROUND-TRIPS ───────────
     const publishEnv = { cwd: cloneDir, origin: inst.origin, home, env: { GV_SPACES_ROOT: cloneDir } };
     const dry = await run(engineCopy, "publish.mjs", ["--dry-run"], publishEnv);
     assert.ok(!/\[catalog\]/.test(dry.out), `the build died on the overlay catalog:\n${dry.out}`);
     assert.ok(!/build failed/i.test(dry.out), `the build failed:\n${dry.out}`);
     assert.equal(dry.code, 0, dry.out);
 
-    // The proof: the tree the clone wrote rebuilds into what is live.
     const built = JSON.parse(fs.readFileSync(path.join(engineCopy, "dist", "__manifests", `${SPACE}.json`), "utf8"));
-    const diff = await compareBuilt({ built, distRoot: path.join(engineCopy, "dist"), live: live1, blob: (h) => inst.blob(SPACE, h) });
-    const show = (k) => (diff[k].length ? `\n  ${k}: ${diff[k].join(", ")}` : "");
-    const problems = ["missing", "extra", "bytes", "pages"].filter((k) => diff[k].length);
+    const r = await rebuildReport({ built, distRoot: path.join(engineCopy, "dist"), live: live1, blob: (h) => inst.blob(SPACE, h) });
+    const show = (k) => (r[k].length ? `\n  ${k}: ${r[k].join(", ")}` : "");
+    const problems = ["missing", "extra", "bytes", "pages"].filter((k) => r[k].length);
     assert.equal(problems.length, 0,
-      `the clone does not rebuild into what is live:${show("missing")}${show("extra")}${show("bytes")}${show("pages")}${show("pagesVolatileOnly")}`);
-    // And the authored pages in particular — the six prototypes — are byte-identical or
-    // differ in the head alone; a clone that changed a prototype's body is not a clone.
-    for (const u of live1.routing.publicPrefixes.map((p) => `${p}index.html`)) {
-      assert.ok(!diff.pages.includes(u), `${u} came back different`);
-    }
+      `the clone does not rebuild into what is live:${show("missing")}${show("extra")}${show("bytes")}${show("pages")}${show("pagesVolatileOnly")}${show("generatedDiffer")}`);
+    // The six prototypes in particular: identical, or different in the head alone.
+    for (const u of units) assert.ok(!r.pages.includes(`${u}index.html`), `${u} came back different`);
 
-    // ── 2b. a real publish, still changing nothing ────────────────────────────────
-    // Lands as a version whose files are what was live, or is skipped as identical —
-    // never a build error, never a different site.
+    // ── 2b. a real publish, still changing nothing: LIVE KEEPS THE SEED ──────────
     const same = await run(engineCopy, "publish.mjs", [], publishEnv);
     assert.ok(!/\[catalog\]/.test(same.out), same.out);
     assert.equal(same.code, 0, same.out);
     const live2 = await inst.manifest(SPACE);
-    assert.ok(live2.version === 1 || live2.version === 2, `unexpected version ${live2.version}`);
-    const diff2 = await compareBuilt({ built: live2, distRoot: null, live: live1, blob: (h) => inst.blob(SPACE, h) })
-      .catch(() => null);
-    // Hash-level comparison is enough here: the committed manifest names blobs the store
-    // holds, and a page that differs at all from v1 must be one of the pages the build
-    // rebuilt (volatile head only), never a missing or extra URL.
-    if (diff2) {
-      assert.deepEqual(diff2.missing, [], `the unchanged publish dropped ${diff2.missing.join(", ")}`);
-      assert.deepEqual(diff2.extra, [], `the unchanged publish added ${diff2.extra.join(", ")}`);
-      assert.deepEqual(diff2.bytes, [], `the unchanged publish changed ${diff2.bytes.join(", ")}`);
+    const after2 = unitsAgainst(live1, live2);
+    assert.deepEqual(after2.changed, [], `an unchanged publish changed ${after2.changed.join(", ")}`);
+    assert.deepEqual(after2.person, [], `an unchanged publish took ${after2.person.join(", ")} from the seed`);
+    assert.deepEqual(live2.routing.publicPrefixes.slice().sort(), units.slice().sort(), "the set of units moved");
+    // The skill, the catalog, the baseline: the seed's bytes, still.
+    for (const u of Object.keys(live1.files).filter((p) => isAuthored(p, units) && !units.some((x) => p.startsWith(x)))) {
+      assert.equal((live2.files[u] || {}).h, live1.files[u].h, `${u} changed under an unchanged publish`);
     }
+    // What the CLI did with a tree that changed nothing is reported, not asserted: today it
+    // is a version that carries no new authored byte (see the CARRY in the commit).
+    const minted2 = live2.version > live1.version;
 
-    // ── 3. change one file and publish: it lands ──────────────────────────────────
-    // `--takeover` because the question here is whether the PIPELINE works from a cloned
-    // folder — build, upload, commit — not how a repo-less tree's edits are reconciled
-    // against live (that is composition's, and it has its own tests).
+    // ── 3. change one file and publish, plainly: THE EDIT LANDS, AND ONLY THE EDIT ─
     const file = path.join(cloneDir, EDIT_FILE);
     assert.ok(fs.existsSync(file), `${EDIT_FILE} is not in the clone`);
     fs.writeFileSync(file, fs.readFileSync(file, "utf8").replace("</body>", `<p>${MARKER}</p>\n</body>`));
-    const edited = await run(engineCopy, "publish.mjs", ["--takeover"], publishEnv);
+    const edited = await run(engineCopy, "publish.mjs", [], publishEnv);
     assert.ok(!/\[catalog\]/.test(edited.out), edited.out);
     assert.equal(edited.code, 0, edited.out);
+    assert.ok(!/would fork|conflict —/.test(edited.out), `the edit was treated as a conflict:\n${edited.out}`);
     const live3 = await inst.manifest(SPACE);
     assert.ok(live3.version > live2.version, `the edit did not produce a new version (${live3.version})`);
-    assert.notEqual(live3.files[EDIT_URL].h, live1.files[EDIT_URL].h, "the edited page's hash did not change");
+    const after3 = unitsAgainst(live1, live3);
+    assert.deepEqual(after3.changed, [EDIT_UNIT], `the wrong units changed: ${after3.changed.join(", ") || "none"}`);
+    assert.deepEqual(after3.person, [EDIT_UNIT], `the wrong units became a person's: ${after3.person.join(", ") || "none"}`);
+    assert.equal(after3.seed.length, units.length - 1, "an untouched unit lost the seed marker");
     const page = (await inst.blob(SPACE, live3.files[EDIT_URL].h)).toString("utf8");
     assert.ok(page.includes(MARKER), "the edit is not in the page that is live");
-    // And the registry still rides: the same graph, byte for byte, from the same catalog.
+    // And the catalog still rides: the same graph, byte for byte, from the same registry.
     const graphUrl = Object.keys(live1.files).find((u) => u.endsWith("/graph.js"));
     assert.ok(graphUrl, "the seed publishes no composition graph");
     assert.equal(live3.files[graphUrl].h, live1.files[graphUrl].h, "the composition graph changed across the round trip");
+
+    console.log(`[roundtrip] unchanged publish: v${live1.version} → v${live2.version}${minted2 ? " (a version with nothing new)" : " (no version minted)"}; edit: v${live3.version}`);
   } finally {
     inst.server.close();
     fs.rmSync(work, { recursive: true, force: true });
@@ -281,10 +307,12 @@ test("⚠️ A CLONE OF A SEEDED WORKSPACE PUBLISHES BACK — no build error, an
   }
 });
 
-test("the seed pack carries the overlay catalog, so a provisioned workspace can be cloned and published", () => {
+test("the seed pack carries the build's own inputs, so a provisioned workspace can be cloned and published", () => {
   // The staging failure in one line: the pack is what a fresh workspace is furnished with,
   // and a pack without the catalog furnishes a workspace whose clone cannot be built.
-  assert.ok("/registry.json" in PACK.files, `the seed pack does not carry /registry.json (${Object.keys(PACK.files).length} files)`);
+  for (const p of ["/registry.json", "/prototype-status.json", "/skills/starter-ui/skill.json"]) {
+    assert.ok(p in PACK.files, `the seed pack does not carry ${p} (${Object.keys(PACK.files).length} files)`);
+  }
   const bytes = Buffer.from(PACK.files["/registry.json"].b64, "base64");
   assert.equal(sha256(bytes), PACK.files["/registry.json"].h);
   const reg = JSON.parse(bytes.toString("utf8"));

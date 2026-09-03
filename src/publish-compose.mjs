@@ -163,9 +163,13 @@ export async function composePublish({
   const readMap = {};    // composed path → path whose bytes exist in dist (fork re-keys)
   const extraBlobs = {}; // hash → Uint8Array (synthesized CONFLICT.md)
   // `seeded`: seed units this publish replaced. `seedKept`: seed units this tree carries
-  // with only their decoration changed — live's bytes and marker stay; NOT reported as
-  // kept (nothing was held back), but the caller's cache must know live is not exactly
-  // this tree, so the next publish composes again rather than fast-pathing the tree over it.
+  // unchanged — byte-identical, or with only their decoration changed — where live's bytes
+  // AND ITS SEED MARKER stay; NOT reported as kept (nothing was held back), but the caller's
+  // cache must know live is not exactly this tree, so the next publish composes again rather
+  // than fast-pathing the tree over it. The marker is the reason the byte-identical case is
+  // in here too: the built manifest stamps every unit as the publisher's, so a fast path
+  // that ships it whole would take the seed marker off five untouched pages while shipping
+  // one edit — measured, by the clone round trip, on the second publish from a clone.
   const summary = { shipped: [], kept: [], forked: [], removed: [], removalBlocked: [], newUnits: [], keptDiffer: [], seeded: [], seedKept: [] };
 
   const takeMine = (u) => {
@@ -215,7 +219,11 @@ export async function composePublish({
       continue;
     }
     // In both.
-    if (sameUnitBytes(mine, live, u)) { takeLive(u); continue; }
+    if (sameUnitBytes(mine, live, u)) {
+      takeLive(u);
+      if (liveSeedUnit(u)) summary.seedKept.push(u); // the marker is live's, and the cache must know
+      continue;
+    }
     if (liveSeedUnit(u)) {
       // The platform's page yields to anybody's — unless nobody actually changed it.
       if (sameUnitSource(mine, live, u) || await tolerantEqual(u)) { takeLive(u); summary.seedKept.push(u); continue; }
