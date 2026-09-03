@@ -83,6 +83,23 @@ const sameUnitSource = (a, b, unit) => {
   return pa.every((p) => bf.has(p) && sameFileSource(a.files[p], bf.get(p)));
 };
 
+// Has this live `-conflict-` fork's content reached its origin URL in `next`? True when
+// the origin unit is in `next` and every file of the fork (CONFLICT.md aside) has the same
+// source — `sh` when both carry it, served bytes otherwise — at the origin. This is the one
+// verifiable reason a public page may vanish unasked, so the composer, the CLI's pre-check
+// and the store's unpublish guard all ask this same function.
+export function forkLanded(live, next, fork) {
+  const m = dec(fork).match(/^(.*)-conflict-([a-z0-9][a-z0-9-]*)\/$/);
+  if (!m) return false;
+  const origin = norm(m[1] + "/");
+  if (!(((next || {}).routing || {}).publicPrefixes || []).map(norm).includes(origin)) return false;
+  const strip = (u, p) => dec(p).slice(dec(u).length);
+  const fPaths = unitPaths(live, fork).filter((p) => !/\/CONFLICT\.md$/.test(dec(p)));
+  const of = new Map(unitPaths(next, origin).map((p) => [strip(origin, p), next.files[p]]));
+  return fPaths.length > 0 && fPaths.length === of.size
+    && fPaths.every((p) => sameFileSource(live.files[p], of.get(strip(fork, p))));
+}
+
 // Drop tree-derived `*-conflict-*` units from a built manifest, in place.
 // Returns the unit prefixes it removed (for one summary log line).
 export function filterLitter(manifest) {
@@ -317,18 +334,15 @@ export async function composePublish({
   // a stranger's fork of a unit nobody shipped stays, like any live-only unit.
   const shippedNow = new Set([...summary.shipped, ...summary.newUnits, ...summary.seeded]);
   const forkedNow = new Set(summary.forked.map((f) => f.fork));
-  const strip = (u, p) => dec(p).slice(dec(u).length);
   for (const f of [...out.routing.publicPrefixes]) {
     const m = dec(f).match(/^(.*)-conflict-([a-z0-9][a-z0-9-]*)\/$/);
     if (!m || forkedNow.has(f) || !liveUnits.has(f)) continue;
     const origin = norm(m[1] + "/");
     if (!out.routing.publicPrefixes.includes(origin)) continue;
     const mineFork = who !== "someone" && (m[2] === who || m[2].startsWith(who + "-"));
-    const fPaths = unitPaths(live, f).filter((p) => !/\/CONFLICT\.md$/.test(dec(p)));
-    const of = new Map(unitPaths(out, origin).map((p) => [strip(origin, p), out.files[p]]));
-    const landed = fPaths.length > 0 && fPaths.length === of.size
-      && fPaths.every((p) => sameFileSource(live.files[p], of.get(strip(f, p))));
-    if (!landed && !(mineFork && shippedNow.has(origin))) continue;
+    // The author's own fork also retires when they ship the origin with FURTHER changes —
+    // the store cannot verify that one, so it needs --allow-unpublish; the CLI says so.
+    if (!forkLanded(live, out, f) && !(mineFork && shippedNow.has(origin))) continue;
     for (const p of unitPaths(live, f)) delete out.files[p];
     out.routing.publicPrefixes = out.routing.publicPrefixes.filter((x) => x !== f);
     delete out.routing.versionMap[f];

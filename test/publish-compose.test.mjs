@@ -6,7 +6,7 @@
 // (composePublish is pure; there is nothing to write with).
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { composePublish, filterLitter, LITTER_RE } from "../scripts/lib/publish-compose.mjs";
+import { composePublish, filterLitter, forkLanded, LITTER_RE } from "../scripts/lib/publish-compose.mjs";
 
 const H = (c) => String(c).repeat(64).slice(0, 64);
 const entry = (h) => ({ h: H(h), ct: "text/html; charset=utf-8", s: 10 });
@@ -360,4 +360,15 @@ test("a fork retires on same SOURCE at the origin, not only identical bytes", as
   const { manifest, summary } = await compose({ mine, live, ffUnits: new Set(["/toolkit/map/"]) });
   assert.deepEqual(summary.retired, ["/toolkit/map-conflict-wietse/"]);
   assert.ok(!manifest.files["/toolkit/map-conflict-wietse/index.html"]);
+});
+
+test("forkLanded is the one shared verdict: origin present, every fork file's source at the origin", () => {
+  const page = (u, h, sh) => ({ [`${u}index.html`]: { h: H(h), sh: H(sh), ct: "text/html; charset=utf-8", s: 10 }, [`${u}app.js`]: { h: H(h + "j"), ct: "text/javascript", s: 5 } });
+  const live = mani({ files: { ...page("/toolkit/map/", "L", "L"), ...page("/toolkit/map-conflict-w/", "W", "W") }, prefixes: ["/toolkit/map/", "/toolkit/map-conflict-w/"] });
+  assert.equal(forkLanded(live, mani({ files: page("/toolkit/map/", "W", "W"), prefixes: ["/toolkit/map/"] }), "/toolkit/map-conflict-w/"), true);
+  // the html source matches but the verbatim js does not: not landed
+  const half = mani({ files: { ...page("/toolkit/map/", "W", "W"), "/toolkit/map/app.js": { h: H("zz"), ct: "text/javascript", s: 5 } }, prefixes: ["/toolkit/map/"] });
+  assert.equal(forkLanded(live, half, "/toolkit/map-conflict-w/"), false);
+  assert.equal(forkLanded(live, mani({ files: {}, prefixes: [] }), "/toolkit/map-conflict-w/"), false, "origin gone");
+  assert.equal(forkLanded(live, live, "/toolkit/map/"), false, "not a fork name");
 });

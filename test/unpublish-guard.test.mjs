@@ -304,3 +304,17 @@ test("/check's advisory livePrefixes excludes dead/orphaned entries too, matchin
   assert.equal(res.status, 200);
   assert.deepEqual((await res.json()).livePrefixes, ["/toolkit/widgets/"]);
 });
+
+test("a -conflict- fork whose source is at its origin URL has retired: not a removal", () => {
+  const page = (u, h, sh) => ({ [`${u}index.html`]: { h: h.repeat(64), sh: sh.repeat(64), ct: "text/html", s: 1 } });
+  const before = {
+    routing: { publicPrefixes: ["/toolkit/map/", "/toolkit/map-conflict-w/"] },
+    files: { ...page("/toolkit/map/", "a", "a"), ...page("/toolkit/map-conflict-w/", "b", "w"), "/toolkit/map-conflict-w/CONFLICT.md": { h: "c".repeat(64), ct: "text/markdown", s: 1 } },
+  };
+  const landed = { routing: { publicPrefixes: ["/toolkit/map/"] }, files: page("/toolkit/map/", "d", "w") };
+  assert.deepEqual(removed(before, landed), [], "same source at the origin (bytes may differ by engine decoration)");
+  const notLanded = { routing: { publicPrefixes: ["/toolkit/map/"] }, files: page("/toolkit/map/", "d", "x") };
+  assert.deepEqual(removed(before, notLanded), ["/toolkit/map-conflict-w/"], "a fork whose edit is NOT at the origin is a real removal");
+  const originGone = { routing: { publicPrefixes: [] }, files: {} };
+  assert.deepEqual(removed(before, originGone).sort(), ["/toolkit/map-conflict-w/", "/toolkit/map/"]);
+});

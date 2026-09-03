@@ -102,7 +102,7 @@ import { STATE_INVENTORY } from "./state-inventory.mjs";
 import { PURGED_AUTHOR, purgeThreads, idCollisions } from "./purge.mjs";
 // The unit vocabulary and the composer, shared VERBATIM with the CLI — see resolveStaleBase.
 import { authoredUnits, unitOfPath, unitPaths } from "./publish-units.mjs";
-import { composePublish } from "./publish-compose.mjs";
+import { composePublish, forkLanded } from "./publish-compose.mjs";
 // `F-fork-verb`. Fork as a deliberate verb — one unit aliased to a new path, zero bytes
 // moved — plus the rule that keeps a fork's lineage and owner alive across every later
 // publish. Both are pure, and both are the CLI's too if it ever needs them.
@@ -4190,7 +4190,10 @@ function backedPublicPrefixes(manifest) {
 function removedPublicPrefixes(live, next) {
   const keep = new Set(((next && next.routing) || {}).publicPrefixes || []);
   const had = backedPublicPrefixes(live);
-  return [...new Set(had)].filter((p) => !keep.has(p));
+  // A `-conflict-` fork whose source is at its origin URL in `next` has RETIRED, not
+  // vanished: CONFLICT.md promised exactly that, and it is verifiable from the two
+  // manifests alone. Any other fork removal is an unpublish like any other.
+  return [...new Set(had)].filter((p) => !keep.has(p) && !forkLanded(live, next, p));
 }
 
 function pathOwnedBySpace(key, spaceId, spaces) {

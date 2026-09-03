@@ -882,7 +882,9 @@ async function publishOne(id, sourceDir) {
     // is absent on older instances; the commit still refuses there.
     if (!ALLOW_UNPUBLISH && check.livePrefixes) {
       const keep = new Set((ship.routing || {}).publicPrefixes || []);
-      const removed = [...new Set(check.livePrefixes)].filter((p) => !keep.has(p));
+      // A fork the composer retired is not a removal (the store checks the same thing).
+      const retired = new Set(composed ? composed.summary.retired || [] : []);
+      const removed = [...new Set(check.livePrefixes)].filter((p) => !keep.has(p) && !retired.has(p));
       if (removed.length) dieUnpublish(id, removed, removed.length);
     }
     if (DRY) {
