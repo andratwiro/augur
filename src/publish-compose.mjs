@@ -13,14 +13,28 @@
 // Per-unit decision (unit in both, built bytes differ):
 //   1. live IS my last publish (caller proves via cache+version) → whole tree safe,
 //      this module is not called at all.
-//   2. live's unit source: clean commit in my history → ship mine (fast-forward).
-//   3. else: no local evidence I edited it   → keep live's.
+//   2. live's unit is the SEED (`isSeedSource`, F-seed-yields-to-real-publish): the
+//      platform wrote it and it is nobody's work, so it reverts nobody → ship mine,
+//      outright — no evidence asked for. Unless only the decoration differs (same
+//      source hash, or tolerant-equal): then live's bytes AND its seed marker stay,
+//      because a page nobody edited must not become "theirs" on the first publish.
+//   3. live's unit source: clean commit in my history → ship mine (fast-forward).
+//   4. else: no local evidence I edited it   → keep live's.
 //            evidence, but tolerant-equal     → keep live's (chrome-only churn).
 //            evidence and really different    → CONTESTED: theirs keeps the URL,
 //              mine composes at <unit>-conflict-<who>/ + a synthesized CONFLICT.md.
 //   Only in mine → new unit, ships. Only in live → stays live: implicit unpublish
-//   is impossible by construction. Removal needs git-evidenced deletion AND
-//   --allow-unpublish (the caller passes those units in `evidence.deletedUnits`).
+//   is impossible by construction. Removal needs an evidenced deletion AND
+//   --allow-unpublish: git-evidenced (the caller passes those units in
+//   `evidence.deletedUnits`), or a SEED unit the tree lacks — the platform's page
+//   is not a deletion anyone has to prove, but it is still an unpublish, so without
+//   the flag it stays live and is NAMED (removalBlocked) rather than kept in silence.
+//
+// ⚠️ THE SEED RULE LIVES HERE AND NOWHERE ELSE. The evidence is what each caller can
+// prove — git for the CLI, the base manifest for the store — and the store runs this
+// same composer to resolve a repo-less publisher's stale base (C-fork-on-conflict). A
+// rule written into one caller's evidence would leave the other deciding by byte
+// identity, which agrees only until a re-seed changes bytes under a seed marker.
 //
 // Hard rule, lint-grade: a tree folder named `*-conflict-*` NEVER ships
 // implicitly (filterLitter below). Composed fork prefixes are added after the
@@ -36,6 +50,7 @@
 // publishes a conflict is about. So hashing arrives as a parameter and bytes are Uint8Array:
 // `node:crypto` and `Buffer` exist in the CLI and in neither workerd nor a Durable Object.
 import { authoredUnits, unitOfPath as unitOf, unitPaths } from "./publish-units.mjs";
+import { isSeedSource } from "./provenance.mjs";
 export { authoredUnits, unitPaths };
 
 const dec = (s) => { try { return decodeURIComponent(String(s)); } catch (e) { return String(s); } };
@@ -53,6 +68,19 @@ const sameUnitBytes = (a, b, unit) => {
   if (pa.length !== pb.length) return false;
   const bh = new Map(pb.map((p) => [p, (b.files[p] || {}).h]));
   return pa.every((p) => bh.get(p) === (a.files[p] || {}).h);
+};
+
+// Same SOURCE, whatever the served bytes: `sh` is the hash build.js records of a page's
+// bytes BEFORE it decorates them (og meta, the linked stamp — everything an engine change
+// rewrites). It is the field the commit handler already judges per-file provenance on,
+// so "did a person change this" means the same thing at both ends. A file without one
+// (verbatim copies carry none) compares its served bytes.
+const sameFileSource = (a, b) => (a && b && a.sh && b.sh) ? a.sh === b.sh : !!a && !!b && a.h === b.h;
+const sameUnitSource = (a, b, unit) => {
+  const pa = unitPaths(a, unit), pb = unitPaths(b, unit);
+  if (pa.length !== pb.length) return false;
+  const bf = new Map(pb.map((p) => [p, b.files[p]]));
+  return pa.every((p) => bf.has(p) && sameFileSource(a.files[p], bf.get(p)));
 };
 
 // Drop tree-derived `*-conflict-*` units from a built manifest, in place.
@@ -118,6 +146,15 @@ export async function composePublish({
   const mineRouting = (mine || {}).routing || {};
   const liveRouting = (live || {}).routing || {};
 
+  // Is live's copy of this unit the platform's seed? Asked through `isSeedSource()`, the
+  // one predicate, of the per-unit marker — falling back to the manifest's own source for
+  // a manifest that predates `unitSources`. After a real publish the manifest's source is
+  // a person's while the units nobody touched still carry the sentinel, so it is per unit.
+  const liveSeedUnit = (u) => isSeedSource((liveRouting.unitSources || {})[u] || (live || {}).source);
+  // Shared skill files carry no per-file marker; they are the seed's only while the whole
+  // live manifest still is (i.e. before the first real publish).
+  const liveSeedAll = isSeedSource((live || {}).source);
+
   const out = {
     ...mine,
     files: {},
@@ -125,7 +162,11 @@ export async function composePublish({
   };
   const readMap = {};    // composed path → path whose bytes exist in dist (fork re-keys)
   const extraBlobs = {}; // hash → Uint8Array (synthesized CONFLICT.md)
-  const summary = { shipped: [], kept: [], forked: [], removed: [], removalBlocked: [], newUnits: [], keptDiffer: [] };
+  // `seeded`: seed units this publish replaced. `seedKept`: seed units this tree carries
+  // with only their decoration changed — live's bytes and marker stay; NOT reported as
+  // kept (nothing was held back), but the caller's cache must know live is not exactly
+  // this tree, so the next publish composes again rather than fast-pathing the tree over it.
+  const summary = { shipped: [], kept: [], forked: [], removed: [], removalBlocked: [], newUnits: [], keptDiffer: [], seeded: [], seedKept: [] };
 
   const takeMine = (u) => {
     for (const p of unitPaths(mine, u)) out.files[p] = mineFiles[p];
@@ -164,7 +205,9 @@ export async function composePublish({
       continue;
     }
     if (inLive && !inMine) {
-      if (ev.deletedUnits.has(u)) {
+      // A seed unit the tree lacks needs no proof of deletion — but it is still an
+      // unpublish, so the flag still gates it and without the flag it is named.
+      if (ev.deletedUnits.has(u) || liveSeedUnit(u)) {
         if (allowUnpublish) { summary.removed.push(u); continue; }
         summary.removalBlocked.push(u);
       }
@@ -173,6 +216,13 @@ export async function composePublish({
     }
     // In both.
     if (sameUnitBytes(mine, live, u)) { takeLive(u); continue; }
+    if (liveSeedUnit(u)) {
+      // The platform's page yields to anybody's — unless nobody actually changed it.
+      if (sameUnitSource(mine, live, u) || await tolerantEqual(u)) { takeLive(u); summary.seedKept.push(u); continue; }
+      takeMine(u);
+      summary.seeded.push(u);
+      continue;
+    }
     if (ff.has(u)) { takeMine(u); summary.shipped.push(u); continue; }
     if (!ev.editedUnits.has(u)) { takeLive(u); summary.kept.push(u); continue; }
     if (await tolerantEqual(u)) { takeLive(u); summary.kept.push(u); continue; }
@@ -206,6 +256,7 @@ export async function composePublish({
     if (!a && b) { out.files[p] = b; continue; }
     if (a.h === b.h) { out.files[p] = a; continue; }
     if (ev.editedPaths.has(p)) { out.files[p] = a; }
+    else if (liveSeedAll) { out.files[p] = sameFileSource(a, b) ? b : a; }
     else { out.files[p] = b; summary.kept.push(p); }
   }
 

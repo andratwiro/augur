@@ -160,6 +160,19 @@ the migration runbook already mandates (provision, then move content in), and wh
 `test/migrate-kv-to-workspace.test.mjs`'s target now does. `bundleKey`/`bundleStore` moved
 to `src/bundle-keys.mjs` so the object writes exactly where the front door reads; the worker
 re-exports them. `test/seed-pack.test.mjs` pins all of it.
+**And the seed YIELDS** (`F-seed-yields-to-real-publish`): a unit whose live copy answers to
+`isSeedSource()` is nobody's work, so a real publish replaces it outright — no flag, no git
+history, from a plain copy of the tree — while a unit a person has republished keeps every
+rule above. The decision is ONE line in `composePublish` (`src/publish-compose.mjs`) and
+deliberately not in either caller's evidence: the store runs the same composer to resolve a
+repo-less publisher's stale base, and a rule in the CLI's git evidence alone would leave the
+store deciding by byte identity against the base, which agrees only until a re-seed changes
+bytes under a seed marker. "Changed" is judged on `sh`, the pre-decoration source hash the
+commit handler already stamps provenance on, so the five pages a person did not touch keep
+the seed's bytes AND its marker however differently their engine decorated them. A seeded
+page the tree LACKS is an evidenced deletion needing no git — still gated by
+`--allow-unpublish`, named (`removalBlocked`) rather than silently kept without it.
+`test/seed-yields-to-real-publish.test.mjs` runs both ends against the real pack.
 
 **A suspension is enforced at the front door, once, before the config load** —
 `readSuspension` + `SUSPENDED_ALLOWED` in `src/_worker.js`, checked right after the resolve

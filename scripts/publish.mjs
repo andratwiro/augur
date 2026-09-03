@@ -844,6 +844,10 @@ async function publishOne(id, sourceDir) {
       });
       const s = composed.summary;
       if (s.kept.length) log(`${id}: keeping ${s.kept.length} live unit(s)/file(s) this tree shows no edit for`);
+      // A seed unit is the platform's welcome content, not anybody's work: it yields to
+      // this tree outright (decided in the composer, where the store decides it too).
+      // Information, not a warning — nothing was asked for and nothing was held back.
+      for (const u of s.seeded || []) log(`${id}: ${u} replaces the seeded page`);
       // A unit that differs, where nothing proves whose work is newer (live was
       // published from history this clone has never seen), stays live — say so
       // per unit, because "kept" here can mean a committed local edit did NOT
@@ -884,6 +888,7 @@ async function publishOne(id, sourceDir) {
     if (DRY) {
       if (composed) {
         for (const u of composed.summary.shipped) log(`${id}: would ship ${u} (fast-forward)`);
+        for (const u of composed.summary.seeded || []) log(`${id}: would ship ${u} (replaces the seeded page)`);
         for (const u of composed.summary.newUnits) log(`${id}: would ship ${u} (new)`);
         for (const f of composed.summary.forked) log(`${id}: would fork — ${f.unit} stays ${f.theirs}'s, yours at ${f.fork}`);
         for (const u of composed.summary.removed) log(`${id}: would remove ${u}`);
@@ -905,7 +910,7 @@ async function publishOne(id, sourceDir) {
       log(`${id}: unchanged — commit skipped (live v${check.liveVersion})`);
       await writePubCache(id, {
         version: check.liveVersion, files: shipFiles, source: ship.source,
-        protocol: check.protocol || 0, kept: composed ? composed.summary.kept : [],
+        protocol: check.protocol || 0, kept: composed ? [...composed.summary.kept, ...(composed.summary.seedKept || [])] : [],
       });
       return check.liveVersion;
     }
@@ -975,8 +980,11 @@ async function publishOne(id, sourceDir) {
     await writePubCache(id, {
       version: res.version, files: shipFiles, source: ship.source,
       protocol: check.protocol || 0,
+      // `seedKept` rides here too: a seed page this tree carries with only its decoration
+      // changed kept live's bytes, so live is NOT exactly this tree and the fast path
+      // (which commits the whole tree) must not run over it next time.
       kept: composed ? [...composed.summary.kept, ...composed.summary.keptDiffer.map(String),
-        ...composed.summary.removalBlocked] : [],
+        ...composed.summary.removalBlocked, ...(composed.summary.seedKept || [])] : [],
     });
     return res.version;
   }

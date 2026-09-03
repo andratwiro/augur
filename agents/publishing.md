@@ -103,6 +103,15 @@ then ship, and it goes out as the union. Nothing asks a question, nothing is
 silently reverted, and a publish that lands between your check and your commit
 is caught by the store (`stale-base`) and recomposed automatically.
 
+The pages a fresh workspace arrives with — the seed — are the exception, and
+the only one: they are nobody's work, so a page you changed replaces its seeded
+version outright, no flag, no history needed, from a plain copy of the tree.
+Pages you did not touch keep the seed's bytes and stay marked as seed even if
+your build decorated them differently; once you have republished a page it is
+yours and the ordinary rules above apply. A seeded page you deleted still needs
+`--allow-unpublish` (it is an unpublish like any other), but you are told so
+rather than having it silently kept.
+
 Two hard rules replace the old cleanup discipline: a tree folder named
 `*-conflict-*` NEVER publishes implicitly (fold what matters into the real
 folder, then delete it), and ship's auto-commit leaves untracked `*-conflict-*`

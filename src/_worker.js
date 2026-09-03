@@ -4407,6 +4407,13 @@ function publisherDisplayName(tctx, label) {
 // publishes a conflict is about, which is why the unit vocabulary moved to
 // src/publish-units.mjs and this calls the same composer.
 //
+// ⚠️ AND THE SEED YIELDS HERE FOR THE SAME REASON (`F-seed-yields-to-real-publish`). A unit
+// whose LIVE copy is the platform's seed (`isSeedSource` on its `unitSources` entry) is
+// nobody's work, and the composer ships the incoming copy over it outright — whatever the
+// base says. Nothing in this function knows that rule, deliberately: byte identity against
+// the base happened to agree with it until a re-seed changed bytes under a seed marker, and
+// a repo-less publisher whose conflict lands here must get the verdict the CLI gets.
+//
 // ⚠️ A CHANGE OUTSIDE EVERY UNIT ON BOTH SIDES IS STILL A HARD 409. A design-system file, a
 // shared token sheet, `space.json` — those are not safe to resolve mechanically, and the CLI
 // aborts the merge for a human for the same reason. Forking them would put two versions of a

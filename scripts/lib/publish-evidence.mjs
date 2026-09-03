@@ -18,12 +18,24 @@
 // Per-unit live provenance comes from routing.unitSources (written by every
 // protocol-5 publish), falling back to the space-level manifest source for
 // manifests that predate the field.
+//
+//   seed units    a live unit the PLATFORM wrote (provenance `isSeedSource`: the
+//                 seed pack a fresh workspace arrives with) is nobody's work. Its
+//                 recorded sha is an ENGINE commit no space repo has in its history,
+//                 so to git it looks exactly like an unpushed stranger's commit — and
+//                 a person's first edit to a start-here page was filed "unprovable"
+//                 and quietly stayed local. It is NOT unprovable: the platform's
+//                 provenance is a provenance. This module only declines to call it
+//                 one; WHETHER IT YIELDS IS THE COMPOSER'S RULE (publish-compose.mjs),
+//                 so the store, which runs the same composer with its own evidence,
+//                 reaches the same verdict for a repo-less publisher.
 
 import { execFileSync } from "node:child_process";
 import { existsSync } from "node:fs";
 import path from "node:path";
 import { authoredUnits, unitPaths } from "./publish-compose.mjs";
 import { repoDirCandidates } from "./publish-conflict.mjs";
+import { isSeedSource } from "../../src/provenance.mjs";
 
 const dec = (s) => { try { return decodeURIComponent(String(s)); } catch (e) { return String(s); } };
 
@@ -65,7 +77,8 @@ export function collectEvidence({ sourceDir, spaceBase, mine, live }) {
   const mineUnits = authoredUnits(mine);
   const unitSources = ((live || {}).routing || {}).unitSources || {};
   const spaceSrc = (live || {}).source || {};
-  const srcOf = (u) => unitSources[u] || { sha: spaceSrc.sha || null, dirty: !!spaceSrc.dirty };
+  const srcOf = (u) => unitSources[u]
+    || { sha: spaceSrc.sha || null, dirty: !!spaceSrc.dirty, actor: spaceSrc.actor, seed: spaceSrc.seed };
 
   const editedUnits = new Set();
   const dirtyUnits = new Set();
@@ -100,7 +113,9 @@ export function collectEvidence({ sourceDir, spaceBase, mine, live }) {
       const dirRel = unitRepoDir(u, spaceBase, sourceDir);
       const names = (gitq(sourceDir, "diff", "--name-only", src.sha, "HEAD", "--", dirRel) || "").trim();
       if (names) editedUnits.add(u);
-    } else if (mineUnits.has(u) && liveUnits.has(u)) {
+    } else if (mineUnits.has(u) && liveUnits.has(u) && !isSeedSource(src)) {
+      // The seed is excluded because its provenance is KNOWN — it is the platform's —
+      // and the composer decides what that means. Everything else here is a stranger's.
       unprovable.push(u);
     }
   }
