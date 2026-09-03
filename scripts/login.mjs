@@ -25,6 +25,9 @@ const cwdSpaceOrigin = (() => {
 const ORIGIN = (opt("--origin") || process.env.AUGUR_ORIGIN ||
   deployConfig(ROOT, originHost(cwdSpaceOrigin)).siteOrigin || cwdSpaceOrigin || "").replace(/\/+$/, "");
 if (!ORIGIN) { log("no origin — pass --origin https://<your instance> (or add \"siteOrigin\" to space.json)"); process.exit(1); }
+// Said up front, because the usual reader of this line is an agent deciding which door to
+// use: this one wants a password typed into a terminal, and the other one does not.
+log("login is for CI and scripts. People and agents run `augur connect` instead — it pairs a signed-in browser and never sees a password.");
 
 function ask(question, mute) {
   return new Promise((resolve) => {

@@ -20,6 +20,12 @@ The date is the day the update went live. The page works out "Today / 3 days ago
 
 ---
 
+## 2026-09-03 — Your agent finds the door on its own
+Point an agent at a workspace address and it now learns how to get in without
+asking you for a password: the site tells it to run `augur connect`, you approve a
+code in your browser, and it can publish. Before, every locked page looked the same
+to it, and it went hunting for credentials.
+
 ## 2026-09-03 — Your edit lands at its own address
 Publishing a page you changed puts it at its address, even when someone before
 you published from an unsaved folder. Before, that could send your page to a

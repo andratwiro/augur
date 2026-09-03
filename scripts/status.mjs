@@ -140,6 +140,13 @@ if (markToken) {
     console.log(`  ${C.dim}being worked on right now${C.off}`);
     for (const m of marks) console.log(`  ${C.dim}  ${markLine(m)}${C.off}`);
   }
+} else {
+  // The one thing a fresh agent needs to know and has no other way to learn: this machine
+  // holds no token, and the way to get one is pairing, not a password. Same words as the
+  // instance's own /llms.txt. Costs nothing here — status never needed the token.
+  console.log("");
+  console.log(`  ${C.dim}not paired with ${origin}. Publishing from here needs a token; get one without a password:${C.off}`);
+  console.log(`  ${C.dim}  augur connect --origin ${origin}   (the owner approves a code in a signed-in browser)${C.off}`);
 }
 
 // Exit code is the answer, so this can gate a script: 0 = everything live is what

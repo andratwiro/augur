@@ -3,9 +3,10 @@
     "status": 200,
     "headers": {
       "cache-control": "no-store",
-      "content-type": "text/html; charset=utf-8"
+      "content-type": "text/html; charset=utf-8",
+      "link": "</llms.txt>; rel=\"help\""
     },
-    "bodyHash": "6eaa08e680138814f0279ac76c400b26dc3e91f0c1fdafec40474ca8803554de"
+    "bodyHash": "97bf0e3d450b2aaf318c8efd1870e83c4b2d7d917cb7cbcd6ec0614edc7f4e4c"
   },
   "index-signed-in": {
     "status": 200,
@@ -26,17 +27,19 @@
     "status": 200,
     "headers": {
       "cache-control": "no-store",
-      "content-type": "text/html; charset=utf-8"
+      "content-type": "text/html; charset=utf-8",
+      "link": "</llms.txt>; rel=\"help\""
     },
-    "bodyHash": "d514c29cdb152b1d49813df5fa399fd1fae3189591075f4fa6f0825bd842f7ad"
+    "bodyHash": "d56cba029c64dea3f925e0b0d2a11e1e72323e4e460256052c02e317845985dc"
   },
   "restricted-space-signed-out": {
     "status": 200,
     "headers": {
       "cache-control": "no-store",
-      "content-type": "text/html; charset=utf-8"
+      "content-type": "text/html; charset=utf-8",
+      "link": "</llms.txt>; rel=\"help\""
     },
-    "bodyHash": "c92e155c74c649b54b2daa780107997b302a92187506f166417de8b0e3d81b75"
+    "bodyHash": "569f7a3209111d82e075f3e37546de0c5a329c2455b89ae963b1818637e288a4"
   },
   "pages-door": {
     "status": 200,
@@ -65,9 +68,10 @@
     "status": 200,
     "headers": {
       "cache-control": "no-store",
-      "content-type": "text/html; charset=utf-8"
+      "content-type": "text/html; charset=utf-8",
+      "link": "</llms.txt>; rel=\"help\""
     },
-    "bodyHash": "a4e13db34647d695d72053ea5f5c6e41581ac76ee4ea0bb557c9d348becc7d6d"
+    "bodyHash": "3089e7a6c2982f15c6cfce6c1b55548e48110d9c14e840bea9f70f306fb2794c"
   },
   "space-icon": {
     "status": 200,
@@ -137,8 +141,9 @@
     "status": 200,
     "headers": {
       "cache-control": "no-store",
-      "content-type": "text/html; charset=utf-8"
+      "content-type": "text/html; charset=utf-8",
+      "link": "</llms.txt>; rel=\"help\""
     },
-    "bodyHash": "dd89377730b3f65d1930088e61503f72bb04ae9e75cac4f93cdbba94ae8315e9"
+    "bodyHash": "8c1a4c3dbf8c46cdc73cf1303b8696a3da44da00c394810ff57ddbe282ea9e56"
   }
 }

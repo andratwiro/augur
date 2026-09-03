@@ -1,5 +1,21 @@
 # Users, login, avatars
 
+## Getting in, if you are an agent
+
+You do not need a login. Publishing needs a **publish token**, and the way to get one
+is device pairing: `npx augur connect --origin <the workspace>` prints a link and a
+code, the owner enters the code in a browser they are already signed in to, and the
+token lands on this machine. Nobody's password is asked for, typed or stored. The
+instance says the same at `GET /llms.txt`. The full shape is in [README.md](./README.md)
+under *Getting in*.
+
+The `pass` field on a user record below is a first-sign-in seed for a **self-hosted**
+instance, consulted only when that person has no credential in the store yet. It is not
+a key: on a hosted workspace it is dead, on a self-hosted one it stops working the moment
+the person sets a password, and the gate throttles failed attempts. Never try it.
+
+## The account model
+
 The engine has per-user accounts. Sign-in is email + password on a self-hosted
 instance, or an emailed code from the central account store on a hosted one (no
 password exists there; see `ACCOUNT_ORIGIN` / `SESSION_KEYS`). The engine repo

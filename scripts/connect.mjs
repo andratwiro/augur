@@ -56,12 +56,15 @@ const { code, deviceSecret, approveUrl, expiresInMs } = start.json;
 const mins = Math.round((expiresInMs || 300000) / 60000);
 const pretty = code.length === 8 ? `${code.slice(0, 4)}-${code.slice(4)}` : code;
 
+// Written to be RELAYED, not read: the usual runner of this command is an agent, which
+// pastes the first line to a person. So the first line is the whole instruction, and it
+// names who has to act — the owner of the workspace, in a browser they are already in.
 console.log("");
-console.log(`  Open   ${C.bold}${approveUrl}${C.off}`);
-console.log(`  Type   ${C.bold}${pretty}${C.off}`);
+console.log(`  Ask the owner of this workspace to open ${C.bold}${approveUrl}${C.off} and enter ${C.bold}${pretty}${C.off}.`);
 console.log("");
-console.log(`  ${C.dim}Open it in a browser already signed in to this site. Nothing is typed here.`);
-console.log(`  The code is good for ${mins} minutes, and only for this terminal.${C.off}`);
+console.log(`  ${C.dim}Send them that line as it is. They open it in a browser they are already signed in`);
+console.log(`  to; nothing is typed here, and nobody is asked for a password.`);
+console.log(`  The code is good for ${mins} minutes and only for this terminal. Waiting…${C.off}`);
 console.log("");
 console.log(`  ${C.warn}If you did not just run this command, do not approve it.${C.off}`);
 console.log("");

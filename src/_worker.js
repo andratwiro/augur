@@ -6438,6 +6438,7 @@ function loginPage(tctx, redirect, error, requestUrl, opts = {}) {
     </form>`;
   }
   return `<!doctype html>
+<!-- Agents and scripts: this is a sign-in gate. GET /llms.txt says how to get access. -->
 <html lang="en">
 <head>
   <meta charset="utf-8" />
@@ -8486,6 +8487,83 @@ function wantsJson(request, url) {
   if (url.pathname.startsWith("/__")) return true;
   const accept = request.headers.get("Accept") || "";
   return !accept.includes("text/html");
+}
+
+// ── the front door, for machines ─────────────────────────────────────────────
+//
+// Ask a fresh agent to "connect to this workspace and make a prototype" and it walks
+// into a wall: every gated path answers 200 with the sign-in card, whatever the request
+// asks for. It concludes it needs credentials, finds the seed password in a deploy
+// shell's identity file, fires that at production, and then asks the owner for a
+// password. The right key — `augur connect`, device pairing — exists; nothing says so.
+//
+// So the gate says so, in one sentence, at every place a machine can arrive: /llms.txt
+// as text, /.well-known/augur.json as data, a 401 carrying the same body when a
+// programmatic request meets the gate, and a pointer in the HTML card for the rest.
+// The facts come from the tenant context and name nobody: no roster, no token, no
+// person. A bare `Accept: */*` keeps getting the HTML card at 200 — the front-door
+// probe and the "an unknown path and the root are the same page" contract depend on it.
+const DOOR_DOCS = "/llms.txt";
+const DOOR_WELL_KNOWN = "/.well-known/augur.json";
+
+function doorFacts(tctx, url) {
+  const def = tctx.SPACES.find((s) => s.default) || tctx.SPACES[0] || {};
+  const pairing = tctx.DEVICE_PAIRING === true;
+  return {
+    product: "augur",
+    workspace: def.id || tctx.tenantId || null,
+    origin: url.origin,
+    engine: tctx.INSTANCE_ENGINE_VERSION ? { version: tctx.INSTANCE_ENGINE_VERSION } : {},
+    pairing: { enabled: pairing, start: "/__publish/_pair/start", approve: "/__connect" },
+    connect: pairing ? `npx augur connect --origin ${url.origin}` : null,
+    docs: DOOR_DOCS,
+  };
+}
+
+function doorText(f) {
+  const head = `Augur workspace "${f.workspace}" at ${f.origin}\n\n`
+    + `This is a sign-in gate. Pages here need a person's session. Creating and\n`
+    + `publishing prototypes needs a publish token, and an agent gets one by device\n`
+    + `pairing, never by asking anyone for a password.\n\n`;
+  const body = f.pairing.enabled
+    ? `Run, on the machine that will publish:\n\n`
+      + `  ${f.connect}\n\n`
+      + `It prints a link and a code. The owner of this workspace opens the link in a\n`
+      + `browser they are already signed in to and enters the code. The token lands on\n`
+      + `that machine, and \`augur publish\` / \`augur ship\` use it from then on. With no\n`
+      + `source tree yet, \`npx augur clone --space ${f.workspace}\` then fetches one (it reads\n`
+      + `the origin from the pairing).\n\n`
+      + `Not on npm yet? The engine clone sits next to every workspace that publishes:\n\n`
+      + `  node <engine>/scripts/cli.mjs connect --origin ${f.origin}\n\n`
+    : `Device pairing is switched off on this workspace. Ask an admin for an invite;\n`
+      + `once you have signed in, \`augur login\` (email and password, meant for CI)\n`
+      + `trades that for a publish token.\n\n`;
+  const tail = `Never try a found or guessed password against this gate. It throttles failed\n`
+    + `attempts per address and per email, and the seed in a deploy shell's identity\n`
+    + `file is not a credential.\n\n`
+    + `Machine-readable: ${DOOR_WELL_KNOWN}\n`;
+  return head + body + tail;
+}
+
+/**
+ * Is this request plainly not a browser? By path (an engine route) or by an Accept that
+ * names JSON. NOT by "no text/html": curl and node's fetch send `* / *`, and so does the
+ * front-door probe, which must keep seeing the HTML card.
+ */
+function wantsMachineDoor(request, url) {
+  if (url.pathname.startsWith("/__")) return true;
+  return /application\/json/i.test(request.headers.get("Accept") || "");
+}
+
+/** What a signed-out request meets: the door as JSON for a machine, the card for a person. */
+function gateResponse(tctx, request, url) {
+  if (wantsMachineDoor(request, url)) {
+    return jsonResponse({ error: "sign-in-required", ...doorFacts(tctx, url) }, 401,
+      { "WWW-Authenticate": 'Bearer realm="augur"', "Cache-Control": "no-store" });
+  }
+  const res = htmlResponse(loginPage(tctx, url.pathname + url.search, false, url.href), 200);
+  res.headers.set("Link", `<${DOOR_DOCS}>; rel="help"`);
+  return res;
 }
 
 /**
@@ -11343,6 +11421,17 @@ async function handleRequest(request, env, ctx, url, trace) {
       });
     }
 
+    // The front door for machines — public for the same reason robots.txt is: a gated
+    // "how to get in" would answer with the login page. See doorFacts().
+    if (url.pathname === DOOR_DOCS) {
+      return new Response(doorText(doorFacts(tctx, url)), {
+        headers: { "Content-Type": "text/plain; charset=utf-8", "Cache-Control": "no-store" },
+      });
+    }
+    if (url.pathname === DOOR_WELL_KNOWN) {
+      return jsonResponse(doorFacts(tctx, url), 200, { "Cache-Control": "no-store" });
+    }
+
     // Live-reload version probe — every page polls this with its own ?path=, and
     // gets back that path's version (versionFor); no ?path → BUILD_ID. Public (before
     // the gate) so public prototypes can poll it too; no-store so the id is never stale.
@@ -11746,7 +11835,7 @@ async function handleRequest(request, env, ctx, url, trace) {
     // visitor gets the login page. Skipped in legacy/open mode
     // (no users injected), same as the /admin gate.
     if (usersActive && isRestrictedPath(tctx, url.pathname)) {
-      if (!authed) return htmlResponse(loginPage(tctx, url.pathname + url.search, false, url.href), 200);
+      if (!authed) return gateResponse(tctx, request, url);
       if (!me || me.role !== "admin") return Response.redirect(new URL("/", url).toString(), 303);
     }
 
@@ -11765,7 +11854,7 @@ async function handleRequest(request, env, ctx, url, trace) {
     // validated at commit, but ordering makes that a second line of defence rather than
     // the only one.
     if (url.pathname === "/admin" || url.pathname.startsWith("/admin/")) {
-      if (!authed) return htmlResponse(loginPage(tctx, url.pathname + url.search, false, url.href), 200);
+      if (!authed) return gateResponse(tctx, request, url);
       // Admin of ANY space is enough to reach the page — it scopes itself to a space
       // the caller actually administers, and the /__admin APIs re-check per space. A
       // global admin with no membership recorded administers everything, so this is
@@ -11828,7 +11917,7 @@ async function handleRequest(request, env, ctx, url, trace) {
 
     // Otherwise show the login page, remembering where they were headed.
     // 200 (not 401) so password managers treat it as a normal login page.
-    return htmlResponse(loginPage(tctx, url.pathname + url.search, false, url.href), 200);
+    return gateResponse(tctx, request, url);
 }
 
 // Pure helpers exposed for unit tests. Nothing in the request path references
@@ -11897,6 +11986,7 @@ export const __testables = Object.freeze({
   readSuspension, isAllowedWhileSuspended, SUSPENDED_ALLOWED, SUSPENDED_ALLOWED_READS,
   SUSPENSION_TTL_MS,
   suspensionPage, suspensionRefusal, wantsJson, hasSessionCookie, memberSuspensionBody,
+  doorFacts, doorText, wantsMachineDoor, gateResponse, DOOR_DOCS, DOOR_WELL_KNOWN,
   resumeAfterDormancy,
   PITI_VIEW_KEY, PITI_REMARKS_KEY,
   publishAuthDetailed, publishRefusalBody,
