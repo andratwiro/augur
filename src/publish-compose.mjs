@@ -170,7 +170,7 @@ export async function composePublish({
   // in here too: the built manifest stamps every unit as the publisher's, so a fast path
   // that ships it whole would take the seed marker off five untouched pages while shipping
   // one edit — measured, by the clone round trip, on the second publish from a clone.
-  const summary = { shipped: [], kept: [], forked: [], removed: [], removalBlocked: [], newUnits: [], keptDiffer: [], seeded: [], seedKept: [] };
+  const summary = { shipped: [], kept: [], forked: [], removed: [], removalBlocked: [], newUnits: [], keptDiffer: [], seeded: [], seedKept: [], healed: [], retired: [] };
 
   const takeMine = (u) => {
     for (const p of unitPaths(mine, u)) out.files[p] = mineFiles[p];
@@ -194,8 +194,31 @@ export async function composePublish({
     for (const p of unitPaths(mine, u)) if (!(p in out.files)) { /* dropped */ }
   };
 
+  // Identical bytes from a clean tree are PROOF that the unit is this commit. When live's
+  // provenance for it is dirty or unknown, say so. This is what stops one dirty publish
+  // from poisoning every untouched unit for everybody: a legacy manifest (space-level
+  // `{sha, dirty:true}`, no `unitSources`) once got synthesized onto 158 units nobody had
+  // touched, and every clean edit after that forked as "contested" — three times for one
+  // person — because a dirty base can never fast-forward. A clean provenance is kept even
+  // when mine is newer: the older commit is the one more people can prove.
+  const healable = (u) => {
+    if (!(mine.source || {}).sha || ev.dirtyUnits.has(u)) return false;
+    const src = out.routing.unitSources[u];
+    return !(src && src.sha && !src.dirty);
+  };
+  const heal = (u) => {
+    if (!healable(u)) return;
+    out.routing.unitSources[u] = { sha: (mine.source || {}).sha, dirty: false };
+    summary.healed.push(u);
+  };
+
+  // My own earlier fork of the same unit is mine to replace: a person who forks twice
+  // gets ONE `-conflict-<who>` copy with their newest bytes, not -2, -3, -4. The anonymous
+  // fallback name is nobody's in particular, so it still numbers.
   const forkName = (u) => {
-    let fork = norm(dec(u).replace(/\/$/, "") + `-conflict-${who}`);
+    const base = norm(dec(u).replace(/\/$/, "") + `-conflict-${who}`);
+    if (who !== "someone" && liveUnits.has(base) && !mineUnits.has(base)) return base;
+    let fork = base;
     let n = 2;
     while (liveUnits.has(fork) || mineUnits.has(fork)) fork = norm(dec(u).replace(/\/$/, "") + `-conflict-${who}-${n++}`);
     return fork;
@@ -222,6 +245,7 @@ export async function composePublish({
     if (sameUnitBytes(mine, live, u)) {
       takeLive(u);
       if (liveSeedUnit(u)) summary.seedKept.push(u); // the marker is live's, and the cache must know
+      else heal(u);
       continue;
     }
     if (liveSeedUnit(u)) {
@@ -232,13 +256,24 @@ export async function composePublish({
       continue;
     }
     if (ff.has(u)) { takeMine(u); summary.shipped.push(u); continue; }
-    if (!ev.editedUnits.has(u)) { takeLive(u); summary.kept.push(u); continue; }
-    if (await tolerantEqual(u)) { takeLive(u); summary.kept.push(u); continue; }
+    if (!ev.editedUnits.has(u)) {
+      takeLive(u); summary.kept.push(u);
+      // Same source under a different engine's decoration is the same proof as identical bytes.
+      if (healable(u) && (sameUnitSource(mine, live, u) || await tolerantEqual(u))) heal(u);
+      continue;
+    }
+    if (await tolerantEqual(u)) { takeLive(u); summary.kept.push(u); heal(u); continue; }
     // Contested: theirs keeps the URL, mine composes at a fork prefix.
     takeLive(u);
     summary.keptDiffer.push(u);
     const fork = forkName(u);
     const theirName = (live && live.publishedBy) || ((live || {}).source || {}).actor || "a collaborator";
+    if (liveUnits.has(fork)) {
+      // Replacing my own earlier fork: its files were taken as a live-only unit above.
+      for (const p of unitPaths(live, fork)) delete out.files[p];
+      out.routing.publicPrefixes = out.routing.publicPrefixes.filter((x) => x !== fork);
+      delete out.routing.versionMap[fork];
+    }
     for (const p of unitPaths(mine, u)) {
       const fp = fork + dec(p).slice(dec(u).length);
       out.files[fp] = mineFiles[p];
@@ -274,6 +309,31 @@ export async function composePublish({
     if (p in out.files) continue;
     if (unitOf(p, allUnits) || underSkill(p)) continue;
     out.files[p] = f;
+  }
+
+  // A fork retires the moment it is redundant: its bytes are at the origin URL now
+  // (whoever shipped them), or its author just shipped the origin (their fold-in
+  // superseded it). CONFLICT.md promised exactly this. Nothing else ever removes one:
+  // a stranger's fork of a unit nobody shipped stays, like any live-only unit.
+  const shippedNow = new Set([...summary.shipped, ...summary.newUnits, ...summary.seeded]);
+  const forkedNow = new Set(summary.forked.map((f) => f.fork));
+  const strip = (u, p) => dec(p).slice(dec(u).length);
+  for (const f of [...out.routing.publicPrefixes]) {
+    const m = dec(f).match(/^(.*)-conflict-([a-z0-9][a-z0-9-]*)\/$/);
+    if (!m || forkedNow.has(f) || !liveUnits.has(f)) continue;
+    const origin = norm(m[1] + "/");
+    if (!out.routing.publicPrefixes.includes(origin)) continue;
+    const mineFork = who !== "someone" && (m[2] === who || m[2].startsWith(who + "-"));
+    const fPaths = unitPaths(live, f).filter((p) => !/\/CONFLICT\.md$/.test(dec(p)));
+    const of = new Map(unitPaths(out, origin).map((p) => [strip(origin, p), out.files[p]]));
+    const landed = fPaths.length > 0 && fPaths.length === of.size
+      && fPaths.every((p) => sameFileSource(live.files[p], of.get(strip(f, p))));
+    if (!landed && !(mineFork && shippedNow.has(origin))) continue;
+    for (const p of unitPaths(live, f)) delete out.files[p];
+    out.routing.publicPrefixes = out.routing.publicPrefixes.filter((x) => x !== f);
+    delete out.routing.versionMap[f];
+    delete out.routing.unitSources[f];
+    summary.retired.push(f);
   }
 
   // Carry unitSources for kept units even when live predates the field entirely

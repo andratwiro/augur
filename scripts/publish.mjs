@@ -892,6 +892,8 @@ async function publishOne(id, sourceDir) {
         for (const u of composed.summary.newUnits) log(`${id}: would ship ${u} (new)`);
         for (const f of composed.summary.forked) log(`${id}: would fork — ${f.unit} stays ${f.theirs}'s, yours at ${f.fork}`);
         for (const u of composed.summary.removed) log(`${id}: would remove ${u}`);
+        for (const f of composed.summary.retired || []) log(`${id}: would retire ${f} (its edit is at the URL now)`);
+        if ((composed.summary.healed || []).length) log(`${id}: would re-stamp ${composed.summary.healed.length} untouched unit(s) as clean at ${String(ship.source.sha || "").slice(0, 7)} (bytes identical)`);
       }
       return null;
     }
@@ -967,6 +969,10 @@ async function publishOne(id, sourceDir) {
     if (composed) {
       for (const f of composed.summary.forked) {
         log(`${id}: conflict — ${f.unit} stays ${f.theirs}'s; yours is live at ${f.fork} (tree untouched)`);
+      }
+      for (const f of composed.summary.retired || []) log(`${id}: retired ${f} — its edit is at the URL now`);
+      if ((composed.summary.healed || []).length) {
+        log(`${id}: ${composed.summary.healed.length} untouched unit(s) re-stamped as clean at ${String(ship.source.sha || "").slice(0, 7)} — bytes identical, so they fast-forward for everyone from here`);
       }
     }
     // ⚠️ THE SERVER CAN RESOLVE ONE TOO, and it says so in the same words. This CLI never

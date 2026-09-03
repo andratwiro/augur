@@ -143,17 +143,25 @@ test("a real contested edit forks in the manifest: theirs at the URL, mine at -c
   assert.ok(manifest.routing.publicPrefixes.includes("/toolkit/map-conflict-tester/"));
 });
 
-test("a fork name that already exists gets a numbered suffix", async () => {
+test("a fork name another person already holds gets a numbered suffix", async () => {
   const mine = mani({ files: unit("map", "m"), prefixes: ["/toolkit/map/"], source: { sha: "s", dirty: true } });
   const live = mani({
     files: { ...unit("map", "L"), "/toolkit/map-conflict-tester/index.html": entry("old") },
     prefixes: ["/toolkit/map/", "/toolkit/map-conflict-tester/"], source: { sha: "x", dirty: true },
   });
-  const { summary } = await compose({
-    mine, live,
+  // Same display name, but the live fork is not provably mine: `who` is the anonymous fallback.
+  const { summary: anon } = await compose({
+    mine, live, who: "someone",
     evidence: { editedUnits: new Set(["/toolkit/map/"]), dirtyUnits: new Set(), deletedUnits: new Set(), editedPaths: new Set() },
   });
-  assert.equal(summary.forked[0].fork, "/toolkit/map-conflict-tester-2/");
+  assert.equal(anon.forked[0].fork, "/toolkit/map-conflict-someone/");
+  live.routing.publicPrefixes.push("/toolkit/map-conflict-someone/");
+  live.files["/toolkit/map-conflict-someone/index.html"] = entry("old");
+  const { summary } = await compose({
+    mine, live, who: "someone",
+    evidence: { editedUnits: new Set(["/toolkit/map/"]), dirtyUnits: new Set(), deletedUnits: new Set(), editedPaths: new Set() },
+  });
+  assert.equal(summary.forked[0].fork, "/toolkit/map-conflict-someone-2/", "the anonymous name never reuses: it could be anybody's");
 });
 
 // ── additions, deletions, unpublish ──────────────────────────────────────────
@@ -223,4 +231,133 @@ test("identical units pass through untouched, with live's provenance", async () 
   assert.deepEqual(summary.shipped, []);
   assert.deepEqual(summary.kept, []);
   assert.deepEqual(manifest.routing.unitSources["/toolkit/same/"], { sha: "S0", dirty: false });
+});
+
+// ── provenance heals; forks retire (the 2026-09-03 smear, replayed) ──────────
+// One dirty publish from an engine clone that predated `unitSources` left a legacy
+// manifest whose only provenance was space-level `{sha, dirty:true}`. The first
+// composed publish over it synthesized THAT for all 158 untouched units, and from
+// then on every clean edit by anybody forked as "contested" — three times for one
+// person — although nobody had touched those units at all. Identical bytes from a
+// clean tree are proof the unit IS that commit; the composer now says so.
+
+test("identical bytes from a clean tree heal a dirty or unknown live provenance", async () => {
+  const mine = mani({ files: { ...unit("a", "x"), ...unit("b", "y") }, prefixes: ["/toolkit/a/", "/toolkit/b/"], source: { sha: "CLEAN", dirty: false } });
+  const live = mani({
+    files: { ...unit("a", "x"), ...unit("b", "y") }, prefixes: ["/toolkit/a/", "/toolkit/b/"],
+    source: { sha: "OLD", dirty: true }, // legacy: no unitSources at all
+  });
+  const { manifest, summary } = await compose({ mine, live });
+  assert.deepEqual(manifest.routing.unitSources["/toolkit/a/"], { sha: "CLEAN", dirty: false });
+  assert.deepEqual(manifest.routing.unitSources["/toolkit/b/"], { sha: "CLEAN", dirty: false });
+  assert.deepEqual(summary.healed.sort(), ["/toolkit/a/", "/toolkit/b/"]);
+  assert.deepEqual(summary.shipped, [], "nothing shipped: the bytes were already live");
+});
+
+test("a per-unit dirty live provenance heals too, when my copy of that unit is clean", async () => {
+  const mine = mani({ files: unit("a", "x"), prefixes: ["/toolkit/a/"], source: { sha: "CLEAN", dirty: false } });
+  const live = mani({ files: unit("a", "x"), prefixes: ["/toolkit/a/"], source: { sha: "S", dirty: false }, unitSources: { "/toolkit/a/": { sha: "S", dirty: true } } });
+  const { manifest } = await compose({ mine, live });
+  assert.deepEqual(manifest.routing.unitSources["/toolkit/a/"], { sha: "CLEAN", dirty: false });
+});
+
+test("no heal from a unit that is dirty in MY tree, from a repo-less tree, or over a clean provenance", async () => {
+  const live = mani({ files: unit("a", "x"), prefixes: ["/toolkit/a/"], source: { sha: "OLD", dirty: true } });
+  // dirty in my tree: the bytes match, but I cannot claim my commit produced them
+  let r = await compose({
+    mine: mani({ files: unit("a", "x"), prefixes: ["/toolkit/a/"], source: { sha: "CLEAN", dirty: true } }), live,
+    evidence: { editedUnits: new Set(), dirtyUnits: new Set(["/toolkit/a/"]), deletedUnits: new Set(), editedPaths: new Set() },
+  });
+  assert.deepEqual(r.manifest.routing.unitSources["/toolkit/a/"], { sha: "OLD", dirty: true });
+  // repo-less (the store's own composition): no sha to offer
+  r = await compose({ mine: mani({ files: unit("a", "x"), prefixes: ["/toolkit/a/"] }), live });
+  assert.deepEqual(r.manifest.routing.unitSources["/toolkit/a/"], { sha: "OLD", dirty: true });
+  // live's provenance is already a clean commit: keep it — older is provable by more people
+  const liveClean = mani({ files: unit("a", "x"), prefixes: ["/toolkit/a/"], source: { sha: "S", dirty: false }, unitSources: { "/toolkit/a/": { sha: "S0", dirty: false } } });
+  r = await compose({ mine: mani({ files: unit("a", "x"), prefixes: ["/toolkit/a/"], source: { sha: "NEWER", dirty: false } }), live: liveClean });
+  assert.deepEqual(r.manifest.routing.unitSources["/toolkit/a/"], { sha: "S0", dirty: false });
+  assert.deepEqual(r.summary.healed, []);
+});
+
+test("the seed marker never heals away", async () => {
+  const seed = { sha: "ENGINE", dirty: false, seed: true };
+  const mine = mani({ files: unit("a", "x"), prefixes: ["/toolkit/a/"], source: { sha: "CLEAN", dirty: false } });
+  const live = mani({ files: unit("a", "x"), prefixes: ["/toolkit/a/"], source: seed, unitSources: { "/toolkit/a/": seed } });
+  const { manifest } = await compose({ mine, live });
+  assert.deepEqual(manifest.routing.unitSources["/toolkit/a/"], seed);
+});
+
+test("a fork retires when its bytes reach the URL, or when its author ships the origin", async () => {
+  const fork = (name, who, h, extra = {}) => ({
+    [`/toolkit/${name}-conflict-${who}/index.html`]: entry(h),
+    [`/toolkit/${name}-conflict-${who}/CONFLICT.md`]: { h: H("n"), ct: "text/markdown; charset=utf-8", s: 3 },
+    ...extra,
+  });
+  const live = mani({
+    files: {
+      ...unit("map", "L"), ...fork("map", "wietse", "W"),          // W's edit, forked; the URL still has L
+      ...unit("plan", "P"), ...fork("plan", "tester", "T"),        // my own earlier fork of plan
+      ...unit("faq", "F"), ...fork("faq", "other", "O"),           // someone else's fork, unrelated
+    },
+    prefixes: ["/toolkit/map/", "/toolkit/map-conflict-wietse/", "/toolkit/plan/", "/toolkit/plan-conflict-tester/", "/toolkit/faq/", "/toolkit/faq-conflict-other/"],
+    source: { sha: "OLD", dirty: false },
+  });
+  // I pulled W's commit (so my map bytes are W) and edited plan further (T2), faq untouched.
+  const mine = mani({
+    files: { ...unit("map", "W"), ...unit("plan", "T2"), ...unit("faq", "F") },
+    prefixes: ["/toolkit/map/", "/toolkit/plan/", "/toolkit/faq/"], source: { sha: "MINE", dirty: false },
+  });
+  const { manifest, summary } = await compose({ mine, live, ffUnits: new Set(["/toolkit/map/", "/toolkit/plan/"]) });
+  assert.equal(manifest.files["/toolkit/map/index.html"].h, H("W"), "W's edit is at its URL");
+  assert.ok(!manifest.files["/toolkit/map-conflict-wietse/index.html"], "W's fork retired: its bytes are at the URL");
+  assert.ok(!manifest.files["/toolkit/map-conflict-wietse/CONFLICT.md"]);
+  assert.ok(!manifest.files["/toolkit/plan-conflict-tester/index.html"], "my own fork retired: I shipped the origin");
+  assert.equal(manifest.files["/toolkit/faq-conflict-other/index.html"].h, H("O"), "a stranger's fork of an untouched unit stays");
+  assert.deepEqual(summary.retired.sort(), ["/toolkit/map-conflict-wietse/", "/toolkit/plan-conflict-tester/"]);
+  for (const k of ["/toolkit/map-conflict-wietse/", "/toolkit/plan-conflict-tester/"]) {
+    assert.ok(!manifest.routing.publicPrefixes.includes(k));
+    assert.ok(!(k in manifest.routing.unitSources));
+  }
+});
+
+test("re-forking the same unit replaces the person's earlier fork instead of numbering it", async () => {
+  const mine = mani({ files: unit("map", "m2"), prefixes: ["/toolkit/map/"], source: { sha: "s", dirty: true } });
+  const live = mani({
+    files: { ...unit("map", "L"), "/toolkit/map-conflict-tester/index.html": entry("m1"), "/toolkit/map-conflict-tester/CONFLICT.md": { h: H("n"), ct: "text/markdown; charset=utf-8", s: 3 } },
+    prefixes: ["/toolkit/map/", "/toolkit/map-conflict-tester/"], source: { sha: "x", dirty: true },
+  });
+  const { manifest, summary } = await compose({
+    mine, live,
+    evidence: { editedUnits: new Set(["/toolkit/map/"]), dirtyUnits: new Set(), deletedUnits: new Set(), editedPaths: new Set() },
+  });
+  assert.equal(summary.forked[0].fork, "/toolkit/map-conflict-tester/");
+  assert.equal(manifest.files["/toolkit/map-conflict-tester/index.html"].h, H("m2"), "the fork carries my newest bytes");
+  assert.ok(!manifest.routing.publicPrefixes.includes("/toolkit/map-conflict-tester-2/"));
+  assert.equal(manifest.routing.publicPrefixes.filter((p) => p.includes("-conflict-")).length, 1);
+});
+
+test("a kept unit heals on same SOURCE under another engine's decoration (sh equal, bytes differ)", async () => {
+  const src = (h, sh) => ({ [`/toolkit/a/index.html`]: { h: H(h), sh: H(sh), ct: "text/html; charset=utf-8", s: 10 } });
+  const mine = mani({ files: src("new", "same"), prefixes: ["/toolkit/a/"], source: { sha: "CLEAN", dirty: false } });
+  const live = mani({ files: src("old", "same"), prefixes: ["/toolkit/a/"], source: { sha: "OLD", dirty: true } });
+  const { manifest, summary } = await compose({ mine, live });
+  assert.equal(manifest.files["/toolkit/a/index.html"].h, H("old"), "live's bytes stay: nothing was edited");
+  assert.deepEqual(manifest.routing.unitSources["/toolkit/a/"], { sha: "CLEAN", dirty: false });
+  assert.deepEqual(summary.healed, ["/toolkit/a/"]);
+  // and NOT when the source really differs and the tolerant check says so too
+  const live2 = mani({ files: src("old", "other"), prefixes: ["/toolkit/a/"], source: { sha: "OLD", dirty: true } });
+  const r = await compose({ mine, live: live2 });
+  assert.deepEqual(r.manifest.routing.unitSources["/toolkit/a/"], { sha: "OLD", dirty: true });
+});
+
+test("a fork retires on same SOURCE at the origin, not only identical bytes", async () => {
+  const page = (u, h, sh) => ({ [`${u}index.html`]: { h: H(h), sh: H(sh), ct: "text/html; charset=utf-8", s: 10 } });
+  const live = mani({
+    files: { ...page("/toolkit/map/", "L", "L"), ...page("/toolkit/map-conflict-wietse/", "W1", "W"), "/toolkit/map-conflict-wietse/CONFLICT.md": { h: H("n"), ct: "text/markdown; charset=utf-8", s: 3 } },
+    prefixes: ["/toolkit/map/", "/toolkit/map-conflict-wietse/"], source: { sha: "OLD", dirty: false },
+  });
+  const mine = mani({ files: page("/toolkit/map/", "W2", "W"), prefixes: ["/toolkit/map/"], source: { sha: "MINE", dirty: false } });
+  const { manifest, summary } = await compose({ mine, live, ffUnits: new Set(["/toolkit/map/"]) });
+  assert.deepEqual(summary.retired, ["/toolkit/map-conflict-wietse/"]);
+  assert.ok(!manifest.files["/toolkit/map-conflict-wietse/index.html"]);
 });

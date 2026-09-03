@@ -20,6 +20,13 @@ The date is the day the update went live. The page works out "Today / 3 days ago
 
 ---
 
+## 2026-09-03 — Your edit lands at its own address
+Publishing a page you changed puts it at its address, even when someone before
+you published from an unsaved folder. Before, that could send your page to a
+"-conflict" copy instead, and the copies piled up. Now a copy is made only when
+two people really changed the same page, and it goes away by itself once the
+change is at the real address.
+
 ## 2026-08-25 — Send an invite by email
 Adding someone used to mean copying a link out of the Admin page and sending it
 yourself. Now Augur can email it for you. You still get the link either way, so
