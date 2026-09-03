@@ -18,12 +18,20 @@
 // Per-unit live provenance comes from routing.unitSources (written by every
 // protocol-5 publish), falling back to the space-level manifest source for
 // manifests that predate the field.
+//
+//   seed units    a live unit the PLATFORM wrote (provenance `isSeedSource`: the
+//                 seed pack a fresh workspace arrives with) is nobody's work, so it
+//                 can revert nobody: it is a fast-forward for any tree that carries
+//                 the unit. Its recorded sha is an ENGINE commit, which no space
+//                 repo has in its history — without this rule a person's first edit
+//                 to a start-here page was "unprovable" and quietly stayed local.
 
 import { execFileSync } from "node:child_process";
 import { existsSync } from "node:fs";
 import path from "node:path";
 import { authoredUnits, unitPaths } from "./publish-compose.mjs";
 import { repoDirCandidates } from "./publish-conflict.mjs";
+import { isSeedSource } from "../../src/provenance.mjs";
 
 const dec = (s) => { try { return decodeURIComponent(String(s)); } catch (e) { return String(s); } };
 
@@ -65,7 +73,8 @@ export function collectEvidence({ sourceDir, spaceBase, mine, live }) {
   const mineUnits = authoredUnits(mine);
   const unitSources = ((live || {}).routing || {}).unitSources || {};
   const spaceSrc = (live || {}).source || {};
-  const srcOf = (u) => unitSources[u] || { sha: spaceSrc.sha || null, dirty: !!spaceSrc.dirty };
+  const srcOf = (u) => unitSources[u]
+    || { sha: spaceSrc.sha || null, dirty: !!spaceSrc.dirty, actor: spaceSrc.actor, seed: spaceSrc.seed };
 
   const editedUnits = new Set();
   const dirtyUnits = new Set();
@@ -91,6 +100,13 @@ export function collectEvidence({ sourceDir, spaceBase, mine, live }) {
     if (!src.dirty && provenAncestor(src.sha)) {
       ffUnits.add(u);
       continue; // FF ships regardless; no need to weigh evidence
+    }
+    // The platform's seed is not a person's work: shipping over it reverts nobody.
+    // Only when this tree carries the unit — a seed unit absent here is left alone,
+    // like any other deletion git cannot prove.
+    if (mineUnits.has(u) && isSeedSource(src)) {
+      ffUnits.add(u);
+      continue;
     }
     if (editedUnits.has(u)) continue; // porcelain already says edited
     // Dirty-or-unknown live base: committed evidence only counts against a

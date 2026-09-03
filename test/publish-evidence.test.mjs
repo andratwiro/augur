@@ -97,3 +97,31 @@ test("skill file evidence: clean provable space base → committed skill diffs c
   const ev = collectEvidence({ sourceDir: dir, spaceBase: "", mine, live });
   assert.ok(ev.editedPaths.has("/skills/ui/a.css"));
 });
+
+test("a seed unit yields: the platform's write is a fast-forward for any tree that carries it", () => {
+  // The seed pack's recorded sha is an ENGINE commit no space repo has — so without the
+  // seed rule this is exactly the "neither side is provable" case that kept a person's
+  // first edit to a start-here page local.
+  const engineSha = "e".repeat(40);
+  const live = maniFor(["/toolkit/map/", "/toolkit/gone/", "/playground/board/"], { sha: engineSha, dirty: false }, {
+    "/toolkit/map/": { sha: engineSha, dirty: false, actor: "augur:seed", seed: true },
+    "/toolkit/gone/": { sha: engineSha, dirty: false, actor: "augur:seed", seed: true },
+    "/playground/board/": { sha: engineSha, dirty: false }, // same unknown sha, NOT seed
+  });
+  const mine = maniFor(["/toolkit/map/", "/playground/board/"], null);
+  const ev = collectEvidence({ sourceDir: dir, spaceBase: "", mine, live });
+  assert.ok(ev.ffUnits.has("/toolkit/map/"), "a seed unit this tree carries is a fast-forward");
+  assert.equal(ev.unprovable.includes("/toolkit/map/"), false, "and is never reported unprovable");
+  assert.equal(ev.ffUnits.has("/toolkit/gone/"), false, "a seed unit this tree lacks is left alone");
+  assert.equal(ev.deletedUnits.has("/toolkit/gone/"), false, "not a provable deletion either");
+  assert.equal(ev.ffUnits.has("/playground/board/"), false, "an unknown NON-seed base is still not a fast-forward");
+  assert.ok(ev.unprovable.includes("/playground/board/"), "a person's unknown history stays unprovable");
+});
+
+test("a seed unit yields through the space-level source too (manifests without unitSources)", () => {
+  const live = maniFor(["/toolkit/map/"], { sha: "f".repeat(40), dirty: false, actor: "augur:seed", seed: true });
+  const mine = maniFor(["/toolkit/map/"], null);
+  const ev = collectEvidence({ sourceDir: dir, spaceBase: "", mine, live });
+  assert.ok(ev.ffUnits.has("/toolkit/map/"));
+  assert.deepEqual(ev.unprovable, []);
+});
