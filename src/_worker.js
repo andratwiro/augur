@@ -9162,14 +9162,20 @@ async function workspaceStatus(tctx, env) {
     const manifests = await loadManifests(tctx.tenantId, env);
     for (const [id, m] of Object.entries(manifests || {})) {
       if (id === "_engine") continue;
-      const units = (m.routing && m.routing.unitSources) || {};
-      const dirtyUnits = Object.values(units).filter((u) => u && u.dirty).length;
+      // A prototype is a unit, and units are the manifest's `publicPrefixes` — the same
+      // vocabulary the composer and the conflict resolver use. NOT `unitSources`: that is
+      // per-unit provenance, written only by a composed publish, and a whole-tree publish
+      // (first publish, --takeover, the fast path over one's own last version) carries
+      // none. Counting it reported 0 prototypes for a workspace serving 158.
+      const unitCount = authoredUnits(m).size;
+      const sources = (m.routing && m.routing.unitSources) || {};
+      const dirtyUnits = Object.values(sources).filter((u) => u && u.dirty).length;
       bytesReferenced += Number(m.bytesReferenced) || 0;
-      prototypes += Object.keys(units).length;
+      prototypes += unitCount;
       versions += Number(m.version) || 0;
       spaces[id] = {
         version: Number(m.version) || 0,
-        prototypes: Object.keys(units).length,
+        prototypes: unitCount,
         // The only unreproducible state the system has: a prototype published from a tree
         // that was never committed exists in no repository at all.
         prototypesFromDirtyTree: dirtyUnits,

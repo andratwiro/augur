@@ -147,7 +147,7 @@ test("EVERY NUMBER MATCHES AN INDEPENDENT MEASUREMENT", async () => {
   assert.equal(s.workspace, "ws-numbers");
   assert.equal(s.provisioned, true);
   assert.equal(s.members, 1, "the member count does not match the roster");
-  // `prototypes` is the unitSources count, and one of the two came from a tree that was
+  // `prototypes` is the unit count (publicPrefixes), and one of the two came from a tree that was
   // never committed — the only unreproducible state the system has.
   assert.equal(s.prototypes, 2);
   assert.equal(s.spaces.alpha.prototypesFromDirtyTree, 1);
@@ -159,6 +159,19 @@ test("EVERY NUMBER MATCHES AN INDEPENDENT MEASUREMENT", async () => {
   assert.equal(s.lastPublish.version, 7);
   assert.equal(s.lastPublish.dirty, false);
   assert.equal(s.lastPublish.sha, "abc123");
+});
+
+test("prototypes are counted from publicPrefixes — a whole-tree publish carries no unitSources and still has its pages", async () => {
+  const env = envWith();
+  const bare = manifest();
+  delete bare.routing.unitSources;
+  env.BUNDLES.store.set("spaces/alpha/manifest.json", JSON.stringify(bare));
+  const ns = env.TENANTS;
+  await ns.get(ns.idFromName("ws-bare")).store.provision({ workspaceId: "ws-bare", adminEmail: ADMIN.email });
+  const s = await W.workspaceStatus(ctxFor("ws-bare"), env);
+  assert.equal(s.prototypes, 2);
+  assert.equal(s.spaces.alpha.prototypes, 2);
+  assert.equal(s.spaces.alpha.prototypesFromDirtyTree, 0);
 });
 
 test("NO CUSTOMER CONTENT IS IN IT — not a comment, not a board label, not an address", async () => {
