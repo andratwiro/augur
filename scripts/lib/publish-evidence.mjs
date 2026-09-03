@@ -20,11 +20,15 @@
 // manifests that predate the field.
 //
 //   seed units    a live unit the PLATFORM wrote (provenance `isSeedSource`: the
-//                 seed pack a fresh workspace arrives with) is nobody's work, so it
-//                 can revert nobody: it is a fast-forward for any tree that carries
-//                 the unit. Its recorded sha is an ENGINE commit, which no space
-//                 repo has in its history — without this rule a person's first edit
-//                 to a start-here page was "unprovable" and quietly stayed local.
+//                 seed pack a fresh workspace arrives with) is nobody's work. Its
+//                 recorded sha is an ENGINE commit no space repo has in its history,
+//                 so to git it looks exactly like an unpushed stranger's commit — and
+//                 a person's first edit to a start-here page was filed "unprovable"
+//                 and quietly stayed local. It is NOT unprovable: the platform's
+//                 provenance is a provenance. This module only declines to call it
+//                 one; WHETHER IT YIELDS IS THE COMPOSER'S RULE (publish-compose.mjs),
+//                 so the store, which runs the same composer with its own evidence,
+//                 reaches the same verdict for a repo-less publisher.
 
 import { execFileSync } from "node:child_process";
 import { existsSync } from "node:fs";
@@ -101,13 +105,6 @@ export function collectEvidence({ sourceDir, spaceBase, mine, live }) {
       ffUnits.add(u);
       continue; // FF ships regardless; no need to weigh evidence
     }
-    // The platform's seed is not a person's work: shipping over it reverts nobody.
-    // Only when this tree carries the unit — a seed unit absent here is left alone,
-    // like any other deletion git cannot prove.
-    if (mineUnits.has(u) && isSeedSource(src)) {
-      ffUnits.add(u);
-      continue;
-    }
     if (editedUnits.has(u)) continue; // porcelain already says edited
     // Dirty-or-unknown live base: committed evidence only counts against a
     // provable ancestor (diffing against an unrelated commit would count THEIR
@@ -116,7 +113,9 @@ export function collectEvidence({ sourceDir, spaceBase, mine, live }) {
       const dirRel = unitRepoDir(u, spaceBase, sourceDir);
       const names = (gitq(sourceDir, "diff", "--name-only", src.sha, "HEAD", "--", dirRel) || "").trim();
       if (names) editedUnits.add(u);
-    } else if (mineUnits.has(u) && liveUnits.has(u)) {
+    } else if (mineUnits.has(u) && liveUnits.has(u) && !isSeedSource(src)) {
+      // The seed is excluded because its provenance is KNOWN — it is the platform's —
+      // and the composer decides what that means. Everything else here is a stranger's.
       unprovable.push(u);
     }
   }

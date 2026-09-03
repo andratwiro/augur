@@ -8,6 +8,7 @@ import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { collectEvidence, unitOfRepoPath } from "../scripts/lib/publish-evidence.mjs";
+import { composePublish } from "../scripts/lib/publish-compose.mjs";
 
 let dir, baseSha, headSha;
 const git = (...a) => execFileSync("git", ["-C", dir, ...a], {
@@ -98,30 +99,39 @@ test("skill file evidence: clean provable space base → committed skill diffs c
   assert.ok(ev.editedPaths.has("/skills/ui/a.css"));
 });
 
-test("a seed unit yields: the platform's write is a fast-forward for any tree that carries it", () => {
-  // The seed pack's recorded sha is an ENGINE commit no space repo has — so without the
-  // seed rule this is exactly the "neither side is provable" case that kept a person's
-  // first edit to a start-here page local.
+test("a seed unit is never 'unprovable' — the platform's provenance is known; whether it yields is the composer's call, not git's", async () => {
+  // The seed pack's recorded sha is an ENGINE commit no space repo has — so to git this is
+  // exactly the "neither side is provable" shape that kept a person's first edit to a
+  // start-here page local. The evidence declines to call it unprovable; it does NOT call it
+  // a fast-forward either, because the yield is decided in composePublish, which the store
+  // runs too (see test/seed-yields-to-real-publish.test.mjs for both ends).
   const engineSha = "e".repeat(40);
   const live = maniFor(["/toolkit/map/", "/toolkit/gone/", "/playground/board/"], { sha: engineSha, dirty: false }, {
     "/toolkit/map/": { sha: engineSha, dirty: false, actor: "augur:seed", seed: true },
     "/toolkit/gone/": { sha: engineSha, dirty: false, actor: "augur:seed", seed: true },
     "/playground/board/": { sha: engineSha, dirty: false }, // same unknown sha, NOT seed
   });
+  live.files["/toolkit/map/index.html"] = { ...entry, h: "1".repeat(64) };
   const mine = maniFor(["/toolkit/map/", "/playground/board/"], null);
+  mine.files["/playground/board/index.html"] = { ...entry, h: "2".repeat(64) }; // a real divergence on both
   const ev = collectEvidence({ sourceDir: dir, spaceBase: "", mine, live });
-  assert.ok(ev.ffUnits.has("/toolkit/map/"), "a seed unit this tree carries is a fast-forward");
-  assert.equal(ev.unprovable.includes("/toolkit/map/"), false, "and is never reported unprovable");
-  assert.equal(ev.ffUnits.has("/toolkit/gone/"), false, "a seed unit this tree lacks is left alone");
-  assert.equal(ev.deletedUnits.has("/toolkit/gone/"), false, "not a provable deletion either");
+  assert.equal(ev.unprovable.includes("/toolkit/map/"), false, "a seed unit is never reported unprovable");
+  assert.equal(ev.ffUnits.has("/toolkit/map/"), false, "and git does not pretend it is a fast-forward — the composer decides");
+  assert.equal(ev.deletedUnits.has("/toolkit/gone/"), false, "a seed unit this tree lacks is not a git-provable deletion");
   assert.equal(ev.ffUnits.has("/playground/board/"), false, "an unknown NON-seed base is still not a fast-forward");
   assert.ok(ev.unprovable.includes("/playground/board/"), "a person's unknown history stays unprovable");
+
+  // And handed to the composer, that evidence ships the seed unit and keeps the person's.
+  const { manifest, summary } = await composePublish({ mine, live, who: "t", evidence: ev, ffUnits: ev.ffUnits });
+  assert.equal(manifest.files["/toolkit/map/index.html"].h, entry.h, "the seed unit yielded to the tree that carries it");
+  assert.deepEqual(summary.seeded, ["/toolkit/map/"]);
+  assert.deepEqual(summary.kept, ["/playground/board/"], "the unprovable person's unit stays live");
+  assert.deepEqual(summary.removalBlocked, ["/toolkit/gone/"], "the seed unit the tree lacks is named, not silently kept");
 });
 
-test("a seed unit yields through the space-level source too (manifests without unitSources)", () => {
+test("a seed unit is read through the space-level source too (manifests without unitSources)", () => {
   const live = maniFor(["/toolkit/map/"], { sha: "f".repeat(40), dirty: false, actor: "augur:seed", seed: true });
   const mine = maniFor(["/toolkit/map/"], null);
   const ev = collectEvidence({ sourceDir: dir, spaceBase: "", mine, live });
-  assert.ok(ev.ffUnits.has("/toolkit/map/"));
   assert.deepEqual(ev.unprovable, []);
 });
