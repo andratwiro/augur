@@ -77,6 +77,17 @@ test("the workspace icon is source; other root files are not", () => {
   assert.equal(src("/manifest.webmanifest"), null);
 });
 
+test("⚠️ THE BUILD'S OWN INPUTS COME BACK, or the tree cannot be published again", () => {
+  // `C-clone-publish-roundtrip`. Found on a live hosted workspace: the clone came out
+  // clean and the publish back died — "[catalog] could not read registry.json". The
+  // catalog, the status baseline and the skill's inventory are what the build READS to
+  // compose a space; a publish carries them now, and a clone puts each back where the
+  // build looks for it.
+  assert.equal(src("/registry.json"), "registry.json");
+  assert.equal(src("/prototype-status.json"), "prototype-status.json");
+  assert.equal(src("/skills/acme-ui/skill.json"), "skills/acme-ui/skill.json");
+});
+
 test("every skip carries a reason", () => {
   // A tool whose promise is "leaving is free" must not omit anything silently.
   const { skipped } = materializePlan({
@@ -98,6 +109,20 @@ test("the synthesized space.json claims only what is knowable", () => {
   const s = synthesizeSpaceJson("acme", "https://acme.example");
   assert.deepEqual(Object.keys(s).sort(), ["default", "id", "siteOrigin"]);
   assert.equal(s.id, "acme");
+});
+
+test("…and carries what the manifest KNOWS about the space, because the pages were rendered with it", () => {
+  // The build stamps the space's own record on every manifest. A name it carries is a
+  // fact, not a guess — and a clone without it rebuilds every index with a different name.
+  const record = { id: "acme", name: "Acme", default: true, badge: "", base: "", adminOnly: false,
+    description: "", projectsLabel: "Bets", help: [{ title: "How", items: ["Open a prototype", "Leave a comment"] }] };
+  const s = synthesizeSpaceJson("acme", "https://acme.example", record);
+  assert.deepEqual(s, { id: "acme", default: true, siteOrigin: "https://acme.example", name: "Acme", projectsLabel: "Bets", help: record.help });
+  // Empty values are the build's defaults, not facts about the space; computed fields
+  // (base, adminOnly) and the recorded origin never travel — siteOrigin is where it was
+  // cloned FROM.
+  assert.ok(!("badge" in s) && !("description" in s) && !("base" in s) && !("adminOnly" in s));
+  assert.equal(synthesizeSpaceJson("acme", "https://new.example", { siteOrigin: "https://old.example" }).siteOrigin, "https://new.example");
 });
 
 // ── the round trip, against a real space ─────────────────────────────────────

@@ -31,9 +31,17 @@
  * ⚠️ A CLONE IS NOT A BACKUP, and the difference matters enough that it is printed on
  * every run. A publish carries what a visitor can fetch, so a clone recovers exactly that.
  * It cannot recover what was never published: `context.md` and other research notes (which
- * the publish whitelist deliberately excludes), `registry.json`, `space.json`,
- * `prototype-status.json`, the skill manifest, or anything under `.github/`. `augur export`
- * is the backup — it copies the store, including history. This copies the SOURCE.
+ * the publish whitelist deliberately excludes), anything under `.github/`, and whatever a
+ * `space.json` said beyond what the manifest records of it. `augur export` is the backup —
+ * it copies the store, including history. This copies the SOURCE.
+ *
+ * What it CAN recover has to be enough to publish again, or leaving is not free — it is an
+ * export with a nicer layout. `registry.json` (the overlay catalog the build refuses to run
+ * without), `prototype-status.json` (the status baseline every index bakes) and the skill's
+ * `skill.json` (its inventory and css prefixes) all used to be on the list above; a clone of
+ * a hosted workspace came out clean and the publish back died in the build, and a tree that
+ * got past that rebuilt into a different site. Every input the build READS ships with the
+ * publish now and comes back with the clone (`C-clone-publish-roundtrip`).
  *
  * HOW `pull` DECIDES. Three-way, against the same local cache `publish.mjs` already writes
  * at ~/.config/augur/published/<host>/<space>.json:
@@ -387,13 +395,16 @@ async function main() {
     wrote++; bytes += outBody.length;
   }
 
-  // space.json is not a served asset and is in no manifest, so a clone synthesizes it —
-  // and never overwrites one that already exists, because a real tree's space.json carries
-  // decisions (a display name, a projects label) this cannot know.
+  // space.json is not a served asset and is in no manifest as a file, so a clone synthesizes
+  // it from the record the build stamps on every manifest (`manifest.space`: the name, the
+  // projects label, the help sections — what the generated pages were rendered with) — and
+  // never overwrites one that already exists, because a real tree's space.json can carry
+  // decisions the manifest does not record.
   const sj = path.join(out, "space.json");
   if (!existsSync(sj)) {
-    await writeFile(sj, JSON.stringify(synthesizeSpaceJson(spaceId, origin), null, 2) + "\n");
-    log(`wrote a minimal space.json — it carries only id, default and siteOrigin, because nothing else is recoverable from a publish`);
+    const synth = synthesizeSpaceJson(spaceId, origin, manifest.space);
+    await writeFile(sj, JSON.stringify(synth, null, 2) + "\n");
+    log(`wrote space.json from the manifest's own record of the space (${Object.keys(synth).join(", ")}) — nothing else about it is recoverable from a publish`);
   }
 
   log(`${C.ok}${MODE === "pull" ? "pulled" : "cloned"} ${wrote} file(s), ${(bytes / 1e6).toFixed(2)} MB → ${out}${C.off}`);
@@ -404,7 +415,7 @@ async function main() {
   }
 
   // Said every time, because somebody will otherwise use this as a backup.
-  console.log(`\n${C.dim}A clone is what a visitor could fetch, not the repository. It cannot recover research notes (context.md and friends), registry.json, prototype-status.json, the skill manifest or anything under .github/ — a publish never carried them. \`augur export\` is the backup.${C.off}`);
+  console.log(`\n${C.dim}A clone is what a visitor could fetch, not the repository. It cannot recover research notes (context.md and friends) or anything under .github/ — a publish never carried them. \`augur export\` is the backup.${C.off}`);
   process.exit(plan.conflict.length ? 2 : 0);
 }
 

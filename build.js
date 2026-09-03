@@ -7302,14 +7302,25 @@ async function buildSpace(space) {
     // file or directory names relative to the skill root (dirs copy wholesale).
     // The inventory belongs to the WORKSPACE, not the engine; a skill with no
     // manifest gets the fixed default inventory below. Markdown at the skill root
-    // (SKILL.md, components.md — internal notes) never ships either way, and
-    // neither does skill.json itself. Contract: agents/ui-skill.md.
+    // (SKILL.md, components.md — internal notes) never ships either way.
+    // Contract: agents/ui-skill.md.
+    //
+    // skill.json ITSELF SHIPS, beside what it declares (`C-clone-publish-roundtrip`). It
+    // used not to, as a manifest rather than an asset — and a tree reconstructed from a
+    // publish then came back without it, so the rebuild fell to the legacy inventory
+    // below (dropping every declared file the legacy list does not name — the seed's own
+    // JS, for one) and to the default `cssPrefixes` (reshaping the composition graph and
+    // the tokens page). What the build READS to reproduce a space travels with the
+    // publish; what it WRITES does not; research never does. It names files and
+    // prefixes, nothing else.
     let declared = null;
     try {
       const manifest = JSON.parse(await fs.readFile(path.join(UI_SKILL, "skill.json"), "utf8"));
       if (Array.isArray(manifest.assets)) declared = manifest.assets;
     } catch { /* no manifest → legacy inventory */ }
     if (declared) {
+      recordSourceStamp(path.join(UI_SKILL, "skill.json"), path.relative(DIST, path.join(sharedDir, "skill.json")).split(path.sep).join("/"));
+      await fs.copyFile(path.join(UI_SKILL, "skill.json"), path.join(sharedDir, "skill.json"));
       for (const name of declared) {
         // Stay inside the skill dir; a manifest can only name what sits in it.
         if (typeof name !== "string" || name.includes("..") || path.isAbsolute(name)) continue;
@@ -7358,6 +7369,31 @@ async function buildSpace(space) {
       "window.__GV_GRAPH=" + JSON.stringify(graph) + ";",
       "utf8"
     );
+  }
+
+  // ── THE BUILD'S OWN INPUTS RIDE THE PUBLISH (`C-clone-publish-roundtrip`). Two root
+  // documents the build READS to compose a space ship at the space root, verbatim:
+  //   registry.json          the overlay catalog — the design system's published contract,
+  //                          the very document loadCatalog read above. The build REFUSES to
+  //                          run without it beside a skill, on purpose.
+  //   prototype-status.json  the dev-status baseline every project index bakes its chips
+  //                          and card order from (the KV overlay sits on top at serve time).
+  // The reason is the round trip: `augur clone` reconstructs a source tree from what a
+  // publish carried, and a tree that came back without these was not the source — the
+  // catalog's absence killed the build outright (found on a live hosted workspace: the
+  // clone was fine and the publish back died), and the baseline's absence rebuilt every
+  // index with different chips. The rule this draws: what the build READS to reproduce a
+  // space travels; what it WRITES (indexes, graph, search) does not; research never does.
+  // Nothing here is new to a visitor — the composition graph spells out every label and
+  // slug, the indexes render every status — and both are gated exactly as the pages they
+  // describe are. A space that has neither ships neither; loadCatalog's guards already
+  // decide whether a missing catalog was allowed.
+  for (const name of ["registry.json", "prototype-status.json"]) {
+    const src = path.join(WS_ROOT, name);
+    if (!(await exists(src))) continue;
+    const dest = path.join(DIST_SPACE, name);
+    recordSourceStamp(src, path.relative(DIST, dest).split(path.sep).join("/"));
+    await fs.copyFile(src, dest);
   }
 
   // ── Tokens tab → GENERATED from the tokens stylesheet via the composition graph.

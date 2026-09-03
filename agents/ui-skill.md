@@ -81,6 +81,12 @@ it (no silent unlabeled overlay). Shape:
 lists the CSS family roots the overlay matches in the DOM. A workspace with no
 skill needs no registry.
 
+It ships with every publish, at `/registry.json`, and so does the skill's own
+`skill.json` beside the assets it declares. Both are inputs the build needs to
+compose the space again, and `augur clone` puts them back where the build reads
+them — a clone without them is a tree that cannot be published. Gated like the
+pages they describe; neither names anything the composition graph does not.
+
 ## Galleries
 
 The tokens/primitives gallery tiers derive from the conventional file split

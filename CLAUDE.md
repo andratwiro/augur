@@ -251,6 +251,13 @@ rebuilt), the `playground/`, and the skill assets the skill declares in its
 `skill.json` ship (see [agents/ui-skill.md](agents/ui-skill.md); skills without
 a manifest get a fixed default inventory). `research.md`, `context.md`, anything
 outside `prototypes/` — internal, never copied to `/dist`.
+**Plus the three documents the build READS to compose a space** — `registry.json`
+(the overlay catalog), `prototype-status.json` (the status baseline) and the skill's
+`skill.json` itself — verbatim, at the path the build reads them from
+(`C-clone-publish-roundtrip`). They are what makes `augur clone` produce a tree that
+publishes again rather than one whose build dies asking for the catalog; a clone of a
+hosted workspace did exactly that. The rule they draw: what the build reads travels,
+what it writes (indexes, graph, search) does not, research never does.
 
 ## Deploys — this repo ships nothing
 

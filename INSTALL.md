@@ -135,8 +135,11 @@ git init -b main && git add . && git commit -m "space: initial"
 gh repo create <owner>/<space-repo> --private --source=. --push
 ```
 
-- Only the contents of `prototypes/` folders are published. Notes, research and anything
-  outside them stay private by construction.
+- Only the contents of `prototypes/` folders are published — plus the three small
+  documents the build itself reads to compose the space (`registry.json`,
+  `prototype-status.json`, the skill's `skill.json`), so a workspace cloned back from
+  its publish builds again. Notes, research and anything else outside them stay private
+  by construction.
 - A design system is optional. Plain self-contained HTML builds and ships fine. If you
   do add one (`skills/<x>-ui/`), the space also needs a `registry.json` overlay catalog
   at its root — the build refuses to ship an unlabeled overlay. See
