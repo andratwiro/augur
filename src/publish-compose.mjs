@@ -254,11 +254,12 @@ export async function composePublish({
       if (ev.deletedUnits.has(u) || liveSeedUnit(u)) {
         if (allowUnpublish) { summary.removed.push(u); continue; }
         summary.removalBlocked.push(u);
+      } else {
+        // Reported as kept: live is NOT exactly this tree, so the caller's cache must not
+        // let the next publish fast-path the whole tree over it (which would drop this unit).
+        summary.kept.push(u);
       }
       takeLive(u);
-      // Reported as kept: live is NOT exactly this tree, so the caller's cache must not
-      // let the next publish fast-path the whole tree over it (which would drop this unit).
-      summary.kept.push(u);
       continue;
     }
     // In both.
