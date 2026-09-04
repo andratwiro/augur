@@ -57,3 +57,36 @@ test("a trailing newline survives", () => {
   const r = merge3("a\nb\n", "a\nb\nc\n", "a\nb\n");
   assert.equal(r.text, "a\nb\nc\n");
 });
+
+test("an emptied side merges to empty, not to a blank line", () => {
+  const empty = merge3("", "", "");
+  assert.equal(empty.ok, true);
+  assert.equal(empty.text, "");
+  const deleted = merge3("x", "", "x");
+  assert.equal(deleted.ok, true);
+  assert.equal(deleted.text, "");
+  const deletedNewline = merge3("x\n", "", "x\n");
+  assert.equal(deletedNewline.ok, true);
+  assert.equal(deletedNewline.text, "");
+});
+
+test("a small edit in a very large file merges", () => {
+  const baseLines = Array.from({ length: 200000 }, (_, i) => "line " + i);
+  const base = baseLines.join("\n");
+  const mineLines = baseLines.slice();
+  mineLines[10] = "MINE 10";
+  const mine = mineLines.join("\n");
+  const theirLines = baseLines.slice();
+  theirLines[199990] = "THEIRS 199990";
+  const theirs = theirLines.join("\n");
+
+  assert.equal(diffLines(baseLines, mineLines).length, 1);
+  assert.equal(diffLines(baseLines, theirLines).length, 1);
+
+  const r = merge3(base, mine, theirs);
+  assert.equal(r.ok, true);
+  const outLines = r.text.split("\n");
+  assert.equal(outLines.length, 200000);
+  assert.equal(outLines[10], "MINE 10");
+  assert.equal(outLines[199990], "THEIRS 199990");
+});

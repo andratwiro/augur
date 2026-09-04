@@ -51,11 +51,20 @@ function hunksLCS(a, b) {
 }
 
 const split = (s) => {
-  const lines = String(s).split("\n");
+  const str = String(s);
+  if (str === "") return { lines: [], trailing: false };
+  const lines = str.split("\n");
   const trailing = lines[lines.length - 1] === "";
   if (trailing) lines.pop();
   return { lines, trailing };
 };
+
+/** Push `arr`'s elements onto `out` without spreading — a spread throws past ~120k args. */
+function append(out, arr) {
+  for (let i = 0; i < arr.length; i += 10000) push.apply(out, arr.slice(i, i + 10000));
+  return out;
+}
+const push = Array.prototype.push;
 
 /** Three-way merge of strings. Overlaps are conflicts, never guesses. */
 export function merge3(base, mine, theirs) {
@@ -67,7 +76,6 @@ export function merge3(base, mine, theirs) {
   let pos = 0;
   let i = 0, j = 0;
   const overlaps = (p, q) => p.aStart < q.aEnd && q.aStart < p.aEnd || (p.aStart === p.aEnd && q.aStart === q.aEnd && p.aStart === q.aStart);
-  const same = (p, q) => p.aStart === q.aStart && p.aEnd === q.aEnd && p.lines.length === q.lines.length && p.lines.every((l, k) => l === q.lines[k]);
   while (i < ha.length || j < hc.length) {
     const p = ha[i], q = hc[j];
     let take, region;
@@ -92,12 +100,14 @@ export function merge3(base, mine, theirs) {
     } else {
       take = q.lines; region = q; j++;
     }
-    out.push(...B.lines.slice(pos, region.aStart), ...take);
+    append(out, B.lines.slice(pos, region.aStart));
+    append(out, take);
     pos = region.aEnd;
   }
-  out.push(...B.lines.slice(pos));
+  append(out, B.lines.slice(pos));
   const trailing = A.trailing || C.trailing;
-  return { ok: conflicts.length === 0, text: out.join("\n") + (trailing ? "\n" : ""), conflicts };
+  const text = out.length === 0 ? "" : out.join("\n") + (trailing ? "\n" : "");
+  return { ok: conflicts.length === 0, text, conflicts };
 }
 
 /** The lines `base[start..end)` become after applying `hunks` (all inside that range). */
@@ -105,9 +115,10 @@ function applyHunks(base, hunks, start, end) {
   const out = [];
   let pos = start;
   for (const h of hunks) {
-    out.push(...base.slice(pos, h.aStart), ...h.lines);
+    append(out, base.slice(pos, h.aStart));
+    append(out, h.lines);
     pos = h.aEnd;
   }
-  out.push(...base.slice(pos, end));
+  append(out, base.slice(pos, end));
   return out;
 }
