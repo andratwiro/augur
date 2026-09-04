@@ -231,3 +231,65 @@ test("a landing onto a path another live manifest owns is refused, and the lease
   const p = await json(await call(ctx, env, "presence", { unit: U }, { method: "GET" }));
   assert.equal(p.body.drafts.length, 1, "the draft is still open, so the lease was let go");
 });
+
+// ── two units landing at once ────────────────────────────────────────────────
+//
+// The landing writes `spaces/<id>/manifest.json` read-modify-write. Two workers landing
+// DIFFERENT units at once both read v8, and the second `put` drops the first one's files
+// — which the next `sync-main` then adopts as if somebody had deleted them. The write
+// therefore carries the etag it read as a precondition, and a refused write re-reads and
+// recomposes from the SAME landed table (the lease pins it) rather than landing stale.
+test("a landing that loses the manifest race recomposes and retries", async () => {
+  const { ctx, env } = await setup();
+  const MKEY = "spaces/alpha/manifest.json";
+  const X = U, Y = "/checkout/second/";
+
+  const landUnit = async (unit, body, baseHash) => {
+    const o = (await json(await call(ctx, env, "open", { unit }))).body;
+    await env.BUNDLES.put(`blobs/${sha(body)}`, body);
+    const s = await json(await call(ctx, env, "save", { unit, draftId: o.draftId, draftRevision: 0,
+      changes: [{ path: `${unit}index.html`, h: sha(body), ct: "text/html; charset=utf-8", s: body.length, baseHash }] }));
+    assert.equal(s.status, 200, JSON.stringify(s.body));
+    return json(await call(ctx, env, "land", { unit, draftId: o.draftId, baseRevision: o.baseRevision, note: "" }));
+  };
+
+  const xBody = "<h1>flow v2</h1>";
+  assert.equal((await landUnit(X, xBody, sha(INDEX))).status, 200);
+
+  // Somebody else's landing, injected exactly once between this one's read of the
+  // manifest and its write of it: the landing reads the manifest exactly once per
+  // attempt, so the first read after arming is the one whose write must be refused.
+  const OTHER = "/checkout/elsewhere/index.html";
+  const raw = { get: env.BUNDLES.get.bind(env.BUNDLES), put: env.BUNDLES.put.bind(env.BUNDLES) };
+  let armed = false, injected = false, manifestPuts = 0;
+  env.BUNDLES.get = async (k, opts) => {
+    const r = await raw.get(k, opts);
+    if (armed && !injected && k === MKEY) {
+      injected = true;
+      const m = JSON.parse(env.BUNDLES.store.get(MKEY));
+      m.files[OTHER] = { h: sha("elsewhere"), ct: "text/html; charset=utf-8", s: 9 };
+      m.routing.publicPrefixes = [...m.routing.publicPrefixes, "/checkout/elsewhere/"];
+      m.version += 1;
+      await raw.put(MKEY, JSON.stringify(m));
+    }
+    return r;
+  };
+  env.BUNDLES.put = async (k, v, opts) => { if (k === MKEY) manifestPuts++; return raw.put(k, v, opts); };
+
+  const yBody = "<h1>second</h1>";
+  const o = (await json(await call(ctx, env, "open", { unit: Y }))).body;
+  await env.BUNDLES.put(`blobs/${sha(yBody)}`, yBody);
+  await call(ctx, env, "save", { unit: Y, draftId: o.draftId, draftRevision: 0,
+    changes: [{ path: `${Y}index.html`, h: sha(yBody), ct: "text/html; charset=utf-8", s: yBody.length, baseHash: null }] });
+  armed = true; // only the LAND reads the manifest to write it back
+  const l = await json(await call(ctx, env, "land", { unit: Y, draftId: o.draftId, baseRevision: o.baseRevision, note: "" }));
+  assert.equal(injected, true, "the out-of-band change never happened");
+  assert.equal(l.status, 200, JSON.stringify(l.body));
+  assert.equal(manifestPuts, 2, "the first write must have been refused and retried");
+
+  const after = liveNow(env);
+  assert.equal(after.files[`${X}index.html`].h, sha(xBody), "the first unit's landing survived");
+  assert.equal(after.files[`${Y}index.html`].h, sha(yBody), "the second unit's landing is live");
+  assert.equal(after.files[OTHER].h, sha("elsewhere"), "the out-of-band landing was not dropped");
+  assert.equal(after.version, l.body.version);
+});

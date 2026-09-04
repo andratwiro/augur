@@ -35,7 +35,15 @@ export function memR2(initial = {}) {
       const slice = opts && opts.range ? bytes.slice(opts.range.offset, opts.range.offset + opts.range.length) : bytes;
       return { text: async () => v, arrayBuffer: async () => slice.buffer, body: new Blob([slice]).stream(), etag: etags.get(k) };
     },
-    async put(k, v) { store.set(k, text(v)); etags.set(k, `e${++seq}`); },
+    // `onlyIf.etagMatches` is honoured, because the landing path writes the manifest
+    // under one: a refused write must leave the object untouched and answer `null`,
+    // exactly as R2 does, or a test cannot tell a precondition from a lost update.
+    async put(k, v, opts) {
+      const want = opts && opts.onlyIf ? opts.onlyIf.etagMatches : undefined;
+      if (want !== undefined && want !== null && etags.get(k) !== want) return null;
+      store.set(k, text(v)); etags.set(k, `e${++seq}`);
+      return { key: k, etag: etags.get(k) };
+    },
     async head(k) { return store.has(k) ? { etag: etags.get(k) } : null; },
     async delete(k) { store.delete(k); },
     async list({ prefix = "", delimiter } = {}) {

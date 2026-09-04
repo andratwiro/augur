@@ -5055,57 +5055,79 @@ function defaultSpaceIdFromManifests(manifests) {
  * rule the commit handler already keeps. `unitSources` records the landing so the old
  * composed publish treats the unit as somebody's work rather than as a fast-forward.
  */
+const UNIT_LANDING_ATTEMPTS = 3;
 async function writeUnitLanding(tctx, env, spaceId, unit, table, changed, who, now) {
   const bundles = bundlesFor(env, tctx.tenantId);
-  const manifests = await loadManifests(tctx.tenantId, env, true);
-  const cur = manifests[spaceId];
-  if (!cur) return { error: "unknown-space", status: 404 };
-  // ── The landed table may only name paths inside the unit, and paths nobody else serves ──
+  const key = `spaces/${spaceId}/manifest.json`;
+  // ONE READ-MODIFY-WRITE PER ATTEMPT, UNDER A PRECONDITION. Two workers landing
+  // DIFFERENT units at once both read the same version, and an unconditional write lets
+  // the second one drop the first one's files — silently, and the next `sync-main` then
+  // adopts the loss as if somebody had deleted them. So the write carries the etag the
+  // read returned, and a refused write starts again from a fresh read.
   //
-  // DEFENCE IN DEPTH, and the second half is not: `unitApi` already refuses a save outside
-  // the unit, so a table reaching here with a foreign path came from somewhere else — a
-  // future caller, a restored revision written before that rule existed. Dropping such a
-  // path silently would land a table that is not the one the object recorded, so the
-  // landing is REFUSED instead, and the lease abandoned by the caller.
-  //
-  // The conflict check is the SAME one the commit handler runs over every other live
-  // manifest, `_engine` included, and for the same reason: a space manifest shadows
-  // `_engine` in `lookupBundleFile`, so a path another manifest already serves would be
-  // taken over by this write rather than colliding visibly.
-  for (const p of Object.keys(table || {})) {
-    if (!p.startsWith(unit)) return { error: "path-outside-unit", path: p, status: 409 };
-    for (const otherId in manifests) {
-      if (otherId === spaceId) continue;
-      const other = manifests[otherId].files || {};
-      if (other[p]) return { error: "path-conflict", path: p, owner: otherId, status: 409 };
+  // The retry recomposes from the SAME landed table: the lease pins it in the object, so
+  // nothing about what this landing means changes between attempts — only what it is
+  // composed ON TOP OF. `versions/<n>.json` is written unconditionally with a fresh number
+  // per attempt; an unreferenced version document costs a key and lies to nobody, while
+  // reusing the number would overwrite a version somebody else's landing just issued.
+  for (let attempt = 0; attempt < UNIT_LANDING_ATTEMPTS; attempt++) {
+    const manifests = await loadManifests(tctx.tenantId, env, true);
+    const obj = await bundles.get(key);
+    if (!obj) return { error: "unknown-space", status: 404 };
+    const etag = obj.etag || obj.httpEtag || null;
+    let cur;
+    try { cur = JSON.parse(await obj.text()); } catch (e) { return { error: "unknown-space", status: 404 }; }
+    // ── The landed table may only name paths inside the unit, and paths nobody else serves ──
+    //
+    // DEFENCE IN DEPTH, and the second half is not: `unitApi` already refuses a save
+    // outside the unit, so a table reaching here with a foreign path came from somewhere
+    // else — a future caller, a restored revision written before that rule existed.
+    // Dropping such a path silently would land a table that is not the one the object
+    // recorded, so the landing is REFUSED instead, and the lease abandoned by the caller.
+    //
+    // The conflict check is the SAME one the commit handler runs over every other live
+    // manifest, `_engine` included, and for the same reason: a space manifest shadows
+    // `_engine` in `lookupBundleFile`, so a path another manifest already serves would be
+    // taken over by this write rather than colliding visibly.
+    for (const p of Object.keys(table || {})) {
+      if (!p.startsWith(unit)) return { error: "path-outside-unit", path: p, status: 409 };
+      for (const otherId in manifests) {
+        if (otherId === spaceId) continue;
+        const other = manifests[otherId].files || {};
+        if (other[p]) return { error: "path-conflict", path: p, owner: otherId, status: 409 };
+      }
     }
+    const changedPaths = new Set((Array.isArray(changed) ? changed : []).map((c) => c.path));
+    const files = {};
+    for (const [p, f] of Object.entries(cur.files || {})) if (!p.startsWith(unit)) files[p] = f;
+    for (const [p, f] of Object.entries(table)) {
+      const prior = (cur.files || {})[p];
+      // A file this landing did not touch keeps its prior entry VERBATIM — provenance is
+      // per-file, and re-stamping an untouched neighbour would credit this lander with an
+      // edit they never made. Only a path this landing's `changed` names gets a fresh
+      // `by`/`editedAt`; anything else in the table is here because it lives in the unit,
+      // not because it moved.
+      files[p] = prior && !changedPaths.has(p) ? prior : { h: f.h, ct: f.ct, s: f.s, by: who.personId, editedAt: now };
+    }
+    const routing = { ...(cur.routing || {}) };
+    routing.publicPrefixes = [...new Set([...(routing.publicPrefixes || []), unit])];
+    routing.unitSources = { ...(routing.unitSources || {}), [unit]: { sha: null, dirty: false, landed: true, by: who.personId, at: now } };
+    const m = { ...cur, files, routing };
+    const ceiling = manifestCeiling(m);
+    if (ceiling) return { error: "manifest-ceiling", ...ceiling, status: 413 };
+    const issued = await nextPublishVersion(env, tctx, spaceId, cur);
+    if (issued.error) return { error: "version-unavailable", status: 503 };
+    const out = { ...m, version: issued.version, bytesReferenced: bytesReferencedOf(m), publishedAt: now, publishedBy: who.label || "" };
+    await bundles.put(`spaces/${spaceId}/versions/${issued.version}.json`, JSON.stringify(out));
+    // A store that answers `null` refused the precondition — R2's way of saying the object
+    // moved under us. Anything else is a write.
+    const wrote = await bundles.put(key, JSON.stringify(out), etag ? { onlyIf: { etagMatches: etag } } : undefined);
+    if (etag && wrote === null) { bustManifests(tctx.tenantId); continue; }
+    bustManifests(tctx.tenantId); cfgAt = 0;
+    touchWorkspaceActivity(env, tctx, null);
+    return { version: issued.version };
   }
-  const changedPaths = new Set((Array.isArray(changed) ? changed : []).map((c) => c.path));
-  const files = {};
-  for (const [p, f] of Object.entries(cur.files || {})) if (!p.startsWith(unit)) files[p] = f;
-  for (const [p, f] of Object.entries(table)) {
-    const prior = (cur.files || {})[p];
-    // A file this landing did not touch keeps its prior entry VERBATIM — provenance is
-    // per-file, and re-stamping an untouched neighbour would credit this lander with an
-    // edit they never made. Only a path this landing's `changed` names gets a fresh
-    // `by`/`editedAt`; anything else in the table is here because it lives in the unit,
-    // not because it moved.
-    files[p] = prior && !changedPaths.has(p) ? prior : { h: f.h, ct: f.ct, s: f.s, by: who.personId, editedAt: now };
-  }
-  const routing = { ...(cur.routing || {}) };
-  routing.publicPrefixes = [...new Set([...(routing.publicPrefixes || []), unit])];
-  routing.unitSources = { ...(routing.unitSources || {}), [unit]: { sha: null, dirty: false, landed: true, by: who.personId, at: now } };
-  const m = { ...cur, files, routing };
-  const ceiling = manifestCeiling(m);
-  if (ceiling) return { error: "manifest-ceiling", ...ceiling, status: 413 };
-  const issued = await nextPublishVersion(env, tctx, spaceId, cur);
-  if (issued.error) return { error: "version-unavailable", status: 503 };
-  const out = { ...m, version: issued.version, bytesReferenced: bytesReferencedOf(m), publishedAt: now, publishedBy: who.label || "" };
-  await bundles.put(`spaces/${spaceId}/versions/${issued.version}.json`, JSON.stringify(out));
-  await bundles.put(`spaces/${spaceId}/manifest.json`, JSON.stringify(out));
-  bustManifests(tctx.tenantId); cfgAt = 0;
-  touchWorkspaceActivity(env, tctx, null);
-  return { version: issued.version };
+  return { error: "manifest-contended", status: 503 };
 }
 
 async function unitApi(tctx, request, url, env) {
