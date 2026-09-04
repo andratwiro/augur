@@ -16,12 +16,13 @@
 // worker that dies between the two leaves a lease that simply expires — nothing depends on
 // it being released, and `abandon-land` is a courtesy.
 import {
-  newDraftId, unitTable, sameTable, applyChanges, tableDelta, presenceOf, DRAFT_ID_RE,
+  newDraftId, unitTable, sameTable, applyChanges, tableDelta, presenceOf,
 } from "./unit-core.mjs";
 
 export const LAND_LEASE_MS = 10_000;
 export const UNIT_SCHEMA_VERSION = 1;
-const DRAFT_ROUTE_RE = new RegExp(`^/draft/(${DRAFT_ID_RE.source.slice(1, -1)})$`);
+// A literal, not a constructed RegExp — its group mirrors DRAFT_ID_RE in unit-core.mjs.
+const DRAFT_ROUTE_RE = /^\/draft\/([a-z0-9]{6})$/;
 
 export const UNIT_SCHEMA = Object.freeze([
   `CREATE TABLE IF NOT EXISTS meta (k TEXT PRIMARY KEY, v TEXT NOT NULL)`,

@@ -51,4 +51,8 @@ export { BoardRoom } from "./board-room.mjs";
 // instance until one declares the binding and the migration.
 export { TenantStore } from "./tenant-do.js";
 
+// One unit's drafts, landings and lease — see docs/drafts-that-land.md. Named here for the
+// same reason as the two above: inert until a wrangler.toml binds it as UNITS.
+export { UnitObject } from "./unit-object.mjs";
+
 export default worker;

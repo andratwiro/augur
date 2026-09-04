@@ -373,6 +373,14 @@ const ALLOWLIST = {
     ],
   },
 
+  // One unit's Durable Object. Same shape as tenant-do.js above and for the same reason:
+  // one DO per unit is the isolation, so nothing per-unit is at module scope here either.
+  "src/unit-object.mjs": {
+    frozen: [
+      "UNIT_SCHEMA", // the DDL statement list, identical for every unit — applied once per object
+    ],
+  },
+
   "src/kv-identity.mjs": {
     frozen: [
       "UNMAPPED_WORKSPACE_FAMILIES", // which workspace-destined families this translation does NOT carry, and why; a fact about the schema

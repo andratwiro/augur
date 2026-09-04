@@ -103,6 +103,7 @@ import { PURGED_AUTHOR, purgeThreads, idCollisions } from "./purge.mjs";
 // The unit vocabulary and the composer, shared VERBATIM with the CLI — see resolveStaleBase.
 import { authoredUnits, unitOfPath, unitPaths } from "./publish-units.mjs";
 import { composePublish, forkLanded } from "./publish-compose.mjs";
+import { normUnit, splitDraftPath, unitTable, draftAddress } from "./unit-core.mjs";
 // `F-fork-verb`. Fork as a deliberate verb — one unit aliased to a new path, zero bytes
 // moved — plus the rule that keeps a fork's lineage and owner alive across every later
 // publish. Both are pure, and both are the CLI's too if it ever needs them.
@@ -903,6 +904,31 @@ function tenantStub(env, tenantId) {
   const ns = tenantNamespace(env);
   if (!ns || !tenantId) return null;
   return ns.get(ns.idFromName(tenantId));
+}
+
+// ── The unit objects (drafts that land) ────────────────────────────────────────────────
+// Same jurisdiction rule as the workspace object, same reason: the jurisdiction is part of
+// the address, so both namespaces take it or neither does.
+function unitNamespace(env) {
+  const ns = env && env.UNITS;
+  if (!ns) return null;
+  const j = env && typeof env.TENANT_JURISDICTION === "string" ? env.TENANT_JURISDICTION.trim() : "";
+  if (!j) return ns;
+  if (typeof ns.jurisdiction !== "function") throw new Error(`TENANT_JURISDICTION is "${j}", but the UNITS binding cannot be restricted to a jurisdiction.`);
+  return ns.jurisdiction(j);
+}
+/** The object for one unit of one workspace, or null on a deployment that binds none. */
+function unitStub(env, tenantId, unit) {
+  const ns = unitNamespace(env);
+  if (!ns || !tenantId || !unit) return null;
+  return ns.get(ns.idFromName(`${tenantId}:${unit}`));
+}
+async function unitCall(stub, route, body, method = "POST") {
+  const res = await stub.fetch(`https://unit${route}`, method === "GET" ? undefined
+    : { method, headers: { "content-type": "application/json" }, body: JSON.stringify(body || {}) });
+  let out = {};
+  try { out = await res.json(); } catch (e) { /* a non-JSON answer is reported by status alone */ }
+  return { status: res.status, body: out };
 }
 
 // ── The alias table: hostnames the literal resolver refuses, resolved by lookup ──────

@@ -8,7 +8,7 @@
   "__canvas/capture.js": "sha256:8f88b7ecff25b5b8",
   "__config/instance.json": "sha256:4b694f4dda530e7c",
   "__config/routing.json": "sha256:05b5ef60ba653cf7",
-  "__manifests/_engine.json": "shape:d83527fc27d55307",
+  "__manifests/_engine.json": "shape:ba56234f3156ece9",
   "__review/cat.png": "sha256:367e915c732a05e0",
   "__review/comment-cursor.svg": "sha256:7e1d21f8edd25806",
   "__review/comments.js": "sha256:6f7a719999440331",
@@ -16,7 +16,7 @@
   "_build.json": "shape:faca4a30df658c1b",
   "_chrome.1.16.6f43e5d4.css": "sha256:6f43e5d4c142550e",
   "_chrome.1.16.d5927bb7.js": "sha256:d5927bb7d20a4746",
-  "_worker.js": "sha256:4c80feb2d5bfebd3",
+  "_worker.js": "sha256:7ec5991492ac1267",
   "admin/index.html": "sha256:59bbd630a42ec626",
   "augur-eye.svg": "sha256:d3b2a53462405b68",
   "augur-icon-192.png": "sha256:00f274179f944b9c",
@@ -51,5 +51,6 @@
   "sw.js": "sha256:795ad0514d005bc6",
   "tenant-cache.mjs": "sha256:6a7991286698f966",
   "tenant-context.mjs": "sha256:75c2ab155a3ad477",
-  "tenant-host.mjs": "sha256:1313487083264a52"
+  "tenant-host.mjs": "sha256:1313487083264a52",
+  "unit-core.mjs": "sha256:86fa09fb1bcaad7c"
 }

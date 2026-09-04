@@ -142,6 +142,20 @@ bucket_name = "<your-r2-bucket>"
 # tag = "v1"
 # new_sqlite_classes = ["TenantStore"]
 
+# ── The unit store: drafts that land ────────────────────────────────────────────────────
+#
+# One Durable Object per prototype, holding its main revision, open drafts, landing history
+# and the landing lease. Without it `augur open` answers 501 and nothing else changes.
+# Schema and reasoning: engine/src/unit-object.mjs, design: engine/docs/drafts-that-land.md.
+#
+# [[durable_objects.bindings]]
+# name = "UNITS"
+# class_name = "UnitObject"
+#
+# [[migrations]]
+# tag = "v2"
+# new_sqlite_classes = ["UnitObject"]
+
 [vars]
 # Bundle mode. Without this the worker falls back to assets mode and every published page
 # answers 404 while the site itself looks healthy.

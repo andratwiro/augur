@@ -270,3 +270,13 @@ test("a discarded draft's address answers 404, a landed one still answers", asyn
   assert.equal(db.status, 200);
   assert.equal(typeof db.body.closedAt, "string");
 });
+
+test("the deploy entry exports the class so wrangler can bind it", async () => {
+  const { readFileSync } = await import("node:fs");
+  const src = readFileSync(new URL("../src/entry.js", import.meta.url), "utf8");
+  assert.match(src, /export \{ UnitObject \} from "\.\/unit-object\.mjs";/);
+  const toml = readFileSync(new URL("../templates/shell/wrangler.example.toml", import.meta.url), "utf8");
+  assert.match(toml, /name = "UNITS"/);
+  assert.match(toml, /class_name = "UnitObject"/);
+  assert.match(toml, /new_sqlite_classes = \["UnitObject"\]/);
+});
