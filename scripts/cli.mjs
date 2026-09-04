@@ -11,6 +11,11 @@
 //   augur refine    render every component, photograph it, measure it against the
 //                   original, and report a pass-rate nobody can assert (see refine.mjs)
 //   augur mark      say what you are about to work on; read what everyone else is
+//   augur open      open one prototype into a folder of its own, live at once
+//   augur save      push every changed file in this draft folder
+//   augur land      replace the prototype's main with this draft
+//   augur sync      fold what landed on main since this draft opened into the draft
+//   augur close     remove this draft folder (see docs/drafts-that-land.md)
 //   augur export    take an off-Cloudflare copy of the store (see export.mjs)
 //   augur restore   put a copy back (see restore.mjs)
 //   augur migrate   move a workspace to another instance, and prove it arrived
@@ -39,6 +44,12 @@ const map = {
   status: "status.mjs",
   refine: "refine.mjs",
   mark: "mark.mjs",
+  // Drafts that land (docs/drafts-that-land.md): one prototype, one folder, live at once.
+  open: "open.mjs",
+  save: "save.mjs",
+  land: "land.mjs",
+  sync: "sync.mjs",
+  close: "close.mjs",
   export: "export.mjs",
   restore: "restore.mjs",
   login: "login.mjs",

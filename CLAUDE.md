@@ -598,6 +598,10 @@ no way for the thing being measured to assert its own result. See
 `augur mark [<path>] [--ttl <s>] [--clear]` (say what you are about to work on, read
 what everyone else is — a TTL'd note that refuses nothing; see
 [agents/working-marks.md](agents/working-marks.md)) ·
+`augur open <prototype>` / `augur save` / `augur land [-m note]` / `augur sync` /
+`augur close [--discard]` (drafts that land: one prototype in a folder of its own, live at
+once at its draft address, landed onto the real URL by compare-and-set —
+`docs/drafts-that-land.md`) ·
 `augur canon <list|find|save|check|start|collect|snippet|grade|apply>` — ONE surface over
 two scripts, because it is one job. `list|find|save|check` are the canon you HAVE:
 resolve a canonical name to files cold, and promote a working screen into the canon so it
