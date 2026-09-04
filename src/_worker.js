@@ -5028,6 +5028,22 @@ const UNIT_CT_RE = /^[\w.+-]+\/[\w.+-]+(; ?charset=[\w-]+)?$/i;
 // public, where the gate matches by startsWith: every gated prototype beneath it would open
 // to anonymous visitors, from a draft on a folder nobody edits.
 const isNewUnitPath = (unit) => unit.split("/").filter(Boolean).length === 2;
+// Top-level folders a NEW unit may not be created under. A landing replaces a unit's
+// folder wholesale, so a draft opened on `/components/button/` or `/skills/x-ui/` would
+// have replaced the design system's or the gallery's own files with whatever one draft
+// held. These are the folders a site builds from and every prototype reads: the design
+// system, the gallery pages, the changelog, the search index, engine chrome (`_`, `__`).
+// Stateless and the same on every workspace — an opportunity folder is anything else,
+// `/playground/<name>/` included. A unit the manifest ALREADY declares is never held to
+// this: the manifest is the authority on what exists.
+const RESERVED_UNIT_FOLDERS = Object.freeze([
+  "base", "components", "pages", "patterns", "skills", "tokens", "fonts",
+  "admin", "changelog", "search",
+]);
+const isReservedUnitFolder = (unit) => {
+  const first = unit.split("/").filter(Boolean)[0] || "";
+  return first.startsWith("_") || RESERVED_UNIT_FOLDERS.includes(first);
+};
 const shortText = (s, n) => String(s == null ? "" : s).slice(0, n);
 // `tctx.SPACES` is a routing field, filled from the live manifests by `loadTenantContext`
 // on the request's normal path — which this route also goes through, since `handleRequest`
@@ -5073,9 +5089,14 @@ async function writeUnitLanding(tctx, env, spaceId, unit, table, changed, who, n
   //
   // The retry recomposes from the SAME landed table: the lease pins it in the object, so
   // nothing about what this landing means changes between attempts — only what it is
-  // composed ON TOP OF. `versions/<n>.json` is written unconditionally with a fresh number
-  // per attempt; an unreferenced version document costs a key and lies to nobody, while
-  // reusing the number would overwrite a version somebody else's landing just issued.
+  // composed ON TOP OF. `versions/<n>.json` is written only AFTER the manifest write wins,
+  // from that same attempt: a losing attempt that had already written one leaves a table
+  // that was never live under a number somebody else may hold — and on a deployment with
+  // no version-issuing store, where the number is `cur.version + 1`, both attempts compute
+  // the SAME one, so the loser overwrites the winner's genuine document and `rollback <n>`
+  // silently reverts the other landing. The moment between the two writes, where the
+  // manifest names a version document that does not exist yet, is what readers already
+  // answer 404 for.
   for (let attempt = 0; attempt < UNIT_LANDING_ATTEMPTS; attempt++) {
     const manifests = await loadManifests(tctx.tenantId, env, true);
     const obj = await bundles.get(key);
@@ -5134,11 +5155,11 @@ async function writeUnitLanding(tctx, env, spaceId, unit, table, changed, who, n
     const issued = await nextPublishVersion(env, tctx, spaceId, cur);
     if (issued.error) return { error: "version-unavailable", status: 503 };
     const out = { ...m, version: issued.version, bytesReferenced: bytesReferencedOf(m), publishedAt: now, publishedBy: who.label || "" };
-    await bundles.put(`spaces/${spaceId}/versions/${issued.version}.json`, JSON.stringify(out));
     // A store that answers `null` refused the precondition — R2's way of saying the object
     // moved under us. Anything else is a write.
     const wrote = await bundles.put(key, JSON.stringify(out), etag ? { onlyIf: { etagMatches: etag } } : undefined);
     if (etag && wrote === null) { bustManifests(tctx.tenantId); continue; }
+    await bundles.put(`spaces/${spaceId}/versions/${issued.version}.json`, JSON.stringify(out));
     bustManifests(tctx.tenantId); cfgAt = 0;
     touchWorkspaceActivity(env, tctx, null);
     return { version: issued.version };
@@ -5194,8 +5215,9 @@ async function unitApi(tctx, request, url, env) {
   // reached, so a folder that is not one is never given a draft to be adopted from later.
   // A unit the space ALREADY publishes is a unit whatever its shape (the manifest is the
   // authority on what exists); anything else has to be the shape a new one is created in.
-  if (!authoredUnits(live).has(unit) && !isNewUnitPath(unit)) {
-    return jsonResponse({ error: "bad-unit", reason: "not-a-prototype-folder" }, 400);
+  if (!authoredUnits(live).has(unit)) {
+    if (!isNewUnitPath(unit)) return jsonResponse({ error: "bad-unit", reason: "not-a-prototype-folder" }, 400);
+    if (isReservedUnitFolder(unit)) return jsonResponse({ error: "bad-unit", reason: "reserved-folder" }, 400);
   }
   const stub = unitStub(env, tctx.tenantId, unit);
   const liveTable = unitTable((live && live.files) || {}, unit);
@@ -5222,10 +5244,13 @@ async function unitApi(tctx, request, url, env) {
       // address and lands into the space manifest, so a path outside the unit is a path
       // this draft may serve and later publish over — which is how a space-scoped token
       // reached `/admin/index.html`, `/__canvas/canvas.js` and `/piti.js` from a draft
-      // opened on one prototype. `..` and an empty segment are refused rather than
+      // opened on one prototype. `..`, `.` and an empty segment are refused rather than
       // normalized: they compare as inside the unit and resolve elsewhere when served.
+      // The `.` segment is here so this agrees with `normUnit`, which refuses one in a
+      // unit path — one spelling of a path, held to one rule at both ends.
       const path = String(c && c.path == null ? "" : c.path);
-      if (!path.startsWith("/") || !path.startsWith(unit) || path.includes("//") || path.includes("/../") || path.endsWith("/..")) {
+      if (!path.startsWith("/") || !path.startsWith(unit) || path.includes("//")
+        || path.includes("/../") || path.endsWith("/..") || path.includes("/./") || path.endsWith("/.")) {
         return jsonResponse({ error: "bad-path", path: c && c.path }, 400);
       }
       if (c.delete) continue;
@@ -5272,6 +5297,11 @@ async function unitApi(tctx, request, url, env) {
       changed: r.body.changed, removed: r.body.removed,
     };
     if (done.status !== 200) {
+      // The lease is now held for a commit that will never come. Let it go, best effort,
+      // so the next landing on this unit is answered on its merits rather than waiting out
+      // a window that means nothing — the bytes are live either way, so a failure here
+      // changes nothing about what this call reports.
+      try { await unitCall(stub, "/abandon-land", { lease: r.body.lease }); } catch (e) { /* the lease expires on its own */ }
       return jsonResponse({ ...landed, recorded: false, revision: null, warning: "landed-unrecorded" });
     }
     return jsonResponse({ ...landed, recorded: true, revision: done.body.revision });

@@ -175,7 +175,8 @@ test("a save may not carry a path outside its own unit", async () => {
     assert.equal(r.status, 400, `${path} was accepted`);
     assert.deepEqual(r.body, { error: "bad-path", path });
   }
-  for (const path of [`${U}../admin/index.html`, `${U}/a.css`, `${U}a//b.css`, "checkout/flow/a.css"]) {
+  for (const path of [`${U}../admin/index.html`, `${U}/a.css`, `${U}a//b.css`, "checkout/flow/a.css",
+    `${U}./x.html`, `${U}sub/./x.html`, `${U}sub/.`]) {
     const r = await json(await call(ctx, env, "save", { unit: U, draftId: o.draftId, draftRevision: 0, changes: [change(path)] }));
     assert.equal(r.status, 400, `${path} was accepted`);
     assert.equal(r.body.error, "bad-path");
@@ -294,6 +295,57 @@ test("a landing that loses the manifest race recomposes and retries", async () =
   assert.equal(after.version, l.body.version);
 });
 
+// ── the version document belongs to the write that won ───────────────────────
+//
+// The loser of the manifest race used to leave a `versions/<n>.json` behind, and on a
+// deployment with no version-issuing store (`nextPublishVersion` falling back to
+// `cur.version + 1`) the two attempts computed the SAME number — so the loser's document
+// OVERWROTE the winner's, and `rollback <n>` would have silently reverted somebody
+// else's landing to a table that was never live. The version document is therefore
+// written only after the manifest write succeeds, from the same attempt.
+test("a version document is written only for the attempt whose manifest write won", async () => {
+  const { ctx, env } = await setup();
+  const MKEY = "spaces/alpha/manifest.json";
+  const Y = "/checkout/second/";
+  const OTHER = "/checkout/elsewhere/index.html";
+  const raw = { get: env.BUNDLES.get.bind(env.BUNDLES), put: env.BUNDLES.put.bind(env.BUNDLES) };
+
+  // Somebody else's landing, injected once between this one's read and its write — and
+  // this time a WHOLE publish, version document included, exactly as the winner leaves it.
+  let armed = false, injected = null;
+  env.BUNDLES.get = async (k, opts) => {
+    const r = await raw.get(k, opts);
+    if (armed && !injected && k === MKEY) {
+      const m = JSON.parse(env.BUNDLES.store.get(MKEY));
+      m.files[OTHER] = { h: sha("elsewhere"), ct: "text/html; charset=utf-8", s: 9 };
+      m.routing.publicPrefixes = [...m.routing.publicPrefixes, "/checkout/elsewhere/"];
+      m.version += 1;
+      injected = { version: m.version, doc: JSON.stringify(m) };
+      await raw.put(`spaces/alpha/versions/${m.version}.json`, injected.doc);
+      await raw.put(MKEY, injected.doc);
+    }
+    return r;
+  };
+
+  const yBody = "<h1>second</h1>";
+  const o = (await json(await call(ctx, env, "open", { unit: Y }))).body;
+  await env.BUNDLES.put(`blobs/${sha(yBody)}`, yBody);
+  await call(ctx, env, "save", { unit: Y, draftId: o.draftId, draftRevision: 0,
+    changes: [{ path: `${Y}index.html`, h: sha(yBody), ct: "text/html; charset=utf-8", s: yBody.length, baseHash: null }] });
+  armed = true;
+  const l = await json(await call(ctx, env, "land", { unit: Y, draftId: o.draftId, baseRevision: o.baseRevision, note: "" }));
+  assert.equal(l.status, 200, JSON.stringify(l.body));
+  assert.ok(injected, "the out-of-band publish never happened");
+  assert.notEqual(l.body.version, injected.version, "the retry issued a fresh number");
+
+  // The losing attempt reused the winner's number, so its document must never have been
+  // written: what is under that number is the winner's own bytes, untouched.
+  assert.equal(env.BUNDLES.store.get(`spaces/alpha/versions/${injected.version}.json`), injected.doc,
+    "the losing attempt overwrote a version document that was genuinely live");
+  // And the attempt that won left its own, matching the manifest byte for byte.
+  assert.equal(env.BUNDLES.store.get(`spaces/alpha/versions/${l.body.version}.json`), env.BUNDLES.store.get(MKEY));
+});
+
 // ── an emptied draft, and prefixes with nothing behind them ──────────────────
 test("emptying a draft cannot take the prototype's URL down, and a dead prefix is pruned", async () => {
   const { ctx, env } = await setup();
@@ -343,6 +395,31 @@ test("an opportunity is not a unit, and a prototype folder is", async () => {
     const r = await json(await call(ctx, env, "open", { unit }));
     assert.equal(r.status, 200, `${unit}: ${JSON.stringify(r.body)}`);
   }
+});
+
+// ── a new unit may not claim a shared folder ─────────────────────────────────
+//
+// A two-segment path was enough to open a NEW unit, so `/components/button/` or
+// `/skills/x-ui/` opened as one — and landing replaces a unit's folder wholesale, which
+// would have taken the design system's or the gallery's own files with it.
+test("a new unit may not sit under a folder the site shares", async () => {
+  const { ctx, env } = await setup();
+  for (const unit of ["/components/button/", "/skills/x-ui/", "/base/x/", "/pages/x/", "/patterns/x/"]) {
+    const r = await json(await call(ctx, env, "open", { unit }));
+    assert.equal(r.status, 400, `${unit} was opened`);
+    assert.deepEqual(r.body, { error: "bad-unit", reason: "reserved-folder" });
+  }
+  for (const unit of ["/checkout/fresh/", "/playground/sketch/"]) {
+    const r = await json(await call(ctx, env, "open", { unit }));
+    assert.equal(r.status, 200, `${unit}: ${JSON.stringify(r.body)}`);
+  }
+  // A unit the manifest already declares is a unit wherever it sits.
+  const EXISTING = "/components/button/";
+  const live = liveNow(env);
+  live.files[`${EXISTING}index.html`] = live.files[`${U}index.html`];
+  live.routing.publicPrefixes = [...live.routing.publicPrefixes, EXISTING];
+  await env.BUNDLES.put("spaces/alpha/manifest.json", JSON.stringify(live));
+  assert.equal((await json(await call(ctx, env, "open", { unit: EXISTING }))).status, 200);
 });
 
 test("a unit the space already publishes is a unit whatever its shape", async () => {
@@ -422,6 +499,42 @@ test("a landing the object could not record is reported as landed, not as a fail
   // happened even though it cannot say who landed it.
   const h = await json(await call(ctx, env, "history", { unit: U }, { method: "GET" }));
   assert.deepEqual(h.body.landings.map((x) => [x.revision, x.by]), [[2, "live"], [1, "live"]]);
+});
+
+// The landing lease exists to keep two landings off one unit for the ten seconds the
+// manifest write takes. A landing whose record never went through holds a lease that
+// NOBODY will ever commit under — so it is let go, and the next landing on the unit is
+// answered on its own merits instead of waiting out a window that means nothing.
+test("a landing the object could not record lets its lease go", async () => {
+  const t = tenant(), ctx = ctxFor(t);
+  const env = await makeEnv({ live: manifestOf(7, { [U]: { "index.html": INDEX, "a.css": CSS } }), units: landedFails(2) });
+  W.__setTenantTestState({ memo: { at: Date.now(), tenantId: t } });
+  // A second person's draft, open on the same unit before any of this.
+  const other = (await json(await call(ctx, env, "open", { unit: U }, { session: "pass two" }))).body;
+
+  const o = (await json(await call(ctx, env, "open", { unit: U }))).body;
+  const body = "<h1>flow v2</h1>";
+  await env.BUNDLES.put(`blobs/${sha(body)}`, body);
+  await call(ctx, env, "save", { unit: U, draftId: o.draftId, draftRevision: 0,
+    changes: [{ path: `${U}index.html`, h: sha(body), ct: "text/html; charset=utf-8", s: body.length, baseHash: sha(INDEX) }] });
+  assert.equal((await json(await call(ctx, env, "land", { unit: U, draftId: o.draftId, baseRevision: 1, note: "v2" }))).body.recorded, false);
+
+  // The unit moved under the other draft, and that is what it is told — not that a
+  // landing is in progress.
+  const l2 = await json(await call(ctx, env, "land", { unit: U, draftId: other.draftId, baseRevision: other.baseRevision, note: "" }));
+  assert.equal(l2.status, 409, JSON.stringify(l2.body));
+  assert.equal(l2.body.error, "main-moved");
+
+  // And a draft opened on what is live now lands straight away, rather than waiting out
+  // the abandoned lease.
+  const fresh = (await json(await call(ctx, env, "open", { unit: U }, { session: "pass three" }))).body;
+  const third = "<h1>flow v3</h1>";
+  await env.BUNDLES.put(`blobs/${sha(third)}`, third);
+  await call(ctx, env, "save", { unit: U, draftId: fresh.draftId, draftRevision: 0,
+    changes: [{ path: `${U}index.html`, h: sha(third), ct: "text/html; charset=utf-8", s: third.length, baseHash: sha(body) }] });
+  const l3 = await json(await call(ctx, env, "land", { unit: U, draftId: fresh.draftId, baseRevision: fresh.baseRevision, note: "v3" }));
+  assert.equal(l3.status, 200, JSON.stringify(l3.body));
+  assert.equal(liveNow(env).files[`${U}index.html`].h, sha(third));
 });
 
 test("a landing recorded on the retry is a landing like any other", async () => {
