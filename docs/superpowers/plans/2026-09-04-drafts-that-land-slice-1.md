@@ -2653,6 +2653,7 @@ Each is its own plan, in this order:
 2. **Tool adapters** — `augur open` installing the deny-outside-drafts and save-after-edit hooks; `augur read`; `augur watch`; `augur status` listing drafts.
 3. **Contracts** — each space's agent contract, the machine front door (`/llms.txt`, the well-known file, the machine 401) and `ship` becoming an alias that points at open and land.
 4. **Derived pages server-side** and retirement of the publish client, ship, composition, evidence, forks, marks, the ship lock and the publish cache.
+5. **Carrying the unit objects in a copy** — `export`, `migrate`, `restore` and the off-site backup know nothing of a unit's Durable Object, and `src/state-inventory.mjs` says so under `/__unit/` rather than leaving it unwritten. MAIN survives a copy either way: the manifest carries every landed file and `/sync-main` adopts a unit's live table as revision one on the destination, so no published byte is at risk. OPEN DRAFTS and the LANDING HISTORY do not survive, so a migration has to land or discard open drafts first. During the transition the old composed publish is safe beside a landed unit for the same reason it is safe beside anyone else's work: `unitSources` records the landing, so a stale tree's publish keeps the landed unit verbatim and forks a local edit to it — it never fast-forwards it (a landed unit records no commit, so no tree can prove itself its descendant), and it can only take it down through the explicit unpublish gate.
 
 ## Manual verify after Task 9 (on a real instance)
 

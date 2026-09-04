@@ -35,7 +35,9 @@ test("every entry says where it goes AND why, in a sentence", () => {
   // A destination with no reasoning is a decision nobody can review, and this list is
   // exactly the kind of thing somebody edits at speed during a migration.
   const DESTS = new Set(["account", "workspace", "r2", "drop", "stays", "n/a"]);
-  const STORES = new Set(["kv", "r2", "none"]);
+  // `do` is a unit's own Durable Object storage — the third store, reachable by no prefix
+  // scan of either of the other two, which is exactly why it has to be written down.
+  const STORES = new Set(["kv", "r2", "do", "none"]);
   for (const e of STATE_INVENTORY) {
     assert.ok(e.id, "an entry with no id");
     assert.ok(STORES.has(e.store), `${e.id}: store is ${e.store}`);
@@ -46,6 +48,19 @@ test("every entry says where it goes AND why, in a sentence", () => {
     assert.equal(e.to === "n/a", e.store === "none", `${e.id}: a store key with no destination, or a non-key with one`);
   }
   assert.equal(new Set(STATE_INVENTORY.map((e) => e.id)).size, STATE_INVENTORY.length, "duplicate ids");
+});
+
+test("the unit object's storage is a family, and says what a copy does not carry", () => {
+  // `drafts that land` gave the engine a THIRD store — a Durable Object per unit, holding
+  // main, the landing history and every open draft — and the inventory said "not state"
+  // about the route in front of it. A family nobody wrote down is a family nobody exports;
+  // the whole point of this list is that the gap is written down while it is still open.
+  const e = inventoryEntry("/__unit/");
+  assert.equal(e.store, "do");
+  assert.notEqual(e.to, "n/a", "it is real storage, so it has a destination");
+  for (const word of [/export/i, /migrate/i, /restore/i]) {
+    assert.match(e.why, word, "it must say which copies do not carry it");
+  }
 });
 
 test("THE CREDENTIAL GOES TO THE ACCOUNT STORE, and nothing else does", () => {

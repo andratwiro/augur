@@ -47,7 +47,7 @@
   "purge.mjs": "sha256:272239e7b2e381d2",
   "room-ticket.mjs": "sha256:9d8ee63b64370fa3",
   "roster-chip.mjs": "sha256:8a64e92be90ec8bc",
-  "state-inventory.mjs": "sha256:70fbdeb602abbb63",
+  "state-inventory.mjs": "sha256:160b6048ebb6cf98",
   "sw.js": "sha256:795ad0514d005bc6",
   "tenant-cache.mjs": "sha256:6a7991286698f966",
   "tenant-context.mjs": "sha256:75c2ab155a3ad477",

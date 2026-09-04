@@ -218,8 +218,8 @@ export const STATE_INVENTORY = Object.freeze([
     why: "A URL segment. `/__avatar/u/<hash>` tells the route to read the store rather than scan the roster for a config-baked photo.",
   },
   {
-    id: "/__unit/", store: "none", kind: "prefix", to: "n/a",
-    why: "The route prefix for the drafts-that-land API (`unitApi` in src/_worker.js) — open, save, land, restore, sync, discard, presence, history, main. It dispatches to a unit's own Durable Object (src/unit-object.mjs), which holds its own storage; nothing under this prefix is itself a key in a shared store.",
+    id: "/__unit/", store: "do", kind: "prefix", to: "stays",
+    why: "THE UNIT OBJECTS. One Durable Object per unit per workspace, named `<workspace>:<unit path>` behind the drafts-that-land route (`unitApi` in src/_worker.js — open, save, land, restore, sync, discard, presence, history, main), each holding its OWN SQLite: main's file table, the landing history, every open draft with its per-save history, and the landing lease (src/unit-object.mjs). File BODIES are not here — a row names a hash and the bytes are in `blobs/`, which this list already carries. It is neither a KV key nor an R2 one, which is why it is `do`: no prefix scan of either store can find it, and it is the third store the engine has. `stays` because a Durable Object's storage belongs to its id and cannot be copied by writing keys somewhere else. ⏳ AND THAT IS THE GAP, WRITTEN DOWN WHILE IT IS OPEN: `export`, `migrate` and `restore` do not carry it. What survives a copy is MAIN, because the manifest carries every landed file and `/sync-main` adopts a unit\'s live table as revision one on the destination — so no published byte is at risk. What does NOT survive is every OPEN DRAFT (unlanded work, live only at its draft address) and the LANDING HISTORY (who landed what, when, and the revisions `restore` reaches). A migration therefore has to land or discard open drafts first, and the destination\'s history starts at the adoption.",
   },
 ]);
 
