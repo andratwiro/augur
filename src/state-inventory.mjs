@@ -217,6 +217,10 @@ export const STATE_INVENTORY = Object.freeze([
     id: "u/", store: "none", kind: "prefix", to: "n/a",
     why: "A URL segment. `/__avatar/u/<hash>` tells the route to read the store rather than scan the roster for a config-baked photo.",
   },
+  {
+    id: "/__unit/", store: "none", kind: "prefix", to: "n/a",
+    why: "The route prefix for the drafts-that-land API (`unitApi` in src/_worker.js) — open, save, land, restore, sync, discard, presence, history, main. It dispatches to a unit's own Durable Object (src/unit-object.mjs), which holds its own storage; nothing under this prefix is itself a key in a shared store.",
+  },
 ]);
 
 /** Everything the checker should find in the source, as a set of ids. */

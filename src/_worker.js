@@ -914,8 +914,16 @@ function unitNamespace(env) {
   if (!ns) return null;
   const j = env && typeof env.TENANT_JURISDICTION === "string" ? env.TENANT_JURISDICTION.trim() : "";
   if (!j) return ns;
-  if (typeof ns.jurisdiction !== "function") throw new Error(`TENANT_JURISDICTION is "${j}", but the UNITS binding cannot be restricted to a jurisdiction.`);
-  return ns.jurisdiction(j);
+  if (typeof ns.jurisdiction !== "function") {
+    throw new Error(`TENANT_JURISDICTION is "${j}", but the UNITS binding cannot be restricted to a jurisdiction. `
+      + "Addressing without it would reach a different object, so this refuses instead: unset the variable, or fix the binding.");
+  }
+  try {
+    return ns.jurisdiction(j);
+  } catch (e) {
+    throw new Error(`TENANT_JURISDICTION = "${j}" is not a jurisdiction this platform accepts (${(e && e.message) || e}). `
+      + "Falling back to an unrestricted address would put every workspace somewhere nothing else is looking, so this refuses instead.");
+  }
 }
 /** The object for one unit of one workspace, or null on a deployment that binds none. */
 function unitStub(env, tenantId, unit) {
@@ -4976,6 +4984,145 @@ function sharedChromeRefusal(env, tctx, who, spaceId, op, method) {
   return "chrome-not-writable-here";
 }
 
+// ── Drafts that land: /__unit/<verb> ───────────────────────────────────────────────────
+// One unit's drafts, served by that unit's object. The worker does three things the object
+// cannot: authenticate the caller, check that a save's blobs exist in the store, and — on a
+// landing — rewrite the space manifest so every existing serve, rollback and export path
+// sees the landed files as a publish. See docs/drafts-that-land.md §6.
+const UNIT_API_PREFIX = "/__unit/";
+const shortText = (s, n) => String(s == null ? "" : s).slice(0, n);
+// `tctx.SPACES` is a routing field, filled from the live manifests by `loadTenantContext`
+// on the request's normal path — which this route also goes through, since `handleRequest`
+// resolves `tctx` before dispatch. It is read first because it costs nothing further: the
+// context is already built. The fallback reads `manifests` (a space id keyed on each
+// manifest, `loadManifests`'s own shape) directly for the one caller that reaches `unitApi`
+// with a context `loadTenantContext` never touched.
+function defaultSpaceId(tctx, manifests) {
+  const spaces = (tctx && tctx.SPACES) || [];
+  const fromCtx = ((spaces.find((s) => s.default) || spaces[0]) || {}).id || null;
+  if (fromCtx) return fromCtx;
+  const ms = Object.values(manifests || {});
+  const m = ms.find((x) => x && x.space && x.space.default) || ms[0] || null;
+  return (m && m.space && m.space.id) || null;
+}
+
+/**
+ * Write a landed table into the live manifest as a new version. Changed files are stamped
+ * with the lander; unchanged entries are carried verbatim, which is the per-file provenance
+ * rule the commit handler already keeps. `unitSources` records the landing so the old
+ * composed publish treats the unit as somebody's work rather than as a fast-forward.
+ */
+async function writeUnitLanding(tctx, env, spaceId, unit, table, changed, who, now) {
+  const bundles = bundlesFor(env, tctx.tenantId);
+  const cur = (await loadManifests(tctx.tenantId, env, true))[spaceId];
+  if (!cur) return { error: "unknown-space", status: 404 };
+  const changedPaths = new Set((Array.isArray(changed) ? changed : []).map((c) => c.path));
+  const files = {};
+  for (const [p, f] of Object.entries(cur.files || {})) if (!p.startsWith(unit)) files[p] = f;
+  for (const [p, f] of Object.entries(table)) {
+    const prior = (cur.files || {})[p];
+    // A file this landing did not touch keeps its prior entry VERBATIM — provenance is
+    // per-file, and re-stamping an untouched neighbour would credit this lander with an
+    // edit they never made. Only a path this landing's `changed` names gets a fresh
+    // `by`/`editedAt`; anything else in the table is here because it lives in the unit,
+    // not because it moved.
+    files[p] = prior && !changedPaths.has(p) ? prior : { h: f.h, ct: f.ct, s: f.s, by: who.personId, editedAt: now };
+  }
+  const routing = { ...(cur.routing || {}) };
+  routing.publicPrefixes = [...new Set([...(routing.publicPrefixes || []), unit])];
+  routing.unitSources = { ...(routing.unitSources || {}), [unit]: { sha: null, dirty: false, landed: true, by: who.personId, at: now } };
+  const m = { ...cur, files, routing };
+  const ceiling = manifestCeiling(m);
+  if (ceiling) return { error: "manifest-ceiling", ...ceiling, status: 413 };
+  const issued = await nextPublishVersion(env, tctx, spaceId, cur);
+  if (issued.error) return { error: "version-unavailable", status: 503 };
+  const out = { ...m, version: issued.version, bytesReferenced: bytesReferencedOf(m), publishedAt: now, publishedBy: who.label || "" };
+  await bundles.put(`spaces/${spaceId}/versions/${issued.version}.json`, JSON.stringify(out));
+  await bundles.put(`spaces/${spaceId}/manifest.json`, JSON.stringify(out));
+  bustManifests(tctx.tenantId); cfgAt = 0;
+  touchWorkspaceActivity(env, tctx, null);
+  return { version: issued.version };
+}
+
+async function unitApi(tctx, request, url, env) {
+  const verb = url.pathname.slice(UNIT_API_PREFIX.length);
+  if (!/^[a-z-]+$/.test(verb)) return jsonResponse({ error: "bad-path" }, 400);
+  if (!env.BUNDLES) return jsonResponse({ error: "bundle-store-not-configured" }, 501);
+  if (!unitNamespace(env)) return jsonResponse({ error: "units-not-configured" }, 501);
+  const manifests = await loadManifests(tctx.tenantId, env, true);
+  const spaceId = defaultSpaceId(tctx, manifests);
+  if (!spaceId) return jsonResponse({ error: "no-space" }, 404);
+  const a = await publishAuthDetailed(tctx, request, env, spaceId, false);
+  if (!a.entry) return jsonResponse(publishRefusalBody(a.refusal), 403);
+  if (capabilityRefusal(a.entry, spaceId, "commit")) return jsonResponse({ error: "forbidden", reason: "capability-not-granted" }, 403);
+  const who = { personId: personId(a.entry.label || ""), label: a.entry.label || "" };
+  const session = shortText(request.headers.get("X-Augur-Session"), 40);
+
+  let body = {};
+  if (request.method === "POST") {
+    try { body = await request.json(); } catch (e) { return jsonResponse({ error: "bad-json" }, 400); }
+  }
+  const unit = normUnit(request.method === "GET" ? url.searchParams.get("unit") : body.unit);
+  if (!unit) return jsonResponse({ error: "bad-unit" }, 400);
+  const stub = unitStub(env, tctx.tenantId, unit);
+  const now = new Date().toISOString();
+
+  // Keep the object's main in step with what is live, every time: a landing made by the
+  // old publish path is adopted as a revision, never fought.
+  const live = manifests[spaceId] || null;
+  const liveTable = unitTable((live && live.files) || {}, unit);
+  const synced = await unitCall(stub, "/sync-main", { workspace: tctx.tenantId, unit, table: liveTable, at: now });
+  if (synced.status !== 200) return jsonResponse({ error: "unit-unavailable" }, 503);
+
+  if (request.method === "GET") {
+    if (verb === "presence") return jsonResponse((await unitCall(stub, `/presence?at=${encodeURIComponent(now)}`, null, "GET")).body);
+    if (verb === "history") return jsonResponse((await unitCall(stub, "/history", null, "GET")).body);
+    if (verb === "main") return jsonResponse((await unitCall(stub, "/main", null, "GET")).body);
+    return jsonResponse({ error: "unknown-verb" }, 404);
+  }
+
+  if (verb === "open") {
+    const r = await unitCall(stub, "/open", { owner: who.personId, session, at: now });
+    if (r.status !== 200) return jsonResponse(r.body, r.status);
+    return jsonResponse({ ...r.body, address: draftAddress(unit, r.body.draftId) });
+  }
+  if (verb === "save") {
+    const changes = Array.isArray(body.changes) ? body.changes : [];
+    const missing = [];
+    for (const c of changes) {
+      if (c.delete || !c.h) continue;
+      if (!/^[0-9a-f]{64}$/.test(c.h)) return jsonResponse({ error: "bad-hash", path: c.path }, 400);
+      if (!(await env.BUNDLES.head("blobs/" + c.h))) missing.push(c.h);
+    }
+    if (missing.length) return jsonResponse({ error: "missing-blobs", missing: [...new Set(missing)] }, 409);
+    const r = await unitCall(stub, "/save", { draftId: body.draftId, draftRevision: body.draftRevision, changes, baseRevision: body.baseRevision, at: now });
+    return jsonResponse(r.body, r.status);
+  }
+  if (verb === "land" || verb === "restore") {
+    const r = await unitCall(stub, `/${verb}`, verb === "land"
+      ? { draftId: body.draftId, baseRevision: body.baseRevision, at: now }
+      : { revision: body.revision, at: now });
+    if (r.status !== 200) return jsonResponse(r.body, r.status);
+    const written = await writeUnitLanding(tctx, env, spaceId, unit, r.body.table, r.body.changed, who, now);
+    if (written.error) {
+      await unitCall(stub, "/abandon-land", { lease: r.body.lease });
+      const { status, ...rest } = written;
+      return jsonResponse(rest, status || 503);
+    }
+    const done = await unitCall(stub, "/landed", {
+      lease: r.body.lease, draftId: body.draftId, note: shortText(body.note, 200), by: who.personId, session, at: now,
+      ...(verb === "restore" ? { restoredFrom: body.revision } : {}),
+    });
+    if (done.status !== 200) return jsonResponse(done.body, done.status);
+    return jsonResponse({ ok: true, revision: done.body.revision, version: written.version, url: `${url.origin}${unit}`, changed: r.body.changed, removed: r.body.removed });
+  }
+  if (verb === "sync" || verb === "discard") {
+    const r = await unitCall(stub, `/${verb}`, { draftId: body.draftId, at: now });
+    return jsonResponse(r.body, r.status);
+  }
+  return jsonResponse({ error: "unknown-verb" }, 404);
+}
+
 async function publishApi(tctx, request, url, env) {
   const [spaceId, op, arg] = url.pathname.slice("/__publish/".length).split("/");
   if (!spaceId || !op || !/^[a-z0-9_][a-z0-9-]*$/.test(spaceId)) return jsonResponse({ error: "bad-path" }, 400);
@@ -8217,6 +8364,7 @@ async function readFreeze(tctx, env) {
  */
 const FROZEN_WRITES = Object.freeze([
   "/__publish/",   // commit, rollback, config push — the big one
+  "/__unit/",      // open, save, land — drafts that land
   "/__review/api", // comments
   "/__board",      // canvas documents
   "/__asset",      // canvas images
@@ -11422,6 +11570,7 @@ async function handleRequest(request, env, ctx, url, trace) {
       if (paired) return paired;
     }
     if (url.pathname.startsWith("/__publish/")) return publishApi(tctx, request, url, env);
+    if (url.pathname.startsWith(UNIT_API_PREFIX)) return unitApi(tctx, request, url, env);
 
     // In bundle mode the public build stamp is synthesized from the live
     // manifests — same shape and contract as the static file Pages serves.
@@ -12015,7 +12164,7 @@ export const __testables = Object.freeze({
   doorFacts, doorText, wantsMachineDoor, gateResponse, DOOR_DOCS, DOOR_WELL_KNOWN,
   resumeAfterDormancy,
   PITI_VIEW_KEY, PITI_REMARKS_KEY,
-  publishAuthDetailed, publishRefusalBody,
+  publishAuthDetailed, unitApi, publishRefusalBody,
   adminStorageApi,
   adminCustomDomainApi,
   isPrefixBacked, backedPublicPrefixes,
