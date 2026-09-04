@@ -230,6 +230,38 @@ test("a network failure mid-sync returns a result and leaves state intact", asyn
   assert.equal(readState(dir).baseRevision, before, "state on disk is untouched by the failed sync");
 });
 
+test("a failed trailing save leaves the state file untouched", async () => {
+  const inst = fakeInstance({ "index.html": "<h1>flow</h1>", "a.css": "h1{}" });
+  const dir = path.join(tmp(), "flow");
+  await doOpen({ client: inst.client, unit: U, dir, origin: "https://x.test", space: "alpha", session: "s1", now: "2026-09-04T12:00:00.000Z" });
+  const before = readState(dir);
+
+  const theirs = "<h1>changed on main</h1>";
+  inst.blobs.set(sha(theirs), theirs);
+  inst.landMain({ ...inst.main, [`${U}index.html`]: { h: sha(theirs), ct: mimeOf("index.html"), s: theirs.length } });
+
+  const flaky = { ...inst.client, save: async (body) => { if (body.baseRevision !== undefined) throw new Error("boom"); return inst.client.save(body); } };
+  const result = await doSync({ client: flaky, dir });
+  assert.equal(result.ok, false);
+  assert.equal(result.error, "network");
+  assert.deepEqual(readState(dir), before, "the trailing save's failure leaves the state file byte-identical, baseTable included");
+});
+
+test("a failed open leaves no folder and the retry succeeds", async () => {
+  const inst = fakeInstance({ "index.html": "<h1>flow</h1>", "a.css": "h1{}" });
+  const dir = path.join(tmp(), "flow");
+  let calls = 0;
+  const flaky = { ...inst.client, blobGet: async (h) => { calls++; if (calls === 2) throw new Error("boom"); return inst.client.blobGet(h); } };
+  const result = await doOpen({ client: flaky, unit: U, dir, origin: "https://x.test", space: "alpha", session: "s1", now: "2026-09-04T12:00:00.000Z" });
+  assert.equal(result.ok, false);
+  assert.equal(result.error, "network");
+  assert.equal(fs.existsSync(dir), false, "the half-materialised folder is removed");
+  assert.equal(inst.drafts.size, 0, "the server-side draft is discarded");
+
+  const retried = await doOpen({ client: inst.client, unit: U, dir, origin: "https://x.test", space: "alpha", session: "s1", now: "2026-09-04T12:00:05.000Z" });
+  assert.equal(retried.ok, true, "the retry succeeds against a clean folder");
+});
+
 test("close refuses an open draft unless discarding", async () => {
   const inst = fakeInstance({ "index.html": "x" });
   const dir = path.join(tmp(), "flow");

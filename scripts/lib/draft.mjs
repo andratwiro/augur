@@ -151,20 +151,31 @@ async function materialise(client, unit, table, dir) {
 
 async function doOpenImpl({ client, unit, dir, origin, space, session, now }) {
   if (fs.existsSync(dir) && fs.readdirSync(dir).length) return { ok: false, error: "folder-not-empty", dir };
+  const createdFolder = !fs.existsSync(dir);
   const o = await client.open({ unit });
   if (o.status) return { ok: false, ...o };
-  fs.mkdirSync(dir, { recursive: true });
-  await materialise(client, unit, o.table, dir);
-  // `table` is what the DRAFT last saved (the per-file bases a save is checked against);
-  // `baseTable` is what MAIN held at the draft's base revision (what a sync merges from).
-  const state = { origin, space, unit, address: o.address, draftId: o.draftId, session, baseRevision: o.baseRevision, draftRevision: 0, table: o.table, baseTable: o.table, openedAt: now };
-  writeState(dir, state);
-  registryAdd({ dir, unit, draftId: o.draftId, origin, openedAt: now });
+  // From here the server-side draft exists, so any failure below must both undo what we
+  // wrote to disk and tell the server to drop the orphan — otherwise a retry finds a
+  // half-materialised folder (`folder-not-empty`) and the draft it opened is never freed.
+  try {
+    fs.mkdirSync(dir, { recursive: true });
+    await materialise(client, unit, o.table, dir);
+    // `table` is what the DRAFT last saved (the per-file bases a save is checked against);
+    // `baseTable` is what MAIN held at the draft's base revision (what a sync merges from).
+    const state = { origin, space, unit, address: o.address, draftId: o.draftId, session, baseRevision: o.baseRevision, draftRevision: 0, table: o.table, baseTable: o.table, openedAt: now };
+    writeState(dir, state);
+    registryAdd({ dir, unit, draftId: o.draftId, origin, openedAt: now });
+  } catch (err) {
+    if (createdFolder) fs.rmSync(dir, { recursive: true, force: true });
+    else for (const p of Object.keys(o.table)) fs.rmSync(path.join(dir, relOf(unit, p)), { force: true });
+    try { await client.discard({ unit, draftId: o.draftId }); } catch (e) { /* best-effort */ }
+    throw err;
+  }
   const others = (o.presence || []).filter((d) => d.id !== o.draftId);
   return { ok: true, draftId: o.draftId, address: `${origin}${o.address}`, files: Object.keys(o.table).length, others };
 }
 
-async function doSaveImpl({ client, dir, baseRevision }) {
+async function doSaveImpl({ client, dir, baseRevision, baseTable }) {
   const st = readState(dir);
   if (!st) return { ok: false, error: "not-a-draft", dir };
   const local = scanFolder(dir);
@@ -173,8 +184,14 @@ async function doSaveImpl({ client, dir, baseRevision }) {
   for (const c of changes) if (!c.delete) await client.blobPut(c.h, fs.readFileSync(path.join(dir, relOf(st.unit, c.path))));
   const r = await client.save({ unit: st.unit, draftId: st.draftId, draftRevision: st.draftRevision, changes, ...(baseRevision !== undefined ? { baseRevision } : {}) });
   if (r.status) return { ok: false, ...r };
+  // A caller mid-sync (`doSyncImpl`) hands its advanced `baseTable` in here rather than
+  // writing state itself, so the whole revision — `draftRevision`, `table`, `baseRevision`
+  // and `baseTable` — lands in the ONE `writeState` below, only once the server has
+  // actually accepted the save. A failure anywhere above this line leaves the file on disk
+  // byte-identical to before the call, whatever advanced state a caller was carrying.
   st.draftRevision = r.draftRevision; st.table = r.table;
   if (baseRevision !== undefined) st.baseRevision = baseRevision;
+  if (baseTable !== undefined) st.baseTable = baseTable;
   writeState(dir, st);
   return { ok: true, changed: changes.map((c) => relOf(st.unit, c.path)), draftRevision: r.draftRevision };
 }
@@ -213,6 +230,7 @@ async function doSyncImpl({ client, dir }) {
     if (!mine && base) {                                  // absent locally but the base had it: I deleted it.
       // main changed it too (we would have `continue`d above otherwise) — that's a real
       // conflict, not a resurrection: leave the file gone, drop theirs beside it.
+      // `nextBase[c.path]` above already advanced to main's version despite the conflict staying open, so a later land is possible once the agent has decided; landing without deciding lands the draft's table (this file absent) as it stands.
       writeTheirs(dir, rel, theirBytes);
       conflicts.push({ rel, hunks: [], deleted: true });
       continue;
@@ -239,11 +257,12 @@ async function doSyncImpl({ client, dir }) {
     if (mine && base && mine.h === base.h) { fs.rmSync(path.join(dir, rel), { force: true }); taken.push(rel); }
     else if (mine) kept.push(rel);
   }
-  // The draft is now based on main's current revision: record that base, then save the
-  // merged tree against it.
-  st.baseTable = nextBase;
-  writeState(dir, st);
-  const saved = await doSave({ client, dir, baseRevision: r.mainRevision });
+  // The draft is now based on main's current revision. Do not write that here: hand
+  // `nextBase` to `doSave` and let it land in the SAME `writeState` the trailing save
+  // already does after the server accepts it — a save that fails on the network must
+  // leave `.augur/draft.json` exactly as it was before this sync, not holding an advanced
+  // `baseTable` alongside a stale `table`/`baseRevision`.
+  const saved = await doSave({ client, dir, baseRevision: r.mainRevision, baseTable: nextBase });
   if (!saved.ok) return saved;
   return { ok: true, mainRevision: r.mainRevision, taken, merged, kept, conflicts };
 }
