@@ -166,8 +166,12 @@ async function doOpenImpl({ client, unit, dir, origin, space, session, now }) {
     writeState(dir, state);
     registryAdd({ dir, unit, draftId: o.draftId, origin, openedAt: now });
   } catch (err) {
+    // When we created `dir` ourselves, the whole thing is ours to remove. When it
+    // pre-existed, the empty-folder check above guarantees everything under it now is
+    // ALSO ours (nothing else can have written there since) — so every entry goes, not
+    // just the ones named in `o.table`, leaving the pre-existing folder itself in place.
     if (createdFolder) fs.rmSync(dir, { recursive: true, force: true });
-    else for (const p of Object.keys(o.table)) fs.rmSync(path.join(dir, relOf(unit, p)), { force: true });
+    else for (const e of fs.readdirSync(dir)) fs.rmSync(path.join(dir, e), { recursive: true, force: true });
     try { await client.discard({ unit, draftId: o.draftId }); } catch (e) { /* best-effort */ }
     throw err;
   }

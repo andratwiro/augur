@@ -262,6 +262,23 @@ test("a failed open leaves no folder and the retry succeeds", async () => {
   assert.equal(retried.ok, true, "the retry succeeds against a clean folder");
 });
 
+test("a failed open into a pre-existing empty folder leaves it empty, and the retry succeeds", async () => {
+  const inst = fakeInstance({ "index.html": "<h1>flow</h1>", "css/a.css": "h1{}" });
+  const dir = path.join(tmp(), "flow");
+  fs.mkdirSync(dir, { recursive: true }); // pre-existing, empty — doOpenImpl did not create it
+  let calls = 0;
+  const flaky = { ...inst.client, blobGet: async (h) => { calls++; if (calls === 2) throw new Error("boom"); return inst.client.blobGet(h); } };
+  const result = await doOpen({ client: flaky, unit: U, dir, origin: "https://x.test", space: "alpha", session: "s1", now: "2026-09-04T12:00:00.000Z" });
+  assert.equal(result.ok, false);
+  assert.equal(result.error, "network");
+  assert.equal(fs.existsSync(dir), true, "the pre-existing folder itself is not removed");
+  assert.deepEqual(fs.readdirSync(dir), [], "every entry it wrote is removed, including the nested css/ directory, leaving it empty");
+  assert.equal(inst.drafts.size, 0, "the server-side draft is discarded");
+
+  const retried = await doOpen({ client: inst.client, unit: U, dir, origin: "https://x.test", space: "alpha", session: "s1", now: "2026-09-04T12:00:05.000Z" });
+  assert.equal(retried.ok, true, "the retry succeeds against the same folder");
+});
+
 test("close refuses an open draft unless discarding", async () => {
   const inst = fakeInstance({ "index.html": "x" });
   const dir = path.join(tmp(), "flow");
