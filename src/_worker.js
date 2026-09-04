@@ -332,6 +332,9 @@ function versionFor(tctx, pathname) {
 // page or any asset it loads), or is the dormant review-overlay script that every
 // prototype embeds. Everything else falls through to the password gate.
 function isPublicPath(tctx, pathname) {
+  // A draft address (`<unit>@<id>/…`) is a member's working copy: never public, whatever
+  // the unit it hangs off is. See docs/drafts-that-land.md §6.3.
+  if (splitDraftPath(pathname)) return false;
   // The build stamp ({builtAt, spaces:{<id>:{sha}}}). Space-repo collaborators can't
   // see this repo's CI, so this is their only way to verify "my commit is live" —
   // curl it and compare sha to git rev-parse HEAD. Public by design; contains nothing
@@ -4325,6 +4328,21 @@ function resolveBundlePath(manifests, pathname) {
 async function assetFetch(tenantId, env, request) {
   if (!bundleMode(env)) return env.ASSETS.fetch(request);
   const url = new URL(request.url);
+  // ── a draft address: the draft's table, not the manifest ─────────────────────────
+  let decoded = null;
+  try { decoded = decodeURIComponent(url.pathname); } catch (e) { decoded = null; }
+  const d = decoded && splitDraftPath(decoded);
+  if (d) {
+    const stub = unitStub(env, tenantId, d.unit);
+    if (!stub) return new Response("Not Found", { status: 404 });
+    const r = await unitCall(stub, `/draft/${d.id}`, null, "GET");
+    if (r.status !== 200 || !r.body.table) return new Response("Not Found", { status: 404 });
+    const table = r.body.table;
+    const rel = d.rest === "/" ? "index.html" : d.rest.slice(1);
+    const f = table[d.unit + rel] || (d.rest.endsWith("/") ? table[d.unit + rel + "index.html"] : null);
+    if (!f) return new Response("Not Found", { status: 404 });
+    return blobResponse(env, request, f);
+  }
   const manifests = await loadManifests(tenantId, env);
   const r = resolveBundlePath(manifests, url.pathname);
   if (r.redirect) return Response.redirect(new URL(r.redirect + url.search, url).toString(), 308);
@@ -4338,7 +4356,11 @@ async function assetFetch(tenantId, env, request) {
   if (r.id === "_engine" && env.ASSETS && manifests._engine && manifests._engine.__fromAssets) {
     return env.ASSETS.fetch(request);
   }
-  const f = r.f;
+  return blobResponse(env, request, r.f);
+}
+
+/** One manifest entry, as a response: ETag/304, byte ranges, the revalidating cache header. */
+async function blobResponse(env, request, f) {
   const inm = request.headers.get("If-None-Match");
   if (inm && inm.replace(/W\/|"/g, "") === f.h) {
     // The 304 carries it too: it is what refreshes the client's freshness record,
@@ -12186,7 +12208,7 @@ export const __testables = Object.freeze({
   doorFacts, doorText, wantsMachineDoor, gateResponse, DOOR_DOCS, DOOR_WELL_KNOWN,
   resumeAfterDormancy,
   PITI_VIEW_KEY, PITI_REMARKS_KEY,
-  publishAuthDetailed, unitApi, publishRefusalBody,
+  publishAuthDetailed, unitApi, publishRefusalBody, splitDraftPath,
   adminStorageApi,
   adminCustomDomainApi,
   isPrefixBacked, backedPublicPrefixes,
