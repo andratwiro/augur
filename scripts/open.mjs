@@ -38,7 +38,9 @@ const r = await doOpen({ client, unit, dir, origin, space, session, now: new Dat
 if (!r.ok) {
   if (r.error === "folder-not-empty") die(`${r.dir} is not empty — pick another folder with --dir.`);
   if (r.error === "units-not-configured") die("this instance does not serve drafts yet (no unit store bound).");
-  die(`could not open: ${r.error || r.status}`);
+  if (r.error === "bad-unit" && r.reason === "reserved-folder") die(`${unit} sits under a folder the engine reserves — a prototype lives at <opportunity>/<prototype>.`);
+  if (r.error === "bad-unit" && r.reason === "not-a-prototype-folder") die(`${unit} is not a prototype folder — name one as <opportunity>/<prototype>.`);
+  die(`could not open: ${r.error || r.status}${r.reason ? ` (${r.reason})` : ""}`);
 }
 log(`draft ${r.draftId} on ${unit} — ${r.files} file(s) in ${dir}`);
 if (r.others.length) {

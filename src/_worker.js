@@ -5159,7 +5159,17 @@ async function writeUnitLanding(tctx, env, spaceId, unit, table, changed, who, n
     // moved under us. Anything else is a write.
     const wrote = await bundles.put(key, JSON.stringify(out), etag ? { onlyIf: { etagMatches: etag } } : undefined);
     if (etag && wrote === null) { bustManifests(tctx.tenantId); continue; }
-    await bundles.put(`spaces/${spaceId}/versions/${issued.version}.json`, JSON.stringify(out));
+    // THE BYTES ARE LIVE FROM HERE: the manifest is the pointer visitors follow. The version
+    // document is the rollback record, and a store failure writing it must not turn a landing
+    // that already happened into a reported failure with no lease release — it is logged as
+    // the one thing it is, a rollback target this landing does not have.
+    try {
+      await bundles.put(`spaces/${spaceId}/versions/${issued.version}.json`, JSON.stringify(out));
+    } catch (e) {
+      try {
+        console.log(JSON.stringify({ level: "alarm", event: "landing-version-unwritten", tenant: tctx.tenantId || "-", space: spaceId, version: issued.version }));
+      } catch { /* a log line may never break the landing it reports */ }
+    }
     bustManifests(tctx.tenantId); cfgAt = 0;
     touchWorkspaceActivity(env, tctx, null);
     return { version: issued.version };

@@ -218,7 +218,10 @@ The design system is one unit. Open, save, land and sync work unchanged. Two add
   way to lose them, and it is explicit.
 - **Large files.** Bodies go to the store with the existing size caps. The object holds
   hashes only, well under its row limits.
-- **New unit.** `augur open --new <opportunity>/<name>` opens an empty draft. Landing it
+- **New unit.** `augur open --new <opportunity>/<name>` opens an empty draft. A new unit is
+  exactly `/<opportunity>/<prototype>/` or `/playground/<name>/`, never under a folder the
+  engine reserves (the design-system tiers, `skills`, `admin`, anything starting with `_`);
+  an existing unit is opened whatever its path. Landing it
   creates the unit and it appears in the gallery.
 - **Delete and rename** are explicit verbs with the existing confirmation. A folder
   vanishing from a machine never removes anything. A deleted unit's URL answers gone;
