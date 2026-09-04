@@ -280,3 +280,28 @@ test("the deploy entry exports the class so wrangler can bind it", async () => {
   assert.match(toml, /class_name = "UnitObject"/);
   assert.match(toml, /new_sqlite_classes = \["UnitObject"\]/);
 });
+
+test("an emptied draft cannot land the unit dark", async () => {
+  const { obj } = await fresh();
+  const { draftId } = (await call(obj, "/open", { owner: "p1", session: "s", at: T0 })).body;
+  const emptied = await call(obj, "/save", { draftId, draftRevision: 0, at: later(1),
+    changes: [{ path: `${U}index.html`, delete: true, baseHash: "a".repeat(64) }] });
+  assert.equal(emptied.status, 200);
+  assert.deepEqual(emptied.body.table, {});
+  const l = await call(obj, "/land", { draftId, baseRevision: 1, at: later(2) });
+  assert.equal(l.status, 409, JSON.stringify(l.body));
+  assert.deepEqual(l.body, { error: "would-unpublish" });
+  // No lease was taken, so the unit is not held against anybody else's landing.
+  const r = await call(obj, "/restore", { revision: 1, at: later(3) });
+  assert.equal(r.status, 200, JSON.stringify(r.body));
+  assert.equal((await call(obj, "/main", null, "GET")).body.revision, 1, "main did not move");
+});
+
+test("an empty draft on an empty unit still lands, because it takes nothing down", async () => {
+  const { obj } = object();
+  await call(obj, "/sync-main", { workspace: "acme", unit: U, table: {}, at: T0 });
+  const o = (await call(obj, "/open", { owner: "p1", session: "s", at: T0 })).body;
+  assert.deepEqual(o.table, {});
+  const l = await call(obj, "/land", { draftId: o.draftId, baseRevision: o.baseRevision, at: later(1) });
+  assert.equal(l.status, 200, JSON.stringify(l.body));
+});

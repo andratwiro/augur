@@ -192,6 +192,15 @@ export class UnitObject {
       const delta = tableDelta(base ? JSON.parse(base.tbl) : {}, this.mainTable());
       return [409, { error: "main-moved", mainRevision: main, ...delta }];
     }
+    // AN EMPTIED DRAFT IS NOT AN UNPUBLISH REQUEST. A draft whose every file is gone lands
+    // a unit with nothing behind it: the URL goes dark for everyone, the prefix is left
+    // declared, and the landing reads as a success. The one thing that reliably produces
+    // it is a folder that failed to materialise — a killed open, a disk that filled — so
+    // the answer is a refusal rather than a confirmation the object has no way to ask for.
+    // Deleting a prototype is its own verb, with its own confirmation.
+    if (!Object.keys(d.table).length && Object.keys(this.mainTable()).length) {
+      return [409, { error: "would-unpublish" }];
+    }
     return this.takeLease({ draftId, table: d.table, at });
   }
 

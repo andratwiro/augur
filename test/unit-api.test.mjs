@@ -293,3 +293,36 @@ test("a landing that loses the manifest race recomposes and retries", async () =
   assert.equal(after.files[OTHER].h, sha("elsewhere"), "the out-of-band landing was not dropped");
   assert.equal(after.version, l.body.version);
 });
+
+// ── an emptied draft, and prefixes with nothing behind them ──────────────────
+test("emptying a draft cannot take the prototype's URL down, and a dead prefix is pruned", async () => {
+  const { ctx, env } = await setup();
+  const before = liveNow(env);
+  const o = (await json(await call(ctx, env, "open", { unit: U }))).body;
+  for (const [path, baseHash] of [[`${U}index.html`, sha(INDEX)], [`${U}a.css`, sha(CSS)]]) {
+    const r = await json(await call(ctx, env, "save", { unit: U, draftId: o.draftId, draftRevision: o.draftRevision || 0,
+      changes: [{ path, delete: true, baseHash }] }));
+    assert.equal(r.status, 200, JSON.stringify(r.body));
+    o.draftRevision = r.body.draftRevision;
+  }
+  const l = await json(await call(ctx, env, "land", { unit: U, draftId: o.draftId, baseRevision: 1, note: "" }));
+  assert.equal(l.status, 409, JSON.stringify(l.body));
+  assert.deepEqual(l.body, { error: "would-unpublish" });
+  assert.deepEqual(liveNow(env), before, "the manifest did not move");
+  assert.equal((await W.assetFetch(ctx.tenantId, env, new Request(`https://x.test${U}`))).status, 200);
+});
+
+test("a landing prunes a public prefix nothing serves under any more", async () => {
+  const { ctx, env } = await setup();
+  const live = liveNow(env);
+  live.routing.publicPrefixes = [...live.routing.publicPrefixes, "/checkout/gone/"];
+  await env.BUNDLES.put("spaces/alpha/manifest.json", JSON.stringify(live));
+  const o = (await json(await call(ctx, env, "open", { unit: U }))).body;
+  const body = "<h1>flow v2</h1>";
+  await env.BUNDLES.put(`blobs/${sha(body)}`, body);
+  await call(ctx, env, "save", { unit: U, draftId: o.draftId, draftRevision: 0,
+    changes: [{ path: `${U}index.html`, h: sha(body), ct: "text/html; charset=utf-8", s: body.length, baseHash: sha(INDEX) }] });
+  const l = await json(await call(ctx, env, "land", { unit: U, draftId: o.draftId, baseRevision: 1, note: "" }));
+  assert.equal(l.status, 200, JSON.stringify(l.body));
+  assert.deepEqual(liveNow(env).routing.publicPrefixes, [U], "a prefix with no files behind it is not carried forward");
+});

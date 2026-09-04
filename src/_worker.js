@@ -5113,6 +5113,11 @@ async function writeUnitLanding(tctx, env, spaceId, unit, table, changed, who, n
     routing.publicPrefixes = [...new Set([...(routing.publicPrefixes || []), unit])];
     routing.unitSources = { ...(routing.unitSources || {}), [unit]: { sha: null, dirty: false, landed: true, by: who.personId, at: now } };
     const m = { ...cur, files, routing };
+    // The same pruning the commit handler does, for the same reason: a prefix with no file
+    // behind it serves nothing and only survives to trap the next publisher. It also
+    // covers this path's own way of producing one — a landing that removes a unit's last
+    // file leaves its prefix declared over nothing.
+    m.routing.publicPrefixes = backedPublicPrefixes(m);
     const ceiling = manifestCeiling(m);
     if (ceiling) return { error: "manifest-ceiling", ...ceiling, status: 413 };
     const issued = await nextPublishVersion(env, tctx, spaceId, cur);
