@@ -5020,6 +5020,8 @@ function sharedChromeRefusal(env, tctx, who, spaceId, op, method) {
 // landing — rewrite the space manifest so every existing serve, rollback and export path
 // sees the landed files as a publish. See docs/drafts-that-land.md §6.
 const UNIT_API_PREFIX = "/__unit/";
+// What a saved file may declare itself to be: one type, one subtype, at most a charset.
+const UNIT_CT_RE = /^[\w.+-]+\/[\w.+-]+(; ?charset=[\w-]+)?$/i;
 const shortText = (s, n) => String(s == null ? "" : s).slice(0, n);
 // `tctx.SPACES` is a routing field, filled from the live manifests by `loadTenantContext`
 // on the request's normal path — which this route also goes through, since `handleRequest`
@@ -5055,8 +5057,29 @@ function defaultSpaceIdFromManifests(manifests) {
  */
 async function writeUnitLanding(tctx, env, spaceId, unit, table, changed, who, now) {
   const bundles = bundlesFor(env, tctx.tenantId);
-  const cur = (await loadManifests(tctx.tenantId, env, true))[spaceId];
+  const manifests = await loadManifests(tctx.tenantId, env, true);
+  const cur = manifests[spaceId];
   if (!cur) return { error: "unknown-space", status: 404 };
+  // ── The landed table may only name paths inside the unit, and paths nobody else serves ──
+  //
+  // DEFENCE IN DEPTH, and the second half is not: `unitApi` already refuses a save outside
+  // the unit, so a table reaching here with a foreign path came from somewhere else — a
+  // future caller, a restored revision written before that rule existed. Dropping such a
+  // path silently would land a table that is not the one the object recorded, so the
+  // landing is REFUSED instead, and the lease abandoned by the caller.
+  //
+  // The conflict check is the SAME one the commit handler runs over every other live
+  // manifest, `_engine` included, and for the same reason: a space manifest shadows
+  // `_engine` in `lookupBundleFile`, so a path another manifest already serves would be
+  // taken over by this write rather than colliding visibly.
+  for (const p of Object.keys(table || {})) {
+    if (!p.startsWith(unit)) return { error: "path-outside-unit", path: p, status: 409 };
+    for (const otherId in manifests) {
+      if (otherId === spaceId) continue;
+      const other = manifests[otherId].files || {};
+      if (other[p]) return { error: "path-conflict", path: p, owner: otherId, status: 409 };
+    }
+  }
   const changedPaths = new Set((Array.isArray(changed) ? changed : []).map((c) => c.path));
   const files = {};
   for (const [p, f] of Object.entries(cur.files || {})) if (!p.startsWith(unit)) files[p] = f;
@@ -5114,6 +5137,14 @@ async function unitApi(tctx, request, url, env) {
   }
   const unit = normUnit(request.method === "GET" ? url.searchParams.get("unit") : body.unit);
   if (!unit) return jsonResponse({ error: "bad-unit" }, 400);
+  // A unit is a path this space may publish AND open to anonymous visitors — the same rule
+  // the routing fragment is held to at commit, applied HERE because landing a unit adds it
+  // to `publicPrefixes` and no commit ever inspects that. Without it an ordinary
+  // space-scoped token opened a draft on `/admin/` or `/__canvas/` and landed over engine
+  // chrome every prototype on the site loads by absolute URL.
+  if (!isPublishablePublicPrefix(unit, spaceId, tctx.SPACES)) {
+    return jsonResponse({ error: "bad-unit", reason: "not-publishable" }, 400);
+  }
   const stub = unitStub(env, tctx.tenantId, unit);
   const now = new Date().toISOString();
 
@@ -5142,7 +5173,23 @@ async function unitApi(tctx, request, url, env) {
     const changes = Array.isArray(body.changes) ? body.changes : [];
     const missing = [];
     for (const c of changes) {
-      if (c.delete || !c.h) continue;
+      // A DRAFT CARRIES ITS OWN UNIT'S PATHS AND NOTHING ELSE. The draft is live at its
+      // address and lands into the space manifest, so a path outside the unit is a path
+      // this draft may serve and later publish over — which is how a space-scoped token
+      // reached `/admin/index.html`, `/__canvas/canvas.js` and `/piti.js` from a draft
+      // opened on one prototype. `..` and an empty segment are refused rather than
+      // normalized: they compare as inside the unit and resolve elsewhere when served.
+      const path = String(c && c.path == null ? "" : c.path);
+      if (!path.startsWith("/") || !path.startsWith(unit) || path.includes("//") || path.includes("/../") || path.endsWith("/..")) {
+        return jsonResponse({ error: "bad-path", path: c && c.path }, 400);
+      }
+      if (c.delete) continue;
+      // The content type is echoed back on every request for those bytes, so it is held to
+      // the grammar a header may hold — one type, one subtype, at most a charset.
+      if (!UNIT_CT_RE.test(String(c.ct == null ? "" : c.ct))) {
+        return jsonResponse({ error: "bad-type", path: c.path }, 400);
+      }
+      if (!c.h) continue;
       if (!/^[0-9a-f]{64}$/.test(c.h)) return jsonResponse({ error: "bad-hash", path: c.path }, 400);
       if (!(await env.BUNDLES.head("blobs/" + c.h))) missing.push(c.h);
     }

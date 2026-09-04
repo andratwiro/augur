@@ -155,3 +155,79 @@ test("an unauthenticated call never reads the store", async () => {
   assert.equal(ok.status, 200, JSON.stringify(ok.body));
   assert.ok(counts.get + counts.head + counts.list > 0, "an authenticated caller does read the store");
 });
+
+// ── a draft carries its own unit's paths, and nothing else ────────────────────
+//
+// The hole this closes: an ordinary space-scoped token opened a draft on one prototype
+// and saved `/admin/index.html`, `/__canvas/canvas.js` and `/piti.js` into it. Landing
+// wrote them into the space manifest, and a space manifest shadows `_engine` in
+// `lookupBundleFile` — so the planted bytes were served as the admin panel and as the
+// chrome every prototype on the site loads by absolute URL.
+test("a save may not carry a path outside its own unit", async () => {
+  const { ctx, env } = await setup();
+  const before = await W.assetFetch(ctx.tenantId, env, new Request("https://x.test/admin/index.html"));
+  const o = (await json(await call(ctx, env, "open", { unit: U }))).body;
+  const planted = "<script>everywhere()</script>";
+  await env.BUNDLES.put(`blobs/${sha(planted)}`, planted);
+  const change = (path) => ({ path, h: sha(planted), ct: "text/html; charset=utf-8", s: planted.length, baseHash: null });
+  for (const path of ["/admin/index.html", "/__canvas/canvas.js", "/piti.js", "/checkout/other/x.html"]) {
+    const r = await json(await call(ctx, env, "save", { unit: U, draftId: o.draftId, draftRevision: 0, changes: [change(path)] }));
+    assert.equal(r.status, 400, `${path} was accepted`);
+    assert.deepEqual(r.body, { error: "bad-path", path });
+  }
+  for (const path of [`${U}../admin/index.html`, `${U}/a.css`, `${U}a//b.css`, "checkout/flow/a.css"]) {
+    const r = await json(await call(ctx, env, "save", { unit: U, draftId: o.draftId, draftRevision: 0, changes: [change(path)] }));
+    assert.equal(r.status, 400, `${path} was accepted`);
+    assert.equal(r.body.error, "bad-path");
+  }
+  const after = await W.assetFetch(ctx.tenantId, env, new Request("https://x.test/admin/index.html"));
+  assert.equal(after.status, before.status, "the chrome path answers exactly as it did before");
+  assert.equal(liveNow(env).files["/admin/index.html"], undefined);
+});
+
+test("a save states a content type the store can serve", async () => {
+  const { ctx, env } = await setup();
+  const o = (await json(await call(ctx, env, "open", { unit: U }))).body;
+  const body = "<h1>typed</h1>";
+  await env.BUNDLES.put(`blobs/${sha(body)}`, body);
+  const path = `${U}index.html`;
+  for (const ct of ["text/html; charset=utf-8\nX-Evil: 1", "", "text/html; charset=utf-8; boundary=x", "not-a-type"]) {
+    const r = await json(await call(ctx, env, "save", { unit: U, draftId: o.draftId, draftRevision: 0,
+      changes: [{ path, h: sha(body), ct, s: body.length, baseHash: sha(INDEX) }] }));
+    assert.equal(r.status, 400, `${JSON.stringify(ct)} was accepted`);
+    assert.deepEqual(r.body, { error: "bad-type", path });
+  }
+  const ok = await json(await call(ctx, env, "save", { unit: U, draftId: o.draftId, draftRevision: 0,
+    changes: [{ path, h: sha(body), ct: "text/html; charset=utf-8", s: body.length, baseHash: sha(INDEX) }] }));
+  assert.equal(ok.status, 200, JSON.stringify(ok.body));
+});
+
+test("a unit is never engine chrome, an engine route or the root", async () => {
+  const { ctx, env } = await setup();
+  for (const unit of ["/admin/", "/__canvas/", "/piti.js", "/fonts/inter/", "/__search.json"]) {
+    const r = await json(await call(ctx, env, "open", { unit }));
+    assert.equal(r.status, 400, `${unit} was opened`);
+    assert.deepEqual(r.body, { error: "bad-unit", reason: "not-publishable" });
+  }
+  // The root names no folder at all, so it never reaches the ownership rule.
+  const root = await json(await call(ctx, env, "open", { unit: "/" }));
+  assert.equal(root.status, 400);
+  assert.deepEqual(root.body, { error: "bad-unit" });
+});
+
+test("a landing onto a path another live manifest owns is refused, and the lease is let go", async () => {
+  const { ctx, env } = await setup();
+  const o = (await json(await call(ctx, env, "open", { unit: U }))).body;
+  // The engine manifest claims one of the unit's paths. Nothing writes this today; the
+  // object could be reached by a caller that does not check, so the write checks.
+  await env.BUNDLES.put("spaces/_engine/manifest.json", JSON.stringify({
+    id: "_engine", version: 1, format: 1, files: { [`${U}index.html`]: { h: sha("chrome"), ct: "text/html", s: 6 } }, routing: {},
+  }));
+  const before = liveNow(env).version;
+  const l = await json(await call(ctx, env, "land", { unit: U, draftId: o.draftId, baseRevision: 1, note: "" }));
+  assert.equal(l.status, 409, JSON.stringify(l.body));
+  assert.deepEqual(l.body, { error: "path-conflict", path: `${U}index.html`, owner: "_engine" });
+  assert.equal(liveNow(env).version, before, "nothing was published");
+  const p = await json(await call(ctx, env, "presence", { unit: U }, { method: "GET" }));
+  assert.equal(p.body.drafts.length, 1, "the draft is still open, so the lease was let go");
+});
