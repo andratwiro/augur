@@ -674,7 +674,15 @@ function initializerAt(source, eqIndex) {
       continue;
     }
     if (c === '"' || c === "'" || c === "`") { quote = c; continue; }
-    if (c === "/" && source[i + 1] === "/" && depth === 0) {
+    // A `//` starts a line comment whenever we are not inside a quote — that is true at
+    // any bracket depth, not only at 0. Gating this on `depth === 0` was the bug: an
+    // apostrophe inside a `//` comment NESTED in an object literal (an initializer's own
+    // doc comments, exactly what this scanner walks) opened a fake quote that swallowed
+    // real braces/parens until some unrelated later quote happened to close it, so the
+    // scanner could run off the end of the real initializer into the rest of the module —
+    // observed on `CAP_ROUTES`, whose `Object.freeze({…})` carries prose comments with
+    // apostrophes at depth 2.
+    if (c === "/" && source[i + 1] === "/") {
       const nl = source.indexOf("\n", i);
       if (nl === -1) return source.slice(eqIndex + 1, i);
       i = nl;

@@ -20,6 +20,19 @@ const call = (ctx, env, verb, body, { method = "POST", session = "pass one", tok
 };
 const json = async (res) => ({ status: res.status, body: await res.json() });
 
+// Wraps an R2-shaped store's read methods with counters, leaving everything else
+// (including its `.store` Map that other fixtures reach into) untouched.
+function countingBundles(bundles) {
+  const counts = { get: 0, head: 0, list: 0 };
+  const wrapped = {
+    ...bundles,
+    get: async (...a) => { counts.get++; return bundles.get(...a); },
+    head: async (...a) => { counts.head++; return bundles.head(...a); },
+    list: async (...a) => { counts.list++; return bundles.list(...a); },
+  };
+  return { wrapped, counts };
+}
+
 async function setup() {
   const t = tenant(), ctx = ctxFor(t);
   const live = manifestOf(7, { [U]: { "index.html": INDEX, "a.css": CSS } });
@@ -119,4 +132,26 @@ test("a bad unit, a missing store and a missing binding are each named", async (
   const noUnits = await json(await call(ctx, { ...env, UNITS: undefined }, "open", { unit: U }));
   assert.equal(noUnits.status, 501);
   assert.equal(noUnits.body.error, "units-not-configured");
+});
+
+test("an unauthenticated call never reads the store", async () => {
+  const t = tenant();
+  const live = manifestOf(7, { [U]: { "index.html": INDEX, "a.css": CSS } });
+  const rawEnv = await makeEnv({ live });
+  const { wrapped, counts } = countingBundles(rawEnv.BUNDLES);
+  const env = { ...rawEnv, BUNDLES: wrapped };
+  // The one caller `defaultSpaceIdFromManifests`'s fallback exists for is a context with no SPACES.
+  // Production always has this filled in by the time `unitApi` runs, so populate it
+  // here too: a call with a populated `tctx.SPACES` must not touch the store to find
+  // the space id, refused or not.
+  const ctx = { ...ctxFor(t), SPACES: [{ id: "alpha", default: true, adminOnly: false, name: "Alpha" }] };
+  W.__setTenantTestState({ memo: { at: Date.now(), tenantId: t } });
+
+  const refused = await json(await call(ctx, env, "open", { unit: U }, { token: "nope" }));
+  assert.equal(refused.status, 403);
+  assert.deepEqual(counts, { get: 0, head: 0, list: 0 }, "a refused caller must never read the store");
+
+  const ok = await json(await call(ctx, env, "open", { unit: U }));
+  assert.equal(ok.status, 200, JSON.stringify(ok.body));
+  assert.ok(counts.get + counts.head + counts.list > 0, "an authenticated caller does read the store");
 });

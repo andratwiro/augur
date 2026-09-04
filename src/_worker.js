@@ -4994,16 +4994,27 @@ const shortText = (s, n) => String(s == null ? "" : s).slice(0, n);
 // `tctx.SPACES` is a routing field, filled from the live manifests by `loadTenantContext`
 // on the request's normal path — which this route also goes through, since `handleRequest`
 // resolves `tctx` before dispatch. It is read first because it costs nothing further: the
-// context is already built. The fallback reads `manifests` (a space id keyed on each
-// manifest, `loadManifests`'s own shape) directly for the one caller that reaches `unitApi`
-// with a context `loadTenantContext` never touched.
-function defaultSpaceId(tctx, manifests) {
+// context is already built, and reading it can never touch the store. It answers on its
+// own for every real deployment; `defaultSpaceIdFromManifests` below is the fallback for
+// the one caller that reaches `unitApi` with a context `loadTenantContext` never touched
+// (the test harness) — kept as a SEPARATE function so `unitApi` can call it only when
+// `tctx.SPACES` came back empty, instead of always paying for a manifest load first.
+function defaultSpaceIdFromCtx(tctx) {
   const spaces = (tctx && tctx.SPACES) || [];
-  const fromCtx = ((spaces.find((s) => s.default) || spaces[0]) || {}).id || null;
-  if (fromCtx) return fromCtx;
-  const ms = Object.values(manifests || {});
-  const m = ms.find((x) => x && x.space && x.space.default) || ms[0] || null;
-  return (m && m.space && m.space.id) || null;
+  return ((spaces.find((s) => s.default) || spaces[0]) || {}).id || null;
+}
+// The manifests fallback: deterministic so two callers racing this never pick different
+// spaces. Never `_engine` (it is chrome, not a space) and never a manifest without a
+// `space` field (an assets-mode `_engine` entry, or a document that failed to parse).
+function defaultSpaceIdFromManifests(manifests) {
+  const candidates = Object.keys(manifests || {})
+    .filter((id) => id !== ENGINE_SPACE_ID)
+    .map((id) => manifests[id])
+    .filter((m) => m && m.space && m.space.id);
+  if (!candidates.length) return null;
+  const def = candidates.find((m) => m.space.default);
+  if (def) return def.space.id;
+  return candidates.map((m) => m.space.id).sort((a, b) => a.localeCompare(b))[0];
 }
 
 /**
@@ -5049,9 +5060,18 @@ async function unitApi(tctx, request, url, env) {
   if (!/^[a-z-]+$/.test(verb)) return jsonResponse({ error: "bad-path" }, 400);
   if (!env.BUNDLES) return jsonResponse({ error: "bundle-store-not-configured" }, 501);
   if (!unitNamespace(env)) return jsonResponse({ error: "units-not-configured" }, 501);
-  const manifests = await loadManifests(tctx.tenantId, env, true);
-  const spaceId = defaultSpaceId(tctx, manifests);
+  // Space id resolution must never cost a store read on its own: `tctx.SPACES` answers
+  // on every real deployment, and the manifests fallback (test harness only — see the
+  // comment above `defaultSpaceIdFromCtx`) is a NON-forced load, so it rides the request
+  // path's 1.5s cache rather than bypassing it.
+  let spaceId = defaultSpaceIdFromCtx(tctx);
+  if (!spaceId) {
+    const fallbackManifests = await loadManifests(tctx.tenantId, env);
+    spaceId = defaultSpaceIdFromManifests(fallbackManifests);
+  }
   if (!spaceId) return jsonResponse({ error: "no-space" }, 404);
+  // Authenticate BEFORE any forced, uncached store read: an unauthenticated caller must
+  // never pay for one, however many times they hit this route.
   const a = await publishAuthDetailed(tctx, request, env, spaceId, false);
   if (!a.entry) return jsonResponse(publishRefusalBody(a.refusal), 403);
   if (capabilityRefusal(a.entry, spaceId, "commit")) return jsonResponse({ error: "forbidden", reason: "capability-not-granted" }, 403);
@@ -5068,7 +5088,9 @@ async function unitApi(tctx, request, url, env) {
   const now = new Date().toISOString();
 
   // Keep the object's main in step with what is live, every time: a landing made by the
-  // old publish path is adopted as a revision, never fought.
+  // old publish path is adopted as a revision, never fought. This is the forced,
+  // uncached read `/sync-main` needs — it runs only after auth has already passed.
+  const manifests = await loadManifests(tctx.tenantId, env, true);
   const live = manifests[spaceId] || null;
   const liveTable = unitTable((live && live.files) || {}, unit);
   const synced = await unitCall(stub, "/sync-main", { workspace: tctx.tenantId, unit, table: liveTable, at: now });
