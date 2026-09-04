@@ -326,3 +326,48 @@ test("a landing prunes a public prefix nothing serves under any more", async () 
   assert.equal(l.status, 200, JSON.stringify(l.body));
   assert.deepEqual(liveNow(env).routing.publicPrefixes, [U], "a prefix with no files behind it is not carried forward");
 });
+
+// ── a unit is a prototype folder ─────────────────────────────────────────────
+//
+// `augur open checkout` drafted `/checkout/` and landing added `/checkout/` to
+// publicPrefixes. The gate matches by startsWith, so every gated prototype under that
+// opportunity opened to anonymous visitors — from a draft on a folder nobody edits.
+test("an opportunity is not a unit, and a prototype folder is", async () => {
+  const { ctx, env } = await setup();
+  for (const unit of ["/checkout/", "/skills/", "/playground/"]) {
+    const r = await json(await call(ctx, env, "open", { unit }));
+    assert.equal(r.status, 400, `${unit} was opened`);
+    assert.equal(r.body.error, "bad-unit");
+  }
+  for (const unit of ["/checkout/fresh/", "/playground/sketch/"]) {
+    const r = await json(await call(ctx, env, "open", { unit }));
+    assert.equal(r.status, 200, `${unit}: ${JSON.stringify(r.body)}`);
+  }
+});
+
+test("a unit the space already publishes is a unit whatever its shape", async () => {
+  const { ctx, env } = await setup();
+  const DEEP = "/toolkit/embed/deep/";
+  const live = liveNow(env);
+  live.files[`${DEEP}index.html`] = live.files[`${U}index.html`];
+  live.routing.publicPrefixes = [...live.routing.publicPrefixes, DEEP];
+  await env.BUNDLES.put("spaces/alpha/manifest.json", JSON.stringify(live));
+  const r = await json(await call(ctx, env, "open", { unit: DEEP }));
+  assert.equal(r.status, 200, JSON.stringify(r.body));
+});
+
+test("landing a unit the manifest already declares leaves the prefix list alone", async () => {
+  const { ctx, env } = await setup();
+  const live = liveNow(env);
+  // The same unit, spelled as a manifest may already carry it.
+  live.routing.publicPrefixes = ["/checkout/flow"];
+  await env.BUNDLES.put("spaces/alpha/manifest.json", JSON.stringify(live));
+  const o = (await json(await call(ctx, env, "open", { unit: U }))).body;
+  const body = "<h1>flow v2</h1>";
+  await env.BUNDLES.put(`blobs/${sha(body)}`, body);
+  await call(ctx, env, "save", { unit: U, draftId: o.draftId, draftRevision: 0,
+    changes: [{ path: `${U}index.html`, h: sha(body), ct: "text/html; charset=utf-8", s: body.length, baseHash: sha(INDEX) }] });
+  const l = await json(await call(ctx, env, "land", { unit: U, draftId: o.draftId, baseRevision: 1, note: "" }));
+  assert.equal(l.status, 200, JSON.stringify(l.body));
+  assert.deepEqual(liveNow(env).routing.publicPrefixes, ["/checkout/flow"], "the unit was not declared a second time");
+});

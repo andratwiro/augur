@@ -5022,6 +5022,12 @@ function sharedChromeRefusal(env, tctx, who, spaceId, op, method) {
 const UNIT_API_PREFIX = "/__unit/";
 // What a saved file may declare itself to be: one type, one subtype, at most a charset.
 const UNIT_CT_RE = /^[\w.+-]+\/[\w.+-]+(; ?charset=[\w-]+)?$/i;
+// The shape a unit that does not exist yet may be created in: `/<opportunity>/<prototype>/`,
+// which is also how the playground spells one (`/playground/<name>/`). ONE segment is an
+// opportunity — a folder of prototypes — and landing it would declare `/<opportunity>/`
+// public, where the gate matches by startsWith: every gated prototype beneath it would open
+// to anonymous visitors, from a draft on a folder nobody edits.
+const isNewUnitPath = (unit) => unit.split("/").filter(Boolean).length === 2;
 const shortText = (s, n) => String(s == null ? "" : s).slice(0, n);
 // `tctx.SPACES` is a routing field, filled from the live manifests by `loadTenantContext`
 // on the request's normal path — which this route also goes through, since `handleRequest`
@@ -5110,7 +5116,12 @@ async function writeUnitLanding(tctx, env, spaceId, unit, table, changed, who, n
       files[p] = prior && !changedPaths.has(p) ? prior : { h: f.h, ct: f.ct, s: f.s, by: who.personId, editedAt: now };
     }
     const routing = { ...(cur.routing || {}) };
-    routing.publicPrefixes = [...new Set([...(routing.publicPrefixes || []), unit])];
+    // A unit the manifest already declares keeps the entry it has, spelling and all: the
+    // set union that replaced it added a second, normalized entry beside one written
+    // without its trailing slash, and two entries for one unit is two things to prune.
+    routing.publicPrefixes = authoredUnits(cur).has(unit)
+      ? [...(routing.publicPrefixes || [])]
+      : [...(routing.publicPrefixes || []), unit];
     routing.unitSources = { ...(routing.unitSources || {}), [unit]: { sha: null, dirty: false, landed: true, by: who.personId, at: now } };
     const m = { ...cur, files, routing };
     // The same pruning the commit handler does, for the same reason: a prefix with no file
@@ -5172,7 +5183,6 @@ async function unitApi(tctx, request, url, env) {
   if (!isPublishablePublicPrefix(unit, spaceId, tctx.SPACES)) {
     return jsonResponse({ error: "bad-unit", reason: "not-publishable" }, 400);
   }
-  const stub = unitStub(env, tctx.tenantId, unit);
   const now = new Date().toISOString();
 
   // Keep the object's main in step with what is live, every time: a landing made by the
@@ -5180,6 +5190,14 @@ async function unitApi(tctx, request, url, env) {
   // uncached read `/sync-main` needs — it runs only after auth has already passed.
   const manifests = await loadManifests(tctx.tenantId, env, true);
   const live = manifests[spaceId] || null;
+  // A UNIT IS A PROTOTYPE FOLDER, NEVER A WHOLE OPPORTUNITY — asked before the object is
+  // reached, so a folder that is not one is never given a draft to be adopted from later.
+  // A unit the space ALREADY publishes is a unit whatever its shape (the manifest is the
+  // authority on what exists); anything else has to be the shape a new one is created in.
+  if (!authoredUnits(live).has(unit) && !isNewUnitPath(unit)) {
+    return jsonResponse({ error: "bad-unit", reason: "not-a-prototype-folder" }, 400);
+  }
+  const stub = unitStub(env, tctx.tenantId, unit);
   const liveTable = unitTable((live && live.files) || {}, unit);
   const synced = await unitCall(stub, "/sync-main", { workspace: tctx.tenantId, unit, table: liveTable, at: now });
   if (synced.status !== 200) return jsonResponse({ error: "unit-unavailable" }, 503);
