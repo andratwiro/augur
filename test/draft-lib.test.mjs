@@ -124,6 +124,26 @@ test("open materialises the unit and writes state; save pushes only what changed
   assert.equal(readState(dir).landed, true);
 });
 
+test("a landing the server could not record still lands, and says the history entry is missing", async () => {
+  const inst = fakeInstance({ "index.html": "<h1>flow</h1>" });
+  const root = tmp();
+  const dir = path.join(root, "flow");
+  await doOpen({ client: inst.client, unit: U, dir, origin: "https://x.test", space: "alpha", session: "s1", now: "2026-09-04T12:00:00.000Z" });
+  const client = {
+    ...inst.client,
+    async land(args) {
+      const r = await inst.client.land(args);
+      return r.status ? r : { ...r, recorded: false, revision: null, warning: "landed-unrecorded" };
+    },
+  };
+  const landed = await doLand({ client, dir, note: "" });
+  assert.equal(landed.ok, true);
+  assert.equal(landed.recorded, false, "the caller can tell the record is missing");
+  assert.equal(landed.warning, "landed-unrecorded");
+  assert.equal(landed.url, `https://x.test${U}`);
+  assert.equal(readState(dir).landed, true);
+});
+
 test("a refused land is reported; sync merges a clean overlap and leaves a real one to the agent", async () => {
   const inst = fakeInstance({ "index.html": "a\nb\nc\nd", "a.css": "h1{}" });
   const root = tmp();

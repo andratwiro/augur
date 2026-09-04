@@ -28,5 +28,13 @@ if (!r.ok) {
   if (r.error === "landing-in-progress") die("somebody is landing this prototype right now — try again in a few seconds.");
   die(`land refused: ${r.error || r.status}`);
 }
-log(`landed as revision ${r.revision} (publish v${r.version})`);
+// The bytes are live; when `recorded` is false only the history entry is missing. Said out
+// loud because the next call adopts that landing as the instance's own, and nobody would
+// otherwise know a landing of theirs is not in the record.
+if (r.recorded === false) {
+  log(`landed (publish v${r.version})`);
+  log("this landing is live, but its history entry is missing — the next call adopts it without an author.");
+} else {
+  log(`landed as revision ${r.revision} (publish v${r.version})`);
+}
 console.log(r.url);

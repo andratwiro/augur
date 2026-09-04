@@ -210,7 +210,11 @@ async function doLandImpl({ client, dir, note }) {
   st.landed = true; st.landedRevision = r.revision;
   writeState(dir, st);
   registryRemove(dir);
-  return { ok: true, url: r.url, revision: r.revision, version: r.version };
+  // `recorded: false` means the bytes are live and the history entry is not — the server
+  // wrote the manifest and could not tell the unit's object about it. Carried through so
+  // the command can say so; the landing itself happened either way.
+  return { ok: true, url: r.url, revision: r.revision, version: r.version,
+    recorded: r.recorded !== false, warning: r.warning || null };
 }
 
 async function doSyncImpl({ client, dir }) {

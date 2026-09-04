@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { __testables as W } from "../src/_worker.js";
-import { makeEnv, ctxFor, manifestOf, remember, sha, liveNow } from "./fixtures/unit-env.mjs";
+import { makeEnv, ctxFor, manifestOf, remember, sha, liveNow, unitsNamespace } from "./fixtures/unit-env.mjs";
 
 let n = 0;
 const tenant = () => `unit-api-${++n}`;
@@ -370,4 +370,74 @@ test("landing a unit the manifest already declares leaves the prefix list alone"
   const l = await json(await call(ctx, env, "land", { unit: U, draftId: o.draftId, baseRevision: 1, note: "" }));
   assert.equal(l.status, 200, JSON.stringify(l.body));
   assert.deepEqual(liveNow(env).routing.publicPrefixes, ["/checkout/flow"], "the unit was not declared a second time");
+});
+
+// ── the bytes are live even when the record of them is not ───────────────────
+//
+// `land` writes the manifest and THEN tells the object it happened. Between the two the
+// lease can lapse (a slow write) or the object can blink, and the answer used to be the
+// object's refusal — while main had already moved. The caller read a failure, the bytes
+// were live, and the next call adopted them as `by: "live"`, losing the author.
+function landedFails(times) {
+  const ns = unitsNamespace();
+  let n = 0;
+  return {
+    ...ns,
+    get(name) {
+      const stub = ns.get(name);
+      return {
+        fetch(input, init) {
+          const p = new URL(typeof input === "string" ? input : input.url).pathname;
+          if (p === "/landed" && n < times) {
+            n++;
+            return new Response(JSON.stringify({ error: "bad-lease" }), { status: 409, headers: { "content-type": "application/json" } });
+          }
+          return stub.fetch(input, init);
+        },
+      };
+    },
+  };
+}
+
+test("a landing the object could not record is reported as landed, not as a failure", async () => {
+  const t = tenant(), ctx = ctxFor(t);
+  const env = await makeEnv({ live: manifestOf(7, { [U]: { "index.html": INDEX, "a.css": CSS } }), units: landedFails(2) });
+  W.__setTenantTestState({ memo: { at: Date.now(), tenantId: t } });
+  const o = (await json(await call(ctx, env, "open", { unit: U }))).body;
+  const body = "<h1>flow v2</h1>";
+  await env.BUNDLES.put(`blobs/${sha(body)}`, body);
+  await call(ctx, env, "save", { unit: U, draftId: o.draftId, draftRevision: 0,
+    changes: [{ path: `${U}index.html`, h: sha(body), ct: "text/html; charset=utf-8", s: body.length, baseHash: sha(INDEX) }] });
+  const l = await json(await call(ctx, env, "land", { unit: U, draftId: o.draftId, baseRevision: 1, note: "v2" }));
+  assert.equal(l.status, 200, JSON.stringify(l.body));
+  assert.equal(l.body.recorded, false);
+  assert.equal(l.body.revision, null);
+  assert.equal(l.body.warning, "landed-unrecorded");
+  assert.equal(l.body.version, 8);
+  assert.equal(l.body.url, `https://x.test${U}`);
+  assert.equal(liveNow(env).files[`${U}index.html`].h, sha(body), "the bytes ARE live");
+  const served = await W.assetFetch(t, env, new Request(`https://x.test${U}`));
+  assert.equal(await served.text(), body);
+  // The next call adopts the landing that was never recorded, so the history says it
+  // happened even though it cannot say who landed it.
+  const h = await json(await call(ctx, env, "history", { unit: U }, { method: "GET" }));
+  assert.deepEqual(h.body.landings.map((x) => [x.revision, x.by]), [[2, "live"], [1, "live"]]);
+});
+
+test("a landing recorded on the retry is a landing like any other", async () => {
+  const t = tenant(), ctx = ctxFor(t);
+  const env = await makeEnv({ live: manifestOf(7, { [U]: { "index.html": INDEX, "a.css": CSS } }), units: landedFails(1) });
+  W.__setTenantTestState({ memo: { at: Date.now(), tenantId: t } });
+  const o = (await json(await call(ctx, env, "open", { unit: U }))).body;
+  const body = "<h1>flow v2</h1>";
+  await env.BUNDLES.put(`blobs/${sha(body)}`, body);
+  await call(ctx, env, "save", { unit: U, draftId: o.draftId, draftRevision: 0,
+    changes: [{ path: `${U}index.html`, h: sha(body), ct: "text/html; charset=utf-8", s: body.length, baseHash: sha(INDEX) }] });
+  const l = await json(await call(ctx, env, "land", { unit: U, draftId: o.draftId, baseRevision: 1, note: "v2" }));
+  assert.equal(l.status, 200, JSON.stringify(l.body));
+  assert.equal(l.body.recorded, true);
+  assert.equal(l.body.revision, 2);
+  const h = await json(await call(ctx, env, "history", { unit: U }, { method: "GET" }));
+  assert.deepEqual(h.body.landings.map((x) => [x.revision, x.by, x.note]),
+    [[2, W.personId("ada@example.test"), "v2"], [1, "live", "adopted from live"]]);
 });

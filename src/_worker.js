@@ -5253,12 +5253,28 @@ async function unitApi(tctx, request, url, env) {
       const { status, ...rest } = written;
       return jsonResponse(rest, status || 503);
     }
-    const done = await unitCall(stub, "/landed", {
+    const record = {
       lease: r.body.lease, draftId: body.draftId, note: shortText(body.note, 200), by: who.personId, session, at: now,
       ...(verb === "restore" ? { restoredFrom: body.revision } : {}),
-    });
-    if (done.status !== 200) return jsonResponse(done.body, done.status);
-    return jsonResponse({ ok: true, revision: done.body.revision, version: written.version, url: `${url.origin}${unit}`, changed: r.body.changed, removed: r.body.removed });
+    };
+    let done = await unitCall(stub, "/landed", record);
+    // THE BYTES ARE LIVE BY NOW, whatever the object says next. The manifest was written
+    // before this call, so a refusal here — a lease that lapsed during a slow write, a
+    // blink — is a MISSING HISTORY ENTRY, not a failed landing, and answering with the
+    // object's 409 would tell the caller their work did not land while their prototype's
+    // real URL was already serving it. Retry once for the transient case, then say exactly
+    // what is true: it landed, and the record of who landed it is missing. The next call's
+    // `sync-main` adopts the landing as `by: "live"` — the author is lost, the content is
+    // not — and `recorded: false` is what tells the CLI to say so.
+    if (done.status !== 200) done = await unitCall(stub, "/landed", record);
+    const landed = {
+      ok: true, version: written.version, url: `${url.origin}${unit}`,
+      changed: r.body.changed, removed: r.body.removed,
+    };
+    if (done.status !== 200) {
+      return jsonResponse({ ...landed, recorded: false, revision: null, warning: "landed-unrecorded" });
+    }
+    return jsonResponse({ ...landed, recorded: true, revision: done.body.revision });
   }
   if (verb === "sync" || verb === "discard") {
     const r = await unitCall(stub, `/${verb}`, { draftId: body.draftId, at: now });
