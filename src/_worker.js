@@ -333,8 +333,16 @@ function versionFor(tctx, pathname) {
 // prototype embeds. Everything else falls through to the password gate.
 function isPublicPath(tctx, pathname) {
   // A draft address (`<unit>@<id>/…`) is a member's working copy: never public, whatever
-  // the unit it hangs off is. See docs/drafts-that-land.md §6.3.
-  if (splitDraftPath(pathname)) return false;
+  // the unit it hangs off is. See docs/drafts-that-land.md §6.3. assetFetch decodes the
+  // pathname before running this same split (it has to, to resolve the draft's table),
+  // so the gate has to decode it too — otherwise a percent-encoded `@` (`%40`) sails
+  // past this check with no literal `@` in sight, then gets decoded and served as a
+  // draft by assetFetch's own ungated-branch fallthrough. A pathname the engine can't
+  // even decode isn't public either.
+  let decodedForDraft;
+  try { decodedForDraft = decodeURIComponent(pathname); } catch (e) { decodedForDraft = null; }
+  if (decodedForDraft === null) return false;
+  if (splitDraftPath(decodedForDraft)) return false;
   // The build stamp ({builtAt, spaces:{<id>:{sha}}}). Space-repo collaborators can't
   // see this repo's CI, so this is their only way to verify "my commit is live" —
   // curl it and compare sha to git rev-parse HEAD. Public by design; contains nothing

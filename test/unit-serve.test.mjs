@@ -44,4 +44,15 @@ test("a draft address is never public, whatever the unit's own gate says", async
   assert.equal(W.isPublicPath(tctx, `${U}index.html`), true);
   assert.equal(W.isPublicPath(tctx, `${U}@${draftId}/index.html`), false);
   assert.equal(W.isPublicPath(tctx, `${U}@${draftId}/`), false);
+  assert.equal(W.isPublicPath(tctx, `${U}%40${draftId}/index.html`), false,
+    "a percent-encoded draft address must not sail past the gate on a literal @ check");
+  assert.equal(W.isPublicPath(tctx, "/checkout/flow/%E0%A4%A"), false,
+    "an undecodable path is not public");
+});
+
+test("an encoded draft address serves through the same table", async () => {
+  const { t, env, draftId, v2 } = await draftWithEdit();
+  const draft = await W.assetFetch(t, env, new Request(`https://x.test${U}%40${draftId}/`));
+  assert.equal(draft.status, 200);
+  assert.equal(await draft.text(), v2);
 });
