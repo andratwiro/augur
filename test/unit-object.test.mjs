@@ -201,3 +201,72 @@ test("discard closes a draft and it leaves presence", async () => {
   const s = await call(obj, "/save", { draftId: a.draftId, draftRevision: 0, at: later(3), changes: [] });
   assert.equal(s.status, 404);
 });
+
+test("a save during a held landing is refused, and the lease lands exactly the table it verified", async () => {
+  const { obj } = await fresh();
+  const a = (await call(obj, "/open", { owner: "p1", session: "s", at: T0 })).body;
+  await call(obj, "/save", { draftId: a.draftId, draftRevision: 0, at: later(1),
+    changes: [{ path: `${U}index.html`, h: "c".repeat(64), ct: "text/html", s: 11, baseHash: "a".repeat(64) }] });
+  const l = await call(obj, "/land", { draftId: a.draftId, baseRevision: 1, at: later(2) });
+  assert.equal(l.status, 200, JSON.stringify(l.body));
+  assert.equal(typeof l.body.lease, "string");
+  const lockedTable = l.body.table;
+
+  const refused = await call(obj, "/save", { draftId: a.draftId, draftRevision: 1, at: later(3),
+    changes: [{ path: `${U}c.css`, h: "e".repeat(64), ct: "text/css", s: 2, baseHash: null }] });
+  assert.equal(refused.status, 409);
+  assert.equal(refused.body.error, "landing-in-progress");
+
+  const b = (await call(obj, "/open", { owner: "p2", session: "t", at: later(3) })).body;
+  const bSave = await call(obj, "/save", { draftId: b.draftId, draftRevision: 0, at: later(4),
+    changes: [{ path: `${U}b.css`, h: "b".repeat(64), ct: "text/css", s: 1, baseHash: null }] });
+  assert.equal(bSave.status, 200, JSON.stringify(bSave.body));
+
+  const done = await call(obj, "/landed", { lease: l.body.lease, draftId: a.draftId, note: "", by: "p1", session: "s", at: later(5) });
+  assert.equal(done.status, 200);
+
+  const m = await call(obj, "/main", null, "GET");
+  assert.deepEqual(m.body.table, lockedTable);
+});
+
+test("landed takes restoredFrom from the lease, not the body", async () => {
+  const { obj } = await fresh();
+  const a = (await call(obj, "/open", { owner: "p1", session: "a", at: T0 })).body;
+  await call(obj, "/save", { draftId: a.draftId, draftRevision: 0, at: later(1),
+    changes: [{ path: `${U}index.html`, h: "c".repeat(64), ct: "text/html", s: 11, baseHash: "a".repeat(64) }] });
+  const la = await call(obj, "/land", { draftId: a.draftId, baseRevision: 1, at: later(2) });
+  await call(obj, "/landed", { lease: la.body.lease, draftId: a.draftId, note: "", by: "p1", session: "a", at: later(3) });
+
+  const r = await call(obj, "/restore", { revision: 1, at: later(4) });
+  assert.equal(r.status, 200);
+  assert.deepEqual(r.body.table, main1);
+
+  const done = await call(obj, "/landed", { lease: r.body.lease, note: "back", by: "p1", session: "a", at: later(5), restoredFrom: 2 });
+  assert.equal(done.status, 200);
+  assert.equal(done.body.revision, 3);
+
+  const h = await call(obj, "/history", null, "GET");
+  assert.equal(h.body.landings[0].restoredFrom, 1);
+
+  const m = await call(obj, "/main", null, "GET");
+  assert.equal(m.body.revision, 3);
+  assert.deepEqual(m.body.table, main1);
+});
+
+test("a discarded draft's address answers 404, a landed one still answers", async () => {
+  const { obj } = await fresh();
+  const a = (await call(obj, "/open", { owner: "p1", session: "a", at: T0 })).body;
+  await call(obj, "/discard", { draftId: a.draftId, at: later(1) });
+  const da = await call(obj, `/draft/${a.draftId}`, null, "GET");
+  assert.equal(da.status, 404);
+  assert.equal(da.body.error, "unknown-draft");
+
+  const b = (await call(obj, "/open", { owner: "p2", session: "b", at: T0 })).body;
+  await call(obj, "/save", { draftId: b.draftId, draftRevision: 0, at: later(2),
+    changes: [{ path: `${U}index.html`, h: "c".repeat(64), ct: "text/html", s: 11, baseHash: "a".repeat(64) }] });
+  const lb = await call(obj, "/land", { draftId: b.draftId, baseRevision: 1, at: later(3) });
+  await call(obj, "/landed", { lease: lb.body.lease, draftId: b.draftId, note: "", by: "p2", session: "b", at: later(4) });
+  const db = await call(obj, `/draft/${b.draftId}`, null, "GET");
+  assert.equal(db.status, 200);
+  assert.equal(typeof db.body.closedAt, "string");
+});

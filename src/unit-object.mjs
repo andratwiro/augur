@@ -16,11 +16,12 @@
 // worker that dies between the two leaves a lease that simply expires — nothing depends on
 // it being released, and `abandon-land` is a courtesy.
 import {
-  newDraftId, unitTable, sameTable, applyChanges, tableDelta, presenceOf,
+  newDraftId, unitTable, sameTable, applyChanges, tableDelta, presenceOf, DRAFT_ID_RE,
 } from "./unit-core.mjs";
 
 export const LAND_LEASE_MS = 10_000;
 export const UNIT_SCHEMA_VERSION = 1;
+const DRAFT_ROUTE_RE = new RegExp(`^/draft/(${DRAFT_ID_RE.source.slice(1, -1)})$`);
 
 export const UNIT_SCHEMA = Object.freeze([
   `CREATE TABLE IF NOT EXISTS meta (k TEXT PRIMARY KEY, v TEXT NOT NULL)`,
@@ -149,6 +150,8 @@ export class UnitObject {
   save({ draftId, draftRevision, changes, baseRevision, at }) {
     const d = this.draft(draftId);
     if (!d || d.closedAt) return [404, { error: "unknown-draft" }];
+    const held = this.lease(Date.parse(at));
+    if (held && held.draftId === draftId) return [409, { error: "landing-in-progress" }];
     if (Number(draftRevision) !== d.revision) return [409, { error: "stale-draft-revision", draftRevision: d.revision }];
     if (baseRevision !== undefined) {
       const b = Number(baseRevision);
@@ -165,13 +168,16 @@ export class UnitObject {
     return [200, { draftRevision: revision, table: r.table }];
   }
 
-  takeLease({ draftId, table, at }) {
+  takeLease({ draftId, table, at, restoredFrom }) {
     const nowMs = Date.parse(at);
     const held = this.lease(nowMs);
     if (held && held.draftId !== (draftId || null)) return [409, { error: "landing-in-progress" }];
     const lease = newDraftId() + newDraftId();
     const revision = this.mainRevision() + 1;
-    this.metaSet("lease", JSON.stringify({ token: lease, draftId: draftId || null, revision, until: nowMs + LAND_LEASE_MS }));
+    this.metaSet("lease", JSON.stringify({
+      token: lease, draftId: draftId || null, revision, until: nowMs + LAND_LEASE_MS,
+      table, restoredFrom: restoredFrom == null ? null : restoredFrom,
+    }));
     const delta = tableDelta(this.mainTable(), table);
     return [200, { lease, revision, table, ...delta }];
   }
@@ -191,23 +197,16 @@ export class UnitObject {
   restore({ revision, at }) {
     const l = this.landing(Number(revision));
     if (!l) return [404, { error: "unknown-revision" }];
-    return this.takeLease({ draftId: null, table: JSON.parse(l.tbl), at });
+    return this.takeLease({ draftId: null, table: JSON.parse(l.tbl), at, restoredFrom: Number(revision) });
   }
 
-  landed({ lease, draftId, note, by, session, at, restoredFrom }) {
+  landed({ lease, draftId, note, by, session, at }) {
     const held = this.lease(Date.parse(at));
     if (!held || held.token !== lease) return [409, { error: "bad-lease" }];
-    let table;
-    if (held.draftId) {
-      const d = this.draft(held.draftId);
-      if (!d) return [404, { error: "unknown-draft" }];
-      table = d.table;
-    } else {
-      const from = this.landing(Number(restoredFrom));
-      if (!from) return [400, { error: "bad-restore" }];
-      table = JSON.parse(from.tbl);
-    }
-    const revision = this.writeLanding({ table, by, session, at, note, draftId: held.draftId || draftId || null, restoredFrom });
+    const table = held.table;
+    const revision = this.writeLanding({
+      table, by, session, at, note, draftId: held.draftId || draftId || null, restoredFrom: held.restoredFrom,
+    });
     if (held.draftId) this.sql.exec(`UPDATE drafts SET closed_at = ? WHERE id = ?`, at, held.draftId);
     this.metaSet("lease", null);
     return [200, { revision }];
@@ -265,10 +264,10 @@ export class UnitObject {
       if (route === "/presence") return json({ drafts: presenceOf(this.openDrafts(), Date.parse(url.searchParams.get("at") || "") || Date.now()) });
       if (route === "/history") return json(this.history());
       if (route === "/main") return json({ revision: this.mainRevision(), table: this.mainTable() });
-      const m = /^\/draft\/([a-z0-9]{6})$/.exec(route);
+      const m = DRAFT_ROUTE_RE.exec(route);
       if (m) {
         const d = this.draft(m[1]);
-        if (!d) return json({ error: "unknown-draft" }, 404);
+        if (!d || d.discarded) return json({ error: "unknown-draft" }, 404);
         return json({ draftId: d.id, table: d.table, owner: d.owner, session: d.session, baseRevision: d.baseRevision, revision: d.revision, closedAt: d.closedAt });
       }
       return json({ error: "unknown-route" }, 404);
