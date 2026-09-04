@@ -22,10 +22,16 @@ function fakeInstance(mainFiles) {
   const main = {};
   for (const [rel, body] of Object.entries(mainFiles)) main[U + rel] = { h: put(body), ct: mimeOf(rel), s: body.length };
   const drafts = new Map();
+  const removedEver = new Set(); // paths landMain has ever dropped from main, for sync's `removed`
   let mainRevision = 1;
   const inst = {
     blobs, drafts, get mainRevision() { return mainRevision; }, main,
-    landMain(table) { Object.keys(main).forEach((k) => delete main[k]); Object.assign(main, table); mainRevision++; },
+    landMain(table) {
+      for (const k of Object.keys(main)) if (!(k in table)) removedEver.add(k);
+      Object.keys(main).forEach((k) => delete main[k]);
+      Object.assign(main, table);
+      mainRevision++;
+    },
     client: {
       async open() { const id = `d${drafts.size + 1}xxxx`.slice(0, 6); drafts.set(id, { table: { ...main }, revision: 0, base: mainRevision }); return { draftId: id, baseRevision: mainRevision, table: { ...main }, address: `${U}@${id}/`, presence: [] }; },
       async save({ draftId, draftRevision, changes, baseRevision }) {
@@ -46,7 +52,7 @@ function fakeInstance(mainFiles) {
       // returns for a file untouched on main since the base, so no shortcut can hide here.
       async sync({ draftId }) {
         const d = drafts.get(draftId);
-        return { mainRevision, baseRevision: d.base, changed: Object.entries(main).map(([p, f]) => ({ path: p, ...f })), removed: [] };
+        return { mainRevision, baseRevision: d.base, changed: Object.entries(main).map(([p, f]) => ({ path: p, ...f })), removed: [...removedEver] };
       },
       async discard({ draftId }) { drafts.delete(draftId); return { closed: true }; },
       async presence() { return { drafts: [] }; },
@@ -157,6 +163,71 @@ test("a refused land is reported; sync merges a clean overlap and leaves a real 
   assert.deepEqual(s2.conflicts.map((c) => c.rel), ["index.html"]);
   assert.equal(fs.readFileSync(path.join(dir2, "index.html"), "utf8"), "MINE\nb\nc\nD", "mine stays in place");
   assert.equal(fs.readFileSync(path.join(dir2, THEIRS_DIR, "index.html"), "utf8"), theirs2, "theirs is beside it, outside the unit tree");
+});
+
+test("a file the agent deleted is not resurrected by sync", async () => {
+  const inst = fakeInstance({ "index.html": "<h1>flow</h1>", "a.css": "h1{}" });
+  const dir = path.join(tmp(), "flow");
+  await doOpen({ client: inst.client, unit: U, dir, origin: "https://x.test", space: "alpha", session: "s1", now: "2026-09-04T12:00:00.000Z" });
+
+  fs.rmSync(path.join(dir, "index.html"));
+  await doSave({ client: inst.client, dir });
+  assert.equal(fs.existsSync(path.join(dir, "index.html")), false);
+
+  // main changes the same file the agent deleted
+  const theirs = "<h1>changed on main</h1>";
+  inst.blobs.set(sha(theirs), theirs);
+  inst.landMain({ ...inst.main, [`${U}index.html`]: { h: sha(theirs), ct: mimeOf("index.html"), s: theirs.length } });
+
+  const synced = await doSync({ client: inst.client, dir });
+  assert.equal(synced.ok, true);
+  assert.deepEqual(synced.conflicts, [{ rel: "index.html", hunks: [], deleted: true }]);
+  assert.equal(synced.taken.includes("index.html"), false);
+  assert.equal(fs.existsSync(path.join(dir, "index.html")), false, "the deletion is not resurrected");
+  assert.equal(fs.readFileSync(path.join(dir, THEIRS_DIR, "index.html"), "utf8"), theirs, "theirs is preserved beside it");
+});
+
+test("a file removed on main is removed locally only if untouched", async () => {
+  const inst = fakeInstance({ "index.html": "<h1>flow</h1>", "a.css": "h1{}" });
+  const root = tmp();
+  const dir1 = path.join(root, "untouched");
+  const dir2 = path.join(root, "edited");
+  await doOpen({ client: inst.client, unit: U, dir: dir1, origin: "https://x.test", space: "alpha", session: "s1", now: "2026-09-04T12:00:00.000Z" });
+  await doOpen({ client: inst.client, unit: U, dir: dir2, origin: "https://x.test", space: "alpha", session: "s2", now: "2026-09-04T12:00:00.000Z" });
+
+  // the second draft edits a.css before main removes it
+  fs.writeFileSync(path.join(dir2, "a.css"), "h1{color:red}");
+  await doSave({ client: inst.client, dir: dir2 });
+
+  const withoutACss = { ...inst.main };
+  delete withoutACss[`${U}a.css`];
+  inst.landMain(withoutACss);
+
+  const s1 = await doSync({ client: inst.client, dir: dir1 });
+  assert.deepEqual(s1.taken, ["a.css"]);
+  assert.equal(fs.existsSync(path.join(dir1, "a.css")), false, "untouched: removed locally too");
+
+  const s2 = await doSync({ client: inst.client, dir: dir2 });
+  assert.deepEqual(s2.kept, ["a.css"]);
+  assert.equal(fs.readFileSync(path.join(dir2, "a.css"), "utf8"), "h1{color:red}", "edited: survives the removal");
+});
+
+test("a network failure mid-sync returns a result and leaves state intact", async () => {
+  const inst = fakeInstance({ "index.html": "<h1>flow</h1>", "a.css": "h1{}" });
+  const dir = path.join(tmp(), "flow");
+  await doOpen({ client: inst.client, unit: U, dir, origin: "https://x.test", space: "alpha", session: "s1", now: "2026-09-04T12:00:00.000Z" });
+  const before = readState(dir).baseRevision;
+
+  const theirs = "<h1>changed on main</h1>";
+  inst.blobs.set(sha(theirs), theirs);
+  inst.landMain({ ...inst.main, [`${U}index.html`]: { h: sha(theirs), ct: mimeOf("index.html"), s: theirs.length } });
+
+  const flaky = { ...inst.client, blobGet: async () => { throw new Error("boom"); } };
+  const result = await doSync({ client: flaky, dir });
+  assert.equal(result.ok, false);
+  assert.equal(result.error, "network");
+  assert.match(result.message, /boom/);
+  assert.equal(readState(dir).baseRevision, before, "state on disk is untouched by the failed sync");
 });
 
 test("close refuses an open draft unless discarding", async () => {

@@ -127,6 +127,20 @@ export function unitClient({ origin, token, space, session }) {
 }
 
 // ── the verbs ────────────────────────────────────────────────────────────────
+// `blobPut`/`blobGet` throw on a non-2xx answer, and a raw `fetch` can reject outright
+// (offline, DNS, a dropped connection mid-transfer) — a transient failure anywhere inside
+// a verb must come back as a result, not an unhandled rejection. `guarded` is that catch,
+// applied once to each `do<Verb>` export rather than five times: whatever the body threw
+// becomes `{ok: false, error: "network", message}`, and since nothing here writes state
+// until its work has actually succeeded, disk is left exactly as it was at the failure —
+// a retry reprocesses safely.
+function guarded(fn) {
+  return async (...args) => {
+    try { return await fn(...args); }
+    catch (err) { return { ok: false, error: "network", message: String((err && err.message) || err) }; }
+  };
+}
+
 async function materialise(client, unit, table, dir) {
   for (const [p, f] of Object.entries(table)) {
     const dest = path.join(dir, relOf(unit, p));
@@ -135,7 +149,7 @@ async function materialise(client, unit, table, dir) {
   }
 }
 
-export async function doOpen({ client, unit, dir, origin, space, session, now }) {
+async function doOpenImpl({ client, unit, dir, origin, space, session, now }) {
   if (fs.existsSync(dir) && fs.readdirSync(dir).length) return { ok: false, error: "folder-not-empty", dir };
   const o = await client.open({ unit });
   if (o.status) return { ok: false, ...o };
@@ -150,7 +164,7 @@ export async function doOpen({ client, unit, dir, origin, space, session, now })
   return { ok: true, draftId: o.draftId, address: `${origin}${o.address}`, files: Object.keys(o.table).length, others };
 }
 
-export async function doSave({ client, dir, baseRevision }) {
+async function doSaveImpl({ client, dir, baseRevision }) {
   const st = readState(dir);
   if (!st) return { ok: false, error: "not-a-draft", dir };
   const local = scanFolder(dir);
@@ -165,7 +179,7 @@ export async function doSave({ client, dir, baseRevision }) {
   return { ok: true, changed: changes.map((c) => relOf(st.unit, c.path)), draftRevision: r.draftRevision };
 }
 
-export async function doLand({ client, dir, note }) {
+async function doLandImpl({ client, dir, note }) {
   const st = readState(dir);
   if (!st) return { ok: false, error: "not-a-draft", dir };
   const saved = await doSave({ client, dir });
@@ -178,7 +192,7 @@ export async function doLand({ client, dir, note }) {
   return { ok: true, url: r.url, revision: r.revision, version: r.version };
 }
 
-export async function doSync({ client, dir }) {
+async function doSyncImpl({ client, dir }) {
   const st = readState(dir);
   if (!st) return { ok: false, error: "not-a-draft", dir };
   const r = await client.sync({ unit: st.unit, draftId: st.draftId });
@@ -196,7 +210,14 @@ export async function doSync({ client, dir }) {
     const mine = local[rel] || null;
     const theirBytes = await client.blobGet(c.h);
     const dest = path.join(dir, rel);
-    if (!mine || (base && mine.h === base.h)) {          // I did not touch it: take theirs
+    if (!mine && base) {                                  // absent locally but the base had it: I deleted it.
+      // main changed it too (we would have `continue`d above otherwise) — that's a real
+      // conflict, not a resurrection: leave the file gone, drop theirs beside it.
+      writeTheirs(dir, rel, theirBytes);
+      conflicts.push({ rel, hunks: [], deleted: true });
+      continue;
+    }
+    if (!mine || (base && mine.h === base.h)) {          // new on main, or I did not touch it: take theirs
       fs.mkdirSync(path.dirname(dest), { recursive: true });
       fs.writeFileSync(dest, theirBytes);
       taken.push(rel);
@@ -233,7 +254,7 @@ function writeTheirs(dir, rel, bytes) {
   fs.writeFileSync(dest, bytes);
 }
 
-export async function doClose({ client, dir, discard }) {
+async function doCloseImpl({ client, dir, discard }) {
   const st = readState(dir);
   if (!st) return { ok: false, error: "not-a-draft", dir };
   if (!st.landed && !discard) return { ok: false, error: "draft-still-open", draftId: st.draftId, address: st.address };
@@ -245,3 +266,13 @@ export async function doClose({ client, dir, discard }) {
   fs.rmSync(dir, { recursive: true, force: true });
   return { ok: true, discarded: !st.landed };
 }
+
+// Each verb's public surface is its body wrapped in `guarded` — see the comment above
+// `guarded` itself. Internal callers (`doLandImpl` → `doSave`, `doSyncImpl` → `doSave`) go
+// through the same wrapped export, so a blob failure partway through a land or a sync comes
+// back as the same `{ok: false, error: "network"}` shape a bare save would return.
+export const doOpen = guarded(doOpenImpl);
+export const doSave = guarded(doSaveImpl);
+export const doLand = guarded(doLandImpl);
+export const doSync = guarded(doSyncImpl);
+export const doClose = guarded(doCloseImpl);
