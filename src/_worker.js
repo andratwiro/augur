@@ -103,7 +103,7 @@ import { PURGED_AUTHOR, purgeThreads, idCollisions } from "./purge.mjs";
 // The unit vocabulary and the composer, shared VERBATIM with the CLI — see resolveStaleBase.
 import { authoredUnits, unitOfPath, unitPaths } from "./publish-units.mjs";
 import { composePublish, forkLanded } from "./publish-compose.mjs";
-import { normUnit, splitDraftPath, unitTable, draftAddress } from "./unit-core.mjs";
+import { normUnit, splitDraftPath, unitTable, draftAddress, DRAFT_ID_RE } from "./unit-core.mjs";
 // `F-fork-verb`. Fork as a deliberate verb — one unit aliased to a new path, zero bytes
 // moved — plus the rule that keeps a fork's lineage and owner alive across every later
 // publish. Both are pure, and both are the CLI's too if it ever needs them.
@@ -5177,6 +5177,16 @@ async function writeUnitLanding(tctx, env, spaceId, unit, table, changed, who, n
   return { error: "manifest-contended", status: 503 };
 }
 
+/** The face behind a one-way person id, from the roster; nulls when nobody answers to it. */
+function personFace(users, id) {
+  const u = (users || []).find((x) => x && personId(x.email) === id);
+  return u
+    ? { name: u.name || nameFromEmail(u.email), initials: u.initials || initialsFor(u.name || u.email), color: u.color || colorFor(u.email) }
+    : { name: null, initials: null, color: null };
+}
+const decorateDrafts = (drafts, users) => (drafts || []).map((d) => ({ ...d, ...personFace(users, d.owner) }));
+const decorateLandings = (landings, users) => (landings || []).map((l) => ({ ...l, ...personFace(users, l.by) }));
+
 /**
  * Who is calling /__unit — from a bearer token (the CLI) or from a session cookie (a
  * member's browser). ONE answer for both, so a landing made from the draft bar is recorded
@@ -5261,8 +5271,24 @@ async function unitApi(tctx, request, url, env) {
   if (synced.status !== 200) return jsonResponse({ error: "unit-unavailable" }, 503);
 
   if (request.method === "GET") {
-    if (verb === "presence") return jsonResponse((await unitCall(stub, `/presence?at=${encodeURIComponent(now)}`, null, "GET")).body);
-    if (verb === "history") return jsonResponse((await unitCall(stub, "/history", null, "GET")).body);
+    if (verb === "presence") {
+      const r = await unitCall(stub, `/presence?at=${encodeURIComponent(now)}`, null, "GET");
+      return jsonResponse(r.status === 200 ? { ...r.body, drafts: decorateDrafts(r.body.drafts, tctx.USERS) } : r.body, r.status);
+    }
+    if (verb === "history") {
+      const r = await unitCall(stub, "/history", null, "GET");
+      return jsonResponse(r.status === 200 ? { ...r.body, landings: decorateLandings(r.body.landings, tctx.USERS) } : r.body, r.status);
+    }
+    if (verb === "draft") {
+      // One draft's card, for the bar: who, which session, where it stands. The TABLE stays
+      // in the object — a bar needs a file count, and a table can be thousands of rows.
+      const id = url.searchParams.get("draft") || "";
+      if (!DRAFT_ID_RE.test(id)) return jsonResponse({ error: "bad-draft" }, 400);
+      const r = await unitCall(stub, `/draft/${id}`, null, "GET");
+      if (r.status !== 200) return jsonResponse(r.body, r.status);
+      const { table, ...rest } = r.body;
+      return jsonResponse({ ...rest, ...personFace(tctx.USERS, rest.owner), files: Object.keys(table || {}).length });
+    }
     if (verb === "main") return jsonResponse((await unitCall(stub, "/main", null, "GET")).body);
     return jsonResponse({ error: "unknown-verb" }, 404);
   }
@@ -5270,7 +5296,7 @@ async function unitApi(tctx, request, url, env) {
   if (verb === "open") {
     const r = await unitCall(stub, "/open", { owner: who.personId, session, at: now });
     if (r.status !== 200) return jsonResponse(r.body, r.status);
-    return jsonResponse({ ...r.body, address: draftAddress(unit, r.body.draftId) });
+    return jsonResponse({ ...r.body, presence: decorateDrafts(r.body.presence, tctx.USERS), address: draftAddress(unit, r.body.draftId) });
   }
   if (verb === "save") {
     const changes = Array.isArray(body.changes) ? body.changes : [];
@@ -12390,7 +12416,7 @@ export const __testables = Object.freeze({
   doorFacts, doorText, wantsMachineDoor, gateResponse, DOOR_DOCS, DOOR_WELL_KNOWN,
   resumeAfterDormancy,
   PITI_VIEW_KEY, PITI_REMARKS_KEY,
-  publishAuthDetailed, unitApi, unitCaller, publishRefusalBody, splitDraftPath,
+  publishAuthDetailed, unitApi, unitCaller, personFace, publishRefusalBody, splitDraftPath,
   adminStorageApi,
   adminCustomDomainApi,
   isPrefixBacked, backedPublicPrefixes,

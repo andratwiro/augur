@@ -310,7 +310,7 @@ export class UnitObject {
       if (m) {
         const d = this.draft(m[1]);
         if (!d || d.discarded) return json({ error: "unknown-draft" }, 404);
-        return json({ draftId: d.id, table: d.table, owner: d.owner, session: d.session, baseRevision: d.baseRevision, revision: d.revision, closedAt: d.closedAt });
+        return json({ draftId: d.id, table: d.table, owner: d.owner, session: d.session, openedAt: d.openedAt, lastSaveAt: d.lastSaveAt, baseRevision: d.baseRevision, revision: d.revision, closedAt: d.closedAt });
       }
       return json({ error: "unknown-route" }, 404);
     }

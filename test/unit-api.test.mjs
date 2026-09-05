@@ -593,3 +593,29 @@ test("an instance with no roster answers its operator's browser without any cred
   assert.equal(p.status, 200);
   assert.deepEqual(p.body.drafts, []);
 });
+
+test("presence, history and a draft's card carry the face behind each id", async () => {
+  const { ctx, env } = await setup();
+  const o = (await json(await call(ctx, env, "open", { unit: U }))).body;
+  assert.equal(o.presence[0].name, "Ada");
+  assert.equal(o.presence[0].initials, "AD");
+  const p = (await json(await call(ctx, env, "presence", { unit: U }, { method: "GET" }))).body;
+  assert.equal(p.drafts[0].owner, W.personId(ADA.email));
+  assert.equal(p.drafts[0].name, "Ada");
+  assert.match(p.drafts[0].color, /^#[0-9a-f]{6}$/i);
+  const d = (await json(await call(ctx, env, "draft", { unit: U, draft: o.draftId }, { method: "GET" }))).body;
+  assert.equal(d.draftId, o.draftId);
+  assert.equal(d.baseRevision, 1);
+  assert.equal(d.name, "Ada");
+  assert.equal(d.files, 2, "a count, never the table");
+  assert.equal(d.table, undefined);
+  assert.equal(typeof d.openedAt, "string", "the bar says when it was opened");
+  assert.equal(d.lastSaveAt, null);
+  assert.equal((await json(await call(ctx, env, "draft", { unit: U, draft: "nope" }, { method: "GET" }))).status, 400);
+  assert.equal((await json(await call(ctx, env, "draft", { unit: U, draft: "zzzzzz" }, { method: "GET" }))).status, 404);
+  await call(ctx, env, "land", { unit: U, draftId: o.draftId, baseRevision: o.baseRevision, note: "n" });
+  const h = (await json(await call(ctx, env, "history", { unit: U }, { method: "GET" }))).body;
+  assert.equal(h.landings[0].name, "Ada");
+  assert.equal(h.landings[1].by, "live", "the adopted revision");
+  assert.equal(h.landings[1].name, null, "no face answers to it");
+});
