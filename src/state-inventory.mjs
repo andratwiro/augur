@@ -128,6 +128,10 @@ export const STATE_INVENTORY = Object.freeze([
     why: "Working marks: one row per path saying something is editing there right now, holding the path, the one-way author id and the time, and good only until its own TTL runs out (ten minutes by default, an hour at the most). Transient by construction — a mark is not a promise to anybody, it grants nothing and refuses nothing, and the next work-start recreates it. DROPPED rather than carried, for the same reason `health:report` is: a mark restored onto a new home would say somebody is working somewhere at a moment that has passed, and a false claim is worse than a missing one. Nothing is lost: the marks a copy would have carried are all expired by the time anybody reads the copy.",
   },
   {
+    id: "drafts", store: "kv", kind: "key", to: "drop",
+    why: "The open-drafts hint: one row per unit saying how many drafts its object reports open, written after open, land and discard so the gallery knows which unit objects to ask (`draftsIndexApi` in src/_worker.js) and asks no others. Never the truth — every read re-checks the object and drops a row it contradicts. DROPPED on a copy because the unit objects it points at do not travel (see `/__unit/`), so a carried row would name drafts the destination cannot serve; the first open on the new home writes a true one.",
+  },
+  {
     id: "pt:view", store: "kv", kind: "key", to: "workspace",
     why: "What page the cursor companion's human is looking at. Same table.",
   },

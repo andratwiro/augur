@@ -619,3 +619,41 @@ test("presence, history and a draft's card carry the face behind each id", async
   assert.equal(h.landings[1].by, "live", "the adopted revision");
   assert.equal(h.landings[1].name, null, "no face answers to it");
 });
+
+test("the gallery's index names every unit with an open draft, and only those", async () => {
+  const V = "/checkout/other/";
+  const t = tenant(), ctx = ctxFor(t);
+  const env = await makeEnv({ live: manifestOf(7, { [U]: { "index.html": INDEX }, [V]: { "index.html": INDEX } }) });
+  W.__setTenantTestState({ memo: { at: Date.now(), tenantId: t } });
+  const idx = async () => (await json(await call(ctx, env, "drafts", {}, { method: "GET" }))).body.units;
+  assert.deepEqual(await idx(), {});
+  const a = (await json(await call(ctx, env, "open", { unit: U }))).body;
+  const b = (await json(await call(ctx, env, "open", { unit: U }, { session: "pass two" }))).body;
+  const c = (await json(await call(ctx, env, "open", { unit: V }))).body;
+  let units = await idx();
+  assert.deepEqual(Object.keys(units).sort(), [U, V].sort());
+  assert.deepEqual(units[U].map((d) => d.session).sort(), ["pass one", "pass two"]);
+  assert.equal(units[U][0].name, "Ada", "a chip carries the face");
+  assert.equal((await json(await call(ctx, env, "discard", { unit: V, draftId: c.draftId }))).status, 200);
+  assert.equal((await json(await call(ctx, env, "land", { unit: U, draftId: a.draftId, baseRevision: a.baseRevision, note: "" }))).status, 200);
+  units = await idx();
+  assert.deepEqual(Object.keys(units), [U]);
+  assert.deepEqual(units[U].map((d) => d.id), [b.draftId]);
+  const hint = JSON.parse(await env.COMMENTS.get("drafts"));
+  assert.equal(Object.prototype.hasOwnProperty.call(hint, V), false, "a unit with nothing open leaves no row");
+  assert.equal(hint[U].n, 1);
+});
+
+test("a stale hint is corrected on read: the objects are the truth", async () => {
+  const { ctx, env } = await setup();
+  await env.COMMENTS.put("drafts", JSON.stringify({
+    [U]: { n: 3, at: "2026-09-01T00:00:00.000Z" },
+    "/nowhere/x/": { n: 1, at: "2026-09-01T00:00:00.000Z" },
+    "not a unit": { n: 1, at: "2026-09-01T00:00:00.000Z" },
+  }));
+  const r = await json(await call(ctx, env, "drafts", {}, { method: "GET" }));
+  assert.equal(r.status, 200);
+  assert.deepEqual(r.body.units, {});
+  assert.deepEqual(JSON.parse(await env.COMMENTS.get("drafts")), { "not a unit": { n: 1, at: "2026-09-01T00:00:00.000Z" } },
+    "rows the objects deny are dropped; a row that is not even a unit path is never asked about and left for the operator to see");
+});

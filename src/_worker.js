@@ -5187,6 +5187,40 @@ function personFace(users, id) {
 const decorateDrafts = (drafts, users) => (drafts || []).map((d) => ({ ...d, ...personFace(users, d.owner) }));
 const decorateLandings = (landings, users) => (landings || []).map((l) => ({ ...l, ...personFace(users, l.by) }));
 
+/** How many units the gallery's index will ask about in one answer. */
+const DRAFTS_INDEX_MAX = 50;
+/** Refresh one unit's row in the open-drafts hint from the object's own answer. Best effort. */
+async function noteUnitDrafts(tctx, env, stub, unit, now) {
+  const store = overlayFor(env, tctx);
+  if (!store) return;
+  try {
+    const p = await unitCall(stub, `/presence?at=${encodeURIComponent(now)}`, null, "GET");
+    if (p.status !== 200) return;
+    const n = (p.body.drafts || []).length;
+    await store.set("drafts", "", unit, n ? { n, at: now } : null, null);
+  } catch (e) { /* a hint that failed to write is a chip that appears one open later, not a lost draft */ }
+}
+/** Every open draft in the workspace, by unit — what the gallery's chips read. */
+async function draftsIndexApi(tctx, env, now) {
+  const store = overlayFor(env, tctx);
+  let map = {};
+  try { map = store ? (await store.read("drafts")) || {} : {}; } catch (e) { map = {}; }
+  const units = Object.keys(map)
+    .filter((u) => map[u] && Number(map[u].n) > 0 && normUnit(u) === u)
+    .sort().slice(0, DRAFTS_INDEX_MAX);
+  const out = {};
+  for (const unit of units) {
+    const stub = unitStub(env, tctx.tenantId, unit);
+    if (!stub) continue;
+    const p = await unitCall(stub, `/presence?at=${encodeURIComponent(now)}`, null, "GET");
+    if (p.status !== 200) continue;
+    const drafts = decorateDrafts(p.body.drafts, tctx.USERS);
+    if (drafts.length) out[unit] = drafts;
+    else if (store) { try { await store.set("drafts", "", unit, null, null); } catch (e) { /* the next read tries again */ } }
+  }
+  return jsonResponse({ units: out, now });
+}
+
 /**
  * Who is calling /__unit — from a bearer token (the CLI) or from a session cookie (a
  * member's browser). ONE answer for both, so a landing made from the draft bar is recorded
@@ -5235,6 +5269,8 @@ async function unitApi(tctx, request, url, env) {
   const caller = await unitCaller(tctx, request, env, spaceId);
   if (caller.refusal) return caller.refusal;
   const { who, session } = caller;
+  // The one verb that names no unit: every open draft in the workspace, for the gallery.
+  if (request.method === "GET" && verb === "drafts") return draftsIndexApi(tctx, env, new Date().toISOString());
 
   let body = {};
   if (request.method === "POST") {
@@ -5296,6 +5332,7 @@ async function unitApi(tctx, request, url, env) {
   if (verb === "open") {
     const r = await unitCall(stub, "/open", { owner: who.personId, session, at: now });
     if (r.status !== 200) return jsonResponse(r.body, r.status);
+    await noteUnitDrafts(tctx, env, stub, unit, now);
     return jsonResponse({ ...r.body, presence: decorateDrafts(r.body.presence, tctx.USERS), address: draftAddress(unit, r.body.draftId) });
   }
   if (verb === "save") {
@@ -5354,6 +5391,7 @@ async function unitApi(tctx, request, url, env) {
     // `sync-main` adopts the landing as `by: "live"` — the author is lost, the content is
     // not — and `recorded: false` is what tells the CLI to say so.
     if (done.status !== 200) done = await unitCall(stub, "/landed", record);
+    await noteUnitDrafts(tctx, env, stub, unit, now);
     const landed = {
       ok: true, version: written.version, url: `${url.origin}${unit}`,
       changed: r.body.changed, removed: r.body.removed,
@@ -5370,6 +5408,7 @@ async function unitApi(tctx, request, url, env) {
   }
   if (verb === "sync" || verb === "discard") {
     const r = await unitCall(stub, `/${verb}`, { draftId: body.draftId, at: now });
+    if (verb === "discard" && r.status === 200) await noteUnitDrafts(tctx, env, stub, unit, now);
     return jsonResponse(r.body, r.status);
   }
   return jsonResponse({ error: "unknown-verb" }, 404);
@@ -7760,6 +7799,12 @@ const OVERLAY_KV_KEYS = Object.freeze({
   // in front of ordinary page loads on a store whose daily get budget has been exhausted
   // before. One document is one get. What it costs is stated on `writeMark`.
   marks: Object.freeze({ doc: "marks", layout: "map" }),
+  // WHICH UNITS HAVE OPEN DRAFTS — a hint the gallery reads so it can ask the right unit
+  // objects and no others (`draftsIndexApi`). One row per unit, `{n, at}`, written from
+  // the object's own presence answer after open, land and discard. NEVER THE TRUTH: the
+  // objects are, and every read re-checks each row against its object and drops what it
+  // contradicts. Map layout for exactly the reason marks are — one get per gallery load.
+  drafts: Object.freeze({ doc: "drafts", layout: "map" }),
 });
 
 /** How many times a compare-and-swap retries before giving up. */
