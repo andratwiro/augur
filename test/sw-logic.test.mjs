@@ -52,3 +52,13 @@ test("cacheEligible: only a 200 without no-store may be cached", () => {
   assert.equal(cacheEligible(500, "public"), false);
   assert.equal(cacheEligible(200, null), true, "missing Cache-Control defaults to cacheable");
 });
+
+test("a draft address is network-only: every save must show on the next load", () => {
+  for (const p of ["/checkout/flow/@k7f3q1/", "/checkout/flow/@k7f3q1", "/checkout/flow/@k7f3q1/css/a.css"]) {
+    assert.equal(swDecision({ ...NAV, path: p }), "passthrough", p);
+    assert.equal(swDecision({ ...NAV, mode: "no-cors", path: p }), "passthrough", p + " (asset)");
+  }
+  assert.equal(swDecision({ ...NAV, path: "/checkout/flow/" }), "swr", "main keeps the instant paint");
+  assert.equal(swDecision({ ...NAV, path: "/a@b/" }), "swr", "an @ that is not a draft segment is left alone");
+  assert.equal(swDecision({ ...NAV, path: "/checkout/flow/@TOOLONG/" }), "swr", "not a draft id");
+});

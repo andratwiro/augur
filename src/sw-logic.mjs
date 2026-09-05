@@ -26,6 +26,12 @@ export function cacheEligible(status, cacheControl) {
 //   'cache-first'  — immutable shared asset (/_chrome.*, /fonts/*)
 //
 // Inputs are primitives so this is trivially testable.
+// A DRAFT ADDRESS — `<unit>@<six chars>/…`, the shape src/unit-core.mjs spells with
+// DRAFT_ID_RE — changes on every save, and stale-while-revalidate would paint the previous
+// save first on exactly the reload the live socket just asked for. Network only. Spelled
+// inline because this file is concatenated into sw.js verbatim and cannot import.
+const DRAFT_SEGMENT_RE = /\/@[a-z0-9]{6}(?:\/|$)/;
+
 export function swDecision({ method, sameOrigin, mode, path }) {
   if (method !== "GET") return "passthrough";
   if (!sameOrigin) return "passthrough";
@@ -33,6 +39,7 @@ export function swDecision({ method, sameOrigin, mode, path }) {
   if (path.startsWith("/__")) return "passthrough";
   // The worker script itself must always come from the network (SW update check).
   if (path === "/sw.js") return "passthrough";
+  if (DRAFT_SEGMENT_RE.test(path)) return "passthrough";
   // Top-level page navigations get the instant-paint treatment.
   if (mode === "navigate") return "swr";
   // The shared chrome bundle and self-hosted fonts are content-hashed + immutable.
