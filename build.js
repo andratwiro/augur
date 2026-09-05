@@ -153,6 +153,7 @@ let addon = null;
 try { addon = await import("./pitis/piti.build.js"); } catch (e) { addon = null; }
 const addonHtml = (html) => (addon ? addon.transformHtml(html, UI_VERSION) : html);
 const SRC_REVIEW = path.join(ROOT, "src", "review", "comments.js");
+const SRC_DRAFTS_UI = path.join(ROOT, "src", "drafts", "drafts.js");
 const SRC_REVIEW_CAT = path.join(ROOT, "src", "review", "cat.png");
 const SRC_REVIEW_CURSOR = path.join(ROOT, "src", "review", "comment-cursor.svg");
 const SRC_CANVAS_JS = path.join(ROOT, "src", "canvas", "canvas.js");
@@ -7933,6 +7934,9 @@ async function main() {
   // paths). comments.js + the cat are the engine's own.
   await fs.mkdir(path.join(DIST, "__review"), { recursive: true });
   await fs.copyFile(SRC_REVIEW, path.join(DIST, "__review", "comments.js"));
+  // The draft bar (drafts that land): appended to unit pages at serve time by the worker.
+  await fs.mkdir(path.join(DIST, "__drafts"), { recursive: true });
+  await fs.copyFile(SRC_DRAFTS_UI, path.join(DIST, "__drafts", "drafts.js"));
   await fs.copyFile(SRC_REVIEW_CAT, path.join(DIST, "__review", "cat.png"));
   await fs.copyFile(SRC_REVIEW_CURSOR, path.join(DIST, "__review", "comment-cursor.svg"));
 
@@ -8082,6 +8086,7 @@ async function main() {
   const ENGINE_CHROME = [
     "fonts/", "admin/", "changelog/", "pitis/",
     "__review/comments.js", "__review/cat.png", "__review/comment-cursor.svg",
+    "__drafts/drafts.js",
     "__canvas/canvas.js", "__canvas/canvas.css", "__canvas/capture.js",
     "__canvas/DSEG7Classic-Bold.woff2", "__canvas/DSEG-LICENSE.txt",
     "piti.js", "404.html", "manifest.webmanifest", "sw.js", "_chrome.",
