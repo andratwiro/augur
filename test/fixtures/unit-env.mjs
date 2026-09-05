@@ -88,11 +88,15 @@ export function unitsNamespace() {
     get(name) {
       if (!objects.has(name)) {
         const db = new DatabaseSync(":memory:");
-        const ctx = { storage: { sql: sqlHandle(db) }, blockConcurrencyWhile: async (f) => f() };
-        objects.set(name, new UnitObject(ctx, {}));
+        const sockets = [];
+        const ctx = {
+          storage: { sql: sqlHandle(db) }, blockConcurrencyWhile: async (f) => f(),
+          acceptWebSocket: (ws) => sockets.push(ws), getWebSockets: () => sockets,
+        };
+        objects.set(name, { obj: new UnitObject(ctx, {}), sockets });
       }
-      const obj = objects.get(name);
-      return { fetch: (input, init) => obj.fetch(new Request(input, init)) };
+      const { obj, sockets } = objects.get(name);
+      return { fetch: (input, init) => obj.fetch(new Request(input, init)), sockets };
     },
   };
 }

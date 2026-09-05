@@ -3,6 +3,12 @@ import assert from "node:assert/strict";
 import { __testables as W } from "../src/_worker.js";
 import { makeEnv, ctxFor, manifestOf, remember, sha, liveNow, unitsNamespace, ADA, ADA_MEMBER, VERA, cookieFor } from "./fixtures/unit-env.mjs";
 
+// Node has no WebSocketPair; the shim records the server half so a test can see it accepted.
+globalThis.WebSocketPair = globalThis.WebSocketPair || function WebSocketPair() {
+  const mk = () => ({ attachment: null, serializeAttachment(a) { this.attachment = a; }, deserializeAttachment() { return this.attachment; }, send() {}, close() {} });
+  this[0] = mk(); this[1] = mk();
+};
+
 let n = 0;
 const tenant = () => `unit-api-${++n}`;
 const U = "/checkout/flow/";
@@ -656,4 +662,20 @@ test("a stale hint is corrected on read: the objects are the truth", async () =>
   assert.deepEqual(r.body.units, {});
   assert.deepEqual(JSON.parse(await env.COMMENTS.get("drafts")), { "not a unit": { n: 1, at: "2026-09-01T00:00:00.000Z" } },
     "rows the objects deny are dropped; a row that is not even a unit path is never asked about and left for the operator to see");
+});
+
+test("the socket verb forwards the upgrade to the unit's object with the draft named", async () => {
+  const { ctx, env } = await setup();
+  const o = (await json(await call(ctx, env, "open", { unit: U }))).body;
+  const url = `https://x.test/__unit/socket?unit=${encodeURIComponent(U)}&draft=${o.draftId}`;
+  await W.unitApi(ctx, new Request(url, { headers: { Authorization: "Bearer tok", Upgrade: "websocket" } }), new URL(url), env).catch(() => null);
+  const sockets = env.UNITS.get(env.UNITS.idFromName(`${ctx.tenantId}:${U}`)).sockets;
+  assert.equal(sockets.length, 1, "the object accepted the socket");
+  assert.equal(sockets[0].deserializeAttachment().draft, o.draftId);
+  const bad = `https://x.test/__unit/socket?unit=${encodeURIComponent(U)}&draft=nope`;
+  const res = await W.unitApi(ctx, new Request(bad, { headers: { Authorization: "Bearer tok", Upgrade: "websocket" } }), new URL(bad), env);
+  assert.equal(res.status, 400);
+  assert.equal(sockets.length, 1, "a bad id never reaches the object");
+  const plain = await W.unitApi(ctx, new Request(url, { headers: { Authorization: "Bearer tok" } }), new URL(url), env);
+  assert.equal(plain.status, 426, "without an Upgrade the object says so");
 });

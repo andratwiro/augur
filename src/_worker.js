@@ -5302,6 +5302,15 @@ async function unitApi(tctx, request, url, env) {
     if (isReservedUnitFolder(unit)) return jsonResponse({ error: "bad-unit", reason: "reserved-folder" }, 400);
   }
   const stub = unitStub(env, tctx.tenantId, unit);
+  // A live tab's subscription. The Upgrade rides through to the object with the caller's
+  // headers intact — the object accepts it or answers 426 — and the draft id is checked
+  // here so a malformed one never reaches an object. Nothing else on this path is needed
+  // for a socket: it reads no table and writes nothing.
+  if (request.method === "GET" && verb === "socket") {
+    const draft = url.searchParams.get("draft") || "";
+    if (draft && !DRAFT_ID_RE.test(draft)) return jsonResponse({ error: "bad-draft" }, 400);
+    return stub.fetch(new Request(`https://unit/socket${draft ? `?draft=${draft}` : ""}`, request));
+  }
   const liveTable = unitTable((live && live.files) || {}, unit);
   const synced = await unitCall(stub, "/sync-main", { workspace: tctx.tenantId, unit, table: liveTable, at: now });
   if (synced.status !== 200) return jsonResponse({ error: "unit-unavailable" }, 503);
