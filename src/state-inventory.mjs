@@ -129,7 +129,7 @@ export const STATE_INVENTORY = Object.freeze([
   },
   {
     id: "drafts", store: "kv", kind: "key", to: "drop",
-    why: "The open-drafts hint: one row per unit saying how many drafts its object reports open, written after open, land and discard so the gallery knows which unit objects to ask (`draftsIndexApi` in src/_worker.js) and asks no others. Never the truth — every read re-checks the object and drops a row it contradicts. DROPPED on a copy because the unit objects it points at do not travel (see `/__unit/`), so a carried row would name drafts the destination cannot serve; the first open on the new home writes a true one.",
+    why: "The open-drafts hint: one row per unit saying how many drafts its object reports open, written after open, land and discard so the gallery knows which unit objects to ask (`draftsIndexApi` in src/_worker.js) and asks no others. Transient by construction and recreated by the next open, land or discard on that unit; never the truth — every read re-checks the object and drops a row it contradicts. DROPPED on a copy because the unit objects it points at do not travel (see `/__unit/`), so a carried row would name drafts the destination cannot serve; the first open on the new home writes a true one.",
   },
   {
     id: "pt:view", store: "kv", kind: "key", to: "workspace",

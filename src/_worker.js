@@ -4163,7 +4163,7 @@ function applyDerivedRouting(manifests) {
 // code in another space's prototypes — which is what this guard is for.
 // Mirrors ENGINE_CHROME in build.js; keep the two in step.
 const ENGINE_CHROME_PATHS = Object.freeze([
-  "/fonts/", "/pitis/", "/__review/", "/__canvas/", "/admin", "/changelog",
+  "/fonts/", "/pitis/", "/__review/", "/__canvas/", "/__drafts/", "/admin", "/changelog",
   "/piti.js", "/404.html", "/manifest.webmanifest", "/sw.js",
   "/augur-eye.svg", "/augur-icon-192.png", "/augur-icon-512.png", "/augur-mark.png",
 ]);
@@ -7236,6 +7236,43 @@ async function composeChrome(tctx, res, url) {
   headers.delete("Content-Length");
   headers.delete("ETag");
   return new Response(html, { status: res.status, statusText: res.statusText, headers });
+}
+
+// ---- The draft bar (drafts that land, §5) -------------------------------------
+// A prototype is raw HTML from a space and carries no chrome; a draft has no build step
+// that could bake one in. So a member looking at a unit's page — main or a draft address —
+// gets ONE script tag and one line of data appended at serve time, and the script does the
+// rest (src/drafts/drafts.js). An anonymous visitor on a public prototype gets the bytes as
+// published: the bar names people, and a stranger is told nothing.
+const DRAFT_UI_SRC = "/__drafts/drafts.js";
+function draftUiBoot(tctx, url, me, spaceId) {
+  let decoded;
+  try { decoded = decodeURIComponent(url.pathname); } catch (e) { return null; }
+  const d = splitDraftPath(decoded);
+  const unit = d ? d.unit : unitOfPath(decoded, new Set(tctx.PUBLIC_PREFIXES || []));
+  if (!unit) return null;
+  const role = me ? (spaceId ? roleIn(me, spaceId) : roleOf(me)) : "admin";
+  return { unit, draft: d ? d.id : null, me: { id: me ? personId(me.email) : "local", role } };
+}
+async function withDraftUi(tctx, res, url, me, env) {
+  if (!res || res.status !== 200 || !unitNamespace(env)) return res;
+  const ct = res.headers.get("Content-Type") || "";
+  if (!ct.includes("text/html") || url.searchParams.has("raw")) return res;
+  if (tctx.USERS.length && !me) return res;
+  const boot = draftUiBoot(tctx, url, me, defaultSpaceIdFromCtx(tctx));
+  if (!boot) return res;
+  const tag = `<script>window.__augurDraft=${JSON.stringify(boot).replace(/</g, "\\u003c")}</script>`
+    + `<script defer src="${DRAFT_UI_SRC}"></script>`;
+  let html = await res.text();
+  html = /<\/body>/i.test(html) ? html.replace(/<\/body>/i, tag + "</body>") : html + tag;
+  const headers = new Headers(res.headers);
+  headers.delete("Content-Length");
+  headers.delete("ETag");
+  return new Response(html, { status: res.status, statusText: res.statusText, headers });
+}
+/** A content response, dressed: the live-reload poll, the current chrome, the draft bar, the cache policy. */
+async function serveContent(tctx, asset, url, me, env) {
+  return withAssetCache(await withDraftUi(tctx, await composeChrome(tctx, withLiveReload(tctx, asset, url), url), url, me, env), url);
 }
 
 // Test seam: loadConfig fills the chrome pointer, the workspace list and the runtime-
@@ -12345,7 +12382,7 @@ async function handleRequest(request, env, ctx, url, trace) {
       }
       const asset = await assetFetch(tctx.tenantId, env, request);
       if (asset.status === 404) return notFoundResponse(tctx);
-      return withAssetCache(await composeChrome(tctx, withLiveReload(tctx, asset, url), url), url);
+      return serveContent(tctx, asset, url, me, env);
     }
 
     // Published prototypes are public — never gated, regardless of the cookie.
@@ -12354,7 +12391,7 @@ async function handleRequest(request, env, ctx, url, trace) {
     if (isPublicPath(tctx, url.pathname)) {
       const asset = await assetFetch(tctx.tenantId, env, request);
       if (asset.status === 404) return notFoundResponse(tctx);
-      const res = withAssetCache(await composeChrome(tctx, withLiveReload(tctx, asset, url), url), url);
+      const res = await serveContent(tctx, asset, url, me, env);
       const out = new Response(res.body, res);
       out.headers.set("X-Robots-Tag", "noindex, nofollow, noarchive");
       return out;
@@ -12385,7 +12422,7 @@ async function handleRequest(request, env, ctx, url, trace) {
         if (virt) return virt;
         return notFoundResponse(tctx);
       }
-      return withAssetCache(await composeChrome(tctx, withLiveReload(tctx, asset, url), url), url);
+      return serveContent(tctx, asset, url, me, env);
     }
 
     // Created canvas boards are public like published prototypes — same obscure
@@ -12470,7 +12507,7 @@ export const __testables = Object.freeze({
   doorFacts, doorText, wantsMachineDoor, gateResponse, DOOR_DOCS, DOOR_WELL_KNOWN,
   resumeAfterDormancy,
   PITI_VIEW_KEY, PITI_REMARKS_KEY,
-  publishAuthDetailed, unitApi, unitCaller, personFace, publishRefusalBody, splitDraftPath,
+  publishAuthDetailed, unitApi, unitCaller, personFace, withDraftUi, draftUiBoot, isEngineChrome, publishRefusalBody, splitDraftPath,
   adminStorageApi,
   adminCustomDomainApi,
   isPrefixBacked, backedPublicPrefixes,
