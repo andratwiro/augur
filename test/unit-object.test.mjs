@@ -305,3 +305,75 @@ test("an empty draft on an empty unit still lands, because it takes nothing down
   const l = await call(obj, "/land", { draftId: o.draftId, baseRevision: o.baseRevision, at: later(1) });
   assert.equal(l.status, 200, JSON.stringify(l.body));
 });
+
+// ── live tabs ─────────────────────────────────────────────────────────────────
+// Node has no WebSocketPair and cannot build a 101; the shim records what the object did
+// with the server half, and the tests assert on that (the same approach as room-tickets).
+globalThis.WebSocketPair = globalThis.WebSocketPair || function WebSocketPair() {
+  const mk = () => ({
+    sent: [], attachment: null, closed: false,
+    serializeAttachment(a) { this.attachment = a; },
+    deserializeAttachment() { return this.attachment; },
+    send(m) { this.sent.push(m); },
+    close() { this.closed = true; },
+  });
+  this[0] = mk(); this[1] = mk();
+};
+function socketObject() {
+  const db = new DatabaseSync(":memory:");
+  const sockets = [];
+  const ctx = {
+    storage: { sql: sqlHandle(db) }, blockConcurrencyWhile: async (f) => f(),
+    acceptWebSocket: (ws) => sockets.push(ws), getWebSockets: () => sockets,
+  };
+  return { obj: new UnitObject(ctx, {}), sockets };
+}
+const upgrade = (query) => new Request(`https://unit/socket${query}`, { headers: { Upgrade: "websocket" } });
+const events = (ws) => ws.sent.filter((m) => m !== "pong").map((m) => JSON.parse(m)).map((m) => [m.t, m.draftId || null, m.revision || null]);
+
+test("a socket is accepted with its draft in the attachment; a plain GET is told to upgrade", async () => {
+  const { obj, sockets } = socketObject();
+  assert.equal((await obj.fetch(new Request("https://unit/socket?draft=k7f3q1"))).status, 426);
+  assert.equal((await obj.fetch(upgrade("?draft=TOOLONG"))).status, 400);
+  await obj.fetch(upgrade("?draft=k7f3q1")).catch(() => null); // Node cannot represent the 101
+  assert.equal(sockets.length, 1);
+  assert.equal(sockets[0].deserializeAttachment().draft, "k7f3q1");
+  await obj.fetch(upgrade("")).catch(() => null);
+  assert.equal(sockets[1].deserializeAttachment().draft, null, "a main tab names no draft");
+});
+
+test("open, save, landing and discard each reach every open socket, in order", async () => {
+  const { obj, sockets } = socketObject();
+  await call(obj, "/sync-main", { workspace: "acme", unit: U, table: main1, at: T0 });
+  await obj.fetch(upgrade("?draft=zzzzzz")).catch(() => null);
+  await obj.fetch(upgrade("")).catch(() => null);
+  const o = (await call(obj, "/open", { owner: "p1", session: "s", at: T0 })).body;
+  const s = await call(obj, "/save", { draftId: o.draftId, draftRevision: 0, at: later(1),
+    changes: [{ path: `${U}index.html`, h: "b".repeat(64), ct: "text/html", s: 11, baseHash: "a".repeat(64) }] });
+  assert.equal(s.status, 200);
+  const l = await call(obj, "/land", { draftId: o.draftId, baseRevision: 1, at: later(2) });
+  assert.equal(l.status, 200);
+  assert.equal((await call(obj, "/landed", { lease: l.body.lease, draftId: o.draftId, by: "p1", session: "s", at: later(3) })).status, 200);
+  const o2 = (await call(obj, "/open", { owner: "p2", session: "t", at: later(4) })).body;
+  assert.equal((await call(obj, "/discard", { draftId: o2.draftId, at: later(5) })).status, 200);
+  const want = [["open", o.draftId, null], ["save", o.draftId, 1], ["land", o.draftId, 2], ["open", o2.draftId, null], ["discard", o2.draftId, null]];
+  assert.deepEqual(events(sockets[0]), want, "the draft tab hears everything");
+  assert.deepEqual(events(sockets[1]), want, "so does the main tab; which to act on is the client's rule");
+});
+
+test("a refused verb reaches nobody, a ping is answered, and a dead socket is closed without failing the verb", async () => {
+  const { obj, sockets } = socketObject();
+  await call(obj, "/sync-main", { workspace: "acme", unit: U, table: main1, at: T0 });
+  await obj.fetch(upgrade("")).catch(() => null);
+  await obj.fetch(upgrade("")).catch(() => null);
+  const o = (await call(obj, "/open", { owner: "p1", session: "s", at: T0 })).body;
+  assert.equal((await call(obj, "/save", { draftId: o.draftId, draftRevision: 7, changes: [], at: later(1) })).status, 409);
+  assert.deepEqual(events(sockets[0]), [["open", o.draftId, null]], "the refused save was not announced");
+  obj.webSocketMessage(sockets[1], "ping");
+  assert.equal(sockets[1].sent[sockets[1].sent.length - 1], "pong");
+  obj.webSocketMessage(sockets[1], "{\"t\":\"anything\"}"); // ignored, never thrown
+  sockets[0].send = () => { throw new Error("gone"); };
+  assert.equal((await call(obj, "/save", { draftId: o.draftId, draftRevision: 0, changes: [], at: later(2) })).status, 200);
+  assert.equal(sockets[0].closed, true, "a socket that cannot be sent to is closed");
+  assert.equal(events(sockets[1]).length, 2, "the live one still heard the save");
+});

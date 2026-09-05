@@ -16,7 +16,7 @@
 // worker that dies between the two leaves a lease that simply expires — nothing depends on
 // it being released, and `abandon-land` is a courtesy.
 import {
-  newDraftId, unitTable, sameTable, applyChanges, tableDelta, presenceOf,
+  newDraftId, unitTable, sameTable, applyChanges, tableDelta, presenceOf, DRAFT_ID_RE,
 } from "./unit-core.mjs";
 
 export const LAND_LEASE_MS = 10_000;
@@ -255,6 +255,37 @@ export class UnitObject {
     };
   }
 
+  // ── live tabs ─────────────────────────────────────────────────────────────
+  // One socket per open tab, accepted with the Hibernation API so an idle unit with tabs
+  // on it costs nothing. A SOCKET CARRIES NO AUTHORITY: the worker authenticated the
+  // person before forwarding the Upgrade, and every message sent here is a fact any member
+  // may read anyway — a draft saved, a landing happened. Nothing about a socket is stored
+  // beyond its attachment, nothing waits for one, and a verb's answer never depends on a
+  // send having worked: `emit` is fire-and-forget and closes what it cannot reach.
+  socket(request, url) {
+    if ((request.headers.get("Upgrade") || "").toLowerCase() !== "websocket") return json({ error: "expected-websocket" }, 426);
+    const draft = url.searchParams.get("draft") || null;
+    if (draft && !DRAFT_ID_RE.test(draft)) return json({ error: "bad-draft" }, 400);
+    if (typeof WebSocketPair !== "function" || !this.ctx.acceptWebSocket) return json({ error: "sockets-unavailable" }, 501);
+    const pair = new WebSocketPair();
+    const [client, server] = Object.values(pair);
+    this.ctx.acceptWebSocket(server);
+    server.serializeAttachment({ draft, since: Date.now() });
+    return new Response(null, { status: 101, webSocket: client });
+  }
+  emit(msg) {
+    if (!this.ctx.getWebSockets) return;
+    const raw = JSON.stringify(msg);
+    for (const ws of this.ctx.getWebSockets()) {
+      try { ws.send(raw); } catch (e) { try { ws.close(1011, "send failed"); } catch (e2) { /* already gone */ } }
+    }
+  }
+  webSocketMessage(ws, raw) {
+    if (raw === "ping") { try { ws.send("pong"); } catch (e) { /* closing */ } }
+  }
+  webSocketClose() { /* the runtime owns the socket list; nothing to clean up */ }
+  webSocketError() { /* same */ }
+
   // ── router ────────────────────────────────────────────────────────────────
   async fetch(request) {
     const url = new URL(request.url);
@@ -269,6 +300,7 @@ export class UnitObject {
       await this.init(body.workspace, body.unit);
       return json(this.syncMain({ table: unitTable(body.table || {}, body.unit || ""), at: body.at || new Date().toISOString() }));
     }
+    if (route === "/socket") return this.socket(request, url);
     await this.init(null, null);
     if (request.method === "GET") {
       if (route === "/presence") return json({ drafts: presenceOf(this.openDrafts(), Date.parse(url.searchParams.get("at") || "") || Date.now()) });
@@ -295,6 +327,12 @@ export class UnitObject {
     };
     if (!verbs[route]) return json({ error: "unknown-route" }, 404);
     const [status, out] = verbs[route]();
+    if (status === 200) {
+      if (route === "/open") this.emit({ t: "open", draftId: out.draftId, at });
+      else if (route === "/save") this.emit({ t: "save", draftId: body.draftId, revision: out.draftRevision, at });
+      else if (route === "/landed") this.emit({ t: "land", revision: out.revision, draftId: body.draftId || null, at });
+      else if (route === "/discard") this.emit({ t: "discard", draftId: body.draftId, at });
+    }
     return json(out, status);
   }
 }
