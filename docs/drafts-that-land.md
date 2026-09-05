@@ -134,8 +134,12 @@ inside one method. There is no second consistency domain.
 
 ### 6.2 Endpoints
 
-All under `/__unit/<unit path>/…`, bearer auth with the existing person token, session
-label in a header. Space-scoped publish tokens map onto the units under that space.
+All under `/__unit/<verb>`, the unit named in the body (`unit`) or the query (`?unit=`).
+Two credentials open the same verbs: a bearer publish token (the CLI, session label in the
+`X-Augur-Session` header) or the member's session cookie (the browser, session `browser`).
+Space-scoped publish tokens map onto the units under that space. A viewer may read and may
+not write. A landing made from the browser is recorded exactly as one made from the
+terminal: same person id, same history row.
 
 | Verb | Body | Answer |
 | --- | --- | --- |
@@ -147,6 +151,9 @@ label in a header. Space-scoped publish tokens map onto the units under that spa
 | `history` | – | landings, newest first |
 | `restore` | `{revision, note}` | a landing whose table is that revision's |
 | `presence` | – | open drafts with owner, session, last save |
+| `drafts` (GET, names no unit) | – | `{units: {"<unit>": [presence rows with `name`, `initials`, `color`]}}` — every open draft in the workspace; what the gallery's chips read |
+| `draft` (GET) | `?draft=<id>` | one draft's card: owner, session, base and draft revision, file count — never the table |
+| `socket` (GET, `Upgrade: websocket`) | `?draft=<id>` optional | a live tab's subscription; the object sends `{t: open\|save\|land\|discard, draftId, revision?, at}` for every verb that succeeded |
 | `delete`, `rename` | the existing confirmation shape | – |
 
 A save's `baseHash` per file is the hash the draft last recorded for it. Inside a draft
