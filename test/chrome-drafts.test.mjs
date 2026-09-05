@@ -36,3 +36,25 @@ test("the bar script ships at /__drafts/drafts.js, byte-identical to its source,
     assert.ok(src.includes(must), `drafts.js speaks ${must}`);
   }
 });
+
+test("the chrome bundle carries the chips: one fetch of /__unit/drafts, a link per draft, a count per folder", () => {
+  const js = chromeJs();
+  assert.ok(js.includes("fetch('/__unit/drafts'"), "the chips ask the workspace-wide index");
+  assert.ok(js.includes("window.__gvDraftsWire = wire"), "re-wirable like marks and faces");
+  assert.ok(js.includes("'draft-chip'"), "the chip class");
+  assert.ok(js.includes("draft-chip--count"), "the folder count");
+  assert.ok(js.includes("window.__gvFacesWire()"), "chips get faces through the shared resolver");
+  assert.ok(js.indexOf("fetch('/__unit/drafts'") > js.indexOf("window.__gvFacesWire = wire"), "faces are defined before the chips call them");
+  const css = chromeCss();
+  for (const sel of [".draft-chips {", ".draft-chip {", ".draft-chip.is-idle", ".draft-chip__who", ".draft-chip__text", ".draft-chip--count"]) {
+    assert.ok(css.includes(sel), `chrome css has ${sel}`);
+  }
+});
+
+test("sw.js forgets a URL when a page asks, and never caches a draft address", () => {
+  const sw = readFileSync(path.join(dist, "sw.js"), "utf8");
+  assert.ok(sw.includes('addEventListener("message"'), "the evict handler is wired");
+  assert.ok(sw.includes('d.t !== "evict"'), "it answers only evict");
+  assert.ok(sw.includes("ignoreSearch: true"), "a URL is forgotten whatever its query");
+  assert.ok(sw.includes("DRAFT_SEGMENT_RE"), "the tested decision logic rides along (Task 1)");
+});

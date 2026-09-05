@@ -42,7 +42,7 @@
 | `src/_worker.js` (modify) | `unitCaller` (bearer **or** session cookie, viewer refused on writes); `personFace`/`decorateDrafts`/`decorateLandings`; verbs `drafts`, `draft`, `socket`; the `drafts` overlay family, `noteUnitDrafts`, `draftsIndexApi`; `withDraftUi` + `serveContent`; `/__drafts/` in `ENGINE_CHROME_PATHS`. |
 | `src/state-inventory.mjs` (modify) | The `drafts` key entry. |
 | `src/drafts/drafts.js` (new) | The draft bar: presence, Land, Discard, History + Restore, the socket, SW eviction. Self-contained, no chrome dependency. |
-| `build.js` (modify) | Copy `src/drafts/drafts.js` → `dist/__drafts/drafts.js`; `ENGINE_CHROME` entry; `DRAFTS_JS` + `.draft-chip` CSS in the chrome bundle; `window.__gvFaceWire` export; the SW `evict` message handler. |
+| `build.js` (modify) | Copy `src/drafts/drafts.js` → `dist/__drafts/drafts.js`; `ENGINE_CHROME` entry; `DRAFTS_JS` + `.draft-chip` CSS in the chrome bundle; `window.__gvFacesWire` export; the SW `evict` message handler. |
 | `docs/drafts-that-land.md` (modify) | §6.2: the real route shape, the cookie credential, the three new verbs. |
 | `test/sw-logic.test.mjs`, `test/unit-object.test.mjs`, `test/unit-api.test.mjs` (modify) | One test per behaviour above. |
 | `test/unit-ui.test.mjs`, `test/chrome-drafts.test.mjs`, `test/drafts-browser-drill.test.mjs` (new) | Bar injection; bundle/dist/sw contents; the member's browser over the real worker. |
@@ -1515,7 +1515,7 @@ Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>"
 - Test: `test/chrome-drafts.test.mjs`
 
 **Interfaces:**
-- Consumes: `GET /__unit/drafts` → `{units: {unit: [{id, owner, session, active, lastSaveAt, openedAt, name, initials, color}]}}`; `window.__gvFaceWire()`.
+- Consumes: `GET /__unit/drafts` → `{units: {unit: [{id, owner, session, active, lastSaveAt, openedAt, name, initials, color}]}}`; `window.__gvFacesWire()`.
 - Produces: `.draft-chips` host + one `.draft-chip` link per open draft on a prototype card (`.card-proto`), one `.draft-chip--count` on a folder card (`.card-opp`) summing drafts beneath it; `window.__gvDraftsWire`. In `sw.js`: a `message` handler for `{t:"evict", url}` that deletes that URL from the cache and answers `{ok:true}` on the reply port.
 
 - [ ] **Step 1: Write the failing tests**
@@ -1529,9 +1529,9 @@ test("the chrome bundle carries the chips: one fetch of /__unit/drafts, a link p
   assert.ok(js.includes("window.__gvDraftsWire = wire"), "re-wirable like marks and faces");
   assert.ok(js.includes("'draft-chip'"), "the chip class");
   assert.ok(js.includes("draft-chip--count"), "the folder count");
-  assert.ok(js.includes("window.__gvFaceWire"), "chips get faces through the shared resolver");
+  assert.ok(js.includes("window.__gvFacesWire"), "chips get faces through the shared resolver");
   assert.ok(/window\.__gvFaceWire\s*=\s*wire/.test(js), "FACE_JS exposes its wire()");
-  assert.ok(js.indexOf("fetch('/__unit/drafts'") > js.indexOf("window.__gvFaceWire = wire"), "faces are defined before the chips call them");
+  assert.ok(js.indexOf("fetch('/__unit/drafts'") > js.indexOf("window.__gvFacesWire = wire"), "faces are defined before the chips call them");
   const css = chromeCss();
   for (const sel of [".draft-chips {", ".draft-chip {", ".draft-chip.is-idle", ".draft-chip__who", ".draft-chip__text", ".draft-chip--count"]) {
     assert.ok(css.includes(sel), `chrome css has ${sel}`);
@@ -1637,7 +1637,7 @@ const DRAFTS_JS = `
           units.forEach(function(u){ if(u.indexOf(p) === 0) n += d.units[u].length; });
           if(n) count(card, n);
         });
-        if(window.__gvFaceWire) window.__gvFaceWire();
+        if(window.__gvFacesWire) window.__gvFacesWire();
       })
       .catch(function(){ /* a chip may never be the reason a gallery looks broken */ });
   }
@@ -1661,11 +1661,11 @@ const CHROME_JS_BODY = [
 In `FACE_JS`, find its final `wire();` call (end of the IIFE) and make it:
 
 ```js
-  window.__gvFaceWire = wire;
+  window.__gvFacesWire = wire;
   wire();
 ```
 
-(If `FACE_JS` already exposes `window.__gvFaceWire`, leave it.)
+(If `FACE_JS` already exposes `window.__gvFacesWire`, leave it.)
 
 In `PAGE_CSS`, directly after the `.mark-badge__text { … }` rule, add:
 

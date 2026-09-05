@@ -1897,6 +1897,29 @@ const PAGE_CSS = `
       background: var(--faint);
     }
     .mark-badge__text { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    /* Draft chips — one per open draft on a prototype card, a count on a folder card.
+       Bottom-left so they never fight the mark badge (top-right) or the status chip. */
+    .draft-chips {
+      position: absolute; left: 8px; bottom: 8px; z-index: 3;
+      display: flex; flex-direction: column; gap: 4px; align-items: flex-start;
+      max-width: calc(100% - 16px);
+    }
+    .draft-chip {
+      display: inline-flex; align-items: center; gap: 6px; max-width: 100%;
+      padding: 3px 9px 3px 4px; border-radius: 999px; text-decoration: none;
+      background: #fff; box-shadow: 0 2px 8px -1px rgba(16,24,40,0.32);
+      font-size: 11.5px; font-weight: 600; letter-spacing: -0.005em; color: #101828;
+    }
+    .draft-chip:hover { box-shadow: 0 4px 12px -2px rgba(16,24,40,0.4); }
+    .draft-chip.is-idle { opacity: .72; }
+    .draft-chip__who {
+      flex: none; width: 16px; height: 16px; border-radius: 50%;
+      display: inline-grid; place-items: center;
+      font-size: 8px; font-weight: 700; letter-spacing: 0; color: #fff;
+      background-color: var(--faint); background-position: center;
+    }
+    .draft-chip__text { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .draft-chip--count { pointer-events: none; padding-left: 9px; }
     /* Status picker — opens on hover/click so a state is CHOSEN, not cycled into
        (each cycle step used to save and re-rank the card). Light, unlike the dark
        right-click menu: the state glyphs are the same ones on the cards, and they
@@ -3145,6 +3168,96 @@ const MARKS_JS = `
   }
   window.__gvMarksWire = wire;
   wire();
+})();`;
+
+// Draft chips — the gallery's face of drafts that land (docs/drafts-that-land.md §5).
+//
+// One fetch per page with cards, answered by the unit objects through the open-drafts hint
+// (`GET /__unit/drafts`); then one chip per open draft on its prototype's card, and one
+// count on a folder card for the drafts beneath it. A CHIP IS A LINK to the draft address:
+// unlike a working mark, a draft is somewhere a person can go and look. Presence is derived
+// server-side (active within five minutes) — an idle chip is dimmed, never removed, because
+// the draft is still there. Re-wired on visibility and once a minute; the socket that makes
+// a unit's own page live is not on the gallery, and does not need to be.
+const DRAFTS_JS = `
+(function(){
+  function norm(p){
+    var s = String(p == null ? '' : p).trim();
+    if(!s) return '';
+    try { s = decodeURIComponent(s); } catch(e){}
+    s = s.replace(/^\\.\\//, '').replace(/\\/{2,}/g, '/');
+    if(!s || s === '/') return '/';
+    return '/' + s.replace(/^\\/+/, '').replace(/\\/+$/, '') + '/';
+  }
+  function pathOf(card){
+    var a = card.querySelector('a.preview-link[href], a[href]');
+    if(!a) return '';
+    try { return norm(new URL(a.getAttribute('href'), location.href).pathname); } catch(e){ return ''; }
+  }
+  function when(iso){
+    var ms = Date.now() - Date.parse(iso || '');
+    if(!(ms >= 0)) return '';
+    var m = Math.round(ms / 60000);
+    return m < 1 ? 'saved just now' : m < 60 ? 'saved ' + m + ' min ago' : 'saved ' + Math.round(m / 60) + ' h ago';
+  }
+  function hostOf(card){
+    var pv = card.querySelector('.preview') || card;
+    var host = pv.querySelector(':scope > .draft-chips');
+    if(!host){ host = document.createElement('span'); host.className = 'draft-chips'; pv.appendChild(host); }
+    return host;
+  }
+  function chip(card, d, unit){
+    var a = document.createElement('a');
+    a.className = 'draft-chip' + (d.active ? '' : ' is-idle');
+    a.href = unit + '@' + d.id + '/';
+    a.title = (d.name || 'Someone') + (d.session ? ' \\u00b7 ' + d.session : '') + ' \\u2014 ' + when(d.lastSaveAt || d.openedAt);
+    var who = document.createElement('span');
+    who.className = 'draft-chip__who';
+    who.textContent = d.initials || '?';
+    if(d.color) who.style.backgroundColor = d.color;
+    if(d.owner) who.setAttribute('data-person', d.owner);
+    var t = document.createElement('span');
+    t.className = 'draft-chip__text';
+    t.textContent = d.session || d.name || 'draft';
+    a.appendChild(who); a.appendChild(t);
+    hostOf(card).appendChild(a);
+  }
+  function count(card, n){
+    var s = document.createElement('span');
+    s.className = 'draft-chip draft-chip--count';
+    var t = document.createElement('span');
+    t.className = 'draft-chip__text';
+    t.textContent = n + (n === 1 ? ' draft open' : ' drafts open');
+    s.appendChild(t);
+    hostOf(card).appendChild(s);
+  }
+  function clear(){ [].forEach.call(document.querySelectorAll('.draft-chips'), function(h){ h.remove(); }); }
+  function wire(){
+    var cards = [].slice.call(document.querySelectorAll('.card-proto, .card-opp'));
+    if(!cards.length) return;
+    fetch('/__unit/drafts', { credentials: 'same-origin', headers: { Accept: 'application/json' } })
+      .then(function(r){ return r.ok ? r.json() : null; })
+      .then(function(d){
+        clear();
+        if(!d || !d.units) return;
+        var units = Object.keys(d.units);
+        if(!units.length) return;
+        cards.forEach(function(card){
+          var p = pathOf(card);
+          if(!p) return;
+          if(d.units[p]){ d.units[p].forEach(function(dr){ chip(card, dr, p); }); return; }
+          var n = 0;
+          units.forEach(function(u){ if(u.indexOf(p) === 0) n += d.units[u].length; });
+          if(n) count(card, n);
+        });
+        if(window.__gvFacesWire) window.__gvFacesWire();
+      })
+      .catch(function(){ /* a chip may never be the reason a gallery looks broken */ });
+  }
+  window.__gvDraftsWire = wire;
+  wire();
+  setInterval(function(){ if(!document.hidden) wire(); }, 60000);
+  document.addEventListener('visibilitychange', function(){ if(!document.hidden) wire(); });
 })();`;
 
 const IC_PLUS = ic(`<path d="M12 5v14"/><path d="M5 12h14"/>`); // plus
@@ -6065,7 +6178,7 @@ const CHROME_CSS_BODY = `${FONT_CSS}${PAGE_CSS}${NAV_CSS}${TABBAR_CSS}`;
 const CHROME_JS_BODY = [
   CAROUSEL_JS, chromeScript(), STATUS_JS, CURRENCY_JS, COMP_STATUS_JS, CARD_MENU_JS,
   PINS_JS, PROFILE_JS, SETTINGS_JS, NEWCANVAS_JS, SPACE_JS, WORKSPACES_JS, TABBAR_JS(),
-  RESEARCH_JS, FACE_JS, MARKS_JS,
+  RESEARCH_JS, FACE_JS, MARKS_JS, DRAFTS_JS,
 ].join("\n;\n") + "\n;\n" +
   // Register the service worker (P0), shipped inside the already-cached bundle so
   // it costs pages zero inline bytes.
@@ -6092,6 +6205,16 @@ self.addEventListener("activate", (e) => e.waitUntil((async () => {
   for (const k of await caches.keys()) if (k !== CACHE) await caches.delete(k);
   await self.clients.claim();
 })()));
+// A page that has just learned its unit landed asks for its own cached copy to go before it
+// reloads — stale-while-revalidate would otherwise paint the previous landing first. The
+// reply port lets the page wait for the delete rather than guess at it.
+self.addEventListener("message", (e) => {
+  const d = e.data;
+  if (!d || d.t !== "evict" || typeof d.url !== "string") return;
+  const reply = () => { if (e.ports && e.ports[0]) e.ports[0].postMessage({ ok: true }); };
+  const work = caches.open(CACHE).then((c) => c.delete(d.url, { ignoreSearch: true })).then(reply, reply);
+  if (e.waitUntil) e.waitUntil(work);
+});
 self.addEventListener("fetch", (e) => {
   const req = e.request;
   let url; try { url = new URL(req.url); } catch { return; }
