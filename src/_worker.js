@@ -5177,6 +5177,34 @@ async function writeUnitLanding(tctx, env, spaceId, unit, table, changed, who, n
   return { error: "manifest-contended", status: 503 };
 }
 
+/**
+ * Who is calling /__unit — from a bearer token (the CLI) or from a session cookie (a
+ * member's browser). ONE answer for both, so a landing made from the draft bar is recorded
+ * exactly as one made from the terminal: same person id, same history row. A viewer may
+ * read — presence, history, the draft card, the socket — and may not write; a signed-in
+ * non-member gets the 404 the gate gives them; an instance with no roster has one
+ * operator, and this is them.
+ */
+async function unitCaller(tctx, request, env, spaceId) {
+  const session = shortText(request.headers.get("X-Augur-Session"), 40);
+  const a = await publishAuthDetailed(tctx, request, env, spaceId, false);
+  if (a.entry) {
+    if (capabilityRefusal(a.entry, spaceId, "commit")) {
+      return { refusal: jsonResponse({ error: "forbidden", reason: "capability-not-granted" }, 403) };
+    }
+    return { who: { personId: personId(a.entry.label || ""), label: a.entry.label || "" }, session };
+  }
+  if (a.refusal !== "no-token") return { refusal: jsonResponse(publishRefusalBody(a.refusal), 403) };
+  if (!tctx.USERS.length) return { who: { personId: "local", label: "" }, session: session || "browser" };
+  const me = await identify(request, env, tctx.USERS, { sessionKeys: tctx.SESSION_KEYS, tctx });
+  if (!me) return { refusal: jsonResponse({ error: "unauthorized" }, 401) };
+  if (!isMemberOf(me, spaceId)) return { refusal: jsonResponse({ error: "not-found" }, 404) };
+  if (request.method !== "GET" && roleIn(me, spaceId) === "viewer") {
+    return { refusal: jsonResponse({ error: "viewer-role", message: "This account can look around but not land or discard drafts." }, 403) };
+  }
+  return { who: { personId: personId(me.email), label: me.email }, session: session || "browser" };
+}
+
 async function unitApi(tctx, request, url, env) {
   const verb = url.pathname.slice(UNIT_API_PREFIX.length);
   if (!/^[a-z-]+$/.test(verb)) return jsonResponse({ error: "bad-path" }, 400);
@@ -5194,11 +5222,9 @@ async function unitApi(tctx, request, url, env) {
   if (!spaceId) return jsonResponse({ error: "no-space" }, 404);
   // Authenticate BEFORE any forced, uncached store read: an unauthenticated caller must
   // never pay for one, however many times they hit this route.
-  const a = await publishAuthDetailed(tctx, request, env, spaceId, false);
-  if (!a.entry) return jsonResponse(publishRefusalBody(a.refusal), 403);
-  if (capabilityRefusal(a.entry, spaceId, "commit")) return jsonResponse({ error: "forbidden", reason: "capability-not-granted" }, 403);
-  const who = { personId: personId(a.entry.label || ""), label: a.entry.label || "" };
-  const session = shortText(request.headers.get("X-Augur-Session"), 40);
+  const caller = await unitCaller(tctx, request, env, spaceId);
+  if (caller.refusal) return caller.refusal;
+  const { who, session } = caller;
 
   let body = {};
   if (request.method === "POST") {
@@ -12364,7 +12390,7 @@ export const __testables = Object.freeze({
   doorFacts, doorText, wantsMachineDoor, gateResponse, DOOR_DOCS, DOOR_WELL_KNOWN,
   resumeAfterDormancy,
   PITI_VIEW_KEY, PITI_REMARKS_KEY,
-  publishAuthDetailed, unitApi, publishRefusalBody, splitDraftPath,
+  publishAuthDetailed, unitApi, unitCaller, publishRefusalBody, splitDraftPath,
   adminStorageApi,
   adminCustomDomainApi,
   isPrefixBacked, backedPublicPrefixes,

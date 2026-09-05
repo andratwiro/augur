@@ -8,7 +8,17 @@ import { __testables as W } from "../../src/_worker.js";
 
 export const sha = (s) => createHash("sha256").update(s).digest("hex");
 export const ADA = { email: "ada@example.test", name: "Ada", initials: "AD", role: "editor" };
-export const ctxFor = (tenantId) => ({ ...W.applyInstance({ users: [ADA] }), tenantId });
+// Members for the browser side. `identify` compares an HMAC over the roster's secret and
+// never verifies a password, so any non-empty `passHash` makes an account a test can sign
+// in as (the same trick test/gate-rt-board.test.mjs uses).
+const HASH = "pbkdf2$100000$dGVzdHNhbHQ$dGVzdGhhc2g";
+export const ADA_MEMBER = { ...ADA, passHash: HASH };
+export const VERA = { email: "vera@example.test", name: "Vera", initials: "VE", role: "viewer", passHash: HASH };
+export const ctxFor = (tenantId, users = [ADA]) => ({ ...W.applyInstance({ users }), tenantId });
+/** The session cookie a signed-in `user` carries. */
+export async function cookieFor(env, user) {
+  return `${W.USER_COOKIE}=${user.email}.${await W.userToken(env, user, user.passHash)}`;
+}
 
 function sqlHandle(db) {
   return {

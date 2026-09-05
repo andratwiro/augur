@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { __testables as W } from "../src/_worker.js";
-import { makeEnv, ctxFor, manifestOf, remember, sha, liveNow, unitsNamespace } from "./fixtures/unit-env.mjs";
+import { makeEnv, ctxFor, manifestOf, remember, sha, liveNow, unitsNamespace, ADA, ADA_MEMBER, VERA, cookieFor } from "./fixtures/unit-env.mjs";
 
 let n = 0;
 const tenant = () => `unit-api-${++n}`;
@@ -11,7 +11,7 @@ const CSS = remember("h1{color:red}");
 
 const call = (ctx, env, verb, body, { method = "POST", session = "pass one", token = "tok" } = {}) => {
   const url = method === "GET"
-    ? `https://x.test/__unit/${verb}?unit=${encodeURIComponent(body.unit)}`
+    ? `https://x.test/__unit/${verb}?${new URLSearchParams(body)}`
     : `https://x.test/__unit/${verb}`;
   return W.unitApi(ctx, new Request(url, {
     method, headers: { Authorization: `Bearer ${token}`, "content-type": "application/json", "X-Augur-Session": session },
@@ -553,4 +553,43 @@ test("a landing recorded on the retry is a landing like any other", async () => 
   const h = await json(await call(ctx, env, "history", { unit: U }, { method: "GET" }));
   assert.deepEqual(h.body.landings.map((x) => [x.revision, x.by, x.note]),
     [[2, W.personId("ada@example.test"), "v2"], [1, "live", "adopted from live"]]);
+});
+
+// The browser side: a session cookie instead of a bearer token, the same handler.
+const browser = async (ctx, env, verb, body, cookie, method = "POST") => {
+  const url = method === "GET"
+    ? `https://x.test/__unit/${verb}?${new URLSearchParams(body)}`
+    : `https://x.test/__unit/${verb}`;
+  const headers = { "content-type": "application/json" };
+  if (cookie) headers.Cookie = cookie;
+  return json(await W.unitApi(ctx, new Request(url, { method, headers, ...(method === "GET" ? {} : { body: JSON.stringify(body) }) }), new URL(url), env));
+};
+
+test("a member's browser lands with a cookie; a viewer may look but not land; a stranger is refused", async () => {
+  const t = tenant(), ctx = ctxFor(t, [ADA_MEMBER, VERA]);
+  const env = await makeEnv({ live: manifestOf(7, { [U]: { "index.html": INDEX } }) });
+  W.__setTenantTestState({ memo: { at: Date.now(), tenantId: t } });
+  const o = (await json(await call(ctx, env, "open", { unit: U }))).body; // the CLI opens
+  assert.equal((await browser(ctx, env, "presence", { unit: U }, "", "GET")).status, 401, "no cookie, no answer");
+  const viewerLooks = await browser(ctx, env, "presence", { unit: U }, await cookieFor(env, VERA), "GET");
+  assert.equal(viewerLooks.status, 200);
+  assert.equal(viewerLooks.body.drafts.length, 1);
+  const viewerLands = await browser(ctx, env, "land", { unit: U, draftId: o.draftId, baseRevision: o.baseRevision }, await cookieFor(env, VERA));
+  assert.equal(viewerLands.status, 403);
+  assert.equal(viewerLands.body.error, "viewer-role");
+  const landed = await browser(ctx, env, "land", { unit: U, draftId: o.draftId, baseRevision: o.baseRevision, note: "from the bar" }, await cookieFor(env, ADA_MEMBER));
+  assert.equal(landed.status, 200, JSON.stringify(landed.body));
+  const h = (await json(await call(ctx, env, "history", { unit: U }, { method: "GET" }))).body;
+  assert.equal(h.landings[0].by, W.personId(ADA.email), "credited to the person behind the cookie");
+  assert.equal(h.landings[0].session, "browser");
+  assert.equal(h.landings[0].note, "from the bar");
+});
+
+test("an instance with no roster answers its operator's browser without any credential", async () => {
+  const t = tenant(), ctx = ctxFor(t, []);
+  const env = await makeEnv({ live: manifestOf(7, { [U]: { "index.html": INDEX } }) });
+  W.__setTenantTestState({ memo: { at: Date.now(), tenantId: t } });
+  const p = await browser(ctx, env, "presence", { unit: U }, "", "GET");
+  assert.equal(p.status, 200);
+  assert.deepEqual(p.body.drafts, []);
 });
