@@ -4337,7 +4337,7 @@ function resolveBundlePath(manifests, pathname) {
 // against. It is the first argument for the same reason `loadTenantContext` takes it
 // first: everything below reads one workspace's store, and a function that had to guess
 // would resolve a path against whatever the isolate happened to hold.
-async function assetFetch(tenantId, env, request) {
+async function assetFetch(tenantId, env, request, opts = {}) {
   if (!bundleMode(env)) return env.ASSETS.fetch(request);
   const url = new URL(request.url);
   // ── a draft address: the draft's table, not the manifest ─────────────────────────
@@ -4356,6 +4356,22 @@ async function assetFetch(tenantId, env, request) {
     return blobResponse(env, request, f);
   }
   const manifests = await loadManifests(tenantId, env);
+  // ── a design-system draft, across the site (`?ds=<draft>`, §5) ──────────────────
+  // A path under the workspace's declared skill folder resolves from THAT draft's table
+  // when the request carries one, so a shared change can be looked at on every prototype
+  // before it lands. Only the skill's own paths: a prototype's files never come from it,
+  // and a draft that does not hold the file falls through to main.
+  if (opts.dsDraft && DRAFT_ID_RE.test(opts.dsDraft) && decoded) {
+    const skill = Object.values(manifests)
+      .flatMap((m) => ((m && m.routing) || {}).publicSkillPrefixes || [])
+      .map(normUnit).find((p) => p && decoded.startsWith(p));
+    const stub = skill ? unitStub(env, tenantId, skill) : null;
+    if (stub) {
+      const dr = await unitCall(stub, `/draft/${opts.dsDraft}`, null, "GET");
+      const f = dr.status === 200 && dr.body.table ? dr.body.table[decoded] : null;
+      if (f) return blobResponse(env, request, f);
+    }
+  }
   const r = resolveBundlePath(manifests, url.pathname);
   if (r.redirect) return Response.redirect(new URL(r.redirect + url.search, url).toString(), 308);
   if (r.miss) return new Response("Not Found", { status: 404 });
@@ -7313,6 +7329,27 @@ async function derivedPage(tctx, env, url) {
     : null;
   if (html == null) return null;
   return new Response(html, { status: 200, headers: { "Content-Type": "text/html; charset=utf-8", "Cache-Control": ASSET_REVALIDATE } });
+}
+
+// ---- The design-system overlay cookie (`?ds=`) --------------------------------
+// `?ds=<draft>` on any page names a design-system draft to look through; the cookie keeps
+// it while the person navigates; `?ds=` with nothing drops it. A malformed id is nobody's
+// draft and touches no cookie. Members only — the branch that reads this is past the gate.
+const DS_COOKIE = "augur_ds";
+function dsOverlay(request, url) {
+  if (url.searchParams.has("ds")) {
+    const v = url.searchParams.get("ds") || "";
+    if (v === "") return { draft: null, setCookie: `${DS_COOKIE}=; Path=/; Max-Age=0; SameSite=Lax; Secure; HttpOnly` };
+    if (!DRAFT_ID_RE.test(v)) return { draft: null, setCookie: null };
+    return { draft: v, setCookie: `${DS_COOKIE}=${v}; Path=/; SameSite=Lax; Secure; HttpOnly` };
+  }
+  const c = cookieValue(request.headers.get("Cookie") || "", DS_COOKIE);
+  return { draft: c && DRAFT_ID_RE.test(c) ? c : null, setCookie: null };
+}
+function withSetCookie(res, cookie) {
+  const out = new Response(res.body, res);
+  out.headers.append("Set-Cookie", cookie);
+  return out;
 }
 
 // ---- The draft bar (drafts that land, §5) -------------------------------------
@@ -12510,17 +12547,20 @@ async function handleRequest(request, env, ctx, url, trace) {
     // Past the gate (or nothing gates the site) → serve. A 404 gets one more chance
     // as a created canvas (a KV-registered board with no repo file — see canvasesApi).
     if (authed) {
+      // A design-system draft to look through (`?ds=`), remembered in a cookie.
+      const ds = dsOverlay(request, url);
+      const stamp = (res) => (ds.setCookie ? withSetCookie(res, ds.setCookie) : res);
       // Where drafts are served, the gallery and its indexes are derived from the live
       // store rather than read from it — a landing is on them at once.
       const derived = await derivedPage(tctx, env, url);
-      if (derived) return derived.status === 308 ? derived : serveContent(tctx, derived, url, me, env);
-      const asset = await assetFetch(tctx.tenantId, env, request);
+      if (derived) return stamp(derived.status === 308 ? derived : await serveContent(tctx, derived, url, me, env));
+      const asset = await assetFetch(tctx.tenantId, env, request, { dsDraft: ds.draft });
       if (asset.status === 404) {
         const virt = await virtualCanvas(tctx, request, env, url);
-        if (virt) return virt;
-        return notFoundResponse(tctx);
+        if (virt) return stamp(virt);
+        return stamp(notFoundResponse(tctx));
       }
-      return serveContent(tctx, asset, url, me, env);
+      return stamp(await serveContent(tctx, asset, url, me, env));
     }
 
     // Created canvas boards are public like published prototypes — same obscure
@@ -12605,7 +12645,7 @@ export const __testables = Object.freeze({
   doorFacts, doorText, wantsMachineDoor, gateResponse, DOOR_DOCS, DOOR_WELL_KNOWN,
   resumeAfterDormancy,
   PITI_VIEW_KEY, PITI_REMARKS_KEY,
-  publishAuthDetailed, unitApi, unitCaller, personFace, withDraftUi, draftUiBoot, derivedPage, isEngineChrome, publishRefusalBody, splitDraftPath,
+  publishAuthDetailed, unitApi, unitCaller, personFace, withDraftUi, draftUiBoot, derivedPage, dsOverlay, isEngineChrome, publishRefusalBody, splitDraftPath,
   adminStorageApi,
   adminCustomDomainApi,
   isPrefixBacked, backedPublicPrefixes,
