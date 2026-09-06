@@ -32,9 +32,11 @@ signed in to and types the code; the token lands in `~/.config/augur/tokens.json
 `augur ship` / `augur publish` use it from then on. `publish` runs the pairing itself when
 it finds no token, so inside a workspace tree nothing has to be done first. On a workspace
 that serves drafts (`/.well-known/augur.json` says `drafts.enabled`), the everyday verbs
-are `augur open` and `augur land` instead — see [drafts.md](./drafts.md). To get the
-tree from a hostname, pair first, then `npx @augurworks/augur clone --space <id>` — it reads the
-origin from the pairing.
+are `augur open` and `augur land` instead — see [drafts.md](./drafts.md). Where drafts
+are served you need no tree at all: `augur open <opportunity>/<prototype>` fetches that one
+prototype into a folder of its own (a cold agent that cloned a large workspace first spent
+most of its first turn waiting). Elsewhere, `npx @augurworks/augur clone --space <id>` fetches
+the tree — it reads the origin from the pairing.
 
 The instance says all of this itself at `GET /llms.txt` (and as data at
 `/.well-known/augur.json`); a signed-out request for an engine path answers `401` with

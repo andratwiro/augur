@@ -9139,9 +9139,11 @@ function doorText(f) {
       + `turn, and run the same command again once they say they approved — the token is\n`
       + `collected then, for that same code. Do not poll for the approval in one turn:\n`
       + `the code lives five minutes and nobody sees it until you stop.\n\n`
-      + `With no\n`
-      + `source tree yet, \`npx @augurworks/augur clone --space ${f.workspace}\` then fetches one (it reads\n`
-      + `the origin from the pairing).\n\n`
+      + (f.drafts && f.drafts.enabled
+        ? `You need no source tree here: \`augur open <opportunity>/<prototype>\` fetches that one\n`
+          + `prototype into a folder of its own (see below). Do not clone the workspace first.\n\n`
+        : `With no source tree yet, \`npx @augurworks/augur clone --space ${f.workspace}\` then fetches\n`
+          + `one (it reads the origin from the pairing).\n\n`)
     : `Device pairing is switched off on this workspace. Ask an admin for an invite;\n`
       + `once you have signed in, \`augur login\` (email and password, meant for CI)\n`
       + `trades that for a publish token.\n\n`;

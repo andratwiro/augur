@@ -39,8 +39,28 @@ export function resolveOrigin(root = ENGINE_ROOT) {
     cwdSpaceOrigin = JSON.parse(readFileSync(path.join(process.cwd(), "space.json"), "utf8")).siteOrigin || "";
   } catch (e) {}
   return (process.env.AUGUR_ORIGIN || env.AUGUR_ORIGIN ||
-    deployConfig(root, originHost(cwdSpaceOrigin)).siteOrigin || cwdSpaceOrigin || "")
+    deployConfig(root, originHost(cwdSpaceOrigin)).siteOrigin || cwdSpaceOrigin || pairedOrigin() || "")
     .replace(/\/+$/, "");
+}
+
+/**
+ * The origin this machine last paired with, when nothing else names one. A cold agent
+ * in an empty folder has just run `augur connect --origin X` and holds a token for X and
+ * nothing else — and `clone`/`open` then refused with "no target origin" until it typed
+ * AUGUR_ORIGIN, which the front door had told it the pairing would carry. One saved
+ * pairing is the answer; several is the most recent, said on stderr so a wrong guess is
+ * visible before anything is written.
+ */
+export function pairedOrigin() {
+  try {
+    const saved = JSON.parse(readFileSync(path.join(os.homedir(), ".config", "augur", "tokens.json"), "utf8"));
+    const hosts = Object.entries(saved).filter(([h, v]) => h && v && v.token);
+    if (!hosts.length) return "";
+    hosts.sort((a, b) => String(b[1].at || "").localeCompare(String(a[1].at || "")));
+    const [host] = hosts[0];
+    if (hosts.length > 1) console.error(`[augur] no origin named — using the last pairing, https://${host} (set AUGUR_ORIGIN to pick another)`);
+    return `https://${host}`;
+  } catch (e) { return ""; }
 }
 
 export function resolveToken(origin, root = ENGINE_ROOT) {
