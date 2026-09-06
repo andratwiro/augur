@@ -12,9 +12,10 @@
 # is deliberately NOT `v*`: instances on `TRACK: release` follow GitHub releases, and an npm
 # cut is not an engine release. `workflow_dispatch` re-runs the same for the checked-out ref.
 #
-# Credential: `NPM_TOKEN` (a granular token limited to the @augurworks scope). Once the
-# package's npm settings name this workflow as a trusted publisher, the token can be deleted
-# and the step below publishes on the OIDC identity alone — nothing else changes.
+# Credential: none. The package's npm settings name this workflow as a trusted publisher
+# (owner andratwiro, repository augur, workflow publish.yml, "allow npm publish"), so npm
+# accepts the publish on the job's OIDC identity — the same identity the attestation is
+# signed with. No token exists for this package anywhere.
 name: publish
 
 on:
@@ -43,8 +44,6 @@ jobs:
           [ "$want" = "$have" ] || { echo "tag says $want, package.json says $have"; exit 1; }
       - run: npm run check
       - run: npm publish --provenance --access public
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
       - name: the registry shows the attestation
         run: |
           v="$(node -p "require('./package.json').version")"
