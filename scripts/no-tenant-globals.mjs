@@ -646,14 +646,26 @@ export function stringBuilderNames(source) {
   return names;
 }
 
-// The whole question, in one place.
-export function isProvablyNotState(init, builders = new Set()) {
+// A bare identifier, and nothing else — `FIRST_RUN_PATH`, not `FIRST_RUN_PATH.slice(0)`
+// or `a.b`. The only shape `moduleScopeBindings` ever asks about via `aliases`.
+const BARE_IDENTIFIER = /^[A-Za-z_$][\w$]*$/;
+
+// The whole question, in one place. `aliases` is the set of names already proved not to
+// hold state earlier in the same file — so `const WELCOME_PATH = FIRST_RUN_PATH;` is
+// exactly as harmless as the literal `FIRST_RUN_PATH` itself already was, and for the
+// same reason: a `const` alias to a name that cannot be reassigned cannot introduce
+// state that name did not already have. This is what lets two spots read one constant
+// (so they cannot drift) without allowlisting a new table for a value that is really the
+// old one. It buys nothing a builder call did not already buy for a factory's *result* —
+// this is the same move for a factory's *name*.
+export function isProvablyNotState(init, builders = new Set(), aliases = new Set()) {
   const s = String(init || "").trim().replace(/;+$/, "").trim();
   if (!s) return false;
   if (isLiteralExpression(s)) return true;
   if (REGEX_LITERAL.test(s)) return true;
   if (SYMBOL_CALL.test(s)) return true;
   if (isFunctionExpression(s)) return true;
+  if (BARE_IDENTIFIER.test(s) && aliases.has(s)) return true;
   const call = /^([A-Za-z_$][\w$]*)\s*\(/.exec(s);
   if (call && builders.has(call[1]) && s.endsWith(")")) return true;
   return false;
@@ -727,6 +739,10 @@ function initializerAt(source, eqIndex) {
 export function moduleScopeBindings(source) {
   const builders = stringBuilderNames(source);
   const out = [];
+  // Names proved not to hold state so far, top to bottom — the same order JS itself
+  // evaluates them in, so an alias can only ever point at something already settled
+  // (anything else is a TDZ error at runtime, not a lint question).
+  const aliases = new Set();
   const lines = source.split("\n");
   let offset = 0;
   for (let i = 0; i < lines.length; i++) {
@@ -746,7 +762,10 @@ export function moduleScopeBindings(source) {
     const eq = m[0].endsWith("=") ? m[0].length - 1 : -1;
     const init = eq === -1 ? "" : initializerAt(source, lineStart + eq).trim();
     // A `let`/`var` is state whatever it holds — it can be reassigned from a request.
-    if (keyword === "const" && isProvablyNotState(init, builders)) continue;
+    if (keyword === "const" && isProvablyNotState(init, builders, aliases)) {
+      aliases.add(name);
+      continue;
+    }
     out.push({ name, keyword, line: i + 1, init, multi: hasTopLevelComma(line) });
   }
   return out;

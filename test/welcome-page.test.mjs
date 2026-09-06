@@ -16,6 +16,37 @@ import worker, { __testables as W } from "../src/_worker.js";
 import { TenantStore } from "../src/tenant-do.js";
 import { memKV, cookieFor, ADA_MEMBER, VERA } from "./fixtures/unit-env.mjs";
 
+// ---- the one Cloudflare global Node lacks ---------------------------------------------
+// serveContent's withLiveReload() appends the live-reload <script> to <body> of every
+// HTML response through HTMLRewriter — needed once a test here fetches a real public
+// prototype path rather than only /__* routes. Identical stand-in to the one
+// test/tenant-route-sweep.test.mjs and test/response-snapshot.test.mjs install; not
+// shared between the files on purpose (see their own comments).
+if (!globalThis.HTMLRewriter) {
+  globalThis.HTMLRewriter = class {
+    constructor() { this._handlers = []; }
+    on(selector, handlers) { this._handlers.push({ selector, handlers }); return this; }
+    transform(res) {
+      const handlers = this._handlers;
+      const stream = new ReadableStream({
+        async start(controller) {
+          let text = await res.text();
+          for (const { selector, handlers: h } of handlers) {
+            if (selector === "body" && h.element) {
+              let appended = "";
+              h.element({ append(html) { appended += html; } });
+              text = /<\/body>/i.test(text) ? text.replace(/<\/body>/i, appended + "</body>") : text + appended;
+            }
+          }
+          controller.enqueue(new TextEncoder().encode(text));
+          controller.close();
+        },
+      });
+      return new Response(stream, { status: res.status, statusText: res.statusText, headers: res.headers });
+    }
+  };
+}
+
 const ORIGIN = "https://acme.example";
 let SEQ = 0;
 
@@ -51,11 +82,21 @@ function freshIsolate() {
   W.__setConfigTestState({ cfgAt: 0, cfgGoodAt: 0, roster: null, manifests: null, storage: null, suspension: null });
 }
 
+// A published prototype path, for the "public prototype stays public" regression pin —
+// under routing.publicPrefixes in the fixture's manifest, so isPublicPath() opens it
+// before the gate (and the welcome redirect) ever gets a say.
+const PUBLIC_PROTO = "/proj/proto/";
+
 /**
  * A provisioned workspace object behind `env.TENANTS`, rostered with `users`, and an
  * instance config naming the same people — everything the gate and the page touch.
+ *
+ * `pairing` defaults ON: the welcome flow only stands in its slot where device pairing
+ * is on (welcomeFlow in _worker.js), and this fixture is the one that drives the flow
+ * end to end, so it has to mirror `instance({pairing: true})` in
+ * test/device-pairing.test.mjs rather than the flag's own off-by-default.
  */
-async function wired(users) {
+async function wired(users, { pairing = true, publicPrefixes = [] } = {}) {
   freshIsolate();
   const tenantId = `welcome-${++SEQ}`;
   const db = new DatabaseSync(":memory:");
@@ -76,10 +117,13 @@ async function wired(users) {
       fetch: async (req) => {
         const p = new URL(typeof req === "string" ? req : req.url).pathname;
         if (p === "/__config/instance.json") {
-          return new Response(JSON.stringify({ users, tenantId }), { headers: { "content-type": "application/json" } });
+          return new Response(JSON.stringify({ users, tenantId, devicePairing: pairing }), { headers: { "content-type": "application/json" } });
         }
         if (p === "/__config/routing.json") {
-          return new Response(JSON.stringify({ spaces: [{ id: "acme", default: true }], publicPrefixes: [] }), { headers: { "content-type": "application/json" } });
+          return new Response(JSON.stringify({ spaces: [{ id: "acme", default: true }], publicPrefixes }), { headers: { "content-type": "application/json" } });
+        }
+        if (p === PUBLIC_PROTO) {
+          return new Response("<!doctype html><title>proto</title>the public prototype", { headers: { "content-type": "text/html" } });
         }
         return new Response("Not Found", { status: 404 });
       },
@@ -136,4 +180,44 @@ test("a viewer asking for /__welcome is sent to /", async () => {
   const r = await fetchAs(env, VERA, "/__welcome");
   assert.equal(r.status, 303);
   assert.equal(r.headers.get("location"), "/");
+});
+
+// ── the flow exists only where device pairing is on ─────────────────────────────────
+//
+// welcomeFlow(tctx) in _worker.js is `!!tctx && !tctx.FIRST_RUN && !!tctx.DEVICE_PAIRING`:
+// the flow's own middle (connect/install → approve a code) is `pairApi`, which answers
+// null with pairing off, so a deployment that has not turned pairing on would show a
+// flow with no way past step two. With pairing off the surface reverts to what it was
+// before this feature existed at all — no route, no redirect — and every test above
+// this one turns pairing ON (see `wired`'s default) to exercise the flow itself.
+test("with device pairing off, a gated editor's / is not redirected and /__onboarding/me still answers", async () => {
+  const { env } = await wired([ADA_MEMBER, VERA], { pairing: false });
+  const r = await fetchAs(env, ADA_MEMBER, "/");
+  assert.notEqual(r.status, 303, "no route stands in the slot with pairing off, so nothing gates /");
+  const me = await fetchAs(env, ADA_MEMBER, "/__onboarding/me");
+  assert.equal(me.status, 200, "the member's own onboarding read is unconditional, pairing or not");
+});
+
+// ── regression pins ──────────────────────────────────────────────────────────────────
+
+test("a signed-in gated editor fetching a public prototype path is served it, not redirected", async () => {
+  const { env } = await wired([ADA_MEMBER, VERA], { publicPrefixes: [PUBLIC_PROTO] });
+  // Same person, same request shape as the very first test above — only the path
+  // differs — so this pins that isPublicPath (checked ahead of the welcome gate, see
+  // the placement note above owedWelcome's call site) still wins for a share link.
+  const r = await fetchAs(env, ADA_MEMBER, PUBLIC_PROTO);
+  assert.notEqual(r.status, 303, "a public prototype must never become an onboarding redirect");
+  assert.equal(r.status, 200);
+  assert.match(await r.text(), /the public prototype/);
+});
+
+test("a roster member who is not in the default space gets the membership gate's 404, not the welcome redirect", async () => {
+  const nonMember = { ...ADA_MEMBER, email: "nomember@example.test", name: "Nomi", initials: "NM" };
+  const { env } = await wired([ADA_MEMBER, nonMember]);
+  // `users:spaces` is the overlay isMemberOf reads (see membership-gate.test.mjs): an
+  // entry present but empty means "a member of nothing", including the default space.
+  await env.COMMENTS.put("users:spaces", JSON.stringify({ "nomember@example.test": {} }));
+  const r = await fetchAs(env, nonMember, "/");
+  assert.equal(r.status, 404, "a non-member must see the same refusal a stranger's guess would get");
+  assert.notEqual(r.headers.get("location"), "/__welcome", "the welcome gate sits below the membership gate and must never fire first");
 });

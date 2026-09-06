@@ -10336,14 +10336,23 @@ async function onboardingMeApi(tctx, request, url, env, me) {
 
 // ── The welcome gate ──────────────────────────────────────────────────────────────────
 //
-// WELCOME_PATH IS THE SAME STRING AS FIRST_RUN_PATH, deliberately: this is the page that
-// slot was reserved for, and its copy said so out loud. A person meets one welcome or the
-// other and never both, and which one is decided by the FLAG rather than by the order of
-// two branches in the router — so a deployment that opted into the placeholder keeps
-// exactly what it has, and neither this route nor the redirect below exists for it.
+// WELCOME_PATH IS THE SAME STRING AS FIRST_RUN_PATH — literally the same constant, so
+// the two can never drift apart — deliberately: this is the page that slot was reserved
+// for, and its copy said so out loud. A person meets one welcome or the other and never
+// both, and which one is decided by the FLAG rather than by the order of two branches in
+// the router — so a deployment that opted into the placeholder keeps exactly what it has,
+// and neither this route nor the redirect below exists for it.
 // ⏳ When FIRST_RUN retires, both guards retire with it.
-const WELCOME_PATH = "/__welcome";
-const welcomeFlow = (tctx) => !!tctx && !tctx.FIRST_RUN;
+const WELCOME_PATH = FIRST_RUN_PATH;
+// The flow exists only where a terminal can actually be connected. Its two steps that
+// matter — "connect your agent" and "change one thing" — both depend on device pairing
+// (the approve call the page's `connect`/`install` steps POST to is `pairApi`, which
+// answers null with pairing off), so a deployment that has not turned pairing on would
+// show a flow whose middle cannot be finished. "Do this later" always works regardless,
+// but a flow that opens onto a dead end on every load is not a welcome. With pairing off,
+// `/__welcome` and the `/` redirect behave exactly as they did before this feature:
+// no route (whatever the router does for an unknown `/__` path) and no redirect.
+const welcomeFlow = (tctx) => !!tctx && !tctx.FIRST_RUN && !!tctx.DEVICE_PAIRING;
 
 /**
  * Is this person still owed the welcome? ONE definition, read by both callers — the

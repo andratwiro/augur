@@ -74,7 +74,7 @@ const ROUTING = JSON.stringify({
  * with the two flags injectable, because "flag off is untouched" is a claim about the
  * same deployment differing in one config word.
  */
-async function deployment({ firstRun = true, sessionKeys = true } = {}) {
+async function deployment({ firstRun = true, sessionKeys = true, devicePairing = false } = {}) {
   const kv = memKV();
   const r2 = memR2();
   const pending = [];
@@ -99,7 +99,7 @@ async function deployment({ firstRun = true, sessionKeys = true } = {}) {
     { email: ADMIN, name: "Ada", initials: "A", role: "admin", passHash: PASS_HASH },
   ];
   await r2.put(W.bundleKey("config/instance.json", ""), Buffer.from(JSON.stringify({
-    tenantId: WS, users, sessionKeys, firstRun,
+    tenantId: WS, users, sessionKeys, firstRun, devicePairing,
   })));
   await r2.put(W.bundleKey("spaces/one/manifest.json", ""), Buffer.from(JSON.stringify({
     version: 1, space: "one", files: {}, routing: { publicPrefixes: [], versionMap: {} },
@@ -242,7 +242,11 @@ test("FLAG OFF: redemption lands where it always landed, and no record is ever w
 // actually about — where a redemption LANDS, and the once-only record — which the test
 // above pins. See WELCOME_PATH in _worker.js: the two are the same string on purpose.
 test("FLAG OFF: the path is the welcome flow's, and never the placeholder's", async () => {
-  const d = await deployment({ firstRun: false });
+  // The welcome flow itself only stands in this slot where device pairing is on (its
+  // connect/change steps have nothing to finish otherwise) — see welcomeFlow in
+  // _worker.js — so this deployment turns pairing on to exercise the flow this test is
+  // actually about. test/welcome-page.test.mjs pins the pairing-off case on its own.
+  const d = await deployment({ firstRun: false, devicePairing: true });
   // Anonymous: the ordinary sign-in gate, with this path as the way back — the same
   // shape /__connect answers with, and no more than a stranger already knew.
   const a = await d.fire(W.FIRST_RUN_PATH);
