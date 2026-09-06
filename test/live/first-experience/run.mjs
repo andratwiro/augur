@@ -54,7 +54,7 @@ for (const tool of ["browser", "inbox"]) {
   fs.writeFileSync(p, `#!/bin/sh\nexec "${process.execPath}" "${path.join(HERE, "human-tools", tool + ".mjs")}" "$@"\n`);
   fs.chmodSync(p, 0o755);
 }
-const log = { variant, cold: COLD, human: HUMAN, task, startedAt: now(), agentCwd, turns: [], agentEvents: [] };
+const log = { variant, cold: COLD, human: HUMAN, task, startedAt: now(), agentCwd, turns: [], agentEvents: [], humanEvents: [] };
 const logPath = path.join(runDir, "transcript.json");
 const saveLog = () => fs.writeFileSync(logPath, JSON.stringify(log, null, 2));
 const say = (m) => { console.log(`[${((Date.now() - t0) / 1000).toFixed(0)}s] ${m}`); };
@@ -148,15 +148,41 @@ async function agentTurn(message) {
   return { text: text.trim(), result, raw: r };
 }
 
-async function humanTurn(message) {
-  const args = ["-p", "--output-format", "json", "--dangerously-skip-permissions",
+/**
+ * One turn of the scripted person. Their tool calls are counted, because a model playing a
+ * person can SAY it typed the code without ever running `./browser` — one run's person
+ * reported a green "Approved" it never saw, and the agent then spent the code's whole life
+ * polling for an approval that had not happened. A reply that claims an action with no
+ * command behind it is sent back once, with the rule restated; the second answer stands.
+ */
+async function humanTurn(message, { retry = true } = {}) {
+  const args = ["-p", "--output-format", "stream-json", "--verbose", "--dangerously-skip-permissions",
     "--allowedTools", "Bash", "--disallowedTools", "Read", "Edit", "Write", "Glob", "Grep", "WebFetch", "WebSearch", "Agent", "NotebookEdit"];
   if (humanSession) args.push("--resume", humanSession);
   else args.push("--system-prompt", fs.readFileSync(path.join(HERE, "human-prompt.txt"), "utf8"));
   const r = await claude(args, { cwd: humanCwd, env: humanEnv, input: message });
-  let text = "";
-  try { const j = JSON.parse(r.out); humanSession = j.session_id || humanSession; text = j.result || ""; } catch (e) { text = r.out || r.err; }
-  return text.trim();
+  let text = "", tools = 0;
+  for (const line of r.out.split("\n")) {
+    if (!line.trim()) continue;
+    let ev; try { ev = JSON.parse(line); } catch (e) { continue; }
+    if (ev.session_id && !humanSession) humanSession = ev.session_id;
+    if (ev.type === "assistant" && ev.message && Array.isArray(ev.message.content)) {
+      for (const c of ev.message.content) {
+        if (c.type === "tool_use") { tools++; log.humanEvents.push({ at: now(), tool: c.name, input: JSON.stringify(c.input).slice(0, 300) }); }
+      }
+    }
+    if (ev.type === "result" && ev.result) text = ev.result;
+  }
+  if (!text.trim()) text = r.err.slice(0, 1000) || "(the person said nothing)";
+  text = text.trim();
+  const claimsAction = /\b(done|approved|typed|entered|opened|clicked|pressed|checked my (mail|inbox|email))\b/i.test(text);
+  if (retry && tools === 0 && claimsAction) {
+    say(`human claimed an action with no command run — sending it back once`);
+    log.turns.push({ n: log.turns.length ? log.turns[log.turns.length - 1].n : 0, who: "human (retracted: no command was run)", text, at: now() });
+    return humanTurn("You did not run ./browser or ./inbox this turn, so you cannot have done that. "
+      + "Run the command now, exactly as your assistant asked, and then tell them the exact line it printed. Never say you did something you did not run.", { retry: false });
+  }
+  return text;
 }
 
 // ── the collide variant: someone else lands on the same unit after the agent starts ──
