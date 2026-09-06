@@ -12,7 +12,7 @@
 // before `add`. Nothing else in the workspace's state is sent.
 import fs from "node:fs";
 import path from "node:path";
-import { ORIGIN, STAR, PERSONAS, addressOf, workDir } from "./env.mjs";
+import { ORIGIN, STAR, PERSONAS, ROSTER_PERSONAS, addressOf, workDir } from "./env.mjs";
 
 const origin = ORIGIN(), star = STAR();
 const headers = { Authorization: `Bearer ${star}` };
@@ -39,7 +39,7 @@ async function importRoster(roster, roles) {
   if (!r.ok) throw new Error(`import ${r.status} ${JSON.stringify(body)}`);
   return body;
 }
-const personaAddresses = () => Object.keys(PERSONAS).map(addressOf);
+const personaAddresses = () => ROSTER_PERSONAS.map(addressOf);
 /** Everybody else's role overrides, exactly as they are; the personas' cleared. */
 const rolesWithoutPersonas = (roles) => Object.fromEntries(Object.entries(roles).filter(([e]) => !personaAddresses().includes(e)));
 
@@ -51,16 +51,17 @@ if (op === "show") {
   if (!fs.existsSync(SNAP)) fs.writeFileSync(SNAP, JSON.stringify({ ...cur, roles: curRoles }, null, 2));
   const add = { ...(cur.add || {}) };
   const at = new Date().toISOString();
-  for (const [key, p] of Object.entries(PERSONAS)) {
+  for (const key of ROSTER_PERSONAS) {
+    const p = PERSONAS[key];
     const email = addressOf(key);
     add[email] = { email, name: p.name, role: p.role, initials: p.initials, color: p.color, addedAt: at };
   }
   const res = await importRoster({ add, remove: (cur.remove || []).filter((e) => !Object.keys(add).includes(e)) }, rolesWithoutPersonas(curRoles));
-  console.log(`added ${Object.keys(PERSONAS).length} personas (role overlays cleared); import: ${JSON.stringify(res)}; snapshot ${SNAP}`);
+  console.log(`added ${ROSTER_PERSONAS.length} personas (role overlays cleared); import: ${JSON.stringify(res)}; snapshot ${SNAP}`);
 } else if (op === "remove") {
   const before = fs.existsSync(SNAP) ? JSON.parse(fs.readFileSync(SNAP, "utf8")) : { add: {}, remove: [] };
   const add = { ...(cur.add || {}) };
-  for (const key of Object.keys(PERSONAS)) delete add[addressOf(key)];
+  for (const key of ROSTER_PERSONAS) delete add[addressOf(key)];
   const res = await importRoster({ add: { ...before.add, ...add }, remove: before.remove || [] }, rolesWithoutPersonas(curRoles));
   console.log(`removed personas from the overlay (⚠️ the object keeps them — see README "Leaving"); import: ${JSON.stringify(res)}`);
 } else {

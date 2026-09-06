@@ -42,13 +42,26 @@ export const WORKSPACE = () => process.env.LIVE_WORKSPACE || "";
 /** How long the account store withholds a second code for one address (its `PROOF_MINT_COOLDOWN_MS`). */
 export const MAIL_COOLDOWN_MS = Number(process.env.LIVE_MAIL_COOLDOWN_MS || 15 * 60 * 1000);
 
-/** The four people the suite plays, as plus-addresses on the readable mailbox. */
+/** The people the suite plays, as plus-addresses on the readable mailbox. */
 export const PERSONAS = Object.freeze({
   owner: { tag: "owner", name: "QA Owner", role: "admin", initials: "QO", color: "#7c3aed" },
   editor: { tag: "editor", name: "QA Editor", role: "editor", initials: "QE", color: "#0891b2" },
   editor2: { tag: "editor2", name: "QA Editor Two", role: "editor", initials: "Q2", color: "#059669" },
   viewer: { tag: "viewer", name: "QA Viewer", role: "viewer", initials: "QV", color: "#b45309" },
+  // The `invited` variant's person: mailed a real invite, never added to the roster ahead
+  // of time. Starts with no session and no cookie at all — see `human(..., {noSignIn})`.
+  invitee: { tag: "invitee", name: "QA Invitee", role: "editor", initials: "QI", color: "#dc2626" },
 });
+
+/**
+ * The personas `roster.mjs` provisions directly through the `users:roster` overlay
+ * import — every persona EXCEPT `invitee`. That one exists to be added by a real admin
+ * invite (the whole point of the `invited` variant), so a bulk `roster.mjs add` run
+ * before it must not pre-create their membership through a shortcut that bypasses mail
+ * entirely — that would make `owner.admin({op:"invite", …})` answer `already-a-user`
+ * and the variant would have nothing left to test.
+ */
+export const ROSTER_PERSONAS = Object.keys(PERSONAS).filter((k) => k !== "invitee");
 
 export function addressOf(persona) {
   const box = need("LIVE_MAILBOX");

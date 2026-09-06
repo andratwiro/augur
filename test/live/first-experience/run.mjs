@@ -4,7 +4,8 @@
 //   node test/live/first-experience/run.mjs <variant> [--human owner|viewer] [--turns 10]
 //
 // Variants: new (build a new prototype) · change (change an existing one) · collide
-// (change one while someone else lands on it mid-way).
+// (change one while someone else lands on it mid-way) · invited (a real invite mail, a
+// person with no session yet, a cold agent, one ask).
 //
 // The AGENT is a real `claude -p` session started in an empty folder outside any Augur
 // checkout, with nothing but the workspace link and the task. It inherits none of this
@@ -18,15 +19,18 @@ import os from "node:os";
 import path from "node:path";
 import { spawn } from "node:child_process";
 import { fileURLToPath } from "node:url";
-import { ORIGIN, UNITS, RUN, workDir, now } from "../env.mjs";
+import { ORIGIN, UNITS, RUN, workDir, now, addressOf, PERSONAS } from "../env.mjs";
 import { human } from "../persona.mjs";
 import { open, writeFile, readFile, stamp, save, land, close } from "../drills/lib.mjs";
+import { inviteOpenerInstruction } from "./invited-lib.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const argv = process.argv.slice(2);
 const variant = argv[0] || "change";
 const opt = (n, d) => { const i = argv.indexOf(n); return i > -1 ? argv[i + 1] : d; };
-const HUMAN = opt("--human", "owner");
+// The `invited` variant's person is always `invitee` — they hold no session until the
+// invite mail gives them one, so there is nothing an `owner`/`viewer` default would mean.
+const HUMAN = opt("--human", variant === "invited" ? "invitee" : "owner");
 const MAX_TURNS = Number(opt("--turns", 10));
 // --cold: the agent runs inside a container built from ./cold/Dockerfile — a machine with
 // no engine clone, no saved tokens, no registry and no memory. Without it the agent runs
@@ -40,9 +44,12 @@ const TASKS = {
   new: `Here is my team's prototype workspace: ${origin} — please build a small new prototype of a "survey results" page (a heading, a few example questions with bar charts, any reasonable design) and send me the link when it is live so the team can open it.`,
   change: `Here is my team's prototype workspace: ${origin} — in the prototype at ${unitUrl} please change the main heading so it ends with "(reviewed ${RUN})", and send me the link when the change is live.`,
   collide: `Here is my team's prototype workspace: ${origin} — in the prototype at ${unitUrl} please add a short "Notes" paragraph at the end of the page saying it was reviewed on ${RUN}, and send me the link when the change is live.`,
+  // Composed at run time, from what the person's own screen says — see the `invited`
+  // branch below and invited-lib.mjs's `inviteOpenerInstruction`.
+  invited: null,
 };
+if (!(variant in TASKS)) { console.error(`unknown variant ${variant}`); process.exit(2); }
 const task = TASKS[variant];
-if (!task) { console.error(`unknown variant ${variant}`); process.exit(2); }
 
 // ── folders ─────────────────────────────────────────────────────────────────
 const runDir = workDir(`fx-${variant}-${Date.now().toString(36)}`);
@@ -208,11 +215,50 @@ async function colliderLands() {
 }
 
 // ── run ─────────────────────────────────────────────────────────────────────
-await human(HUMAN); // the person is signed in before they ever talk to the assistant
+// timeToPairMs/timeToLandMs: the first tick, of any turn, where the invitee's own record
+// (never the transcript text) says `paired`/`landed`. Only meaningful for `invited`.
+let pairedAt = null, landedAt = null;
+async function pollInviteeStatus() {
+  if (variant !== "invited") return;
+  try {
+    // `noSignIn`: a poll must never itself trigger a mailed sign-in — before the person's
+    // own `./browser --accept` runs, `invitee` legitimately has no session at all, and
+    // that is exactly "not paired yet", not an error to recover from.
+    const h = await human("invitee", { noSignIn: true });
+    if (!h.cookie) return;
+    const st = await h.json("/__onboarding/me", null, "GET");
+    if (!pairedAt && st.paired) pairedAt = Date.now();
+    if (!landedAt && st.landed) landedAt = Date.now();
+  } catch (e) { /* a lost poll costs only the measure, never the run */ }
+}
+
+if (variant === "invited") {
+  // Nobody is on the roster ahead of time — the invite itself is what puts them there,
+  // exactly like a real "add a teammate" moment. `invitee` holds no cookie until the
+  // scripted person's own first turn runs `./browser --accept` on the mailed link.
+  const owner = await human("owner");
+  const inviteeEmail = addressOf("invitee");
+  const inv = await owner.admin({ op: "invite", email: inviteeEmail, role: PERSONAS.invitee.role, name: PERSONAS.invitee.name });
+  log.invite = { status: inv.status, url: inv.url || null, mailed: !!(inv.mail && inv.mail.ok) };
+  say(`invited ${inviteeEmail}: ${JSON.stringify(log.invite)}`);
+} else {
+  await human(HUMAN); // the person is signed in before they ever talk to the assistant
+}
 if (COLD) await coldStart();
 if (variant === "collide") await startCollider();
 say(`agent starts in ${agentCwd}; human is ${HUMAN}; transcript at ${logPath}`);
 let message = task;
+if (variant === "invited") {
+  // The person's own first turn: read the mail, follow it, and tell the assistant — in
+  // their own words — what the page it lands on asks them to do. THEIR reply becomes the
+  // agent's opening message, so the instruction really comes from the person's screen and
+  // not from a template this script wrote.
+  const opener = await humanTurn(inviteOpenerInstruction(), { asked: true });
+  log.turns.push({ n: 0, who: "human", text: opener, at: now() });
+  log.task = opener;
+  message = opener;
+  await pollInviteeStatus();
+}
 let done = false, windDown = 0;
 for (let turn = 1; turn <= MAX_TURNS && !done; turn++) {
   const a = await agentTurn(message);
@@ -227,6 +273,7 @@ for (let turn = 1; turn <= MAX_TURNS && !done; turn++) {
   log.turns.push({ n: turn, who: "human", text: h, at: now(), tools: log.humanEvents.length - humanToolsBefore });
   saveLog();
   say(`human: ${h.slice(0, 300).replace(/\n/g, " ")}`);
+  await pollInviteeStatus();
   if (/THANKS-DONE/.test(h)) { done = true; break; }
   // Two turns in a row where nobody asked anything and nobody ran anything is a goodbye
   // loop, not a session; the transcript already holds everything it will hold.
@@ -253,6 +300,15 @@ log.measures = {
   toolCalls: log.agentEvents.length, firstFetch: firstFetch && firstFetch.input, urls, liveCheck, askedForPassword, askedForTechnical,
   done, endedAt: now(),
 };
+if (variant === "invited") {
+  await pollInviteeStatus(); // one last look, in case pairing/landing landed on the final turn
+  log.measures.timeToPairMs = pairedAt ? pairedAt - t0 : null;
+  log.measures.timeToLandMs = landedAt ? landedAt - t0 : null;
+  try {
+    const h = await human("invitee", { noSignIn: true });
+    log.measures.me = h.cookie ? await h.json("/__onboarding/me", null, "GET") : { error: "invitee never got a session" };
+  } catch (e) { log.measures.me = { error: String(e) }; }
+}
 saveLog();
 if (COLD) await coldStop();
 console.log("\nMEASURES\n" + JSON.stringify(log.measures, null, 2));

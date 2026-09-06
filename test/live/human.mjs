@@ -155,6 +155,28 @@ export class Human {
   /** Approve an agent's pairing code — what the /__connect page's button does. */
   approvePairing(code) { return this.json("/__publish/_pair/approve", { code }); }
 
+  /**
+   * Redeem a passwordless invite link the way the page's own form does it: GET the
+   * redemption page first (a mail scanner's GET never consumes the token, so this costs
+   * nothing and matches what a person's click actually sends), then POST the form-encoded
+   * body `invitePost` reads via `request.formData()` — NOT JSON, and the field is
+   * `token`, not `t` (that's only the GET's query param). `follow` keeps every Set-Cookie
+   * on the way and chains straight through the `/` → `/__welcome` redirect a first
+   * redemption ends in, so `landedUrl`/`text` are already the page the person sees next.
+   */
+  async acceptInvite(inviteUrl) {
+    const u = new URL(inviteUrl);
+    const t = u.searchParams.get("t") || "";
+    await this.get(`/__invite?t=${encodeURIComponent(t)}`);
+    const { res, url } = await follow(`${this.origin}/__invite`, {
+      method: "POST",
+      headers: { "content-type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({ token: t }).toString(),
+    }, this.jar);
+    const text = await res.text().catch(() => "");
+    return { status: res.status, ok: !!this.cookie, landedUrl: url, text };
+  }
+
   /** Admin panel operations, by their `op` name: invite, space, reset, and the rest. */
   admin(op) { return this.json("/__admin/users", op); }
   users(space) { return this.json(`/__admin/users${space ? `?space=${encodeURIComponent(space)}` : ""}`, null, "GET"); }

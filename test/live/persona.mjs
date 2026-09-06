@@ -22,22 +22,44 @@ const cookieFile = (p) => path.join(workDir("cookies"), `${p}.json`);
  * The signed-in browser for a persona. A cookie from an earlier process is reused while
  * the workspace still honours it — one mailed code per person per day, not per drill —
  * and a fresh sign-in happens only when it does not.
+ *
+ * `noSignIn` is for the `invited` variant's person: they have no session until they
+ * redeem an invite link (`Human.acceptInvite`, driven by `./browser --accept`), so this
+ * skips the mailed sign-in entirely rather than mailing a code nobody asked for. A cookie
+ * left by an earlier `acceptInvite` (see `saveCookies`) is still loaded and used as-is.
  */
-export async function human(persona, { fresh = false } = {}) {
+export async function human(persona, { fresh = false, noSignIn = false } = {}) {
   if (!PERSONAS[persona]) throw new Error(`no persona ${persona}`);
   // `fresh` means "sign in again now", also for a person this process already holds: a
   // drill that revoked their session (a role change, a removal) needs the next sign-in to
   // happen, not the dead cookie handed back.
   if (fresh) humans.delete(persona);
+  if (noSignIn) {
+    // Cached like the sign-in path (so a caller that mutates the jar directly —
+    // `acceptInvite` — and then `saveCookies` finds the same instance), but a cached
+    // instance holding no cookie yet is re-read from disk on every call rather than
+    // trusted forever: a long-lived caller (run.mjs polling the invitee's own status
+    // turn after turn) has to notice a session a DIFFERENT process just wrote
+    // (`./browser --accept`), not freeze "no session" for its own lifetime.
+    let h = humans.get(persona);
+    if (!h) { h = new Human(persona); humans.set(persona, h); }
+    if (!h.cookie) {
+      const f = cookieFile(persona);
+      if (fs.existsSync(f)) {
+        try { h.jarLoad(JSON.parse(fs.readFileSync(f, "utf8"))); } catch (e) { /* try again next call */ }
+      }
+    }
+    return h;
+  }
   if (!humans.has(persona)) {
     const h = new Human(persona);
     const f = cookieFile(persona);
-    let ok = false;
     // The whole jar comes back — the workspace cookie AND the account session the mailed
     // sign-in opened — so a fresh sign-in can go through the account rather than the mailer.
     if (fs.existsSync(f)) {
       try { h.jarLoad(JSON.parse(fs.readFileSync(f, "utf8"))); } catch (e) { h.jar.clear(); }
     }
+    let ok = false;
     if (!fresh && h.cookie) {
       try { ok = (await h.get("/__unit/drafts", { accept: "application/json" })).status === 200; } catch (e) { ok = false; }
     }
@@ -49,6 +71,19 @@ export async function human(persona, { fresh = false } = {}) {
     humans.set(persona, h);
   }
   return humans.get(persona);
+}
+
+/**
+ * Persist a persona's jar to the same file `human()` reads — the write half of the pair.
+ * `acceptInvite` runs in a subprocess of its own (`./browser --accept`) and mints the
+ * cookie itself rather than through `human()`'s sign-in branch, so nothing else writes
+ * this file for it; without this the very next `./browser` call, a fresh process, would
+ * find no cookie and try to mail one.
+ */
+export function saveCookies(persona) {
+  const h = humans.get(persona);
+  if (!h) return;
+  fs.writeFileSync(cookieFile(persona), JSON.stringify(h.jarDump()));
 }
 
 /** The persona's publish token: paired once and kept under the work dir, re-paired on demand. */

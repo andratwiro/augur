@@ -9,17 +9,17 @@ credential — every one arrives as a `LIVE_*` variable from a runner outside th
 
 | File | What it is |
 | --- | --- |
-| `env.mjs` | the one reading of `LIVE_*`; the four personas (owner, editor, editor2, viewer) as plus-addresses on one readable mailbox |
-| `inbox.mjs` | a tiny IMAP client: wait for the newest mail in a folder, pull the six-digit code |
-| `human.mjs` | a person at a browser, scripted: passwordless code sign-in, approve a pairing, admin ops, Land/Discard from the bar |
+| `env.mjs` | the one reading of `LIVE_*`; the five personas (owner, editor, editor2, viewer, invitee) as plus-addresses on one readable mailbox — `ROSTER_PERSONAS` is the four `roster.mjs` provisions directly; `invitee` is deliberately excluded, since arriving only through a real admin invite is the point of the `invited` variant |
+| `inbox.mjs` | a tiny IMAP client: wait for the newest mail in a folder, pull the six-digit code or an invite link |
+| `human.mjs` | a person at a browser, scripted: passwordless code sign-in, invite redemption (`acceptInvite`), approve a pairing, admin ops, Land/Discard from the bar |
 | `persona.mjs` | one identity's terminal and browser kept apart from every other: cached cookie, cached token (re-paired when refused), `cli()` runner with its own registry |
 | `roster.mjs add\|remove\|show` | the personas onto the roster through `/__publish/_state/import` (star token). ⚠️ `remove` writes the overlay only; on an object-backed workspace it removes nobody — see "Leaving" |
 | `drills/*.live.mjs` | A–M, `node --test`; each names the units it touches by index into `LIVE_UNITS` |
 | `restore-all.mjs` | every `LIVE_UNIT` back to its first landing, open drafts discarded |
-| `revoke-personas.mjs`, `remove-owner.mjs`, `demote-owner.mjs` | the real cleanup (admin routes) |
+| `revoke-personas.mjs`, `remove-owner.mjs`, `demote-owner.mjs` | the real cleanup (admin routes); `revoke-personas.mjs` also admin-removes the `invited` variant's invitee and takes their start-here page out of the live manifest |
 | `probe-roles.mjs`, `probe-me.mjs`, `probe-tokens.mjs`, `probe-signin.mjs` | what the workspace thinks each persona is, what `/__me` and the KV overlays say, the tokens it holds, and two fresh sign-ins for one person without mail — for after an interrupted drill |
 | `pin-dns.mjs` | `LIVE_PIN=host=ip`, loaded with `node --import`: every fetch connects to that edge with the hostname unchanged, for a network that drops one CDN range; the cold container gets it as a hosts entry |
-| `first-experience/run.mjs` | a fresh agent (`claude -p`) and a scripted clueless person, relayed; `--cold` runs the agent in the container from `first-experience/cold/Dockerfile` |
+| `first-experience/run.mjs` | a fresh agent (`claude -p`) and a scripted clueless person, relayed; `--cold` runs the agent in the container from `first-experience/cold/Dockerfile`; variants `new`, `change`, `collide`, and `invited` (a real invite mail, `invitee` starting with no session at all) |
 
 ## Environment
 
@@ -48,10 +48,14 @@ LIVE_MAIL_COOLDOWN_MS (optional) that window, when an account store's differs
 3. `first-experience/run.mjs <change|new|collide> --cold`. The agent container needs a
    Claude credential that outlives the run: a long-lived token from `claude setup-token`
    (the host's short-lived access token is revoked the moment the host refreshes).
+   `invited --cold --turns 10` runs on its own — it mints the invitee itself (a real
+   admin invite, not the roster overlay), so run it separately from a `roster.mjs add`
+   session rather than folded into the drills above.
 4. Leaving, in this order: `restore-all.mjs`; `revoke-personas.mjs` (revokes every token the
-   suite minted through the admin route and removes three people through the admin
-   operation); the owner cannot remove themself — `demote-owner.mjs`, then a real admin
-   removes that account in the people panel.
+   suite minted through the admin route, removes three people through the admin
+   operation, and — if `invited` ran — admin-removes the invitee and takes their
+   start-here page out of the live manifest); the owner cannot remove themself —
+   `demote-owner.mjs`, then a real admin removes that account in the people panel.
 
 ## Traps met on the way
 
@@ -74,3 +78,12 @@ LIVE_MAIL_COOLDOWN_MS (optional) that window, when an account store's differs
 - `status` exits 1 when a sibling space clone reads as unpublished; assert on its output.
 - A demotion reaches every isolate within about a minute; a probe right after it can
   answer from the old roster.
+- `invited`'s person holds no cookie until `./browser <link> --accept` redeems the mailed
+  invite (`Human.acceptInvite`, `POST /__invite` — form-encoded `token`, not JSON, and not
+  the GET's `t` query param). Until then `human("invitee", {noSignIn:true})` is the only
+  legal way to ask for them — a plain `human("invitee")` would try to mail a sign-in code
+  to someone the invite flow, not the mailer, is supposed to bring in.
+- `invitee` is in `PERSONAS` (for `addressOf`/`folderOf`) but deliberately NOT in
+  `ROSTER_PERSONAS` — a `roster.mjs add` that pre-created their membership would make the
+  variant's own admin invite answer `already-a-user` and there would be nothing left to
+  test.
