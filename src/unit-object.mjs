@@ -265,11 +265,17 @@ export class UnitObject {
     const rows = [...this.sql.exec(`SELECT * FROM landings ORDER BY revision DESC`)];
     return {
       revision: this.mainRevision(),
-      landings: rows.map((r) => ({
-        revision: Number(r.revision), by: r.by || null, session: r.session || "", at: r.at, note: r.note || "",
-        draftId: r.draft_id || null, restoredFrom: r.restored_from == null ? null : Number(r.restored_from),
-        files: Object.keys(JSON.parse(r.tbl)).length,
-      })),
+      landings: rows.map((r) => {
+        // Any member may land any draft from the bar, so a landing has two people on it:
+        // who pressed Land (`by`) and whose draft it was. The draft row keeps the second.
+        const d = r.draft_id ? this.draft(r.draft_id) : null;
+        return {
+          revision: Number(r.revision), by: r.by || null, session: r.session || "", at: r.at, note: r.note || "",
+          draftId: r.draft_id || null, restoredFrom: r.restored_from == null ? null : Number(r.restored_from),
+          draftOwner: d ? d.owner : null, draftSession: d ? d.session : "",
+          files: Object.keys(JSON.parse(r.tbl)).length,
+        };
+      }),
     };
   }
 

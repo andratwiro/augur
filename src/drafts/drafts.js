@@ -223,6 +223,7 @@
         row.appendChild(face(l));
         var text = el("div");
         var who = l.by === "live" ? "Adopted from the live site" : label(l);
+        if (l.draft && l.draft.owner) who += " · draft by " + label(l.draft);
         text.appendChild(el("div", null, "#" + l.revision + " · " + who));
         var meta = (l.note ? l.note + " · " : "") + ago(l.at, "landed")
           + (l.restoredFrom ? " · restored from #" + l.restoredFrom : "")

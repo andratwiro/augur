@@ -5219,7 +5219,11 @@ function personFace(users, id) {
     : { name: null, initials: null, color: null };
 }
 const decorateDrafts = (drafts, users) => (drafts || []).map((d) => ({ ...d, ...personFace(users, d.owner) }));
-const decorateLandings = (landings, users) => (landings || []).map((l) => ({ ...l, ...personFace(users, l.by) }));
+const decorateLandings = (landings, users) => (landings || []).map((l) => ({
+  ...l, ...personFace(users, l.by),
+  // The draft's owner, with a face, when the landing was made from somebody else's draft.
+  draft: l.draftOwner && l.draftOwner !== l.by ? { owner: l.draftOwner, session: l.draftSession || "", ...personFace(users, l.draftOwner) } : null,
+}));
 
 /** How many units the gallery's index will ask about in one answer. */
 const DRAFTS_INDEX_MAX = 50;

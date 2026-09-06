@@ -397,6 +397,11 @@ test("a verb on a draft somebody else landed says so, with who and when — not 
   assert.equal(s.body.session, "browser");
   assert.equal(s.body.revision, 2);
   assert.equal(s.body.at, later(3));
+  // History names both: who pressed Land, and whose draft it was.
+  const h = await call(obj, "/history", null, "GET");
+  assert.equal(h.body.landings[0].by, "p2");
+  assert.equal(h.body.landings[0].draftOwner, "p1");
+  assert.equal(h.body.landings[0].draftSession, "agent a");
   // And a discarded draft says that instead.
   const d = await call(obj, "/discard", { draftId: b.body.draftId, at: later(5) });
   assert.equal(d.status, 200);

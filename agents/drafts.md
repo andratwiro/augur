@@ -55,7 +55,8 @@ saves on every burst of changes; `augur save` saves once.
 ## Landing
 
 `augur land` replaces the prototype's real URL with your draft, records who landed it and
-when, and closes the draft. It is refused in exactly one case: somebody landed on this
+when — and whose draft it was, when a member lands somebody else's from the site — and
+closes the draft. It is refused in exactly one case: somebody landed on this
 prototype since you opened yours. Then:
 
 ```
