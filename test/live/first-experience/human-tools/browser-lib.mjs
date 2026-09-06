@@ -23,6 +23,13 @@ export function renderPageText(raw, contentType) {
   return String(raw)
     .replace(/<script[\s\S]*?<\/script>/gi, " ")
     .replace(/<style[\s\S]*?<\/style>/gi, " ")
+    // What a real browser does not show: templates, elements marked hidden or aria-hidden,
+    // and the sign-in form's error block, which the page always renders and only reveals
+    // on an error (7 Sep 2026: a text-only person read "Incorrect email or password" on a
+    // page they had never typed into, and their agent called the page phishing).
+    .replace(/<template[\s\S]*?<\/template>/gi, " ")
+    .replace(/<(\w+)[^>]*\b(?:hidden|aria-hidden="true")[^>]*>[\s\S]*?<\/\1>/gi, " ")
+    .replace(/<p[^>]*\bid="pw-err"[^>]*>[\s\S]*?<\/p>/gi, " ")
     .replace(/<[^>]+>/g, " ")
     .replace(/&nbsp;/g, " ")
     .replace(/&amp;/g, "&")

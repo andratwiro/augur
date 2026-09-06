@@ -61,7 +61,15 @@ export async function human(persona, { fresh = false, noSignIn = false } = {}) {
     }
     let ok = false;
     if (!fresh && h.cookie) {
-      try { ok = (await h.get("/__unit/drafts", { accept: "application/json" })).status === 200; } catch (e) { ok = false; }
+      // A cookie a subprocess minted moments ago (`./browser --accept`) can be refused by an
+      // isolate that has not yet seen the roster row behind it; a young jar gets a minute of
+      // retries before its cookie is thrown away and a code is mailed nobody asked for.
+      const ageMs = Date.now() - fs.statSync(f).mtimeMs;
+      const tries = ageMs < 3 * 60000 ? 12 : 1;
+      for (let i = 0; i < tries && !ok; i++) {
+        try { ok = (await h.get("/__unit/drafts", { accept: "application/json" })).status === 200; } catch (e) { ok = false; }
+        if (!ok && i + 1 < tries) await new Promise((r) => setTimeout(r, 5000));
+      }
     }
     if (!ok) {
       h.jar.delete("__Host-augur_user");

@@ -163,8 +163,12 @@ async function agentTurn(message) {
  * command behind it is sent back once, with the rule restated; the second answer stands.
  */
 async function humanTurn(message, { retry = true, asked = true } = {}) {
-  const args = ["-p", "--output-format", "stream-json", "--verbose", "--dangerously-skip-permissions",
-    "--allowedTools", "Bash", "--disallowedTools", "Read", "Edit", "Write", "Glob", "Grep", "WebFetch", "WebSearch", "Agent", "NotebookEdit"];
+  // The person may run exactly two commands. Anything else is refused by the tool's own
+  // permission system (no --dangerously-skip-permissions here): the 7 Sep 2026 invited run
+  // had the person `cat` the rig and `grep` the engine source when a page confused it.
+  const args = ["-p", "--output-format", "stream-json", "--verbose", "--permission-mode", "default",
+    "--allowedTools", "Bash(./browser:*)", "Bash(./inbox:*)",
+    "--disallowedTools", "Read", "Edit", "Write", "Glob", "Grep", "WebFetch", "WebSearch", "Agent", "NotebookEdit", "ToolSearch"];
   if (humanSession) args.push("--resume", humanSession);
   else args.push("--system-prompt", fs.readFileSync(path.join(HERE, "human-prompt.txt"), "utf8"));
   const r = await claude(args, { cwd: humanCwd, env: humanEnv, input: message });
@@ -238,9 +242,23 @@ if (variant === "invited") {
   // scripted person's own first turn runs `./browser --accept` on the mailed link.
   const owner = await human("owner");
   const inviteeEmail = addressOf("invitee");
-  const inv = await owner.admin({ op: "invite", email: inviteeEmail, role: PERSONAS.invitee.role, name: PERSONAS.invitee.name });
+  // A roster change reaches every isolate within ~60 s, not at once (the skill's "roster
+  // change" trap). The 7 Sep 2026 run invited and had the person click inside 30 s: the
+  // redemption itself succeeded on the isolate that took it, and the person's next page
+  // loads hit isolates that did not know them yet — a login page, read out to the agent as
+  // "it asks me to sign in". So: remove a leftover invitee first and wait until the roster
+  // no longer lists them; invite; wait until the roster lists them; then a grace period.
+  const listed = async () => { const r = await owner.users(); return !!((r.users || r.roster || []).find((u) => (u.email || "").toLowerCase() === inviteeEmail.toLowerCase())); };
+  const waitFor = async (want, what, ms = 150000) => { const t0 = Date.now(); while (Date.now() - t0 < ms) { if ((await listed()) === want) return true; await new Promise((r) => setTimeout(r, 5000)); } throw new Error(`roster never ${what} ${inviteeEmail}`); };
+  if (await listed()) { say(`removing a leftover ${inviteeEmail} first`); await owner.admin({ op: "remove", email: inviteeEmail }); await waitFor(false, "dropped"); }
+  let inv;
+  for (let i = 0; i < 20; i++) { inv = await owner.admin({ op: "invite", email: inviteeEmail, role: PERSONAS.invitee.role, name: PERSONAS.invitee.name }); if (inv.status !== 409) break; await new Promise((r) => setTimeout(r, 8000)); }
   log.invite = { status: inv.status, url: inv.url || null, mailed: !!(inv.mail && inv.mail.ok) };
   say(`invited ${inviteeEmail}: ${JSON.stringify(log.invite)}`);
+  if (inv.status !== 200) { console.error("the invite did not go out; nothing to onboard"); process.exit(1); }
+  await waitFor(true, "listed");
+  say("the roster lists them; waiting 60 s for every isolate before the person reads their mail");
+  await new Promise((r) => setTimeout(r, 60000));
 } else {
   await human(HUMAN); // the person is signed in before they ever talk to the assistant
 }
