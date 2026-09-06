@@ -223,11 +223,17 @@ async function doOpenImpl({ client, unit, dir, origin, space, session, now, isNe
     if (!allowNewOpportunity) {
       // "Which opportunities exist" comes from the live manifest, not a guess: an agent
       // told to "put it under Broad Listening" has to find `broad-listening`, not invent a
-      // new top-level folder next to it. A client that cannot answer (an older fixture, a
-      // fake in a unit test) is treated as having nothing to say — never a refusal that a
-      // client-capability gap would otherwise manufacture.
+      // new top-level folder next to it. A client that cannot answer AT ALL (an older
+      // fixture, a fake in a unit test with no `.manifest()` method) is treated as having
+      // nothing to say — never a refusal that a client-capability gap would otherwise
+      // manufacture. A client that DOES expose `.manifest()` but fails to read it — a stale
+      // token, a 500, a dropped connection — is NOT swallowed: the read is left to throw,
+      // so it reaches `guarded()` below the same way every other client call does, and comes
+      // back as `{ok:false, error:"network"|"refused", …}` instead of silently skipping the
+      // check. A genuinely readable manifest with no authored units (a fresh workspace) still
+      // allows the new unit through — there is nothing yet to compare against.
       let live = null;
-      if (typeof client.manifest === "function") { try { live = await client.manifest(); } catch (e) { live = null; } }
+      if (typeof client.manifest === "function") live = await client.manifest();
       const opps = new Set([...authoredUnits(live || {})].map((u) => u.replace(/^\/|\/$/g, "").split("/")[0]).filter(Boolean));
       const opp = bare.split("/")[0];
       if (opps.size && !opps.has(opp)) return { ok: false, error: "unknown-opportunity", unit, opportunity: opp };

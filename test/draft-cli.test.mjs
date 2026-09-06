@@ -28,6 +28,7 @@ test("open without a unit or a target says what is missing", () => {
 
 // ── open installs the editor hooks, once, and only when asked ─────────────────
 import os from "node:os";
+import http from "node:http";
 import { spawn } from "node:child_process";
 import { startUnitServer } from "./fixtures/unit-server.mjs";
 import { manifestOf, remember } from "./fixtures/unit-env.mjs";
@@ -81,6 +82,11 @@ test("open --new refuses an unknown opportunity and an unslugged path, naming th
     const a = await openIn(w(), "Broad Listening/survey", env, "--new");
     assert.equal(a.code, 1);
     assert.match(a.err, /broad-listening\/survey/);
+    // The refusal names the accepted spelling — retrying with exactly that slug is the
+    // round trip a person actually takes. It is an unknown opportunity in this fixture
+    // (only "toolkit" is authored), so it still needs --new-opportunity to go through.
+    const aRetry = await openIn(w(), "broad-listening/survey", env, "--new", "--new-opportunity");
+    assert.equal(aRetry.code, 0, aRetry.err);
     const b = await openIn(w(), "research/survey", env, "--new");
     assert.equal(b.code, 1);
     assert.match(b.err, /no opportunity "research".*--new-opportunity/s);
@@ -88,5 +94,31 @@ test("open --new refuses an unknown opportunity and an unslugged path, naming th
     assert.equal(c.code, 0, c.err);
     const d = await openIn(w(), "toolkit/survey", env, "--new");
     assert.equal(d.code, 0, d.err);
+  } finally { await srv.close(); }
+});
+
+// ── open --new: a manifest that cannot be read is a refusal, not a silent skip ─────────
+test("open --new reports the network when the opportunity check can't reach the instance, and opens freely against a genuinely empty manifest", async () => {
+  const w = () => { const d = fs.mkdtempSync(path.join(os.tmpdir(), "w-")); fs.writeFileSync(path.join(d, "space.json"), JSON.stringify({ id: "alpha" })); return d; };
+  // A closed port: bind, learn the port, close it again — nothing listens there, so the
+  // manifest fetch the opportunity check makes gets ECONNREFUSED instead of a stale answer.
+  const probe = http.createServer();
+  await new Promise((r) => probe.listen(0, "127.0.0.1", r));
+  const deadPort = probe.address().port;
+  await new Promise((r) => probe.close(r));
+  const deadOrigin = `http://127.0.0.1:${deadPort}`;
+  const envDead = { ...process.env, HOME: fs.mkdtempSync(path.join(os.tmpdir(), "h-")), AUGUR_ORIGIN: deadOrigin, AUGUR_TOKEN: "tok", AUGUR_NO_ADAPTERS: "1", AUGUR_DRAFTS_REGISTRY: path.join(os.tmpdir(), `r-${Date.now()}.json`) };
+  const unreachable = await openIn(w(), "research/first", envDead, "--new");
+  assert.equal(unreachable.code, 1);
+  assert.match(unreachable.err, /could not reach the instance/);
+
+  // Against a live instance whose manifest is genuinely readable and empty (a fresh
+  // workspace, nothing authored yet), --new opens freely with no --new-opportunity: there
+  // is nothing yet to compare the new unit's opportunity against.
+  const srv = await startUnitServer({ live: manifestOf(1, {}), tenantId: "cli-new-empty" });
+  try {
+    const envLive = { ...process.env, HOME: fs.mkdtempSync(path.join(os.tmpdir(), "h-")), AUGUR_ORIGIN: srv.origin, AUGUR_TOKEN: "tok", AUGUR_NO_ADAPTERS: "1", AUGUR_DRAFTS_REGISTRY: path.join(os.tmpdir(), `r-${Date.now()}.json`) };
+    const fresh = await openIn(w(), "research/first", envLive, "--new");
+    assert.equal(fresh.code, 0, fresh.err);
   } finally { await srv.close(); }
 });
