@@ -22,7 +22,14 @@ export async function startUnitServer({ live, tenantId, users }) {
     let out;
     if (url.pathname.startsWith("/__unit/")) out = await W.unitApi(ctx, request, url, env);
     else if (url.pathname.startsWith("/__publish/")) out = await W.publishApi(ctx, request, url, env);
-    else {
+    // The public build stamp — served BEFORE any gate on a real deployment, and the one
+    // read a CLI script uses to tell which space id an instance serves with no space.json
+    // and no credential at all (`store.mjs`'s `buildStamp`). Synthesized here the same way
+    // the worker's own request handler does, straight from the live manifests.
+    else if (url.pathname === "/_build.json") {
+      const stamp = W.synthBuildStamp(ctx, await W.loadManifests(tenantId, env));
+      out = new Response(JSON.stringify(stamp), { status: 200, headers: { "content-type": "application/json; charset=utf-8" } });
+    } else {
       const asset = await W.assetFetch(tenantId, env, request);
       const me = req.headers.cookie && ctx.USERS.length
         ? await W.identify(request, env, ctx.USERS, { sessionKeys: ctx.SESSION_KEYS, tctx: ctx })

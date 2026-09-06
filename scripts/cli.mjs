@@ -9,6 +9,7 @@
 //   augur status    what is live vs what your clones hold (see status.mjs)
 //   augur refine    render every component, photograph it, measure it against the
 //                   original, and report a pass-rate nobody can assert (see refine.mjs)
+//   augur ls        the opportunities this workspace serves, or one opportunity's prototypes
 //   augur open      open one prototype into a folder of its own, live at once
 //   augur save      push every changed file in this draft folder
 //   augur land      replace the prototype's main with this draft
@@ -43,6 +44,9 @@ const map = {
   fork: "fork.mjs",
   status: "status.mjs",
   refine: "refine.mjs",
+  // The opportunities this workspace serves, or one opportunity's prototypes — read live so
+  // an agent finds a name instead of guessing one.
+  ls: "ls.mjs",
   // Drafts that land (docs/drafts-that-land.md): one prototype, one folder, live at once.
   open: "open.mjs",
   save: "save.mjs",
@@ -90,7 +94,7 @@ if (sub === "mark") {
   process.exit(1);
 }
 if (!map[sub]) {
-  console.error("usage: augur <init|dev|offline|build|deploy|publish|fork|status|canon|refine|open|save|land|sync|close|read|watch|hook|clone|pull|export|restore|migrate|bundle-rekey|identity-rekey|adopt|freeze|thaw|connect|login> [options]");
+  console.error("usage: augur <init|dev|offline|build|deploy|publish|fork|status|canon|refine|ls|open|save|land|sync|close|read|watch|hook|clone|pull|export|restore|migrate|bundle-rekey|identity-rekey|adopt|freeze|thaw|connect|login> [options]");
   process.exit(sub ? 1 : 0);
 }
 const child = spawn(process.execPath, [path.join(SCRIPTS, map[sub]), ...rest], {

@@ -9,6 +9,7 @@ import os from "node:os";
 import path from "node:path";
 import { createHash } from "node:crypto";
 import { merge3 } from "./merge3.mjs";
+import { authoredUnits } from "../../src/publish-units.mjs";
 
 export const STATE_FILE = ".augur/draft.json";
 /** How many times `land` tries again when the space's manifest is contended. */
@@ -142,6 +143,15 @@ export function unitClient({ origin, token, space, session }) {
     open: (b) => post("open", b), save: (b) => post("save", b), land: (b) => post("land", b),
     sync: (b) => post("sync", b), discard: (b) => post("discard", b), presence: (unit) => get("presence", unit),
     main: (unit) => get("main", unit),
+    // The live manifest, for the one check that needs to see every unit at once rather
+    // than one at a time: `open --new` naming an opportunity that does not exist yet.
+    // Same bearer this client already holds, over the read side of the publish API
+    // (`store.mjs`'s `apiClient` speaks the same route for every other CLI script).
+    async manifest() {
+      const r = await fetch(`${origin}/__publish/${space}/manifest`, { headers });
+      if (!r.ok) throw await refusalError("manifest fetch", r);
+      return r.json();
+    },
     async blobPut(h, body) {
       const r = await fetch(`${origin}/__publish/${space}/blob/${h}`, { method: "PUT", headers, body });
       if (!r.ok && r.status !== 204) throw await refusalError("blob upload", r);
@@ -200,9 +210,29 @@ async function materialise(client, unit, table, dir) {
   }
 }
 
-async function doOpenImpl({ client, unit, dir, origin, space, session, now, isNew = false }) {
+async function doOpenImpl({ client, unit, dir, origin, space, session, now, isNew = false, allowNewOpportunity = false }) {
   if (fs.existsSync(dir) && fs.readdirSync(dir).length) return { ok: false, error: "folder-not-empty", dir };
   const createdFolder = !fs.existsSync(dir);
+  if (isNew) {
+    // Two refusals BEFORE anything reaches the server: a guessed name never opens even an
+    // empty draft. The slug rule is per-segment lowercase letters, digits and dashes, and
+    // the refusal names the slug it would accept — the fix, not just the complaint.
+    const bare = unit.replace(/^\/|\/$/g, "");
+    const slug = bare.toLowerCase().replace(/[^a-z0-9/]+/g, "-").replace(/-+\//g, "/").replace(/\/-+/g, "/").replace(/^-+|-+$/g, "");
+    if (slug !== bare) return { ok: false, error: "unslugged-unit", unit, slug };
+    if (!allowNewOpportunity) {
+      // "Which opportunities exist" comes from the live manifest, not a guess: an agent
+      // told to "put it under Broad Listening" has to find `broad-listening`, not invent a
+      // new top-level folder next to it. A client that cannot answer (an older fixture, a
+      // fake in a unit test) is treated as having nothing to say — never a refusal that a
+      // client-capability gap would otherwise manufacture.
+      let live = null;
+      if (typeof client.manifest === "function") { try { live = await client.manifest(); } catch (e) { live = null; } }
+      const opps = new Set([...authoredUnits(live || {})].map((u) => u.replace(/^\/|\/$/g, "").split("/")[0]).filter(Boolean));
+      const opp = bare.split("/")[0];
+      if (opps.size && !opps.has(opp)) return { ok: false, error: "unknown-opportunity", unit, opportunity: opp };
+    }
+  }
   const o = await client.open({ unit });
   if (o.status) return { ok: false, ...o };
   // A unit with no files is one that does not exist yet. Creating one is a decision the

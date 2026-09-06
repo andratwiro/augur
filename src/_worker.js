@@ -9329,8 +9329,9 @@ function doorText(f) {
       + `prototype are both told and both work; a refused landing is \`augur sync\`, then\n`
       + `\`augur land\` again. \`augur ship\` is retired here. The first \`open\` in a folder installs a\n`
       + `save hook in that folder's editor settings (.claude/settings.local.json; it says so),\n`
-      + `never account-wide; \`augur hook remove\` there takes it out. The contract:\n`
-      + `agents/drafts.md in the engine repository.\n\n`
+      + `never account-wide; \`augur hook remove\` there takes it out. \`augur ls\` lists the\n`
+      + `opportunities and their prototypes. The contract: agents/drafts.md in the engine\n`
+      + `repository.\n\n`
     : "";
   const tail = `Sign-in here throttles failed attempts per address and per email; a found or\n`
     + `guessed password is not a way in, and the seed in a deploy shell's identity file\n`

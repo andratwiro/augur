@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// augur open <prototype> [--new] [--dir <folder>] [--session <label>]
+// augur open <prototype> [--new] [--new-opportunity] [--dir <folder>] [--session <label>]
 //
 // Open one prototype into a folder of its own, as a draft that is live at once at its own
 // address. Prints who else is drafting it. The folder holds only that prototype's files and
@@ -35,11 +35,14 @@ const dir = path.resolve(opt("--dir") || unit.split("/").filter(Boolean).pop());
 
 const client = unitClient({ origin, token, space, session });
 const isNew = argv.includes("--new");
-const r = await doOpen({ client, unit, dir, origin, space, session, now: new Date().toISOString(), isNew });
+const allowNewOpportunity = argv.includes("--new-opportunity");
+const r = await doOpen({ client, unit, dir, origin, space, session, now: new Date().toISOString(), isNew, allowNewOpportunity });
 if (!r.ok) {
   if (r.error === "folder-not-empty") die(`${r.dir} is not empty — pick another folder with --dir.`);
   if (r.error === "unknown-unit") die(`${unit} does not exist here. To create it: \`augur open --new ${unit.replace(/^\/|\/$/g, "")}\`.`);
   if (r.error === "unit-exists") die(`${unit} exists already — open it without --new.`);
+  if (r.error === "unslugged-unit") die(`prototype paths are lowercase letters, digits and dashes — try \`augur open --new ${r.slug}\`.`);
+  if (r.error === "unknown-opportunity") die(`no opportunity "${r.opportunity}" here — \`augur ls\` lists them; \`--new-opportunity\` creates one.`);
   if (r.error === "units-not-configured") die("this instance does not serve drafts yet (no unit store bound).");
   if (r.error === "bad-unit" && r.reason === "reserved-folder") die(`${unit} sits under a folder the engine reserves — a prototype lives at <opportunity>/<prototype>.`);
   if (r.error === "bad-unit" && r.reason === "not-a-prototype-folder") die(`${unit} is not a prototype folder — name one as <opportunity>/<prototype>.`);

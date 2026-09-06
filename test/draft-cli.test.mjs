@@ -71,3 +71,22 @@ test("open installs the editor hooks into the FOLDER's local tool settings once;
     assert.equal(fs.existsSync(path.join(work3, ".claude", "settings.local.json")), false, "nothing written when asked not to");
   } finally { await srv.close(); }
 });
+
+// ── open --new refuses guesses: an unslugged path, or an opportunity that does not exist ──
+test("open --new refuses an unknown opportunity and an unslugged path, naming the fix", async () => {
+  const srv = await startUnitServer({ live: manifestOf(1, { "/toolkit/cards/": { "index.html": remember("<h1>c</h1>") } }), tenantId: "cli-new-1" });
+  try {
+    const env = { ...process.env, HOME: fs.mkdtempSync(path.join(os.tmpdir(), "h-")), AUGUR_ORIGIN: srv.origin, AUGUR_TOKEN: "tok", AUGUR_NO_ADAPTERS: "1", AUGUR_DRAFTS_REGISTRY: path.join(os.tmpdir(), `r-${Date.now()}.json`) };
+    const w = () => { const d = fs.mkdtempSync(path.join(os.tmpdir(), "w-")); fs.writeFileSync(path.join(d, "space.json"), JSON.stringify({ id: "alpha" })); return d; };
+    const a = await openIn(w(), "Broad Listening/survey", env, "--new");
+    assert.equal(a.code, 1);
+    assert.match(a.err, /broad-listening\/survey/);
+    const b = await openIn(w(), "research/survey", env, "--new");
+    assert.equal(b.code, 1);
+    assert.match(b.err, /no opportunity "research".*--new-opportunity/s);
+    const c = await openIn(w(), "research/survey", env, "--new", "--new-opportunity");
+    assert.equal(c.code, 0, c.err);
+    const d = await openIn(w(), "toolkit/survey", env, "--new");
+    assert.equal(d.code, 0, d.err);
+  } finally { await srv.close(); }
+});
