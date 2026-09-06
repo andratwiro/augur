@@ -28,7 +28,11 @@ import {
 function sqlHandle(db) {
   return {
     exec(stmt, ...params) {
-      if (params.length) { db.prepare(stmt).run(...params); return []; }
+      if (params.length) {
+        const s = db.prepare(stmt);
+        // A RETURNING clause has rows to hand back even on an UPDATE/INSERT.
+        return /^\s*SELECT|RETURNING/i.test(stmt) ? s.all(...params) : (s.run(...params), []);
+      }
       // A SELECT has rows to hand back; DDL does not.
       if (/^\s*SELECT/i.test(stmt)) return db.prepare(stmt).all();
       db.exec(stmt);
@@ -284,6 +288,11 @@ test("the store exposes no read or write verb it does not yet need", () => {
   // `GET /__onboarding/status`. The seed-versus-real decision is the WORKER's, through
   // `isSeedSource()`; the object records and never re-derives it — see
   // test/first-publish-signal.test.mjs.
+  // `notePairing`, `welcome` and `welcomeSet` are per-member onboarding state (the invite
+  // flow): when a person's terminal paired with the workspace, and the welcome surface's
+  // own once-only/durable flags (`welcomeDoneAt`, `welcomeLaterAt`, `startUnit`) — see the
+  // test below and the routes `/onboarding/note-pair`, `/onboarding/welcome` and
+  // `/onboarding/welcome-set`.
   const names = Object.getOwnPropertyNames(TenantStore.prototype).filter((n) => n !== "constructor");
   assert.deepEqual(names.sort(), [
     "accountKey", "bumpCounter", "claimHostname", "clearMeta", "controlResult", "deleteWorkspace", "destroy", "fetch",
@@ -292,7 +301,7 @@ test("the store exposes no read or write verb it does not yet need", () => {
     "isProvisioned",
     "lastseenForget", "lastseenRead", "lastseenTouch",
     "members",
-    "nextPublishVersion", "noteFirstPublish", "noteRoleTransition", "onboardingStatus",
+    "nextPublishVersion", "noteFirstPublish", "notePairing", "noteRoleTransition", "onboardingStatus",
     "overlayCas", "overlayInsert", "overlayOwner", "overlayRead", "overlayReadRev",
     "overlayReplace", "overlayScopes", "overlaySet", "provision",
     "publishTokenList", "publishTokenMint", "publishTokenRead", "publishTokenRevoke",
@@ -301,6 +310,27 @@ test("the store exposes no read or write verb it does not yet need", () => {
     "resumeOnSignIn", "rosterRead", "rosterWrite", "rotate", "schemaVersion",
     "sessionKey",
     "sql", "status", "suspend", "suspension", "touchActivity",
-    "usersActive", "workspaceId", "writeMeta",
+    "usersActive", "welcome", "welcomeSet", "workspaceId", "writeMeta",
   ]);
+});
+
+// ── per-member onboarding state (the invite flow) ────────────────────────────
+
+test("per-member onboarding: pairing, welcome flags and the start unit live on the member row", async () => {
+  const { store, db } = workspace("ws-welcome");
+  await store.init("ws-welcome");
+  db.prepare("INSERT INTO members (email, role, name, added_at) VALUES (?,?,?,?)")
+    .run("ada@x.test", "editor", "Ada", "2026-09-06T09:00:00Z");
+
+  assert.deepEqual(store.welcome("ada@x.test").member.pairedAt, null);
+  assert.equal(store.notePairing("ada@x.test", "2026-09-06T10:00:00Z").wrote, true);
+  assert.equal(store.notePairing("ada@x.test", "2026-09-06T11:00:00Z").wrote, false, "first pairing wins");
+  assert.equal(store.welcome("ada@x.test").member.pairedAt, "2026-09-06T10:00:00Z");
+  const set = store.welcomeSet("ada@x.test", { startUnit: "/start-here/ada/" });
+  assert.equal(set.member.startUnit, "/start-here/ada/");
+  store.welcomeSet("ada@x.test", { later: true });
+  assert.ok(store.welcome("ada@x.test").member.welcomeLaterAt);
+  store.welcomeSet("ada@x.test", { done: true });
+  assert.ok(store.welcome("ada@x.test").member.welcomeDoneAt);
+  assert.equal(store.welcome("nobody@x.test").member, null);
 });

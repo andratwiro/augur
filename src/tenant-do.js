@@ -71,7 +71,10 @@ import { loadSeedPack, publishSeedPack, seedOverlayFrom, workspaceOrigin } from 
 // which needs no column. Nullable and additive like every other addition: a row that
 // predates it reads as "never published from here", which is the honest answer for a
 // member nobody has watched publish.
-export const TENANT_SCHEMA_VERSION = 4;
+//
+// 4 → 5: per-member onboarding — paired_at, welcome_done_at, welcome_later_at, start_unit
+// on members.
+export const TENANT_SCHEMA_VERSION = 5;
 
 /**
  * The schema, as a list of statements so a migration can apply them one at a time and a
@@ -120,7 +123,11 @@ export const TENANT_SCHEMA = Object.freeze([
      added_by     TEXT,
      name_overlay TEXT,
      role_overlay TEXT,
-     first_publish_at TEXT
+     first_publish_at TEXT,
+     paired_at TEXT,
+     welcome_done_at TEXT,
+     welcome_later_at TEXT,
+     start_unit TEXT
    )`,
   // A REMOVED member is a tombstone, never a deleted row. The KV design learned this the
   // hard way on the credential side: a removal that merely deletes is undone by any
@@ -363,6 +370,10 @@ export const TENANT_SCHEMA_ADDITIONS = Object.freeze([
   { table: "members", column: "name_overlay", type: "TEXT" },
   { table: "members", column: "role_overlay", type: "TEXT" },
   { table: "members", column: "first_publish_at", type: "TEXT" },
+  { table: "members", column: "paired_at", type: "TEXT" },
+  { table: "members", column: "welcome_done_at", type: "TEXT" },
+  { table: "members", column: "welcome_later_at", type: "TEXT" },
+  { table: "members", column: "start_unit", type: "TEXT" },
   { table: "publish_tokens", column: "scope", type: "TEXT" },
   { table: "publish_tokens", column: "caps", type: "TEXT" },
 ]);
@@ -2335,6 +2346,32 @@ export class TenantStore {
     };
   }
 
+  // ── per-member onboarding (the invite flow) ─────────────────────────────
+  notePairing(email, at = new Date().toISOString()) {
+    const e = String(email || "").toLowerCase();
+    const row = [...this.sql.exec(
+      `UPDATE members SET paired_at = ? WHERE email = ? AND removed_at IS NULL AND paired_at IS NULL RETURNING paired_at`, at, e)];
+    const cur = [...this.sql.exec(`SELECT paired_at FROM members WHERE email = ? AND removed_at IS NULL`, e)][0];
+    return { pairedAt: cur ? cur.paired_at : null, wrote: row.length === 1 };
+  }
+  welcome(email) {
+    if (!this.hasMeta()) return { provisioned: false, member: null };
+    const e = String(email || "").toLowerCase();
+    const r = [...this.sql.exec(
+      `SELECT email, role, paired_at, first_publish_at, welcome_done_at, welcome_later_at, start_unit FROM members WHERE email = ? AND removed_at IS NULL`, e)][0];
+    return { provisioned: true, member: r ? {
+      email: r.email, role: r.role, pairedAt: r.paired_at, firstPublishAt: r.first_publish_at,
+      welcomeDoneAt: r.welcome_done_at, welcomeLaterAt: r.welcome_later_at, startUnit: r.start_unit,
+    } : null };
+  }
+  welcomeSet(email, { done = false, later = false, startUnit = null } = {}, at = new Date().toISOString()) {
+    const e = String(email || "").toLowerCase();
+    if (done) this.sql.exec(`UPDATE members SET welcome_done_at = COALESCE(welcome_done_at, ?) WHERE email = ? AND removed_at IS NULL`, at, e);
+    if (later) this.sql.exec(`UPDATE members SET welcome_later_at = ? WHERE email = ? AND removed_at IS NULL`, at, e);
+    if (startUnit) this.sql.exec(`UPDATE members SET start_unit = COALESCE(start_unit, ?) WHERE email = ? AND removed_at IS NULL`, startUnit, e);
+    return { ok: true, member: this.welcome(e).member };
+  }
+
   // ── the content overlay ────────────────────────────────────────────────────
   // Four verbs, each the shape one of the four families actually needs. Reading them
   // together: `read` is what a page load does, `set` is a single edit, `insert` is a
@@ -2791,6 +2828,21 @@ export class TenantStore {
       let body = null;
       try { body = await request.json(); } catch (e) { /* an empty body asks about nobody */ }
       return Response.json(this.onboardingStatus(body && body.email));
+    }
+    // Per-member onboarding — see notePairing/welcome/welcomeSet above.
+    if (url.pathname === "/onboarding/note-pair" && request.method === "POST") {
+      const body = await request.json().catch(() => ({}));
+      await this.init(body.workspaceId);
+      return Response.json(this.notePairing(body.email, body.at));
+    }
+    if (url.pathname === "/onboarding/welcome" && request.method === "POST") {
+      const body = await request.json().catch(() => ({}));
+      return Response.json(this.welcome(body && body.email));   // a read never inits
+    }
+    if (url.pathname === "/onboarding/welcome-set" && request.method === "POST") {
+      const body = await request.json().catch(() => ({}));
+      await this.init(body.workspaceId);
+      return Response.json(this.welcomeSet(body.email, body));
     }
     if (url.pathname === "/publish-version" && request.method === "POST") {
       let body = null;
