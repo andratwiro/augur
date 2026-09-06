@@ -6,12 +6,13 @@
       "content-type": "text/html; charset=utf-8",
       "link": "</llms.txt>; rel=\"help\""
     },
-    "bodyHash": "97bf0e3d450b2aaf318c8efd1870e83c4b2d7d917cb7cbcd6ec0614edc7f4e4c"
+    "bodyHash": "a8df485fb953b7129cf17c28b34d2de5861c5ee04f3f6a44751ff786db962266"
   },
   "index-signed-in": {
     "status": 200,
     "headers": {
-      "content-type": "text/html; charset=utf-8"
+      "content-type": "text/html; charset=utf-8",
+      "link": "</llms.txt>; rel=\"help\""
     },
     "bodyHash": "7d7a4476eef66421c435743104c9034fbaf89720e35331c9f6490891a3b4c704"
   },
@@ -19,6 +20,7 @@
     "status": 200,
     "headers": {
       "content-type": "text/html; charset=utf-8",
+      "link": "</llms.txt>; rel=\"help\"",
       "x-robots-tag": "noindex, nofollow, noarchive"
     },
     "bodyHash": "ffd4911eeffc1a11626431d411e19f22029a3bc4803cce516afa50cadff78168"
@@ -30,7 +32,7 @@
       "content-type": "text/html; charset=utf-8",
       "link": "</llms.txt>; rel=\"help\""
     },
-    "bodyHash": "d56cba029c64dea3f925e0b0d2a11e1e72323e4e460256052c02e317845985dc"
+    "bodyHash": "d5ae4c57ed524a231b8859a847637b08813c7da8aa81b544c0541020e0246a4e"
   },
   "restricted-space-signed-out": {
     "status": 200,
@@ -39,12 +41,13 @@
       "content-type": "text/html; charset=utf-8",
       "link": "</llms.txt>; rel=\"help\""
     },
-    "bodyHash": "569f7a3209111d82e075f3e37546de0c5a329c2455b89ae963b1818637e288a4"
+    "bodyHash": "cddf945fb3e72af6cd8a031c000bc6bdfd7a7a4c6c0beaa4f1112272be33f32f"
   },
   "pages-door": {
     "status": 200,
     "headers": {
       "content-type": "text/html; charset=utf-8",
+      "link": "</llms.txt>; rel=\"help\"",
       "x-robots-tag": "noindex, nofollow, noarchive"
     },
     "bodyHash": "0e4bf0fdfa09f9b62a2adede61dc97a8acd3ac2940d528e66ce57fdb986dc5ad"
@@ -71,7 +74,7 @@
       "content-type": "text/html; charset=utf-8",
       "link": "</llms.txt>; rel=\"help\""
     },
-    "bodyHash": "3089e7a6c2982f15c6cfce6c1b55548e48110d9c14e840bea9f70f306fb2794c"
+    "bodyHash": "0d6400650e163c3bf4ea09be7895f1a4651f72577fe24fe0f751eb22da66e7f9"
   },
   "space-icon": {
     "status": 200,
@@ -144,6 +147,6 @@
       "content-type": "text/html; charset=utf-8",
       "link": "</llms.txt>; rel=\"help\""
     },
-    "bodyHash": "8c1a4c3dbf8c46cdc73cf1303b8696a3da44da00c394810ff57ddbe282ea9e56"
+    "bodyHash": "ce0d1785f3444db3351d495a9b5fa3ce80c8fc67799b68d14bf45b7f86cea9e6"
   }
 }
