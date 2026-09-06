@@ -3754,10 +3754,13 @@ function connectPage(tctx, me) {
        <p>This account can look around but not publish, so it cannot approve a terminal.</p>
        <a class="home" href="/">Back to Augur</a>`
     : `<h1>Connect a terminal</h1>
-       <p>Type the code your terminal is showing. Approving it lets that terminal publish as
-          <strong>${escapeHtml(me.email)}</strong>.</p>
-       <p class="warn">Only approve a code you are reading off your own screen right now.
-          Nobody legitimate will ever send you one.</p>
+       <p>Type the code that your terminal, or the assistant you are working with right now,
+          is showing you. Approving it lets that terminal publish as
+          <strong>${escapeHtml(me.email)}</strong>: it works as you, and everything it lands
+          carries your name.</p>
+       <p class="warn">Only approve a code from a terminal you started or an assistant you
+          are talking to right now. A code that arrives by mail, from a stranger, or out of
+          the blue is not yours — do not type it.</p>
        <form id="pairf">
          <input id="pairc" autocomplete="off" autocapitalize="characters" spellcheck="false"
                 placeholder="ABCD-EFGH" aria-label="Pairing code" />
@@ -9269,11 +9272,14 @@ function doorText(f) {
       + `that machine, and every verb below uses it from then on.\n\n`
       + `The CLI is this engine's own, open source at ${f.source} — the same engine that\n`
       + `serves this page; \`npm view @augurworks/augur repository\` names that repository.\n\n`
-      + `AGENTS: if your person reads your messages only after you finish your turn, run\n`
-      + `it with --no-wait. It prints the line and exits; send them that line, end your\n`
-      + `turn, and run the same command again once they say they approved — the token is\n`
-      + `collected then, for that same code. Do not poll for the approval in one turn:\n`
-      + `the code lives five minutes and nobody sees it until you stop.\n\n`
+      + `AGENTS: the approval is the person's act, in their browser — you cannot approve\n`
+      + `it from here and must not try; your part is to send them the line and collect\n`
+      + `the token afterwards. If your person reads your messages only after you finish\n`
+      + `your turn, run it with --no-wait: it prints the line and exits. Send them that\n`
+      + `line, end your turn, and run the same command again once they say they approved —\n`
+      + `the token is collected then, for that same code, and no second code is minted.\n`
+      + `Waiting inside one turn skips nothing; it only hides the code from them for the\n`
+      + `five minutes it lives.\n\n`
       + (f.drafts && f.drafts.enabled
         ? `You need no source tree here: \`augur open <opportunity>/<prototype>\` fetches that one\n`
           + `prototype into a folder of its own (see below). Do not clone the workspace first.\n\n`
