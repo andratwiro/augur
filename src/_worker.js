@@ -9313,7 +9313,7 @@ function doorText(f) {
       + `  ${f.drafts.land}                               # the real URL moves; the last line printed is the live URL\n\n`
       + `No source tree is needed and the workspace is not cloned. Two sessions on one\n`
       + `prototype are both told and both work; a refused landing is \`augur sync\`, then\n`
-      + `\`augur land\` again. \`ship\` is retired here. The first \`open\` in a folder installs a\n`
+      + `\`augur land\` again. \`augur ship\` is retired here. The first \`open\` in a folder installs a\n`
       + `save hook in that folder's editor settings (.claude/settings.local.json; it says so),\n`
       + `never account-wide; \`augur hook remove\` there takes it out. The contract:\n`
       + `agents/drafts.md in the engine repository.\n\n`
