@@ -7365,8 +7365,64 @@ async function withDraftUi(tctx, res, url, me, env) {
   return new Response(html, { status: res.status, statusText: res.statusText, headers });
 }
 /** A content response, dressed: the live-reload poll, the current chrome, the draft bar, the cache policy. */
-async function serveContent(tctx, asset, url, me, env) {
-  return withDoorLink(withAssetCache(await withDraftUi(tctx, await composeChrome(tctx, withLiveReload(tctx, asset, url), url), url, me, env), url));
+async function serveContent(tctx, asset, url, me, env, request = null) {
+  return withAgentPreface(withDoorLink(withAssetCache(await withDraftUi(tctx, await composeChrome(tctx, withLiveReload(tctx, asset, url), url), url, me, env), url)), request, url, me);
+}
+
+/**
+ * Is this fetch a BROWSER's? Every browser sends `Sec-Fetch-Dest` (and `-Mode`) on every
+ * request it makes — a navigation, an iframe, an image, a prefetch — and no scripted
+ * fetcher does: curl, node, Python, the fetch behind a summarising tool. The headers are
+ * forbidden to page script, so a page cannot fake them off; a fetcher can only fake them
+ * ON, which is the harmless direction. A `Mozilla/` user agent counts as a browser too,
+ * for the browser old enough to send no Sec-Fetch at all and for the fetcher that dresses
+ * as one — both get the page a person gets, which is the conservative side of the line.
+ */
+function browserFetch(request) {
+  if (!request || !request.headers) return true;
+  if (request.headers.has("Sec-Fetch-Dest") || request.headers.has("Sec-Fetch-Mode")) return true;
+  return /^Mozilla\//.test(request.headers.get("User-Agent") || "");
+}
+
+/** The one paragraph a non-browser fetch of a prototype is given, first in the body. */
+function agentPreface(url) {
+  const origin = escapeHtml(url.origin);
+  return `<p data-augur-door>This prototype is served by an Augur workspace at ${origin}. `
+    + `Assistants and scripts: <a href="${DOOR_DOCS}">${origin}${DOOR_DOCS}</a> says how to change it — `
+    + `a terminal is paired with the person's approval, and nobody is ever asked for a password.</p>`;
+}
+
+/**
+ * A prototype fetched by something that is not a browser opens with the door.
+ *
+ * An agent handed a prototype's URL fetches the page and finds a finished site with
+ * nothing on it about how it is edited — the customer's own HTML, and on a public
+ * prototype never the gate. The `Link` header (below) reaches a scripted agent; a
+ * summarising fetch keeps only the text. So a fetch that carries no browser headers gets
+ * ONE paragraph prepended to the body, naming the origin and `/llms.txt`, and a browser
+ * gets the page byte for byte as published — a person never sees it, an embed never
+ * carries it, and the design is not touched. Decided 6 Sep 2026 after two of four cold
+ * agents fetched the prototype rather than the workspace and told the person to ask a
+ * developer.
+ *
+ * `no-store`, so the agent's variant is never what a cache hands a browser; the wrap is
+ * the outermost on the serving path for the same reason — nothing below it stores what
+ * this adds. Only a 200 HTML page: an error page, a redirect and a stylesheet are left alone.
+ * Only a SIGNED-OUT fetch: a request carrying a member's session is already inside, and
+ * what it is served — the gallery, a gated prototype — stays byte for byte what it was.
+ */
+async function withAgentPreface(res, request, url, me = null) {
+  if (!res || res.status !== 200 || !/text\/html/.test(res.headers.get("Content-Type") || "")) return res;
+  if (me || browserFetch(request)) return res;
+  const html = await res.text();
+  const m = /<body[^>]*>/i.exec(html);
+  const out = m ? html.slice(0, m.index + m[0].length) + agentPreface(url) + html.slice(m.index + m[0].length) : agentPreface(url) + html;
+  const headers = new Headers(res.headers);
+  headers.delete("Content-Length");
+  headers.delete("ETag");
+  headers.set("Cache-Control", "no-store");
+  headers.set("Vary", "Sec-Fetch-Dest, User-Agent");
+  return new Response(out, { status: res.status, statusText: res.statusText, headers });
 }
 /**
  * A served page carries the same `Link: </llms.txt>; rel="help"` the gate carries. An agent
@@ -12318,7 +12374,7 @@ async function handleRequest(request, env, ctx, url, trace) {
       }
       const asset = await assetFetch(tctx.tenantId, env, request);
       if (asset.status === 404) return notFoundResponse(tctx);
-      return serveContent(tctx, asset, url, me, env);
+      return serveContent(tctx, asset, url, me, env, request);
     }
 
     // Published prototypes are public — never gated, regardless of the cookie.
@@ -12327,7 +12383,7 @@ async function handleRequest(request, env, ctx, url, trace) {
     if (isPublicPath(tctx, url.pathname)) {
       const asset = await assetFetch(tctx.tenantId, env, request);
       if (asset.status === 404) return notFoundResponse(tctx);
-      const res = await serveContent(tctx, asset, url, me, env);
+      const res = await serveContent(tctx, asset, url, me, env, request);
       const out = new Response(res.body, res);
       out.headers.set("X-Robots-Tag", "noindex, nofollow, noarchive");
       return out;
@@ -12358,14 +12414,14 @@ async function handleRequest(request, env, ctx, url, trace) {
       // Where drafts are served, the gallery and its indexes are derived from the live
       // store rather than read from it — a landing is on them at once.
       const derived = await derivedPage(tctx, env, url);
-      if (derived) return stamp(derived.status === 308 ? derived : await serveContent(tctx, derived, url, me, env));
+      if (derived) return stamp(derived.status === 308 ? derived : await serveContent(tctx, derived, url, me, env, request));
       const asset = await assetFetch(tctx.tenantId, env, request, { dsDraft: ds.draft });
       if (asset.status === 404) {
         const virt = await virtualCanvas(tctx, request, env, url);
         if (virt) return stamp(virt);
         return stamp(notFoundResponse(tctx));
       }
-      return stamp(await serveContent(tctx, asset, url, me, env));
+      return stamp(await serveContent(tctx, asset, url, me, env, request));
     }
 
     // Created canvas boards are public like published prototypes — same obscure
@@ -12447,7 +12503,7 @@ export const __testables = Object.freeze({
   doorFacts, doorText, wantsMachineDoor, gateResponse, DOOR_DOCS, DOOR_WELL_KNOWN,
   resumeAfterDormancy,
   PITI_VIEW_KEY, PITI_REMARKS_KEY,
-  publishAuthDetailed, unitApi, unitCaller, personFace, withDoorLink, withDraftUi, draftUiBoot, derivedPage, dsOverlay, isEngineChrome, publishRefusalBody, splitDraftPath,
+  publishAuthDetailed, unitApi, unitCaller, personFace, withDoorLink, withAgentPreface, browserFetch, withDraftUi, draftUiBoot, derivedPage, dsOverlay, isEngineChrome, publishRefusalBody, splitDraftPath,
   adminStorageApi,
   adminCustomDomainApi,
   isPrefixBacked, backedPublicPrefixes,

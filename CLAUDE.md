@@ -726,6 +726,15 @@ public prototypes) **must be listed in `isPublicPath()`** in `src/_worker.js`, o
 gate serves the login HTML in place of the asset and an `<img>` fails silently. Avoid
 inline `data:` images for overlay UI — serve a real same-origin file.
 
+**A prototype fetched by something that is not a browser opens with the door.** `withAgentPreface`
+is the outermost wrap on `serveContent`: a 200 HTML page fetched with no `Sec-Fetch-*` header and
+no `Mozilla/` user agent — curl, node, Python, the fetch behind a summarising tool — gets ONE
+paragraph prepended to its body naming the origin and `/llms.txt`, served `no-store`; a browser
+(navigation, iframe, prefetch, an old one, a fetcher dressed as one) gets the page byte for byte.
+A person never sees it and an embed never carries it. It exists because an agent handed a public
+prototype's URL fetches a finished page with no trace of how it is edited (6 Sep 2026: two of four
+cold agents told the person to ask a developer). `test/agent-preface.test.mjs` pins the line.
+
 **Screen contract (SPA prototypes):** the comment overlay scopes to
 `<body data-gv-screen>`. Multi-page prototypes need nothing (URL fallback); a prototype
 that swaps screens without changing the URL must publish its visible state there, or
