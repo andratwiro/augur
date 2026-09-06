@@ -112,8 +112,15 @@ if (NO_WAIT) {
   process.exit(0);
 }
 console.log(`  ${C.dim}You can stop waiting (Ctrl-C) and run \`augur connect\` again after they approve —`);
-console.log(`  it collects the token for this same code. Talking to your person through messages`);
-console.log(`  rather than a terminal? Use \`augur connect --no-wait\`.${C.off}`);
+console.log(`  it collects the token for this same code.${C.off}`);
+console.log("");
+// Addressed to an agent, in the second person, because the polite version above was
+// read and ignored: an agent whose person only sees its messages once it finishes its
+// turn kept polling here for the code's whole life, twice, and nobody ever saw the code.
+console.log(`  ${C.warn}AGENTS: if your person reads your messages only after you finish, do not wait here.`);
+console.log(`  Stop now, send them the first line above, and run \`augur connect\` again once they say`);
+console.log(`  they have approved — it collects the token then. (\`augur connect --no-wait\` does`);
+console.log(`  exactly that in one step.)${C.off}`);
 console.log("");
 
 const deadline = Date.now() + (expiresInMs || 300000);

@@ -9133,9 +9133,12 @@ function doorText(f) {
       + `  ${f.connect}\n\n`
       + `It prints a link and a code. The owner of this workspace opens the link in a\n`
       + `browser they are already signed in to and enters the code. The token lands on\n`
-      + `that machine, and every verb below uses it from then on. Talking to that person\n`
-      + `through messages rather than a terminal? Add --no-wait: it prints the line and\n`
-      + `exits; run the same command again after they approve and the token is collected.\n`
+      + `that machine, and every verb below uses it from then on.\n\n`
+      + `AGENTS: if your person reads your messages only after you finish your turn, run\n`
+      + `it with --no-wait. It prints the line and exits; send them that line, end your\n`
+      + `turn, and run the same command again once they say they approved — the token is\n`
+      + `collected then, for that same code. Do not poll for the approval in one turn:\n`
+      + `the code lives five minutes and nobody sees it until you stop.\n\n`
       + `With no\n`
       + `source tree yet, \`npx @augurworks/augur clone --space ${f.workspace}\` then fetches one (it reads\n`
       + `the origin from the pairing).\n\n`

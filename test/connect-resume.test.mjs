@@ -119,6 +119,7 @@ test("the waiting form says it can be interrupted and resumed", async () => {
     p.kill("SIGINT");
     await new Promise((r) => p.on("close", r));
     assert.match(out, /stop waiting \(Ctrl-C\)/, "says it can be stopped");
+    assert.match(out, /AGENTS: .*do not wait here/, "tells an agent, in the second person, not to wait");
     assert.match(out, /--no-wait/, "names the flag for message-relayed agents");
     const pending = JSON.parse(fs.readFileSync(path.join(home, ".config", "augur", "pairing.json"), "utf8"));
     assert.ok(pending[new URL(srv.origin).host], "the pairing survives the interrupt");
