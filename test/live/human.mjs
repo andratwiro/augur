@@ -47,8 +47,17 @@ export class Human {
     const c = this.jar.get(COOKIE);
     return c ? `${COOKIE}=${c.value}` : "";
   }
+  /**
+   * The headers a browser sends and a script does not. This person IS a browser, and the
+   * engine gives a non-browser fetch of a prototype one extra paragraph for assistants —
+   * a person's reads must be the page as published, byte for byte.
+   */
   headers(extra = {}) {
-    return { ...(this.cookie ? { cookie: this.cookie } : {}), ...extra };
+    return {
+      "user-agent": "Mozilla/5.0 (live suite; a person at a browser)",
+      "sec-fetch-dest": "document", "sec-fetch-mode": "navigate", "sec-fetch-site": "none",
+      ...(this.cookie ? { cookie: this.cookie } : {}), ...extra,
+    };
   }
 
   /** The account session, when the jar holds one — set by the mailed sign-in's hand-off. */

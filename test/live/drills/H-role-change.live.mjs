@@ -60,7 +60,12 @@ test("H2: removed from the workspace mid-draft", async () => {
   const findings = [];
   try {
     writeFile(b, "index.html", readFile(b, "index.html") + "\n" + stamp(b, "before-removal"));
-    assert.ok((await save(b)).ok);
+    // H1 put editor2 back as an editor seconds ago, and a role change takes up to a minute
+    // to reach every isolate: the first save here can still be refused as a viewer's.
+    let first;
+    await until(async () => { first = await save(b); return first.ok; },
+      { timeoutMs: 120000, everyMs: 5000, what: "editor2's first save after H1's re-promotion reaching every isolate" }).catch(() => {});
+    assert.ok(first && first.ok, `editor2's first save was refused: ${JSON.stringify(first)}`);
     const rm = await owner.admin({ op: "remove", email: addressOf("editor2") });
     findings.push({ what: "owner removes editor2", result: rm });
     writeFile(b, "index.html", readFile(b, "index.html") + "\n" + stamp(b, "after-removal"));
