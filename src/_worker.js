@@ -119,6 +119,8 @@ import { signRoomTicket } from "./room-ticket.mjs";
 import { nameFromEmail, initialsFor, colorFor } from "./roster-chip.mjs";
 import { isSeedSource, seedSource, SEED_ACTOR } from "./provenance.mjs";
 import { welcomeUnitFor } from "./welcome-unit.mjs";
+import { renderWelcomePage } from "./welcome-page.mjs";
+import { AGENT_TOOL } from "./agent-tool.mjs";
 
 const COOKIE = "gv_auth";
 const MAX_AGE = 60 * 60 * 24 * 7; // 7 days
@@ -10328,8 +10330,59 @@ async function onboardingMeApi(tctx, request, url, env, me) {
       } catch (e) { /* the object is unreachable; the flags stay false and the page keeps polling */ }
     }
   }
-  out.gated = role !== "viewer" && !out.done && !out.later;
+  out.gated = welcomeGated(role, w.member);
   return jsonResponse(out);
+}
+
+// ── The welcome gate ──────────────────────────────────────────────────────────────────
+//
+// WELCOME_PATH IS THE SAME STRING AS FIRST_RUN_PATH, deliberately: this is the page that
+// slot was reserved for, and its copy said so out loud. A person meets one welcome or the
+// other and never both, and which one is decided by the FLAG rather than by the order of
+// two branches in the router — so a deployment that opted into the placeholder keeps
+// exactly what it has, and neither this route nor the redirect below exists for it.
+// ⏳ When FIRST_RUN retires, both guards retire with it.
+const WELCOME_PATH = "/__welcome";
+const welcomeFlow = (tctx) => !!tctx && !tctx.FIRST_RUN;
+
+/**
+ * Is this person still owed the welcome? ONE definition, read by both callers — the
+ * `gated` field of `/__onboarding/me`, which the page itself polls, and the redirect on
+ * `/`. Two formulas here would disagree exactly once, on the tick a person clicks past.
+ *
+ * ⚠️ A MEMBER ROW IS REQUIRED, and that is the fail-open half of it. `later` and `done`
+ * are columns on the member's own row, so somebody the workspace object holds no row for
+ * cannot record either — gating them would send them to a page whose "do this later"
+ * writes nothing, on every load, with no way into their own workspace. Absent is
+ * therefore NOT gated, the direction every degradation on this path already fails in.
+ */
+const welcomeGated = (role, member) =>
+  role !== "viewer" && !!member && !member.welcomeDoneAt && !member.welcomeLaterAt;
+
+/**
+ * The redirect's own read: ONE round trip to the workspace object for the three facts
+ * `welcomeGated` needs, and not the whole of `onboardingMeApi` — which also asks the
+ * member's unit object for presence and for history, so the full shape would put three
+ * round trips in front of every gallery load every member ever does.
+ *
+ * EVERY FAILURE ANSWERS FALSE. A workspace whose object is unreachable serves its
+ * galleries; it does not hold its own members at a door while a store is having a bad day.
+ */
+async function owedWelcome(tctx, env, me) {
+  if (!welcomeFlow(tctx) || !me || roleOf(me) === "viewer") return false;
+  const stub = tenantStub(env, tctx && tctx.tenantId);
+  if (!stub) return false;
+  try {
+    const res = await stub.fetch("https://workspace/onboarding/welcome", {
+      method: "POST", headers: { "content-type": "application/json" },
+      body: JSON.stringify({ email: me.email }),
+    });
+    if (!res.ok) return false;
+    const w = await res.json();
+    return welcomeGated(roleOf(me), w && w.member);
+  } catch (e) {
+    return false;
+  }
 }
 
 /**
@@ -12076,6 +12129,18 @@ async function handleRequest(request, env, ctx, url, trace) {
       if (!who && tctx.USERS.length) return htmlResponse(loginPage(tctx, "/__connect", false, url.href), 200);
       return htmlResponse(connectPage(tctx, who, url.origin), 200);
     }
+    // The welcome flow — the one page that says this workspace is built from a terminal,
+    // and walks a person through connecting one. Self-contained and self-guarding, exactly
+    // like /__connect above: signed out meets the ordinary gate with this path as the way
+    // back, and a VIEWER is sent home rather than shown a flow that ends in a publish
+    // token they may not hold. See renderWelcomePage for what the page is built to.
+    if (url.pathname === WELCOME_PATH && welcomeFlow(tctx)) {
+      if (request.method !== "GET") return new Response("Method Not Allowed", { status: 405 });
+      const who = tctx.USERS.length ? await identify(request, env, tctx.USERS, { sessionKeys: tctx.SESSION_KEYS, tctx }) : null;
+      if (!who && tctx.USERS.length) return htmlResponse(loginPage(tctx, WELCOME_PATH, false, url.href), 200);
+      if (!who || roleOf(who) === "viewer") return new Response(null, { status: 303, headers: { Location: "/", "Cache-Control": "no-store" } });
+      return htmlResponse(renderWelcomePage({ origin: url.origin, me: who, agentTool: AGENT_TOOL }), 200);
+    }
     if (url.pathname.startsWith("/__publish/_pair/")) {
       // Identity is resolved here rather than reusing the gate's `me` below, because this
       // route runs BEFORE the gate — the same early-exit shape /__version and the review
@@ -12587,6 +12652,19 @@ async function handleRequest(request, env, ctx, url, trace) {
       if (sid && !isMemberOf(me, sid)) return notFoundResponse(tctx);
     }
 
+    // The welcome gate. A member who has never connected a terminal is shown how, once,
+    // before the workspace they have no way to change yet. ITS PLACEMENT IS THE WHOLE OF
+    // ITS SAFETY, between two doors that both had to come first: AFTER isPublicPath, so a
+    // share link a member happens to open is still the page and not an onboarding flow;
+    // and AFTER the membership gate, so a signed-in non-member still gets the 404 that
+    // does not confirm this workspace exists rather than a redirect that does.
+    // Viewers are never gated and every unreadable answer is "not gated" — see
+    // owedWelcome, which also costs a workspace with no object nothing at all.
+    if (authed && me && (url.pathname === "/" || url.pathname === "/index.html")
+        && await owedWelcome(tctx, env, me)) {
+      return new Response(null, { status: 303, headers: { Location: WELCOME_PATH, "Cache-Control": "no-store" } });
+    }
+
     // Past the gate (or nothing gates the site) → serve. A 404 gets one more chance
     // as a created canvas (a KV-registered board with no repo file — see canvasesApi).
     if (authed) {
@@ -12705,5 +12783,5 @@ export const __testables = Object.freeze({
   WORKSPACE_ENTER_PATH, enterHandoff, tenantAccountKey,
   noteMembershipUpstream,
   noteFirstPublish, noteRoleTransition, onboardingStatusApi,
-  notePairing, onboardingMeApi,
+  notePairing, onboardingMeApi, WELCOME_PATH, welcomeGated, owedWelcome, renderWelcomePage,
 });

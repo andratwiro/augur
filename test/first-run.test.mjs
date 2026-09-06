@@ -235,21 +235,28 @@ test("FLAG OFF: redemption lands where it always landed, and no record is ever w
   assert.equal(d.kv.store.has(W.FIRST_RUN_KEY), false, "nothing was recorded — the flag off costs no read and no write");
 });
 
-test("FLAG OFF: the path answers exactly what any unknown path answers — the surface is removed entirely", async () => {
+// ⚠️ THIS TEST USED TO ASSERT THAT THE PATH WAS NOT THERE AT ALL with the flag off, and
+// that stopped being true the day the real welcome was written (src/welcome-page.mjs):
+// the flag's slot is now OCCUPIED, and the flag chooses which of two surfaces stands in
+// it rather than whether one does. What survives unchanged is the half the flag is
+// actually about — where a redemption LANDS, and the once-only record — which the test
+// above pins. See WELCOME_PATH in _worker.js: the two are the same string on purpose.
+test("FLAG OFF: the path is the welcome flow's, and never the placeholder's", async () => {
   const d = await deployment({ firstRun: false });
-  // Anonymous: both get the gate, identically — modulo the requested path, which the
-  // gate echoes into the form's redirect field and the og:url (as it always has).
+  // Anonymous: the ordinary sign-in gate, with this path as the way back — the same
+  // shape /__connect answers with, and no more than a stranger already knew.
   const a = await d.fire(W.FIRST_RUN_PATH);
-  const b = await d.fire("/__no-such-surface");
-  assert.equal(a.status, b.status);
-  const norm = (s, p) => s.split(p).join("/__x");
-  assert.equal(norm(await a.text(), W.FIRST_RUN_PATH), norm(await b.text(), "/__no-such-surface"));
-  // Signed in: both fall through to the same not-found handling.
+  assert.equal(a.status, 200);
+  const gate = await a.text();
+  assert.ok(gate.includes(W.FIRST_RUN_PATH), "the gate carries the path to come back to");
+  assert.ok(!gate.includes(W.FIRST_RUN_COPY.badge), "a stranger is never shown either surface");
+  // Signed in: the real welcome flow, and not one word of the placeholder it replaced.
   const admin = await signInAdmin(d);
   const c = await d.fire(W.FIRST_RUN_PATH, { headers: { Cookie: admin.cookie } });
-  const e = await d.fire("/__no-such-surface", { headers: { Cookie: admin.cookie } });
-  assert.equal(c.status, e.status);
-  assert.equal(await c.text(), await e.text());
+  assert.equal(c.status, 200);
+  const html = await c.text();
+  assert.ok(html.includes('data-step="agent"'), "the five-step flow");
+  assert.ok(!html.includes(W.FIRST_RUN_COPY.placeholder), "the placeholder is what the flag now selects AWAY from");
 });
 
 // ── the record's own semantics ───────────────────────────────────────────────

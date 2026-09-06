@@ -347,6 +347,15 @@ const ALLOWLIST = {
     ],
   },
 
+  // The one third-party agent tool the engine can set up, written down once. A fact about
+  // the ENGINE and about nobody's workspace — the CLI's adapter table and the worker's
+  // welcome flow both read it, which is the whole reason it is not two string literals.
+  "src/agent-tool.mjs": {
+    frozen: [
+      "AGENT_TOOL",  // id, display name, install line and binary
+    ],
+  },
+
   // How a member's chip reads when nobody typed it. Pure string work, shared by the two
   // writers of a `members` row — the worker's invite and the object's provisioning.
   "src/roster-chip.mjs": {

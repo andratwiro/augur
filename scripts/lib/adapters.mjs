@@ -17,6 +17,9 @@ import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { execFileSync } from "node:child_process";
+// The tool's id and display name live in ONE place, beside the worker that also needs
+// them (the welcome flow's install step). See src/agent-tool.mjs.
+import { AGENT_TOOL } from "../../src/agent-tool.mjs";
 
 // What identifies OUR entries in a settings file: the quoted script name and the event,
 // exactly as `hookCommand` spells them — so an entry survives the engine moving on disk
@@ -82,8 +85,8 @@ export function saveDecision({ filePath, cwd, registry }) {
 // ── the tools ────────────────────────────────────────────────────────────────
 export const ADAPTERS = Object.freeze([
   Object.freeze({
-    id: "claude-code",
-    name: "Claude Code",
+    id: AGENT_TOOL.id,
+    name: AGENT_TOOL.name,
     // The hooks live in the PROJECT's local settings — the folder `augur open` runs in, which
     // is where the draft folder is made — never in the account-wide file. Three cold agents
     // in a row flagged a write to ~/.claude/settings.json and their person asked for it to be
