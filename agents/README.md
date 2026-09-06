@@ -25,7 +25,9 @@ npx @augurworks/augur connect --origin https://<the workspace>
 ```
 
 It prints one line to relay — *ask the owner of this workspace to open `<link>` and
-enter `<code>`* — and waits. The owner opens the link in a browser they are already
+enter `<code>`* — and waits. If your person reads you through messages rather than a
+terminal, run it with `--no-wait`: it prints the line and exits, and running it again
+after they approve collects the token for that same code. The owner opens the link in a browser they are already
 signed in to and types the code; the token lands in `~/.config/augur/tokens.json`, and
 `augur ship` / `augur publish` use it from then on. `publish` runs the pairing itself when
 it finds no token, so inside a workspace tree nothing has to be done first. On a workspace

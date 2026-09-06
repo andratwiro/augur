@@ -9133,7 +9133,10 @@ function doorText(f) {
       + `  ${f.connect}\n\n`
       + `It prints a link and a code. The owner of this workspace opens the link in a\n`
       + `browser they are already signed in to and enters the code. The token lands on\n`
-      + `that machine, and every verb below uses it from then on. With no\n`
+      + `that machine, and every verb below uses it from then on. Talking to that person\n`
+      + `through messages rather than a terminal? Add --no-wait: it prints the line and\n`
+      + `exits; run the same command again after they approve and the token is collected.\n`
+      + `With no\n`
       + `source tree yet, \`npx @augurworks/augur clone --space ${f.workspace}\` then fetches one (it reads\n`
       + `the origin from the pairing).\n\n`
     : `Device pairing is switched off on this workspace. Ask an admin for an invite;\n`
