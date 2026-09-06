@@ -2549,6 +2549,9 @@ async function readInvite(tctx, env, token, nowMs = Date.now()) {
   if (typeof token !== "string" || !token) return null;
   const ident = identityFor(env, tctx, "invites");
   if (ident) {
+    // No straddle to survive here: the worker and the object ship in ONE script, and
+    // deploying it restarts every object — so a worker that reads `kind` can never be
+    // talking to a class that predates the column.
     let hit;
     try { hit = await ident.inviteRead(await inviteHash(token), nowMs); }
     catch (e) { return null; }
@@ -10356,7 +10359,12 @@ async function onboardingMeApi(tctx, request, url, env, me) {
       }
       const who = { personId: SEED_ACTOR, label: SEED_ACTOR };
       const written = await writeUnitLanding(tctx, env, spaceId, unit, table, changed, who,
-        new Date().toISOString(), { unitSource: seedSource({ sha: null, dirty: false }) });
+        // `kind: "welcome"` is what the derived gallery reads to leave this page off it —
+        // one card per member is a wall of hash-named tiles nobody asked for, and the page
+        // is reached from the welcome flow and the person's own link, never from a list.
+        // It rides on the seed sentinel rather than beside it so a reader that only knows
+        // `isSeedSource` is unaffected.
+        new Date().toISOString(), { unitSource: seedSource({ kind: "welcome", sha: null, dirty: false }) });
       if (written.error) {
         const { status, ...rest } = written;
         return jsonResponse(rest, status || 503);
@@ -10373,12 +10381,19 @@ async function onboardingMeApi(tctx, request, url, env, me) {
     request = new Request(`${url.origin}/__onboarding/me`, { method: "GET", headers: request.headers });
   }
 
+  let saved = null;
   if (request.method === "POST") {
     let body; try { body = await request.json(); } catch (e) { return jsonResponse({ error: "bad-json" }, 400); }
     try {
-      await stub.fetch("https://workspace/onboarding/welcome-set", { method: "POST", headers: { "content-type": "application/json" },
+      const w = await stub.fetch("https://workspace/onboarding/welcome-set", { method: "POST", headers: { "content-type": "application/json" },
         body: JSON.stringify({ workspaceId: tctx.tenantId, email: me.email, done: body.done === true, later: body.later === true }) });
-    } catch (e) { /* a lost write must not fail the request; the read below just shows the old flags */ }
+      // ⚠️ A REFUSAL RESOLVES; ONLY AN UNREACHABLE OBJECT THROWS. An object that answered
+      // 500 comes back here as an ordinary Response, so the catch below never sees it and
+      // an unchecked `await` calls a failed write a success. It still may not throw — the
+      // read below is what the page navigates on, and it reports the flags that actually
+      // stand — so the verdict is recorded and reported rather than raised.
+      saved = w.ok;
+    } catch (e) { saved = false; /* a lost write must not fail the request; the read below just shows the old flags */ }
   } else if (request.method !== "GET") return jsonResponse({ error: "method" }, 405);
   let w;
   try {
@@ -10408,6 +10423,10 @@ async function onboardingMeApi(tctx, request, url, env, me) {
   // has to be owed it. This route answers unconditionally, pairing or not, so without the
   // first clause it told a member they were gated by a door that does not exist.
   out.gated = welcomeFlow(tctx) && welcomeGated(role, w.member);
+  // Only on a write, and only ever beside the flags themselves: the page decides on
+  // `done`/`later` coming back true, and this says which half of a `false` it is — a
+  // refused write, or a flag nobody has set yet.
+  if (saved !== null) out.saved = saved;
   return jsonResponse(out);
 }
 
@@ -11548,7 +11567,7 @@ async function adminUsersApi(tctx, request, url, env, me, users = tctx.USERS, co
         user: { email, name, initials: roster.add[email].initials, color: roster.add[email].color, role },
         by: me.email,
       });
-      const mail = await mailLink(email, "roster-invite", token, { inviter: me.name || me.email, role, originHost: url.host });
+      const mail = await mailLink(email, "roster-invite", token, { inviter: me.name || me.email, role });
       return jsonResponse({ ok: true, email, url: link(token), fileSync, mail });
     }
 

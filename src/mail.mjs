@@ -238,7 +238,8 @@ export const TEMPLATES = Object.freeze({
       ? [
           who ? `${who} invited you to ${v.workspace}.` : `You have been invited to ${v.workspace}.`,
           "It is where the team's prototypes live: pages your coding agent builds and shares as real links.",
-          "Open it and it walks you through connecting your agent; the first thing you make appears on your own page.",
+          "Open it and it walks you through connecting your agent.",
+          "The first thing you make appears on your own page.",
           expiryLine(v.expiresHours),
         ]
       : [
@@ -289,7 +290,7 @@ export const TEMPLATES = Object.freeze({
 export function renderMail(template, vars = {}) {
   const fn = TEMPLATES[template];
   if (!fn) return null;
-  const v = { workspace: "your workspace", link: "", inviter: "", expiresHours: 0, passwordless: false, role: "viewer", originHost: "", ...vars };
+  const v = { workspace: "your workspace", link: "", inviter: "", expiresHours: 0, passwordless: false, role: "viewer", ...vars };
   return fn(v);
 }
 

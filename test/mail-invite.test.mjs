@@ -148,7 +148,9 @@ test("an editor's invite names the inviter, says what the workspace is, and open
     const text = calls.at(-1).body.text;
     assert.match(text, /Ada Admin invited you to/);
     assert.match(text, /coding agent/);
-    assert.match(text, /walks you through connecting/);
+    assert.match(text, /Open it and it walks you through connecting your agent\./);
+    assert.match(text, /The first thing you make appears on your own page\./);
+    assert.doesNotMatch(text, /connecting your agent;/, "two sentences, never one joined by a semicolon");
     await W.adminUsersApi(CTX, adminReq({ op: "invite", email: "v@x.test", role: "viewer" }), usersUrl, env, ME);
     assert.doesNotMatch(calls.at(-1).body.text, /coding agent/);
   } finally { restore(); }

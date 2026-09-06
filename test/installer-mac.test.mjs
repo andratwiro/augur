@@ -49,7 +49,7 @@ test("the installer is valid bash, bakes the origin in, and touches nothing outs
   const s = SCRIPT();
   const f = path.join(fs.mkdtempSync(path.join(os.tmpdir(), "inst-")), "x.command"); fs.writeFileSync(f, s);
   assert.equal(spawnSync("/bin/bash", ["-n", f]).status, 0, "bash -n");
-  assert.match(s, /connect --origin https:\/\/acme\.example/);
+  assert.match(s, /connect --origin "https:\/\/acme\.example"/, "quoted: an origin is interpolated into a shell line");
   assert.doesNotMatch(s, /\bsudo\b/);
   assert.match(s, /set -euo pipefail/);
 });
@@ -179,7 +179,7 @@ test("an unwritable ~/.zprofile is a warning, not a failure — everything else 
 
 test("connects with --no-wait first (to print the code) then again to collect it, opening /__welcome not /__connect", () => {
   const s = SCRIPT();
-  assert.match(s, /connect --origin https:\/\/acme\.example --no-wait/);
+  assert.match(s, /connect --origin "https:\/\/acme\.example" --no-wait/);
   assert.match(s, /open "https:\/\/acme\.example\/__welcome"/);
   assert.doesNotMatch(s, /open "https:\/\/acme\.example\/__connect"/);
 });

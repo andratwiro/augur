@@ -12,6 +12,7 @@ import { __testables as W } from "../src/_worker.js";
 import { TenantStore } from "../src/tenant-do.js";
 import { SEED_ACTOR, isSeedSource } from "../src/provenance.mjs";
 import { personIdFor } from "../src/purge.mjs";
+import { siteModel, isWelcomeUnit } from "../src/galleries.mjs";
 import { makeEnv, ctxFor, cookieFor, ADA_MEMBER, VERA, manifestOf, remember } from "./fixtures/unit-env.mjs";
 
 // The member's page is keyed by the member id, not the local part of the address — see
@@ -107,6 +108,23 @@ function rejecting(env, pathname) {
   };
 }
 
+// The same shape as `rejecting`, but the object ANSWERS — with a 500. That is the half a
+// try/catch cannot reach, and the half a real Durable Object produces when a statement
+// throws inside it.
+function refusing(env, pathname) {
+  const realGet = env.TENANTS.get;
+  env.TENANTS.get = (n) => {
+    const real = realGet(n);
+    return {
+      fetch: (input, init) => {
+        const path = new URL(typeof input === "string" ? input : input.url).pathname;
+        if (path === pathname) return Promise.resolve(new Response("boom", { status: 500 }));
+        return real.fetch(input, init);
+      },
+    };
+  };
+}
+
 test("an editor with a member row is NOT gated until a redeemed invite owes them the flow", async () => {
   // ⚠️ THE REGRESSION THIS FILE EXISTS TO PIN SINCE 9a. `gated` used to be "editor or
   // admin, and neither flag set", which is true of every member a workspace already had —
@@ -190,6 +208,32 @@ test("a workspace-object failure on the welcome-set write never fails the reques
   assert.equal(a.status, 200);
   assert.equal(a.json.later, false);
   assert.equal(a.json.gated, true);
+  assert.equal(a.json.saved, false, "the write is reported as the failure it was");
+});
+
+test("a welcome-set the object REFUSES answers 200 with later:false — a 500 is not a throw", async () => {
+  // ⚠️ THE CASE THE `catch` CANNOT SEE. `stub.fetch` rejects only when the object is
+  // unreachable; an object that answered 500 resolves, so an unchecked `await` calls a
+  // failed write a success. The page navigates on the flag coming back true, so a `later`
+  // still false here is what keeps somebody off `/` — where the gate would send them
+  // straight back to this page, for ever.
+  const { env, ctx } = await wired([ADA_MEMBER]);
+  await owe(env, ctx, ADA_MEMBER);
+  refusing(env, "/onboarding/welcome-set");
+  const a = await me(env, ctx, ADA_MEMBER, { method: "POST", body: JSON.stringify({ later: true }) });
+  assert.equal(a.status, 200, "a failed write is never a failed request");
+  assert.equal(a.json.later, false);
+  assert.equal(a.json.saved, false);
+  assert.equal(a.json.gated, true, "and the gate is still up, because nothing was written");
+
+  // The same route with the object answering normally: the flag comes back true, which is
+  // the only answer the page leaves on — so the assertion above is not a blanket false.
+  const { env: env2, ctx: ctx2 } = await wired([ADA_MEMBER]);
+  await owe(env2, ctx2, ADA_MEMBER);
+  const b = await me(env2, ctx2, ADA_MEMBER, { method: "POST", body: JSON.stringify({ later: true }) });
+  assert.equal(b.json.later, true);
+  assert.equal(b.json.saved, true);
+  assert.equal(b.json.gated, false);
 });
 
 // ── The member's own page, landed by the platform ────────────────────────────────────
@@ -222,6 +266,13 @@ test("POST /__onboarding/me/unit lands the member's page once, as seed-sourced, 
   assert.equal(live.version, 4);
   assert.ok(live.routing.unitSources && live.routing.unitSources[ADA_UNIT], "stamped as platform-made");
   assert.equal(isSeedSource(live.routing.unitSources[ADA_UNIT]), true);
+  // …and stamped as the WELCOME kind, which is what keeps one card per member off the
+  // derived gallery (src/galleries.mjs `isWelcomeUnit`). It rides on the seed sentinel,
+  // so the assertion above is unaffected by it.
+  assert.equal(live.routing.unitSources[ADA_UNIT].kind, "welcome");
+  assert.equal(isWelcomeUnit(live.routing.unitSources[ADA_UNIT]), true);
+  assert.equal(siteModel({ manifest: live }).units.some((u) => u.unit === ADA_UNIT), false,
+    "the page is served at its URL and listed on no derived page");
   assert.equal(live.publishedBy, SEED_ACTOR, "the platform landed it, never the person");
   assert.notEqual(live.files[`${ADA_UNIT}index.html`].by, W.personId(ADA_MEMBER.email));
   assert.ok(live.routing.publicPrefixes.includes(ADA_UNIT), "and it is served");

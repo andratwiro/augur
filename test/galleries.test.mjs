@@ -4,8 +4,9 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
   siteModel, unitHome, derivedPathKind, renderRootIndex, renderOpportunityIndex, renderPlaygroundIndex,
-  renderTierIndex, renderComponentsIndex, searchIndex, catalogFrom, shell, TIERS,
+  renderTierIndex, renderComponentsIndex, searchIndex, catalogFrom, shell, TIERS, isWelcomeUnit,
 } from "../src/galleries.mjs";
+import { seedSource } from "../src/provenance.mjs";
 
 const NOW = Date.parse("2026-09-06T12:00:00.000Z");
 const f = (h, extra = {}) => ({ h: h.repeat(64).slice(0, 64), ct: "text/html", s: 10, ...extra });
@@ -153,4 +154,50 @@ test("the shell renders without a chrome pointer too", () => {
   const html = shell({ title: "T", body: "<p>x</p>", ctx: { spaces: [], activeSpace: "" } });
   assert.doesNotMatch(html, /_chrome\./);
   assert.match(html, /<p>x<\/p>/);
+});
+
+// ── the member's own welcome page is served, never listed ──────────────────────────────
+//
+// `onboardingMeApi` lands one unit PER MEMBER, under a folder named by an opaque member
+// id. Listed, a team of twenty puts twenty hash-named cards on the first page the
+// workspace shows — so the derived surface skips them, on the `kind` the landing stamps
+// into `routing.unitSources` and not on the path (a person may publish into `/start-here/`
+// like any other folder, and hiding their work would be the worse failure).
+const withWelcome = {
+  version: 12,
+  files: {
+    "/checkout/flow/index.html": f("a", { by: "p1", editedAt: "2026-09-05T10:00:00.000Z" }),
+    "/start-here/k3f9x2/index.html": f("w", { editedAt: "2026-09-06T11:00:00.000Z" }),
+  },
+  routing: {
+    publicPrefixes: ["/checkout/flow/", "/start-here/k3f9x2/"],
+    unitSources: {
+      "/start-here/k3f9x2/": seedSource({ kind: "welcome", sha: null, dirty: false }),
+    },
+  },
+};
+
+test("isWelcomeUnit reads the stamp and nothing else", () => {
+  assert.equal(isWelcomeUnit(seedSource({ kind: "welcome" })), true);
+  assert.equal(isWelcomeUnit(seedSource({ sha: null, dirty: false })), false, "the seed pack's own content still lists");
+  assert.equal(isWelcomeUnit({ sha: "abc", dirty: false }), false);
+  assert.equal(isWelcomeUnit(undefined), false);
+  assert.equal(isWelcomeUnit(null), false);
+});
+
+test("a welcome-kind unit is not listed anywhere derived, and an ordinary unit still is", () => {
+  const m = siteModel({ manifest: withWelcome, people, now: NOW });
+  assert.deepEqual(m.opportunities.map((o) => o.name), ["checkout"], "no `start-here` folder appears");
+  assert.deepEqual(m.units.map((u) => u.unit), ["/checkout/flow/"]);
+  const html = renderRootIndex(m, ctx);
+  assert.ok(html.includes("checkout"), "the ordinary opportunity is still on the page");
+  assert.ok(!html.includes("start-here"), "the member's page is not");
+  assert.ok(!html.includes("k3f9x2"), "and neither is their id");
+  assert.ok(!searchIndex(m, ctx).some((e) => String(e.href || "").includes("start-here")), "nor in the finder");
+
+  // Same manifest, same unit, WITHOUT the stamp: it lists like anything else — so the
+  // assertions above are about the stamp and not about the path.
+  const plain = { ...withWelcome, routing: { ...withWelcome.routing, unitSources: {} } };
+  const m2 = siteModel({ manifest: plain, people, now: NOW });
+  assert.deepEqual(m2.opportunities.map((o) => o.name).sort(), ["checkout", "start-here"]);
 });

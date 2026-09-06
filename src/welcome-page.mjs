@@ -72,6 +72,7 @@ export function renderWelcomePage({ origin, me, agentTool } = {}) {
   .primary{font:600 15px inherit;color:#fff;background:var(--accent);border:0;border-radius:9px;padding:.7rem 1.1rem;cursor:pointer;align-self:flex-start;text-decoration:none;display:inline-block} .primary[disabled]{opacity:.45;cursor:default}
   .status{font-size:.95rem;color:var(--muted)} .status[data-on="1"]{color:#137333;font-weight:600}
   .later{position:fixed;right:1rem;bottom:1rem;font-size:.85rem;color:var(--muted)}
+  .leave-status{position:fixed;right:1rem;bottom:2.4rem;margin:0;font-size:.85rem;color:#b3261e}
   form[data-approve]{display:flex;gap:.5rem;align-items:center}
   input.code{font:600 16px ui-monospace,Menlo,monospace;letter-spacing:.12em;padding:.6rem .8rem;border:1px solid var(--line);border-radius:8px;width:11em}
   iframe{width:min(36rem,90%);aspect-ratio:4/3;border:0;border-radius:12px;background:#fff;box-shadow:0 10px 40px rgba(0,0,0,.08)}
@@ -118,6 +119,7 @@ export function renderWelcomePage({ origin, me, agentTool } = {}) {
 </div>
 <div class="right"><iframe data-frame hidden title="Your page"></iframe></div>
 <a class="later" href="#" data-later>do this later</a>
+<p class="leave-status" data-leave-status role="status" aria-live="polite" hidden></p>
 <script>
 (() => {
   const $ = (s, r = document) => r.querySelector(s);
@@ -161,10 +163,28 @@ export function renderWelcomePage({ origin, me, agentTool } = {}) {
 
   // The two ways out, and both write the flag BEFORE leaving: a person who clicks past
   // this page must never meet it again because the write was still in flight.
+  //
+  // ⚠️ AND ONLY WHEN THE WRITE CAME BACK. Leaving on a failed write walks the person into
+  // the redirect on the workspace root, which is still gated and sends them straight back
+  // here — a loop
+  // with no way out, which is the one thing this page may never become. So the answer is
+  // read, the flag it reports is what decides, and a refusal stays on the page with one
+  // sentence. The flag is read from the RESPONSE rather than assumed from the request:
+  // /__onboarding/me answers with the member's row as it actually stands, so a write the
+  // workspace object refused comes back false with a 200, and only a true is a write.
   const leave = async (flag) => {
+    const want = flag.done ? "done" : "later";
+    let ok = false;
     try {
-      await fetch("/__onboarding/me", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(flag) });
-    } catch (e) { /* the gate stays up; the link is still there next time */ }
+      const r = await fetch("/__onboarding/me", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(flag) });
+      const j = await r.json().catch(() => ({}));
+      ok = !!(r.ok && j && j[want] === true);
+    } catch (e) { ok = false; }
+    if (!ok) {
+      const s = $("[data-leave-status]");
+      if (s) { s.textContent = "That didn't save. Try again."; s.hidden = false; }
+      return;
+    }
     location.href = "/";
   };
   $("[data-later]").addEventListener("click", (e) => { e.preventDefault(); leave({ later: true }); });

@@ -46,6 +46,17 @@ function protoEmoji(slug) {
 const protoName = (slug) => `${protoEmoji(slug)} ${titleCase(slug)}`;
 
 // ── the site model ───────────────────────────────────────────────────────────
+/**
+ * Is this unit a member's own welcome page — made for one person by the platform?
+ *
+ * ONE predicate, keyed on the `kind` the landing stamps into `routing.unitSources`
+ * (`onboardingMeApi`, src/_worker.js). A path test would be the obvious alternative and is
+ * wrong: `/start-here/` is an ordinary folder name a person may publish into, and hiding
+ * somebody's own prototypes because of where they put them is the worse failure.
+ */
+export const isWelcomeUnit = (source) =>
+  !!source && typeof source === "object" && source.kind === "welcome";
+
 /** Which list a unit belongs to, from its path alone. */
 export function unitHome(unit) {
   const segs = dec(unit).split("/").filter(Boolean);
@@ -93,9 +104,18 @@ const byStatusThenRecency = (a, b) => {
 export function siteModel({ manifest, statuses = {}, baseline = {}, people = () => null, now = Date.now() }) {
   const opps = new Map(), playground = [], tiers = { base: [], components: [], patterns: [], pages: [] };
   const units = [];
+  const sources = (manifest && manifest.routing && manifest.routing.unitSources) || {};
   for (const unit of authoredUnits(manifest || {})) {
     const home = unitHome(unit);
     if (!home) continue;
+    // A member's own welcome page is one unit PER PERSON, landed by the platform and named
+    // by an opaque member id. A team of twenty accumulates twenty hash-named cards under
+    // one folder nobody chose, on the first page the workspace shows. It stays SERVED —
+    // the welcome flow's preview and the person's own link both fetch it by URL — and it
+    // simply is not listed. Read from the manifest's own stamp, so the rule cannot drift
+    // from what wrote the unit; anything else the platform seeds still lists, because
+    // `seedSource()` is what a furnished workspace's starter content also carries.
+    if (isWelcomeUnit(sources[unit])) continue;
     const e = unitEntry(manifest, unit, home, { statuses, baseline, people, now });
     units.push({ ...e, home });
     if (home.kind === "playground") { playground.push({ ...e, status: e.status || "in-progress" }); continue; }

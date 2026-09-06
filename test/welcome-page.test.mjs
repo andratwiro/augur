@@ -210,6 +210,24 @@ test("/__welcome is one self-contained page with the five steps and the command"
   assert.match(html, /do this later/i);
 });
 
+test("the page leaves ONLY on a flag that came back, and says so when the write failed", async () => {
+  // ⚠️ THE ESCAPE HATCH MUST NOT FAIL INTO THE WALL. "do this later" and "Open the
+  // workspace" both navigate to `/`, which is exactly where the gate is — so leaving on a
+  // write that did not land sends the person straight back to this page, for ever, with
+  // the one control that could have got them out already spent. The client half is a
+  // string match on purpose: this suite runs no browser, and the property being pinned is
+  // that the refusal path EXISTS in the document the worker serves.
+  const { env } = await wired([ADA_MEMBER]);
+  const html = await (await fetchAs(env, ADA_MEMBER, "/__welcome")).text();
+  assert.match(html, /That didn't save\. Try again\./, "the refusal has words on the page");
+  assert.match(html, /data-leave-status/, "and somewhere to put them that both exits share");
+  assert.match(html, /j\[want\] === true/, "the navigation is conditional on the flag coming back true");
+  // The bare unconditional leave this replaced: a `location.href` that no longer sits
+  // after the fetch with nothing between them.
+  assert.doesNotMatch(html, /catch \(e\) \{ \/\* the gate stays up[\s\S]*?\}\n    location\.href = "\/";/,
+    "no unconditional navigation after the write");
+});
+
 test("a viewer asking for /__welcome is sent to /", async () => {
   const { env } = await wired([VERA]);
   const r = await fetchAs(env, VERA, "/__welcome");
@@ -280,7 +298,7 @@ test("an editor downloads the mac installer as a ZIP whose one entry is the .com
   assert.match(text, /connect-acme\.example\.command/, "the entry is named for this workspace");
   // STORE, not DEFLATE, so the script is legible in the archive's own bytes.
   assert.match(text, /set -euo pipefail/);
-  assert.match(text, /connect --origin https:\/\/acme\.example/);
+  assert.match(text, /connect --origin "https:\/\/acme\.example"/, "the origin is quoted in the shell");
 });
 
 test("a viewer asking for the mac installer is forbidden", async () => {

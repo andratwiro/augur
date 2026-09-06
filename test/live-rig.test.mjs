@@ -54,7 +54,8 @@ test("parseCredentialMail pulls the invite link out of a realistic roster-invite
   const text = [
     "QA Owner invited you to Acme.",
     "It is where the team's prototypes live: pages your coding agent builds and shares as real links.",
-    "Open it and it walks you through connecting your agent; the first thing you make appears on your own page.",
+    "Open it and it walks you through connecting your agent.",
+    "The first thing you make appears on your own page.",
     "The link can be used once, and stops working in 72 hours.",
     "",
     "https://acme.example/__invite?t=abcDEF123456",
