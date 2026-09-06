@@ -9023,7 +9023,10 @@ function wantsJson(request, url) {
 const DOOR_DOCS = "/llms.txt";
 const DOOR_WELL_KNOWN = "/.well-known/augur.json";
 
-function doorFacts(tctx, url) {
+/** Does this deployment serve drafts — a unit store beside a bundle store. The same two checks `unitApi` makes. */
+const draftsServedHere = (env) => !!(env && env.BUNDLES && unitNamespace(env));
+
+function doorFacts(tctx, url, env) {
   const def = tctx.SPACES.find((s) => s.default) || tctx.SPACES[0] || {};
   const pairing = tctx.DEVICE_PAIRING === true;
   return {
@@ -9034,6 +9037,11 @@ function doorFacts(tctx, url) {
     pairing: { enabled: pairing, start: "/__publish/_pair/start", approve: "/__connect" },
     connect: pairing ? `npx augur connect --origin ${url.origin}` : null,
     docs: DOOR_DOCS,
+    // Where drafts are served, a prototype is changed by opening it, not by shipping a
+    // tree — and the door is where a cold agent learns which of the two this instance is.
+    drafts: draftsServedHere(env)
+      ? { enabled: true, open: "augur open <opportunity>/<prototype>", land: "augur land", docs: DOOR_DOCS }
+      : { enabled: false },
   };
 }
 
@@ -9055,11 +9063,20 @@ function doorText(f) {
     : `Device pairing is switched off on this workspace. Ask an admin for an invite;\n`
       + `once you have signed in, \`augur login\` (email and password, meant for CI)\n`
       + `trades that for a publish token.\n\n`;
+  const drafts = f.drafts && f.drafts.enabled
+    ? `This workspace serves DRAFTS. To change a prototype, do not ship a tree — open it:\n\n`
+      + `  ${f.drafts.open}     # a folder of its own, live at once at its draft address\n`
+      + `  …edit; every save is live there before your next step…\n`
+      + `  ${f.drafts.land}                               # the real URL moves; the last line printed is the live URL\n\n`
+      + `Two sessions on one prototype are both told and both work; if the second landing is\n`
+      + `refused, \`augur sync\` folds main into the draft and \`augur land\` again. \`augur ship\`\n`
+      + `is retired here and says so. The contract: agents/drafts.md in the engine clone.\n\n`
+    : "";
   const tail = `Never try a found or guessed password against this gate. It throttles failed\n`
     + `attempts per address and per email, and the seed in a deploy shell's identity\n`
     + `file is not a credential.\n\n`
     + `Machine-readable: ${DOOR_WELL_KNOWN}\n`;
-  return head + body + tail;
+  return head + body + drafts + tail;
 }
 
 /**
@@ -9073,9 +9090,9 @@ function wantsMachineDoor(request, url) {
 }
 
 /** What a signed-out request meets: the door as JSON for a machine, the card for a person. */
-function gateResponse(tctx, request, url) {
+function gateResponse(tctx, request, url, env) {
   if (wantsMachineDoor(request, url)) {
-    return jsonResponse({ error: "sign-in-required", ...doorFacts(tctx, url) }, 401,
+    return jsonResponse({ error: "sign-in-required", ...doorFacts(tctx, url, env) }, 401,
       { "WWW-Authenticate": 'Bearer realm="augur"', "Cache-Control": "no-store" });
   }
   const res = htmlResponse(loginPage(tctx, url.pathname + url.search, false, url.href), 200);
@@ -11942,12 +11959,12 @@ async function handleRequest(request, env, ctx, url, trace) {
     // The front door for machines — public for the same reason robots.txt is: a gated
     // "how to get in" would answer with the login page. See doorFacts().
     if (url.pathname === DOOR_DOCS) {
-      return new Response(doorText(doorFacts(tctx, url)), {
+      return new Response(doorText(doorFacts(tctx, url, env)), {
         headers: { "Content-Type": "text/plain; charset=utf-8", "Cache-Control": "no-store" },
       });
     }
     if (url.pathname === DOOR_WELL_KNOWN) {
-      return jsonResponse(doorFacts(tctx, url), 200, { "Cache-Control": "no-store" });
+      return jsonResponse(doorFacts(tctx, url, env), 200, { "Cache-Control": "no-store" });
     }
 
     // Live-reload version probe — every page polls this with its own ?path=, and
@@ -12353,7 +12370,7 @@ async function handleRequest(request, env, ctx, url, trace) {
     // visitor gets the login page. Skipped in legacy/open mode
     // (no users injected), same as the /admin gate.
     if (usersActive && isRestrictedPath(tctx, url.pathname)) {
-      if (!authed) return gateResponse(tctx, request, url);
+      if (!authed) return gateResponse(tctx, request, url, env);
       if (!me || me.role !== "admin") return Response.redirect(new URL("/", url).toString(), 303);
     }
 
@@ -12372,7 +12389,7 @@ async function handleRequest(request, env, ctx, url, trace) {
     // validated at commit, but ordering makes that a second line of defence rather than
     // the only one.
     if (url.pathname === "/admin" || url.pathname.startsWith("/admin/")) {
-      if (!authed) return gateResponse(tctx, request, url);
+      if (!authed) return gateResponse(tctx, request, url, env);
       // Admin of ANY space is enough to reach the page — it scopes itself to a space
       // the caller actually administers, and the /__admin APIs re-check per space. A
       // global admin with no membership recorded administers everything, so this is
@@ -12435,7 +12452,7 @@ async function handleRequest(request, env, ctx, url, trace) {
 
     // Otherwise show the login page, remembering where they were headed.
     // 200 (not 401) so password managers treat it as a normal login page.
-    return gateResponse(tctx, request, url);
+    return gateResponse(tctx, request, url, env);
 }
 
 // Pure helpers exposed for unit tests. Nothing in the request path references

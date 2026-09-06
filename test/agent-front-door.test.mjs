@@ -33,7 +33,7 @@ function memKV() {
 }
 
 let tenantSeq = 0;
-function instance({ pairing = true, engineVersion = "0.15.1" } = {}) {
+function instance({ pairing = true, engineVersion = "0.15.1", drafts = false } = {}) {
   freshIsolate();
   const tenantId = `door-fixture-${++tenantSeq}`;
   const env = {
@@ -51,6 +51,12 @@ function instance({ pairing = true, engineVersion = "0.15.1" } = {}) {
     },
     COMMENTS: memKV(),
   };
+  // A unit store beside a bundle store is what "serves drafts" means to the door — the
+  // same two checks the drafts route makes. The stubs are never called by these tests.
+  if (drafts) {
+    env.BUNDLES = {};
+    env.UNITS = { idFromName: (n) => n, get: () => ({ fetch: async () => new Response("{}") }) };
+  }
   return { env };
 }
 
@@ -173,4 +179,27 @@ test("the helpers decide 'machine' by path or by an explicit JSON accept only", 
   assert.equal(W.wantsMachineDoor(req("text/html"), url("/x/")), false);
   assert.equal(W.wantsMachineDoor(req("application/json"), url("/")), true);
   assert.equal(W.wantsMachineDoor(req("*/*"), url("/__api/state")), true);
+});
+
+// ── drafts that land: the door says which of the two this instance is ────────
+
+test("where drafts are served, the door says open and land, in text, as data and on the 401", async () => {
+  const { env } = instance({ drafts: true });
+  const t = await get(env, "/llms.txt");
+  assert.match(t.body, /augur open <opportunity>\/<prototype>/);
+  assert.match(t.body, /augur land/);
+  assert.match(t.body, /augur ship.*\n?.*retired here/);
+  const j = await get(env, "/.well-known/augur.json");
+  assert.deepEqual(j.json.drafts, { enabled: true, open: "augur open <opportunity>/<prototype>", land: "augur land", docs: "/llms.txt" });
+  const r = await get(env, "/__api/state", { Accept: "application/json" });
+  assert.equal(r.status, 401);
+  assert.equal(r.json.drafts.enabled, true);
+});
+
+test("where drafts are not served, the door says so as data and says nothing about them in text", async () => {
+  const { env } = instance();
+  const j = await get(env, "/.well-known/augur.json");
+  assert.deepEqual(j.json.drafts, { enabled: false });
+  const t = await get(env, "/llms.txt");
+  assert.doesNotMatch(t.body, /augur land|augur open/);
 });
