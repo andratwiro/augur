@@ -12,10 +12,11 @@
 # is deliberately NOT `v*`: instances on `TRACK: release` follow GitHub releases, and an npm
 # cut is not an engine release. `workflow_dispatch` re-runs the same for the checked-out ref.
 #
-# Credential: none. The package's npm settings name this workflow as a trusted publisher
-# (owner andratwiro, repository augur, workflow publish.yml, "allow npm publish"), so npm
-# accepts the publish on the job's OIDC identity — the same identity the attestation is
-# signed with. No token exists for this package anywhere.
+# Credential: the job's OIDC identity once the package's npm settings name this workflow as
+# a trusted publisher (owner andratwiro, repository augur, workflow publish.yml, "allow npm
+# publish") — the same identity the attestation is signed with. Until that entry exists,
+# the `NPM_TOKEN` repo secret is written to an .npmrc for the publish step and nothing
+# else; delete the secret and the step below publishes on the OIDC identity alone.
 name: publish
 
 on:
@@ -55,7 +56,14 @@ jobs:
           have="$(node -p "require('./package.json').version")"
           [ "$want" = "$have" ] || { echo "tag says $want, package.json says $have"; exit 1; }
       - run: npm run check
+      - name: a token only while no trusted-publisher entry exists
+        env:
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          if [ -n "$NPM_TOKEN" ]; then echo "//registry.npmjs.org/:_authToken=$NPM_TOKEN" > ~/.npmrc; chmod 600 ~/.npmrc; echo "publishing with the token"; else echo "publishing on the OIDC identity"; fi
       - run: set -o pipefail; npm publish --provenance --access public --loglevel verbose 2>&1 | grep -viE "^npm (verb|http) (fetch|cache)"
+      - if: always()
+        run: rm -f ~/.npmrc
       - name: the registry shows the attestation
         run: |
           v="$(node -p "require('./package.json').version")"

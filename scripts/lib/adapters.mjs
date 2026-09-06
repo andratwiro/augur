@@ -84,7 +84,14 @@ export const ADAPTERS = Object.freeze([
   Object.freeze({
     id: "claude-code",
     name: "Claude Code",
-    settingsPath: (home) => path.join(home, ".claude", "settings.json"),
+    // The hooks live in the PROJECT's local settings — the folder `augur open` runs in, which
+    // is where the draft folder is made — never in the account-wide file. Three cold agents
+    // in a row flagged a write to ~/.claude/settings.json and their person asked for it to be
+    // undone; a hook whose command carries this machine's absolute path belongs in the
+    // per-machine local file anyway. `legacyPath` is where older engines wrote it; an entry
+    // found there is removed on the next install so the two never fire together.
+    settingsPath: (cwd) => path.join(cwd, ".claude", "settings.local.json"),
+    legacyPath: (home) => path.join(home, ".claude", "settings.json"),
     detect: (home) => fs.existsSync(path.join(home, ".claude")),
     matcher: "Write|Edit|MultiEdit|NotebookEdit",
     payload: (j) => {
@@ -154,20 +161,28 @@ function writeJson(p, v) {
   fs.renameSync(p + ".tmp", p);
 }
 
-function applyToAdapters({ home = os.homedir(), dryRun = false } = {}, decide) {
+function applyToAdapters({ home = os.homedir(), cwd = process.cwd(), dryRun = false } = {}, decide) {
   const out = [];
   for (const a of ADAPTERS) {
     if (!a.detect(home)) { out.push({ id: a.id, name: a.name, result: "absent" }); continue; }
-    const p = a.settingsPath(home);
+    const p = a.settingsPath(cwd);
     const cur = readJson(p);
     const r = decide(a, cur);
     if (r.changed && !dryRun) writeJson(p, r.settings);
-    out.push({ id: a.id, name: a.name, result: r.changed ? r.did : "unchanged", path: p });
+    // An entry an older engine left in the account-wide file: taken out, and said.
+    let movedFrom = null;
+    const lp = a.legacyPath ? a.legacyPath(home) : null;
+    const legacy = lp ? readJson(lp) : null;
+    if (legacy) {
+      const s = stripHooks(legacy);
+      if (s.changed) { movedFrom = lp; if (!dryRun) writeJson(lp, s.settings); }
+    }
+    out.push({ id: a.id, name: a.name, result: r.changed ? r.did : "unchanged", path: p, ...(movedFrom ? { movedFrom } : {}) });
   }
   return out;
 }
 
-/** Install the two hooks for every tool present on this machine. Idempotent; keeps every other hook. */
+/** Install the two hooks, for the folder `cwd` (the agent tool's project-local settings), for every tool present on this machine. Idempotent; keeps every other hook. */
 export function installAdapters(opts = {}) {
   return applyToAdapters(opts, (a, cur) => {
     const onPath = typeof opts.onPath === "boolean" ? opts.onPath : augurOnPath();

@@ -187,7 +187,7 @@ without hooks), `watch` (a debounced save loop for people editing by hand).
 
 - **Open** resolves the unit, calls `open`, materialises the table into the folder,
   writes `.augur/draft.json`, appends to the machine registry, prints presence, and
-  ensures the agent tool adapters are installed for this machine (once).
+  ensures the agent tool adapters are installed for the folder it runs in (once per folder).
 - **Save** diffs the folder against `draft.json`, uploads missing bodies, commits the
   batch, updates `draft.json`. Files are sent as they are. There is no build.
 - **Land** calls `land`; on refusal prints the changed files and the sync hint and exits
@@ -202,8 +202,15 @@ without hooks), `watch` (a debounced save loop for people editing by hand).
   directory and a session id, and its session name is the label. Adding a tool is adding a row.
   The deny is narrow: a write is refused only inside a read-only copy, or inside a shared
   checkout under a prototype's home that is not an open draft folder — a space's design
-  system, its research and everything off the space are untouched. `AUGUR_HOOKS_OFF=1`
-  makes both hooks inert; `augur hook install|remove|status` manages them by hand.
+  system, its research and everything off the space are untouched. The hooks are written
+  to the tool's project-local settings in the folder `open` runs in (the draft folder is
+  made there), never to the account-wide file: three cold agents in a row flagged an
+  account-wide write and their person asked for it to be undone, and a hook command that
+  carries this machine's absolute path belongs in a per-machine file anyway. An entry an
+  older engine left account-wide is removed on the next install. `land` saves before it
+  lands, so a session whose hooks did not fire loses nothing. `AUGUR_HOOKS_OFF=1` makes
+  both hooks inert; `augur hook install|remove|status` manages them by hand, for the
+  folder they run in.
 - **Identity.** The person token from `augur connect`. The session label from the agent
   tool when present, else generated at open and kept in `draft.json`.
 

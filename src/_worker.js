@@ -9307,9 +9307,10 @@ function doorText(f) {
         ? `You need no source tree here: \`augur open <opportunity>/<prototype>\` fetches that one\n`
           + `prototype into a folder of its own (see below). Do not clone the workspace first.\n\n`
           + `Until \`npm i -g @augurworks/augur\`, every verb runs as \`npx @augurworks/augur <verb>\`.\n`
-          + `The first \`open\` on a machine also installs a save hook in the editor tool's\n`
-          + `settings (it says which file): after each edit inside a draft folder it saves that\n`
-          + `draft; it does nothing elsewhere, and \`augur hook remove\` takes it out.\n\n`
+          + `The first \`open\` in a folder also installs a save hook in the editor tool's settings\n`
+          + `for that folder only (.claude/settings.local.json there; it says so), never account-wide:\n`
+          + `after each edit inside a draft folder it saves that draft; it does nothing elsewhere,\n`
+          + `and \`augur hook remove\` in that folder takes it out.\n\n`
         : `With no source tree yet, \`npx @augurworks/augur clone --space ${f.workspace}\` then fetches\n`
           + `one (it reads the origin from the pairing).\n\n`)
     : `Device pairing is switched off on this workspace. Ask an admin for an invite;\n`

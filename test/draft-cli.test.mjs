@@ -33,14 +33,14 @@ import { startUnitServer } from "./fixtures/unit-server.mjs";
 import { manifestOf, remember } from "./fixtures/unit-env.mjs";
 
 // Async on purpose: open talks to the fixture server living in THIS process.
-const openIn = (cwd, unit, env) => new Promise((resolve) => {
-  const child = spawn(process.execPath, [path.resolve("scripts/open.mjs"), unit], { cwd, env });
+const openIn = (cwd, unit, env, ...args) => new Promise((resolve) => {
+  const child = spawn(process.execPath, [path.resolve("scripts/open.mjs"), unit, ...args], { cwd, env });
   let out = "", err = "";
   child.stdout.on("data", (d) => { out += d; }); child.stderr.on("data", (d) => { err += d; });
   child.on("close", (code) => resolve({ code, out, err }));
 });
 
-test("open installs the editor hooks into this machine's tool settings once; AUGUR_NO_ADAPTERS skips it", async () => {
+test("open installs the editor hooks into the FOLDER's local tool settings once; AUGUR_NO_ADAPTERS skips it", async () => {
   const U = "/checkout/flow/";
   const srv = await startUnitServer({ live: manifestOf(5, { [U]: { "index.html": remember("<h1>flow</h1>") } }), tenantId: "cli-open-1" });
   try {
@@ -56,18 +56,18 @@ test("open installs the editor hooks into this machine's tool settings once; AUG
     const work = workDir();
     const first = await openIn(work, "checkout/flow", env);
     assert.equal(first.code, 0, first.err);
-    assert.match(first.err, /a save hook is now in/);
-    const settings = JSON.parse(fs.readFileSync(path.join(home, ".claude", "settings.json"), "utf8"));
-    assert.equal(settings.theme, "dark");
+    assert.match(first.err, /a save hook is now in .*settings\.local\.json — for this folder only/);
+    const settings = JSON.parse(fs.readFileSync(path.join(work, ".claude", "settings.local.json"), "utf8"));
     assert.match(settings.hooks.PreToolUse[0].hooks[0].command, /hook\.mjs" pre$/);
     assert.match(settings.hooks.PostToolUse[0].hooks[0].command, /hook\.mjs" post$/);
-    const second = await openIn(workDir(), "checkout/flow", env);
+    const global = JSON.parse(fs.readFileSync(path.join(home, ".claude", "settings.json"), "utf8"));
+    assert.deepEqual(global, { theme: "dark" }, "the account-wide file is not touched");
+    const second = await openIn(work, "checkout/flow", env, "--dir", "flow-again");
     assert.equal(second.code, 0, second.err);
-    assert.doesNotMatch(second.err, /editor hooks/, "the second open says nothing about hooks");
-    const home3 = fs.mkdtempSync(path.join(os.tmpdir(), "augur-home-"));
-    fs.mkdirSync(path.join(home3, ".claude"));
-    const third = await openIn(workDir(), "checkout/flow", { ...env, HOME: home3, AUGUR_NO_ADAPTERS: "1" });
+    assert.doesNotMatch(second.err, /save hook|editor hooks/, "a second open in the same folder says nothing about hooks");
+    const work3 = workDir();
+    const third = await openIn(work3, "checkout/flow", { ...env, AUGUR_NO_ADAPTERS: "1" });
     assert.equal(third.code, 0, third.err);
-    assert.equal(fs.existsSync(path.join(home3, ".claude", "settings.json")), false, "nothing written when asked not to");
+    assert.equal(fs.existsSync(path.join(work3, ".claude", "settings.local.json")), false, "nothing written when asked not to");
   } finally { await srv.close(); }
 });

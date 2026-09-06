@@ -5,13 +5,15 @@
 // JSON on stdin (docs/drafts-that-land.md §7). Both answer with an exit code: 0 lets the
 // edit through, 2 refuses it and puts one sentence on stderr for the agent to read in its
 // next tool result. NOTHING ELSE EXITS NON-ZERO: an unreadable payload, a missing
-// registry, an exception — every accident exits 0 and says nothing, because the hook is
-// installed machine-wide and a bug here would take every editor down with it.
+// registry, an exception — every accident exits 0 and says nothing, because the hook runs
+// around every edit in the folder it is installed for and a bug here would take that
+// editor down with it.
 //
 //   pre    refuse a write into a read-only copy, or into a shared checkout's prototype
 //   post   save the draft the edited file belongs to; refused saves fail with the reason
 //
-// `install|remove|status` manage the adapters — `augur open` installs them once.
+// `install|remove|status` manage the adapters for the folder they run in (the agent tool's
+// project-local settings) — `augur open` installs them there the first time.
 import fs from "node:fs";
 import { ADAPTERS, denyDecision, saveDecision, installAdapters, removeAdapters } from "./lib/adapters.mjs";
 import { registryList, readState, unitClient, doSave } from "./lib/draft.mjs";
@@ -24,7 +26,7 @@ if (event === "install" || event === "remove" || event === "status") {
   const rows = event === "install" ? installAdapters() : event === "remove" ? removeAdapters() : installAdapters({ dryRun: true });
   for (const r of rows) {
     const verdict = event === "status" ? (r.result === "unchanged" ? "installed" : r.result === "absent" ? "absent" : "not installed") : r.result;
-    console.log(`${r.name}: ${verdict}${r.path ? ` (${r.path})` : ""}`);
+    console.log(`${r.name}: ${verdict}${r.path ? ` (${r.path})` : ""}${r.movedFrom ? ` — an older machine-wide entry in ${r.movedFrom} was removed` : ""}`);
   }
   process.exit(0);
 }

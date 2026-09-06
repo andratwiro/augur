@@ -47,12 +47,14 @@ if (!r.ok) {
   die(`could not open: ${r.error || r.status}${r.reason ? ` (${r.reason})` : ""}${r.message ? ` — ${r.message}` : ""}`);
 }
 log(r.isNew ? `draft ${r.draftId} on ${unit} — a NEW prototype; ${dir} is empty, write its index.html there` : `draft ${r.draftId} on ${unit} — ${r.files} file(s) in ${dir}`);
-// The agent tool's hooks, installed for this machine the first time a draft is opened
-// here (idempotent; `AUGUR_NO_ADAPTERS=1` skips it — the suite and CI set it).
+// The agent tool's hooks, installed for THIS folder (its project-local settings) the first
+// time a draft is opened from here — never account-wide (idempotent; `AUGUR_NO_ADAPTERS=1`
+// skips it — the suite and CI set it).
 if (!process.env.AUGUR_NO_ADAPTERS) {
   for (const a of installAdapters()) {
-    if (a.result === "installed") log(`${a.name}: a save hook is now in ${a.path} — after each edit inside a draft folder it runs \`augur hook post\`, which saves that draft to ${origin}; before an edit it refuses writes into a shared checkout's prototypes. It does nothing outside draft folders and talks to nothing else; \`augur hook remove\` takes it out.`);
+    if (a.result === "installed") log(`${a.name}: a save hook is now in ${a.path} — for this folder only, nothing account-wide. After each edit inside a draft folder here it runs \`augur hook post\`, which saves that draft to ${origin}; before an edit it refuses writes into a shared checkout's prototypes. It does nothing else and talks to nothing else; \`augur hook remove\` run here takes it out.`);
     else if (a.result === "updated") log(`${a.name}: editor hooks updated (${a.path}).`);
+    if (a.movedFrom) log(`${a.name}: an older machine-wide entry in ${a.movedFrom} was removed; the hook lives with the folder now.`);
   }
 }
 if (r.others.length) {

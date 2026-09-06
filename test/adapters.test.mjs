@@ -108,29 +108,52 @@ test("mergeHooks adds our two hooks beside whatever is there, once, and stripHoo
   assert.equal(mergeHooks(undefined, "W", { pre: 'node "/x/hook.mjs" pre', post: 'node "/x/hook.mjs" post' }).settings.hooks.PreToolUse.length, 1, "no settings at all is fine");
 });
 
-test("installAdapters writes only for tools present, idempotently, and removeAdapters undoes only ours", () => {
-  const home = tmp();
-  assert.deepEqual(installAdapters({ home }).map((r) => r.result), ["absent"], "no tool folder, nothing written");
+test("installAdapters writes the FOLDER's local settings, only for tools present, idempotently; removeAdapters undoes only ours", () => {
+  const home = tmp(), cwd = tmp();
+  const local = path.join(cwd, ".claude", "settings.local.json");
+  assert.deepEqual(installAdapters({ home, cwd }).map((r) => r.result), ["absent"], "no tool folder, nothing written");
   fs.mkdirSync(path.join(home, ".claude"));
-  fs.writeFileSync(path.join(home, ".claude", "settings.json"), JSON.stringify({ hooks: { Notification: [{ hooks: [{ type: "command", command: "say ok" }] }] }, theme: "dark" }));
-  assert.deepEqual(installAdapters({ home }).map((r) => r.result), ["installed"]);
-  const written = JSON.parse(fs.readFileSync(path.join(home, ".claude", "settings.json"), "utf8"));
+  fs.mkdirSync(path.join(cwd, ".claude"));
+  fs.writeFileSync(local, JSON.stringify({ hooks: { Notification: [{ hooks: [{ type: "command", command: "say ok" }] }] }, theme: "dark" }));
+  const first = installAdapters({ home, cwd });
+  assert.deepEqual(first.map((r) => r.result), ["installed"]);
+  assert.equal(first[0].path, local, "the path reported is the folder's local file");
+  const written = JSON.parse(fs.readFileSync(local, "utf8"));
   assert.equal(written.theme, "dark");
   assert.equal(written.hooks.Notification.length, 1);
   assert.ok(written.hooks.PreToolUse[0].hooks[0].command.includes("hook.mjs\" pre"));
   assert.ok(written.hooks.PostToolUse[0].hooks[0].command.includes("hook.mjs\" post"));
-  assert.deepEqual(installAdapters({ home }).map((r) => r.result), ["unchanged"]);
-  assert.deepEqual(installAdapters({ home, dryRun: true }).map((r) => r.result), ["unchanged"]);
-  assert.deepEqual(removeAdapters({ home }).map((r) => r.result), ["removed"]);
-  const after = JSON.parse(fs.readFileSync(path.join(home, ".claude", "settings.json"), "utf8"));
+  assert.equal(fs.existsSync(path.join(home, ".claude", "settings.json")), false, "the account-wide file is never created");
+  assert.deepEqual(installAdapters({ home, cwd }).map((r) => r.result), ["unchanged"]);
+  assert.deepEqual(installAdapters({ home, cwd, dryRun: true }).map((r) => r.result), ["unchanged"]);
+  assert.deepEqual(removeAdapters({ home, cwd }).map((r) => r.result), ["removed"]);
+  const after = JSON.parse(fs.readFileSync(local, "utf8"));
   assert.deepEqual(Object.keys(after.hooks), ["Notification"]);
-  assert.deepEqual(removeAdapters({ home }).map((r) => r.result), ["unchanged"]);
-  // A tool folder with no settings file yet gets one holding only our hooks; a dry run does not.
-  const home2 = tmp(); fs.mkdirSync(path.join(home2, ".claude"));
-  assert.deepEqual(installAdapters({ home: home2, dryRun: true }).map((r) => r.result), ["installed"]);
-  assert.equal(fs.existsSync(path.join(home2, ".claude", "settings.json")), false, "a dry run writes nothing");
-  assert.deepEqual(installAdapters({ home: home2 }).map((r) => r.result), ["installed"]);
-  assert.deepEqual(Object.keys(JSON.parse(fs.readFileSync(path.join(home2, ".claude", "settings.json"), "utf8"))), ["hooks"]);
+  assert.deepEqual(removeAdapters({ home, cwd }).map((r) => r.result), ["unchanged"]);
+  // A folder with no local settings yet gets one holding only our hooks; a dry run does not.
+  const cwd2 = tmp();
+  assert.deepEqual(installAdapters({ home, cwd: cwd2, dryRun: true }).map((r) => r.result), ["installed"]);
+  assert.equal(fs.existsSync(path.join(cwd2, ".claude", "settings.local.json")), false, "a dry run writes nothing");
+  assert.deepEqual(installAdapters({ home, cwd: cwd2 }).map((r) => r.result), ["installed"]);
+  assert.deepEqual(Object.keys(JSON.parse(fs.readFileSync(path.join(cwd2, ".claude", "settings.local.json"), "utf8"))), ["hooks"]);
+});
+
+test("an entry an older engine left in the account-wide file is removed on the next install, and said", () => {
+  const home = tmp(), cwd = tmp();
+  fs.mkdirSync(path.join(home, ".claude"));
+  const global = path.join(home, ".claude", "settings.json");
+  fs.writeFileSync(global, JSON.stringify({ theme: "dark", hooks: {
+    PreToolUse: [{ matcher: "Write|Edit", hooks: [{ type: "command", command: "augur hook pre" }] }],
+    PostToolUse: [{ matcher: "Write|Edit", hooks: [{ type: "command", command: 'node "/old/engine/scripts/hook.mjs" post' }] }],
+    Notification: [{ hooks: [{ type: "command", command: "say ok" }] }] } }));
+  const r = installAdapters({ home, cwd });
+  assert.equal(r[0].result, "installed");
+  assert.equal(r[0].movedFrom, global);
+  const g = JSON.parse(fs.readFileSync(global, "utf8"));
+  assert.equal(g.theme, "dark");
+  assert.deepEqual(Object.keys(g.hooks), ["Notification"], "only ours came out of the account-wide file");
+  assert.ok(fs.existsSync(path.join(cwd, ".claude", "settings.local.json")));
+  assert.equal(installAdapters({ home, cwd })[0].movedFrom, undefined, "nothing left to move the second time");
 });
 
 // An `npx` run puts the package's own bin dir on PATH, so `augur` resolves to a shim in the
