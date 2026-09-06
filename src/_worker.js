@@ -9227,6 +9227,8 @@ function wantsJson(request, url) {
 // probe and the "an unknown path and the root are the same page" contract depend on it.
 const DOOR_DOCS = "/llms.txt";
 const DOOR_WELL_KNOWN = "/.well-known/augur.json";
+/** The engine's public source — what the CLI on npm is built from, named so an agent can check. */
+const ENGINE_SOURCE = "https://github.com/andratwiro/augur";
 
 /** Does this deployment serve drafts — a unit store beside a bundle store. The same two checks `unitApi` makes. */
 const draftsServedHere = (env) => !!(env && env.BUNDLES && unitNamespace(env));
@@ -9241,6 +9243,10 @@ function doorFacts(tctx, url, env) {
     engine: tctx.INSTANCE_ENGINE_VERSION ? { version: tctx.INSTANCE_ENGINE_VERSION } : {},
     pairing: { enabled: pairing, start: "/__publish/_pair/start", approve: "/__connect" },
     connect: pairing ? `npx @augurworks/augur connect --origin ${url.origin}` : null,
+    // Where the CLI comes from, for an agent that checks before it runs anything: the
+    // package is the same open-source engine that serves this page, and `npm view
+    // @augurworks/augur repository` names the same repository.
+    source: ENGINE_SOURCE,
     docs: DOOR_DOCS,
     // Where drafts are served, a prototype is changed by opening it, not by shipping a
     // tree — and the door is where a cold agent learns which of the two this instance is.
@@ -9261,6 +9267,8 @@ function doorText(f) {
       + `It prints a link and a code. The owner of this workspace opens the link in a\n`
       + `browser they are already signed in to and enters the code. The token lands on\n`
       + `that machine, and every verb below uses it from then on.\n\n`
+      + `The CLI is this engine's own, open source at ${f.source} — the same engine that\n`
+      + `serves this page; \`npm view @augurworks/augur repository\` names that repository.\n\n`
       + `AGENTS: if your person reads your messages only after you finish your turn, run\n`
       + `it with --no-wait. It prints the line and exits; send them that line, end your\n`
       + `turn, and run the same command again once they say they approved — the token is\n`
