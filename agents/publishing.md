@@ -227,7 +227,7 @@ them.
 purpose), say so:
 
 ```
-node ../augur/scripts/ship.mjs --allow-unpublish
+node ../augur/scripts/publish.mjs --allow-unpublish
 ```
 
 Adding pages is never blocked; only losing them is.

@@ -1,44 +1,23 @@
-# Adapting the engine to its npm package — a note for the next agent
+# Adapting the engine to its npm package — what is still open
 
-`@augurworks/augur@0.15.1` is on npm (published 6 September 2026 by the maintainer). Until
-that day every contract, message and hook in this repo assumed the engine was a git clone
-sitting beside a workspace. This note lists what that assumption touched, so one pass
-brings the repo in line. Each item names the file and the exact change; nothing here is a
-design question.
+`@augurworks/augur` is on npm (6 September 2026). The maintainer's commit `eaad7707` already
+renamed the package, dropped `private`, and changed the connect and clone commands in the
+front door, the agents index, the seeded connect page and the `upgrade` hint. What follows
+is what that commit did not reach. Each item names the file and the exact change; nothing
+here is a design question.
 
-## The package itself
-
-- `package.json`: `name` is still `"augur"` and `"private": true`. The published package is
-  `@augurworks/augur`. Set the name, drop `private`, and delete the test that pins it —
-  `test/npm-package-selfsufficient.test.mjs`, the case *"it is still marked private, so
-  nobody publishes it before the name is settled"* — in the same commit, as that test's own
-  message asks. The `bin` stays `augur`, so `npx @augurworks/augur <verb>` runs it.
-- Check `files` in `package.json` still names everything the CLI needs at runtime: `src/`,
-  `scripts/`, `build.js`, `seed/`, `agents/`, `templates/`. The new `src/drafts/`,
-  `src/galleries.mjs` and `scripts/lib/adapters.mjs` live under folders already listed.
-
-## Every place that says "not on npm yet"
+## Every place that still says "not on npm yet"
 
 - `src/_worker.js`, `doorText` (the `/llms.txt` text): the paragraph *"Not on npm yet? The
   engine clone sits next to every workspace that publishes: `node <engine>/scripts/cli.mjs
-  connect …`"* goes. The connect line above it is `npx augur connect --origin …` in
-  `doorFacts` — change it to `npx @augurworks/augur connect --origin …`, and the
-  `/.well-known/augur.json` `connect` fact with it. `test/agent-front-door.test.mjs` pins
-  both strings.
-- `agents/README.md`, "Getting in": the same two changes (`npx @augurworks/augur connect`,
-  drop the "not on npm yet" sentence), and `npx augur clone --space <id>` →
-  `npx @augurworks/augur clone --space <id>`.
-- `src/seed-pack.mjs` and `scripts/lib/seed-pack-build.mjs`: the seeded connect page's
-  `CONNECT_COMMAND` slot is filled at provision with `npx augur connect --origin …`
-  (search for `npx augur`). Same rename. The seed pack is rebuilt on every engine build,
-  so the change ships with the next pin bump.
+  connect …`"* goes. `test/agent-front-door.test.mjs` reads the door text; check it does
+  not pin that sentence.
+- `agents/README.md`, "Getting in": the same paragraph goes.
 - `agents/publishing.md`: every `node ../augur/scripts/<x>.mjs` form exists because
   `augur` was only on PATH after `npm link`. With the package installed
-  (`npm i -g @augurworks/augur`, or `npx @augurworks/augur`), the `augur <verb>` form is
-  the one to print. Keep the `node …` form as the fallback for a clone-only setup, in one
-  sentence, not as the headline.
-- `scripts/init.mjs` scaffold paragraph and its final "next:" line, `README.md`,
-  `INSTALL.md` (search `augur ship`, `npm link`, `node ../augur`): same rename.
+  (`npm i -g @augurworks/augur`, or `npx @augurworks/augur <verb>`), the `augur <verb>` form
+  is the one to print. Keep the `node …` form as the fallback for a clone-only setup, in
+  one sentence, not as the headline. `README.md` has one such line (the local preview).
 
 ## The editor hooks (slice 3)
 
