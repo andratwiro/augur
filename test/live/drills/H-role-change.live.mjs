@@ -70,10 +70,12 @@ test("H2: removed from the workspace mid-draft", async () => {
     findings.push({ what: "presence after removal", drafts: (p.drafts || []).map((d) => ({ id: d.id || d.draftId, session: d.session, name: d.name })) });
     const disc = await owner.discardFromBar(U, draftIdOf(b));
     findings.push({ what: "owner discards the removed person's draft", status: disc.status });
-    // Their browser session too:
-    const e2 = await human("editor2");
-    const r = await e2.get("/__unit/drafts", { accept: "application/json" });
-    findings.push({ what: "removed person's browser session on an engine route", status: r.status });
+    // Their browser: the old cookie is dead, and a fresh sign-in ends at the workspace's
+    // hand-off as a stranger would — a 404 with no session (no membership oracle).
+    let signin;
+    try { await human("editor2", { fresh: true }); signin = "signed in (unexpected)"; }
+    catch (e) { signin = String(e.message); }
+    findings.push({ what: "removed person tries to sign in again", result: signin });
   } finally {
     // Put editor2 back exactly as the roster tool wrote them (the remove wrote a tombstone),
     // and pair them afresh: a removal revokes every token they held.
