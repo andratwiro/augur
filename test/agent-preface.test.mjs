@@ -41,7 +41,7 @@ test("⚠️ A BROWSER GETS THE PAGE BYTE FOR BYTE: a navigation, an iframe, an 
     ["a navigation", { "Sec-Fetch-Dest": "document", "Sec-Fetch-Mode": "navigate", "User-Agent": "Mozilla/5.0 (Macintosh) AppleWebKit/537.36 Chrome/128" }],
     ["an embed in somebody else's site", { "Sec-Fetch-Dest": "iframe", "Sec-Fetch-Mode": "navigate", "User-Agent": "Mozilla/5.0 Safari/605.1" }],
     ["a prefetch", { "Sec-Fetch-Dest": "empty", "Sec-Fetch-Mode": "cors", "User-Agent": "Mozilla/5.0" }],
-    ["a browser old enough to send no Sec-Fetch", { "User-Agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 15_0 like Mac OS X) Safari/604.1" }],
+    ["a browser old enough to send no Sec-Fetch", { "User-Agent": "Mozilla/5.0 (a phone from 2020; no fetch metadata) Version/14.0" }],
     ["a fetcher dressed as a browser", { "User-Agent": "Mozilla/5.0 (compatible; SomeBot/1.0)" }],
   ];
   for (const [what, headers] of shapes) {
