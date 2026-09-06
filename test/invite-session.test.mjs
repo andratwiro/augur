@@ -9,14 +9,17 @@
 // session-key seam fails closed the same way the credential does.
 import { test } from "node:test";
 import assert from "node:assert/strict";
+import { DatabaseSync } from "node:sqlite";
 import { __testables as W } from "../src/_worker.js";
+import { TenantStore } from "../src/tenant-do.js";
 import { renderMail } from "../src/mail.mjs";
 
 const ORIGIN = "https://x.test";
 const URL_INVITE = new URL(`${ORIGIN}/__invite`);
 const INVITEE = { email: "new@x.test", name: "New Person", role: "editor" };
 const HOLDER = { email: "holder@x.test", name: "Holder", role: "admin" };
-const ROSTER = [INVITEE, HOLDER];
+const WATCHER = { email: "watcher@x.test", name: "Watcher", role: "viewer" };
+const ROSTER = [INVITEE, HOLDER, WATCHER];
 
 function memKV(initial = {}) {
   const m = new Map(Object.entries(initial));
@@ -35,6 +38,62 @@ const CTX_OFF = W.applyDerivedRouting({});
 const CTX_ON = { ...CTX_OFF, SESSION_KEYS: true };
 
 const freshEnv = () => ({ SESSION_SECRET: "s3cret", COMMENTS: memKV() });
+
+// ── a real workspace object behind the redemption ────────────────────────────
+//
+// Everything above this line drives `invitePost` with no TENANTS binding at all — the
+// self-hosted shape, where nothing is recorded and nothing changes. The welcome-owed
+// stamp needs the other shape: a provisioned workspace object with member rows, so the
+// redemption has somewhere to write and the test can read the row back. Same
+// `storage()`/`wired()` construction as test/onboarding-me.test.mjs.
+function storage(db) {
+  const sql = {
+    exec(stmt, ...params) {
+      if (params.length) {
+        const s = db.prepare(stmt);
+        return /^\s*SELECT|RETURNING/i.test(stmt) ? s.all(...params) : (s.run(...params), []);
+      }
+      if (/^\s*SELECT/i.test(stmt)) return db.prepare(stmt).all();
+      db.exec(stmt);
+      return [];
+    },
+  };
+  return {
+    sql,
+    transactionSync(cb) {
+      db.exec("BEGIN");
+      try { const out = cb(); db.exec("COMMIT"); return out; }
+      catch (e) { db.exec("ROLLBACK"); throw e; }
+    },
+  };
+}
+
+let SEQ = 0;
+
+async function wired(base) {
+  const tenantId = `invite-${++SEQ}`;
+  const db = new DatabaseSync(":memory:");
+  const object = new TenantStore({ storage: storage(db), blockConcurrencyWhile: async (f) => f() }, {});
+  await object.provision({ workspaceId: tenantId, adminEmail: HOLDER.email, adminName: HOLDER.name });
+  await object.fetch(new Request("https://workspace/identity/roster/write", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ workspaceId: tenantId, configUsers: ROSTER.map((u) => ({ email: u.email, role: u.role, name: u.name })) }),
+  }));
+  const env = {
+    ...freshEnv(),
+    TENANTS: { idFromName: (n) => n, get: () => ({ fetch: (input, init) => object.fetch(new Request(input, init)) }) },
+  };
+  return { env, object, tctx: { ...base, tenantId } };
+}
+
+const owedAt = async (object, user) => {
+  const res = await object.fetch(new Request("https://workspace/onboarding/welcome", {
+    method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ email: user.email }),
+  }));
+  const body = await res.json();
+  return body.member ? body.member.welcomeOwedAt : null;
+};
 
 const postRedeem = (tctx, env, fields) => W.invitePost(tctx, new Request(`${ORIGIN}/__invite`, {
   method: "POST",
@@ -233,4 +292,62 @@ test("FLAG ON: a link-redeemed person reads as accepted in the people list, not 
   assert.equal(row.state, "accepted", "redeemed-by-link is accepted");
   const holder = body.users.find((u) => u.email === HOLDER.email);
   assert.equal(holder.state, "pending", "no credential and no key is still pending");
+});
+
+// ── redeeming an invite is what makes the welcome flow owed ──────────────────
+//
+// ⚠️ THE GATE MUST NOT BE DERIVABLE FROM MEMBERSHIP. `welcomeGated` reads
+// `welcome_owed_at`, and this is the only thing in the engine that writes it: without the
+// stamp, the flow's conditions are true of every editor and admin a workspace already had,
+// and deploying it onto a real roster gates the whole team. So the record is made HERE, on
+// the one event the flow is actually for — a person arriving by an invite.
+
+test("FLAG ON: a redeemed EDITOR invite marks the member owed the welcome flow", async () => {
+  const { env, object, tctx } = await wired(CTX_ON);
+  assert.equal(await owedAt(object, INVITEE), null, "nothing is owed before the redemption");
+
+  const t = await W.mintInvite(tctx, env, INVITEE.email);
+  assert.equal((await postRedeem(tctx, env, { token: t })).status, 303);
+  assert.ok(await owedAt(object, INVITEE), "the redemption stamped it");
+});
+
+test("FLAG OFF: the password path stamps it too — the door differs, the event does not", async () => {
+  const { env, object, tctx } = await wired(CTX_OFF);
+  const t = await W.mintInvite(tctx, env, INVITEE.email);
+  const res = await postRedeem(tctx, env, { token: t, password: "a-long-password" });
+  assert.equal(res.status, 303);
+  assert.ok(await owedAt(object, INVITEE), "the credential path owes the flow as well");
+});
+
+test("a redeemed VIEWER invite owes nobody anything", async () => {
+  // Viewers are never gated (the global constraint), so they are never stamped either —
+  // a column nothing reads for them would be a record with no meaning, and the role check
+  // sits at the write as well as at the read.
+  const { env, object, tctx } = await wired(CTX_ON);
+  const t = await W.mintInvite(tctx, env, WATCHER.email);
+  assert.equal((await postRedeem(tctx, env, { token: t })).status, 303, "the viewer still gets in");
+  assert.equal(await owedAt(object, WATCHER), null);
+});
+
+test("a workspace object that refuses the stamp never costs the person their session", async () => {
+  // The stamp runs AFTER the token is burned, so a throw escaping it would answer a
+  // successful redemption with "something went wrong" and a dead link.
+  const { env, object, tctx } = await wired(CTX_ON);
+  const t = await W.mintInvite(tctx, env, INVITEE.email);
+  const real = env.TENANTS.get;
+  env.TENANTS.get = (n) => {
+    const r = real(n);
+    return {
+      fetch: (input, init) => {
+        const path = new URL(typeof input === "string" ? input : input.url).pathname;
+        if (path === "/onboarding/welcome-set") return Promise.reject(new Error("workspace object unreachable"));
+        return r.fetch(input, init);
+      },
+    };
+  };
+  const res = await postRedeem(tctx, env, { token: t });
+  assert.equal(res.status, 303, "the redemption stands");
+  assert.ok(res.headers.get("Set-Cookie"), "and the session was issued");
+  env.TENANTS.get = real;
+  assert.equal(await owedAt(object, INVITEE), null, "the stamp is the only thing lost");
 });

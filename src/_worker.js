@@ -2955,6 +2955,10 @@ async function inviteRedeemSession(tctx, token, env, users) {
   // answer with the previous map for up to a minute of edge cache, and a cookie minted
   // on the stale value dies on its very first request — with nothing saying why.
   const token2 = await userToken(env, u, rot.key, true, tctx);
+  // The redemption succeeded, so this person is owed the welcome flow — see
+  // noteInviteRedeemed. After the consume, like the landing below, and it can never fail
+  // the redemption: the session is already minted.
+  if (roleOf(u) !== "viewer") await noteInviteRedeemed(env, tctx, u.email);
   // Where a SUCCESSFUL redemption lands. After the consume on purpose: the landing
   // records the once-only first-run showing, and a refused redemption must record
   // nothing. "/" whenever the first-run flag is off or the surface has been seen.
@@ -3013,6 +3017,10 @@ async function invitePost(tctx, request, url, env, users = tctx.USERS) {
     // credential while identify() checks against the session key, and the person is
     // signed out on their very next request — with nothing saying why.
     const token2 = await userToken(env, u, undefined, tctx.SESSION_KEYS, tctx);
+    // Same stamp as inviteRedeemSession, in the same place and for the same reason: a
+    // redemption is what makes the welcome flow owed, whichever door the deployment's
+    // flag sends the person through.
+    if (roleOf(u) !== "viewer") await noteInviteRedeemed(env, tctx, u.email);
     // Same landing decision as inviteRedeemSession, for the same reason and in the same
     // place: after the redemption has succeeded, never before.
     const landing = await firstRunLanding(tctx, env, u.email);
@@ -10225,6 +10233,41 @@ async function notePairing(env, tctx, email) {
   }
 }
 
+/**
+ * A person has just redeemed an invite. THIS is what makes the welcome flow owed to them.
+ *
+ * ⚠️ THE GATE IS "OWED SINCE REDEEMING AN INVITE", NEVER "HAS NOT DISMISSED IT YET". The
+ * flow's conditions used to be role plus two absent flags, and every member a workspace
+ * already had satisfies those — so the first deployment onto a workspace with a roster
+ * held the entire existing team at an onboarding door none of them had asked for, with
+ * nothing on their row that could ever have said otherwise. Being owed the flow is
+ * therefore an EVENT, stamped here, and a row's silence means what it means for anybody
+ * who was already a member: not owed.
+ *
+ * Viewers are never stamped, for the reason they are never gated: there is nothing in the
+ * flow for somebody who publishes nothing.
+ *
+ * Fire-and-forget-safe by construction: awaited inside a try/catch that swallows
+ * everything, and called only AFTER the redemption has succeeded, so the worst a failure
+ * here costs is that one person never sees the welcome — never their way in.
+ */
+async function noteInviteRedeemed(env, tctx, email) {
+  try {
+    // Inside the try, unlike notePairing's: this runs on a path whose token is already
+    // burned and whose catch answers "something went wrong", so nothing here — the
+    // namespace lookup included — may throw past it.
+    const stub = tenantStub(env, tctx && tctx.tenantId);
+    if (!stub || !email) return null;
+    const res = await stub.fetch("https://workspace/onboarding/welcome-set", {
+      method: "POST", headers: { "content-type": "application/json" },
+      body: JSON.stringify({ workspaceId: tctx.tenantId, email: lcEmail(email), owed: true }),
+    });
+    return res.ok ? await res.json() : null;
+  } catch (e) {
+    return null; // the redemption is already done; a lost stamp costs the welcome, not the session
+  }
+}
+
 // The member's own onboarding, for the welcome flow to poll. `drafting`/`landed` are read
 // from the member's start unit through its unit object: a landing whose `by` is this member.
 async function onboardingMeApi(tctx, request, url, env, me) {
@@ -10333,7 +10376,12 @@ async function onboardingMeApi(tctx, request, url, env, me) {
       } catch (e) { /* the object is unreachable; the flags stay false and the page keeps polling */ }
     }
   }
-  out.gated = welcomeGated(role, w.member);
+  // The SAME two conditions the redirect on `/` applies, in the same order: the flow has
+  // to exist on this deployment at all (`welcomeFlow` — pairing off is a flow whose middle
+  // cannot be finished, and there is no `/__welcome` to be sent to), and then the person
+  // has to be owed it. This route answers unconditionally, pairing or not, so without the
+  // first clause it told a member they were gated by a door that does not exist.
+  out.gated = welcomeFlow(tctx) && welcomeGated(role, w.member);
   return jsonResponse(out);
 }
 
@@ -10367,9 +10415,16 @@ const welcomeFlow = (tctx) => !!tctx && !tctx.FIRST_RUN && !!tctx.DEVICE_PAIRING
  * cannot record either — gating them would send them to a page whose "do this later"
  * writes nothing, on every load, with no way into their own workspace. Absent is
  * therefore NOT gated, the direction every degradation on this path already fails in.
+ *
+ * ⚠️ AND `welcomeOwedAt` IS REQUIRED, which is the other half of the same rule. The flow
+ * is for a person who arrives by an invite, so it is owed by REDEEMING one
+ * (`noteInviteRedeemed`) and by nothing else. Read without it, the three conditions below
+ * are all true of every editor and admin a workspace already had, and the first deploy
+ * onto a real workspace gated its whole existing team.
  */
 const welcomeGated = (role, member) =>
-  role !== "viewer" && !!member && !member.welcomeDoneAt && !member.welcomeLaterAt;
+  role !== "viewer" && !!member && !!member.welcomeOwedAt
+  && !member.welcomeDoneAt && !member.welcomeLaterAt;
 
 /**
  * The redirect's own read: ONE round trip to the workspace object for the three facts
@@ -12824,5 +12879,5 @@ export const __testables = Object.freeze({
   WORKSPACE_ENTER_PATH, enterHandoff, tenantAccountKey,
   noteMembershipUpstream,
   noteFirstPublish, noteRoleTransition, onboardingStatusApi,
-  notePairing, onboardingMeApi, WELCOME_PATH, welcomeGated, owedWelcome, renderWelcomePage,
+  notePairing, noteInviteRedeemed, onboardingMeApi, WELCOME_PATH, welcomeGated, owedWelcome, renderWelcomePage,
 });

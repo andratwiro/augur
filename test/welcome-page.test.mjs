@@ -122,6 +122,9 @@ async function wired(users, { pairing = true, publicPrefixes = [] } = {}) {
         if (p === "/__config/routing.json") {
           return new Response(JSON.stringify({ spaces: [{ id: "acme", default: true }], publicPrefixes }), { headers: { "content-type": "application/json" } });
         }
+        if (p === "/") {
+          return new Response("<!doctype html><title>gallery</title>the gallery", { headers: { "content-type": "text/html" } });
+        }
         if (p === PUBLIC_PROTO) {
           return new Response("<!doctype html><title>proto</title>the public prototype", { headers: { "content-type": "text/html" } });
         }
@@ -136,6 +139,17 @@ async function wired(users, { pairing = true, publicPrefixes = [] } = {}) {
   return { env, object, tenantId };
 }
 
+/**
+ * What a redeemed invite does to a member's row — the ONE thing that makes the welcome
+ * flow owed (`noteInviteRedeemed` in _worker.js, over this same route). Driven against the
+ * object here because these tests reach the worker through `worker.fetch` and hold no
+ * `tctx` of their own.
+ */
+const owe = (object, tenantId, user) => object.fetch(new Request("https://workspace/onboarding/welcome-set", {
+  method: "POST", headers: { "content-type": "application/json" },
+  body: JSON.stringify({ workspaceId: tenantId, email: user.email, owed: true }),
+}));
+
 async function fetchAs(env, user, path, init = {}) {
   freshIsolate();
   const headers = { ...(init.headers || {}) };
@@ -146,8 +160,9 @@ async function fetchAs(env, user, path, init = {}) {
   } finally { console.log = orig; }
 }
 
-test("/ sends a gated editor to /__welcome and leaves a viewer alone", async () => {
-  const { env } = await wired([ADA_MEMBER, VERA]);
+test("/ sends an OWED editor to /__welcome and leaves a viewer alone", async () => {
+  const { env, object, tenantId } = await wired([ADA_MEMBER, VERA]);
+  await owe(object, tenantId, ADA_MEMBER);
   const r = await fetchAs(env, ADA_MEMBER, "/");
   assert.equal(r.status, 303);
   assert.equal(r.headers.get("location"), "/__welcome");
@@ -158,6 +173,23 @@ test("/ sends a gated editor to /__welcome and leaves a viewer alone", async () 
   });
   assert.equal(later.status, 200);
   assert.notEqual((await fetchAs(env, ADA_MEMBER, "/")).status, 303, "later lifts the gate");
+});
+
+// ⚠️ THE REGRESSION THIS PINS. The gate's conditions were role plus two absent flags,
+// which every member of an existing roster satisfies — so the first deployment onto a
+// workspace with people already in it redirected all of them, every load, to a flow about
+// connecting a terminal they had never asked for. Nothing on the row could have said
+// otherwise: being owed the flow had no record at all until `welcome_owed_at`.
+test("an editor who was already a member is served the gallery, never the welcome flow", async () => {
+  const { env } = await wired([ADA_MEMBER, VERA]);
+  const r = await fetchAs(env, ADA_MEMBER, "/");
+  assert.notEqual(r.status, 303, "a pre-existing member must never be gated by an onboarding flow");
+  assert.equal(r.status, 200);
+  assert.match(await r.text(), /the gallery/);
+  // And the read the page itself polls agrees with the redirect, which is the property
+  // two formulas would break on exactly the tick they disagreed.
+  const me = await fetchAs(env, ADA_MEMBER, "/__onboarding/me");
+  assert.equal((await me.json()).gated, false);
 });
 
 test("/__welcome is one self-contained page with the five steps and the command", async () => {
@@ -193,8 +225,9 @@ test("a viewer asking for /__welcome is sent to /", async () => {
 // flow with no way past step two. With pairing off the surface reverts to what it was
 // before this feature existed at all — no route, no redirect — and every test above
 // this one turns pairing ON (see `wired`'s default) to exercise the flow itself.
-test("with device pairing off, a gated editor's / is not redirected and /__onboarding/me still answers", async () => {
-  const { env } = await wired([ADA_MEMBER, VERA], { pairing: false });
+test("with device pairing off, an OWED editor's / is not redirected and /__onboarding/me still answers", async () => {
+  const { env, object, tenantId } = await wired([ADA_MEMBER, VERA], { pairing: false });
+  await owe(object, tenantId, ADA_MEMBER);   // owed, so the pairing clause is the only thing lifting the gate
   const r = await fetchAs(env, ADA_MEMBER, "/");
   assert.notEqual(r.status, 303, "no route stands in the slot with pairing off, so nothing gates /");
   const me = await fetchAs(env, ADA_MEMBER, "/__onboarding/me");
@@ -204,7 +237,8 @@ test("with device pairing off, a gated editor's / is not redirected and /__onboa
 // ── regression pins ──────────────────────────────────────────────────────────────────
 
 test("a signed-in gated editor fetching a public prototype path is served it, not redirected", async () => {
-  const { env } = await wired([ADA_MEMBER, VERA], { publicPrefixes: [PUBLIC_PROTO] });
+  const { env, object, tenantId } = await wired([ADA_MEMBER, VERA], { publicPrefixes: [PUBLIC_PROTO] });
+  await owe(object, tenantId, ADA_MEMBER);   // genuinely gated, or this pin proves nothing
   // Same person, same request shape as the very first test above — only the path
   // differs — so this pins that isPublicPath (checked ahead of the welcome gate, see
   // the placement note above owedWelcome's call site) still wins for a share link.
@@ -216,7 +250,8 @@ test("a signed-in gated editor fetching a public prototype path is served it, no
 
 test("a roster member who is not in the default space gets the membership gate's 404, not the welcome redirect", async () => {
   const nonMember = { ...ADA_MEMBER, email: "nomember@example.test", name: "Nomi", initials: "NM" };
-  const { env } = await wired([ADA_MEMBER, nonMember]);
+  const { env, object, tenantId } = await wired([ADA_MEMBER, nonMember]);
+  await owe(object, tenantId, nonMember);   // owed the flow, so the ORDER of the two gates is what this reads
   // `users:spaces` is the overlay isMemberOf reads (see membership-gate.test.mjs): an
   // entry present but empty means "a member of nothing", including the default space.
   await env.COMMENTS.put("users:spaces", JSON.stringify({ "nomember@example.test": {} }));

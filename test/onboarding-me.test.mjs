@@ -49,8 +49,13 @@ let SEQ = 0;
  * A workspace object provisioned and rostered with `users`, wired behind `env.TENANTS`,
  * plus the worker `tctx` that names it — everything `notePairing`/`onboardingMeApi` touch,
  * with none of the HTTP/host-resolution plumbing this task's tests never exercise.
+ *
+ * `pairing` defaults ON because `gated` now answers the same two questions the redirect on
+ * `/` does, and the first of them is `welcomeFlow(tctx)`: with device pairing off there is
+ * no `/__welcome` to be sent to, so nobody is gated however owed they are. The one test
+ * below that turns it off is the one that pins exactly that.
  */
-async function wired(users, { live } = {}) {
+async function wired(users, { live, pairing = true } = {}) {
   const tenantId = `onboarding-me-${++SEQ}`;
   const db = new DatabaseSync(":memory:");
   const object = new TenantStore({ storage: storage(db), blockConcurrencyWhile: async (f) => f() }, {});
@@ -68,9 +73,12 @@ async function wired(users, { live } = {}) {
     idFromName: (n) => n,
     get: (n) => ({ fetch: (input, init) => object.fetch(new Request(input, init)) }),
   };
-  const ctx = ctxFor(tenantId, users);
+  const ctx = { ...ctxFor(tenantId, users), DEVICE_PAIRING: pairing };
   return { env, ctx, object, tenantId };
 }
+
+/** What a redeemed invite does — the ONE thing that makes the welcome flow owed. */
+const owe = (env, ctx, user) => W.noteInviteRedeemed(env, ctx, user.email);
 
 const me = async (env, ctx, user, init = {}) => {
   const { url = "/__onboarding/me", ...rest } = init;
@@ -99,13 +107,46 @@ function rejecting(env, pathname) {
   };
 }
 
-test("a viewer is never gated; an editor is gated until done or later", async () => {
+test("an editor with a member row is NOT gated until a redeemed invite owes them the flow", async () => {
+  // ⚠️ THE REGRESSION THIS FILE EXISTS TO PIN SINCE 9a. `gated` used to be "editor or
+  // admin, and neither flag set", which is true of every member a workspace already had —
+  // deployed onto a real roster it held the entire existing team at the door. A member
+  // row is not a reason to be owed an onboarding flow; redeeming an invite is.
+  const { env, ctx } = await wired([ADA_MEMBER, VERA]);
+  const before = await me(env, ctx, ADA_MEMBER);
+  assert.deepEqual([before.json.gated, before.json.paired, before.json.landed, before.json.backing],
+    [false, false, false, "workspace-object"], "a pre-existing editor is never gated");
+
+  await owe(env, ctx, ADA_MEMBER);
+  assert.equal((await me(env, ctx, ADA_MEMBER)).json.gated, true, "owed by the redemption");
+});
+
+test("a viewer is never gated, owed or not", async () => {
   const { env, ctx } = await wired([ADA_MEMBER, VERA]);
   assert.equal((await me(env, ctx, VERA)).json.gated, false);
-  const a = await me(env, ctx, ADA_MEMBER);
-  assert.deepEqual([a.json.gated, a.json.paired, a.json.landed, a.json.backing], [true, false, false, "workspace-object"]);
+  // Even if something did stamp the column, the role decides first — the same rule the
+  // whole flow follows, and the one global constraint it may never break.
+  await W.noteInviteRedeemed(env, ctx, VERA.email);
+  assert.equal((await me(env, ctx, VERA)).json.gated, false);
+});
+
+test("an owed editor is gated until done or later", async () => {
+  const { env, ctx } = await wired([ADA_MEMBER, VERA]);
+  await owe(env, ctx, ADA_MEMBER);
+  assert.equal((await me(env, ctx, ADA_MEMBER)).json.gated, true);
   await me(env, ctx, ADA_MEMBER, { method: "POST", body: JSON.stringify({ later: true }) });
   assert.equal((await me(env, ctx, ADA_MEMBER)).json.gated, false);
+});
+
+test("with device pairing off nobody is gated, however owed — `gated` agrees with the redirect", async () => {
+  // welcomeFlow(tctx) is the redirect's first question and now this route's too. With
+  // pairing off there is no /__welcome standing in the slot, so a `gated: true` here was
+  // the page telling a member about a door that does not exist.
+  const { env, ctx } = await wired([ADA_MEMBER], { pairing: false });
+  await owe(env, ctx, ADA_MEMBER);
+  const a = await me(env, ctx, ADA_MEMBER);
+  assert.equal(a.status, 200, "the member's own onboarding read is unconditional, pairing or not");
+  assert.equal(a.json.gated, false);
 });
 
 test("approving a pairing stamps the member, and the status flips", async () => {
@@ -143,6 +184,7 @@ test("a workspace-object failure on the pairing stamp never fails the approval",
 
 test("a workspace-object failure on the welcome-set write never fails the request", async () => {
   const { env, ctx } = await wired([ADA_MEMBER]);
+  await owe(env, ctx, ADA_MEMBER);   // owed BEFORE the store breaks: the gate is what this asserts about
   rejecting(env, "/onboarding/welcome-set");
   const a = await me(env, ctx, ADA_MEMBER, { method: "POST", body: JSON.stringify({ later: true }) });
   assert.equal(a.status, 200);

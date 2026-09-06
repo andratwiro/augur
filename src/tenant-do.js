@@ -74,7 +74,16 @@ import { loadSeedPack, publishSeedPack, seedOverlayFrom, workspaceOrigin } from 
 //
 // 4 → 5: per-member onboarding — paired_at, welcome_done_at, welcome_later_at, start_unit
 // on members.
-export const TENANT_SCHEMA_VERSION = 5;
+//
+// 5 → 6: `members` gained `welcome_owed_at` — the fact that makes the welcome flow OWED.
+// Without it the gate's only conditions were "editor or admin, and neither flag set",
+// which is true of every member a workspace already had: deployed to a workspace with a
+// roster, it held the whole team at an onboarding door none of them had asked for. The
+// flow is for people who arrive by an invite, so being owed it is something that HAPPENS
+// — stamped when a redemption succeeds — and never something a row's silence implies.
+// Nullable and additive: a row that predates it reads as not owed, which is the honest
+// answer for anybody who was already here.
+export const TENANT_SCHEMA_VERSION = 6;
 
 /**
  * The schema, as a list of statements so a migration can apply them one at a time and a
@@ -127,6 +136,7 @@ export const TENANT_SCHEMA = Object.freeze([
      paired_at TEXT,
      welcome_done_at TEXT,
      welcome_later_at TEXT,
+     welcome_owed_at TEXT,
      start_unit TEXT
    )`,
   // A REMOVED member is a tombstone, never a deleted row. The KV design learned this the
@@ -373,6 +383,7 @@ export const TENANT_SCHEMA_ADDITIONS = Object.freeze([
   { table: "members", column: "paired_at", type: "TEXT" },
   { table: "members", column: "welcome_done_at", type: "TEXT" },
   { table: "members", column: "welcome_later_at", type: "TEXT" },
+  { table: "members", column: "welcome_owed_at", type: "TEXT" },
   { table: "members", column: "start_unit", type: "TEXT" },
   { table: "publish_tokens", column: "scope", type: "TEXT" },
   { table: "publish_tokens", column: "caps", type: "TEXT" },
@@ -2358,16 +2369,24 @@ export class TenantStore {
     if (!this.hasMeta()) return { provisioned: false, member: null };
     const e = String(email || "").toLowerCase();
     const r = [...this.sql.exec(
-      `SELECT email, role, paired_at, first_publish_at, welcome_done_at, welcome_later_at, start_unit FROM members WHERE email = ? AND removed_at IS NULL`, e)][0];
+      `SELECT email, role, paired_at, first_publish_at, welcome_done_at, welcome_later_at, welcome_owed_at, start_unit FROM members WHERE email = ? AND removed_at IS NULL`, e)][0];
     return { provisioned: true, member: r ? {
       email: r.email, role: r.role, pairedAt: r.paired_at, firstPublishAt: r.first_publish_at,
-      welcomeDoneAt: r.welcome_done_at, welcomeLaterAt: r.welcome_later_at, startUnit: r.start_unit,
+      welcomeDoneAt: r.welcome_done_at, welcomeLaterAt: r.welcome_later_at,
+      welcomeOwedAt: r.welcome_owed_at, startUnit: r.start_unit,
     } : null };
   }
-  welcomeSet(email, { done = false, later = false, startUnit = null } = {}, at = new Date().toISOString()) {
+  /**
+   * `owed` is the one flag written by something OTHER than the person: an invite
+   * redemption stamps it, and the gate reads it. COALESCE, like `done` and `startUnit`,
+   * because a second redemption (a re-invite after a removal is a new row anyway) must
+   * not move the date the first one recorded.
+   */
+  welcomeSet(email, { done = false, later = false, owed = false, startUnit = null } = {}, at = new Date().toISOString()) {
     const e = String(email || "").toLowerCase();
     if (done) this.sql.exec(`UPDATE members SET welcome_done_at = COALESCE(welcome_done_at, ?) WHERE email = ? AND removed_at IS NULL`, at, e);
     if (later) this.sql.exec(`UPDATE members SET welcome_later_at = ? WHERE email = ? AND removed_at IS NULL`, at, e);
+    if (owed) this.sql.exec(`UPDATE members SET welcome_owed_at = COALESCE(welcome_owed_at, ?) WHERE email = ? AND removed_at IS NULL`, at, e);
     if (startUnit) this.sql.exec(`UPDATE members SET start_unit = COALESCE(start_unit, ?) WHERE email = ? AND removed_at IS NULL`, startUnit, e);
     return { ok: true, member: this.welcome(e).member };
   }
@@ -2839,6 +2858,9 @@ export class TenantStore {
       const body = await request.json().catch(() => ({}));
       return Response.json(this.welcome(body && body.email));   // a read never inits
     }
+    // The whole body is the flag set — `done`, `later`, `owed`, `startUnit` — so the
+    // invite redemption's `noteInviteRedeemed` needs no route of its own. A second route
+    // writing one column of the same row would be a second description of one thing.
     if (url.pathname === "/onboarding/welcome-set" && request.method === "POST") {
       const body = await request.json().catch(() => ({}));
       await this.init(body.workspaceId);

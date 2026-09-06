@@ -334,3 +334,42 @@ test("per-member onboarding: pairing, welcome flags and the start unit live on t
   assert.ok(store.welcome("ada@x.test").member.welcomeDoneAt);
   assert.equal(store.welcome("nobody@x.test").member, null);
 });
+
+// ── owed: the fact that makes the welcome flow a person's, and the one nobody's silence
+// implies ────────────────────────────────────────────────────────────────────────────
+//
+// A member row that predates this column — every member of every workspace the flow was
+// first deployed onto — reads as NOT owed, which is the whole point: the gate asks for
+// this stamp, and only a redeemed invite writes it.
+
+test("welcome_owed_at is absent until something stamps it, and the stamp is written once", async () => {
+  const { store, db } = workspace("ws-owed");
+  await store.init("ws-owed");
+  db.prepare("INSERT INTO members (email, role, name, added_at) VALUES (?,?,?,?)")
+    .run("ada@x.test", "editor", "Ada", "2026-09-06T09:00:00Z");
+
+  assert.equal(store.welcome("ada@x.test").member.welcomeOwedAt, null,
+    "a member who was already here is not owed a flow that exists for people arriving");
+
+  store.welcomeSet("ada@x.test", { owed: true }, "2026-09-07T10:00:00Z");
+  assert.equal(store.welcome("ada@x.test").member.welcomeOwedAt, "2026-09-07T10:00:00Z");
+  store.welcomeSet("ada@x.test", { owed: true }, "2026-09-07T11:00:00Z");
+  assert.equal(store.welcome("ada@x.test").member.welcomeOwedAt, "2026-09-07T10:00:00Z",
+    "COALESCE: the first stamp is the one that stands");
+
+  // And it is orthogonal to the flags the PERSON writes — dismissing the flow does not
+  // un-owe it, it answers it.
+  store.welcomeSet("ada@x.test", { later: true }, "2026-09-07T12:00:00Z");
+  assert.ok(store.welcome("ada@x.test").member.welcomeOwedAt);
+  assert.ok(store.welcome("ada@x.test").member.welcomeLaterAt);
+});
+
+test("welcome_owed_at is in BOTH schema lists, so a migrated object and a fresh one agree", () => {
+  // The generic parity test above walks every addition; this one names the column, so a
+  // future edit that drops it from one list fails with the reason rather than a count.
+  assert.ok(TENANT_SCHEMA_ADDITIONS.some((a) => a.table === "members" && a.column === "welcome_owed_at"),
+    "welcome_owed_at is not in TENANT_SCHEMA_ADDITIONS — an object built by an older engine would never get it");
+  assert.ok(TENANT_SCHEMA.some((stmt) => /CREATE TABLE IF NOT EXISTS members/.test(stmt) && /welcome_owed_at TEXT/.test(stmt)),
+    "welcome_owed_at is not in the CREATE — a freshly provisioned workspace would never have it");
+  assert.ok(TENANT_SCHEMA_VERSION >= 6, "the version was not bumped with the column");
+});
