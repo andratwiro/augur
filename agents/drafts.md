@@ -1,8 +1,8 @@
 # Drafts — how a prototype is changed on a workspace that serves them
 
 **Does this apply here?** Ask the instance: `GET /.well-known/augur.json` carries
-`drafts.enabled`. `true` → this document. `false` → [publishing.md](./publishing.md), and
-`augur ship` as before. `augur ship` on a drafts workspace refuses and points here.
+`drafts.enabled`. `true` → this document; `augur publish` refuses there and points here.
+`false` → [publishing.md](./publishing.md), which publishes a whole tree.
 
 ## The whole day, in four lines
 
@@ -31,7 +31,7 @@ you land. Two agents opening the same prototype get two drafts, are both told ab
 other, and both work — nothing locks, nobody waits.
 
 `augur open` prints who else has it open. That is the whole coordination step; there is
-nothing to leave and nothing to clear (working marks are for workspaces without drafts).
+nothing to leave and nothing to clear.
 
 ## Editing
 
@@ -80,13 +80,12 @@ you do not want (its saves stay on the instance for a while; nothing else is tou
 | `stale-draft` | another process saved to this same draft | `augur sync`, then `augur save` |
 | `would-unpublish` | the draft has no files (the folder is empty) | check the folder; a deletion is its own verb |
 | `not-a-prototype-folder` / `reserved-folder` | the path is not `<opportunity>/<prototype>` | name the prototype folder |
-| `units-not-configured` | this instance does not serve drafts | use `augur ship` — see publishing.md |
+| `units-not-configured` | this instance does not serve drafts | `augur publish` — see publishing.md |
 | no publish token | this machine is not paired | `augur connect` (never a password) |
 | unreachable | the instance could not be reached | nothing is lost; the next save carries every change since |
 
 ## What you never do
 
-- Ship a whole tree to a drafts workspace. `ship` refuses; `--legacy` exists for one
-  release and is not for you.
+- Publish a whole tree to a drafts workspace. `publish` refuses there, and `ship` is gone.
 - Wait for, or refuse over, somebody else's draft. Both work; the second landing syncs.
 - Hand over a path on disk as "done". Done is the URL `land` printed.

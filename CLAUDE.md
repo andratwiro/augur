@@ -584,7 +584,6 @@ has no token) · `augur login` (trade web credentials for a publish token: CI, s
 instances without pairing) · `npm run deploy` (build + direct upload to Pages;
 `--check`, `--preview`) — in bundle mode this ships CHROME, so reserve it for
 engine/worker verification; content goes out with `ship`/`publish` ·
-`augur ship [-m msg] [--no-push]` (the default path) ·
 `augur publish [--space <id>|--all] [--dry-run] [--allow-unpublish]`
 (publish only; `AUGUR_TOKEN` + `AUGUR_ORIGIN`) ·
 `augur fork <from> <to> [--space <id>]` (your own copy of a published artifact at a new
@@ -595,13 +594,12 @@ URL — see Forking below; the one publishing verb that needs no tree at all) ·
 the original, and report a pass-rate per component — resumable across nights, and with
 no way for the thing being measured to assert its own result. See
 `docs/canon-refine.md`.) ·
-`augur mark [<path>] [--ttl <s>] [--clear]` (say what you are about to work on, read
-what everyone else is — a TTL'd note that refuses nothing; see
-[agents/working-marks.md](agents/working-marks.md)) ·
-`augur open <prototype>` / `augur save` / `augur land [-m note]` / `augur sync` /
-`augur close [--discard]` (drafts that land: one prototype in a folder of its own, live at
-once at its draft address, landed onto the real URL by compare-and-set —
-`docs/drafts-that-land.md`) ·
+`augur open [--new] <prototype>` / `augur save` / `augur land [-m note]` / `augur sync` /
+`augur read <unit>` / `augur watch` / `augur close [--discard]` / `augur hook …` (drafts that
+land: one prototype in a folder of its own, live at once at its draft address, landed onto
+the real URL by compare-and-set; every folder a person edits — a library demo, the declared
+design system — is a unit; the galleries are derived at serve time where drafts are served —
+`docs/drafts-that-land.md`, `agents/drafts.md`) ·
 `augur canon <list|find|save|check|start|collect|snippet|grade|apply>` — ONE surface over
 two scripts, because it is one job. `list|find|save|check` are the canon you HAVE:
 resolve a canonical name to files cold, and promote a working screen into the canon so it

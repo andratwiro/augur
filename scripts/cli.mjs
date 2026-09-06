@@ -4,13 +4,11 @@
 //   augur dev       full local shell in the current space folder (or workspace root)
 //   augur build     compose dist/ once
 //   augur deploy    build + direct-upload the whole site (see deploy.mjs)
-//   augur ship      commit + publish + push — the default way a change goes out
 //   augur publish   publish only, without committing or pushing (see publish.mjs)
 //   augur fork      copy a published artifact to a new URL, moving no bytes (see fork.mjs)
 //   augur status    what is live vs what your clones hold (see status.mjs)
 //   augur refine    render every component, photograph it, measure it against the
 //                   original, and report a pass-rate nobody can assert (see refine.mjs)
-//   augur mark      say what you are about to work on; read what everyone else is
 //   augur open      open one prototype into a folder of its own, live at once
 //   augur save      push every changed file in this draft folder
 //   augur land      replace the prototype's main with this draft
@@ -40,13 +38,11 @@ const map = {
   dev: "dev.mjs",
   offline: "offline.mjs",
   deploy: "deploy.mjs",
-  ship: "ship.mjs",
   publish: "publish.mjs",
   // The one publishing verb that needs no tree: two paths and a token (see fork.mjs).
   fork: "fork.mjs",
   status: "status.mjs",
   refine: "refine.mjs",
-  mark: "mark.mjs",
   // Drafts that land (docs/drafts-that-land.md): one prototype, one folder, live at once.
   open: "open.mjs",
   save: "save.mjs",
@@ -83,8 +79,18 @@ const map = {
   canon: "canon.mjs",
   build: path.join("..", "build.js"),
 };
+// Two verbs that are gone, answered rather than dropped: a person or an agent following an
+// older note lands on one sentence saying where the work went, not on "unknown command".
+if (sub === "ship") {
+  console.error("augur ship is retired. A prototype is changed by opening it: `augur open <opportunity>/<prototype>`, edit, `augur land` (engine agents/drafts.md). A workspace without a unit store still publishes a tree with `augur publish`.");
+  process.exit(1);
+}
+if (sub === "mark") {
+  console.error("augur mark is retired: a draft IS the mark. `augur open <prototype>` tells you who else has it open, and `augur status` lists what is open on this machine.");
+  process.exit(1);
+}
 if (!map[sub]) {
-  console.error("usage: augur <init|ship|dev|offline|build|deploy|publish|fork|status|canon|refine|mark|open|save|land|sync|close|read|watch|hook|clone|pull|export|restore|migrate|bundle-rekey|identity-rekey|adopt|freeze|thaw|connect|login> [options]");
+  console.error("usage: augur <init|dev|offline|build|deploy|publish|fork|status|canon|refine|open|save|land|sync|close|read|watch|hook|clone|pull|export|restore|migrate|bundle-rekey|identity-rekey|adopt|freeze|thaw|connect|login> [options]");
   process.exit(sub ? 1 : 0);
 }
 const child = spawn(process.execPath, [path.join(SCRIPTS, map[sub]), ...rest], {

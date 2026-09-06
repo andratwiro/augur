@@ -8,8 +8,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { target, buildStamp } from "./lib/store.mjs";
-import { markPathFor } from "./lib/marks.mjs";
-import { unitClient, doOpen } from "./lib/draft.mjs";
+import { unitClient, doOpen, unitPathFor } from "./lib/draft.mjs";
 import { installAdapters } from "./lib/adapters.mjs";
 import { normUnit } from "../src/unit-core.mjs";
 
@@ -21,7 +20,7 @@ const positional = argv.filter((a, i) => !a.startsWith("--") && !(i > 0 && argv[
 
 const raw = positional[0];
 if (!raw) die("name a prototype: `augur open <opportunity>/<prototype>` (a folder path works too).");
-const unit = normUnit(markPathFor(raw) || raw);
+const unit = normUnit(unitPathFor(raw) || raw);
 if (!unit) die(`"${raw}" is not a prototype path.`);
 let origin, token;
 try { ({ origin, token } = target({ needToken: true })); } catch (e) { die(e.message); }

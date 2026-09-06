@@ -44,6 +44,7 @@ const PRE_BUILD_EXEMPT = [
   ["both declare space", "refuses ambiguous discovery, before the build"],
   ["name a target", "usage error, before the build"],
   ["unknown space", "usage error, before the build"],
+  ["serves drafts", "refuses a whole tree where drafts are served, before the build — the answer is open/land"],
 ];
 
 test("every publish failure that could leave an artifact says not to hand over a local path", () => {

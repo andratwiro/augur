@@ -4,8 +4,7 @@
 // refuses edits there. `augur close` inside it removes it. See docs/drafts-that-land.md §7.
 import path from "node:path";
 import { target } from "./lib/store.mjs";
-import { markPathFor } from "./lib/marks.mjs";
-import { unitClient, doRead, readDirFor } from "./lib/draft.mjs";
+import { unitClient, doRead, readDirFor, unitPathFor } from "./lib/draft.mjs";
 import { normUnit } from "../src/unit-core.mjs";
 
 const log = (m) => console.error(`\x1b[35m[read]\x1b[0m ${m}`);
@@ -15,7 +14,7 @@ const opt = (n) => { const i = argv.indexOf(n); return i > -1 ? argv[i + 1] : nu
 const positional = argv.filter((a, i) => !a.startsWith("--") && !(i > 0 && argv[i - 1].startsWith("--")));
 const raw = positional[0];
 if (!raw) die("name a prototype: `augur read <opportunity>/<prototype>`.");
-const unit = normUnit(markPathFor(raw) || raw);
+const unit = normUnit(unitPathFor(raw) || raw);
 if (!unit) die(`"${raw}" is not a prototype path.`);
 let origin, token;
 try { ({ origin, token } = target({ needToken: true })); } catch (e) { die(e.message); }

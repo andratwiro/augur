@@ -16,7 +16,6 @@ import { execFileSync } from "node:child_process";
 import { existsSync, readFileSync, readdirSync } from "node:fs";
 import path from "node:path";
 import { resolveOrigin, resolveToken, apiClient, buildStamp, ENGINE_ROOT } from "./lib/store.mjs";
-import { fetchMarks, markLine } from "./lib/marks.mjs";
 import { registryList, unitClient, draftsReport } from "./lib/draft.mjs";
 
 const args = process.argv.slice(2);
@@ -123,28 +122,11 @@ console.log("");
 console.log(`  ${C.dim}engine chrome    ${eng.sha ? eng.sha.slice(0, 12) : "—"}` +
   `${eng.version ? ` (v${eng.version})` : ""}${eng.publishedAt ? `  ·  shipped ${eng.publishedAt}` : ""}${C.off}`);
 
-// ── who is working where, right now ─────────────────────────────────────────
-//
-// `F-presence-marks`. The three numbers above answer "is what I have what is live"; they
-// cannot answer "is somebody else in here", and that is the question that decides whether
-// the next hour of work is going to be merged or forked.
-//
-// NEEDS A TOKEN and does not ask for one. `status` has always been the command that runs
-// with nothing configured — the build stamp is public — so a missing credential quietly
-// costs the marks section and nothing else. It affects the exit code in no way: marks
-// refuse nothing, and a mark is not a problem.
-const markToken = resolveToken(origin);
-if (markToken) {
-  const marks = await fetchMarks(apiClient(origin, markToken));
-  if (marks.length) {
-    console.log("");
-    console.log(`  ${C.dim}being worked on right now${C.off}`);
-    for (const m of marks) console.log(`  ${C.dim}  ${markLine(m)}${C.off}`);
-  }
-} else {
-  // The one thing a fresh agent needs to know and has no other way to learn: this machine
-  // holds no token, and the way to get one is pairing, not a password. Same words as the
-  // instance's own /llms.txt. Costs nothing here — status never needed the token.
+// ── not paired? say how, once ───────────────────────────────────────────────
+// The one thing a fresh agent needs to know and has no other way to learn: this machine
+// holds no token, and the way to get one is pairing, not a password. Same words as the
+// instance's own /llms.txt. Costs nothing here — status never needed the token.
+if (!resolveToken(origin)) {
   console.log("");
   console.log(`  ${C.dim}not paired with ${origin}. Publishing from here needs a token; get one without a password:${C.off}`);
   console.log(`  ${C.dim}  augur connect --origin ${origin}   (the owner approves a code in a signed-in browser)${C.off}`);

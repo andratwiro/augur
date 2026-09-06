@@ -25,6 +25,7 @@ import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { findShellDir, deployConfig, originHost } from "./lib/instance.mjs";
+import { draftsServed } from "./lib/draft.mjs";
 import { composePublish, filterLitter, unitPaths } from "./lib/publish-compose.mjs";
 import { collectEvidence } from "./lib/publish-evidence.mjs";
 import { stripVolatileHead } from "./lib/publish-conflict.mjs";
@@ -115,6 +116,17 @@ let ORIGIN = (process.env.AUGUR_ORIGIN || DEPLOY_ENV.AUGUR_ORIGIN ||
   deployConfig(ROOT, originHost(cwdSpaceOrigin)).siteOrigin || cwdSpaceOrigin || "")
   .replace(/\/+$/, "");
 if (!ORIGIN) die("no target origin — set AUGUR_ORIGIN, or add \"siteOrigin\" to space.json.");
+// Where the instance serves drafts, a TREE is not what goes live any more: a prototype is
+// changed by opening it and landing it (docs/drafts-that-land.md), and publishing a whole
+// checkout there would put every session's half-done work on the site at once. The engine
+// chrome (`--engine`) is not content and still goes this way.
+if (!ENGINE_ONLY && await draftsServed(ORIGIN)) {
+  die(`${ORIGIN} serves drafts, so a prototype is changed by opening it, not by publishing a tree:\n\n` +
+    `  augur open <opportunity>/<prototype>     # a folder of its own, live at once at its draft address\n` +
+    `  …edit; every save is live there…\n` +
+    `  augur land                               # the real URL moves; the last line printed is the live URL\n\n` +
+    `A prototype that does not exist yet: augur open --new <opportunity>/<name>. Read agents/drafts.md in the engine clone.`);
+}
 // A WORKSPACE THAT MOVED answers its old address with a redirect. A checkout that still
 // names the old address (space.json not yet pulled, a stale AUGUR_ORIGIN) would otherwise
 // POST through that redirect and read the answer as a bad token. One GET with redirects

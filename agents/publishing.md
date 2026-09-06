@@ -1,20 +1,22 @@
 # Publishing — how work in a workspace goes live
 
-**Where the workspace serves drafts, this is the legacy path** — `augur ship` refuses
-there and points at `augur open` / `augur land`; read [drafts.md](./drafts.md). The
+**Where the workspace serves drafts, this document does not apply** — `augur publish`
+refuses there and points at `augur open` / `augur land`; read [drafts.md](./drafts.md). The
 instance says which it is at `/.well-known/augur.json` (`drafts.enabled`). Everything
-below is for a workspace that does not serve drafts yet.
+below is for a self-hosted instance without a unit store, which still publishes a tree.
 
-**One command, every time:**
+**The command, every time your work is ready:**
 
 ```
-node ../augur/scripts/ship.mjs            # commit + publish + push, then print the live URL
-node ../augur/scripts/ship.mjs -m "…"     # with your own commit message
+node ../augur/scripts/publish.mjs         # the working tree goes live; the last line is the URL
+git add -A && git commit -m "…" && git push   # then keep the repository true, yourself
 ```
 
-`augur ship` is the same thing, and only works if someone ran `npm link` in the
+`augur publish` is the same thing, and only works if someone ran `npm link` in the
 engine clone on this machine. The `node …` form always works — prefer it in
 instructions, or an agent following them hits "command not found" and improvises.
+(`augur ship`, which did the commit and the push for you, is retired: where drafts are
+served there is nothing to commit, and elsewhere the three steps are the two lines above.)
 
 Agents: this is the default, and it runs every time you finish a piece of work —
 not once at the end of a session. Hand the human the URL it prints: the live

@@ -28,6 +28,18 @@ const MIME = {
 export const mimeOf = (name) => MIME[path.extname(name).slice(1).toLowerCase()] || "application/octet-stream";
 export const hashBytes = (buf) => createHash("sha256").update(buf).digest("hex");
 export const relOf = (unit, urlPath) => urlPath.slice(unit.length);
+/**
+ * A REPO folder or a URL, as the unit path it publishes to: `<project>/prototypes/<name>`
+ * is the nesting a space clone keeps, served at `/<project>/<name>/`. An agent has just been
+ * looking at the folder, so it is the spelling it will type.
+ */
+export function unitPathFor(input) {
+  const s = String(input == null ? "" : input).trim().slice(0, 300).replace(/\/prototypes\//g, "/");
+  if (!s) return "";
+  const t = s.replace(/^\.\//, "").replace(/\/{2,}/g, "/");
+  if (!t || t === "/") return "/";
+  return `/${t.replace(/^\/+/, "").replace(/\/+$/, "")}/`;
+}
 export const urlOf = (unit, rel) => unit + rel;
 
 export function scanFolder(dir) {
