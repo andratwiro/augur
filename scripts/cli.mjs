@@ -16,6 +16,9 @@
 //   augur land      replace the prototype's main with this draft
 //   augur sync      fold what landed on main since this draft opened into the draft
 //   augur close     remove this draft folder (see docs/drafts-that-land.md)
+//   augur read      a read-only copy of a prototype, for context
+//   augur watch     save this draft folder on every burst of changes
+//   augur hook      the agent tool's hooks: pre|post (stdin), install|remove|status
 //   augur export    take an off-Cloudflare copy of the store (see export.mjs)
 //   augur restore   put a copy back (see restore.mjs)
 //   augur migrate   move a workspace to another instance, and prove it arrived
@@ -50,6 +53,10 @@ const map = {
   land: "land.mjs",
   sync: "sync.mjs",
   close: "close.mjs",
+  read: "read.mjs",
+  watch: "watch.mjs",
+  // The agent tool's hooks (deny outside a draft, save after an edit) and their install.
+  hook: "hook.mjs",
   export: "export.mjs",
   restore: "restore.mjs",
   login: "login.mjs",
@@ -77,7 +84,7 @@ const map = {
   build: path.join("..", "build.js"),
 };
 if (!map[sub]) {
-  console.error("usage: augur <init|ship|dev|offline|build|deploy|publish|fork|status|canon|refine|mark|clone|pull|export|restore|migrate|bundle-rekey|identity-rekey|adopt|freeze|thaw|connect|login> [options]");
+  console.error("usage: augur <init|ship|dev|offline|build|deploy|publish|fork|status|canon|refine|mark|open|save|land|sync|close|read|watch|hook|clone|pull|export|restore|migrate|bundle-rekey|identity-rekey|adopt|freeze|thaw|connect|login> [options]");
   process.exit(sub ? 1 : 0);
 }
 const child = spawn(process.execPath, [path.join(SCRIPTS, map[sub]), ...rest], {
