@@ -91,6 +91,8 @@ const FOUR = "jean@example.test";
 // Two more, invited from the overlay rather than seeded in the file — the promotion clause.
 const FIVE = "leah@example.test";
 const SIX = "mae@example.test";
+// The person the WELCOME flow is owed to: invited, redeems, and is an editor — clause 14.
+const SEVEN = "nell@example.test";
 const PASSWORD = "a properly long password";
 const SESSION_SECRET = "rehearsal-session-secret-not-a-credential";
 const WORKER_NAME = "augur-tenant-do-rehearsal";
@@ -307,6 +309,11 @@ async function generate() {
   FILE_ROSTER = roster;
   fs.writeFileSync(path.join(WORK, "assets", "__config", "instance.json"), JSON.stringify({
     users: roster, engineVersion: "0.0.0-rehearsal", updateFeed: "",
+    // ON, and clause 14 is why: `welcomeFlow` refuses the whole welcome gate where a
+    // terminal cannot be paired, so with it off `/__onboarding/me` would answer
+    // `gated: false` for everybody and the clause would pass without asking anything.
+    // It adds a route (`/__connect`) no clause here drives and changes nothing else.
+    devicePairing: true,
     mcpHostSuffixes: [], mcpHostAllowlistUrl: "", vanityRedirects: {}, rtOrigin: "", sentinels: [],
   }));
   fs.writeFileSync(path.join(WORK, "assets", "__config", "routing.json"), JSON.stringify({
@@ -482,6 +489,23 @@ async function mintVia(cookie, email) {
   return new URL(JSON.parse(r.text).url).searchParams.get("t");
 }
 
+/**
+ * Invite somebody the only way an admin does — and it is NOT `mintVia`.
+ *
+ * `mintVia` is `op: "reset"`, which mints the same link through the same door and records
+ * `kind: 'reset'`, because it readmits somebody who is already here. Only an INVITATION
+ * owes the welcome flow, so a clause about that gate has to go through the verb that
+ * records one.
+ */
+async function inviteVia(cookie, email, { name, role = "editor" } = {}) {
+  const r = await req("/__admin/users", {
+    method: "POST", headers: { "content-type": "application/json" }, cookie,
+    body: JSON.stringify({ op: "invite", email, name: name || email.split("@")[0], role }),
+  });
+  if (r.status !== 200) throw new Error(`invite failed (${r.status}): ${r.text.slice(0, 300)}`);
+  return new URL(JSON.parse(r.text).url).searchParams.get("t");
+}
+
 /** Mint a publish token the only way a person does: the admin panel. */
 async function mintToken(cookie, space, label) {
   const r = await req("/__admin/tokens", {
@@ -520,6 +544,14 @@ async function bustRosterMemo(cookie, name = "Ada Renamed") {
     method: "POST", headers: { "content-type": "application/json" }, cookie,
     body: JSON.stringify({ name }),
   });
+}
+
+/** The member's own onboarding answer, from the real route. Never a store read. */
+async function onboardingMe(cookie) {
+  const r = await req("/__onboarding/me", { cookie });
+  let body = null;
+  try { body = JSON.parse(r.text); } catch (e) { /* reported as the null it is */ }
+  return { status: r.status, body };
 }
 
 /** The admin list, as `address/role/name` lines — one HTTP answer, never a store read. */
@@ -1037,6 +1069,111 @@ async function boundPhase() {
   check("a plain star token is STILL refused chrome-not-writable-here — even after a real publish exists to protect",
     refusedCheck.status === 403 && refusedBody.reason === "chrome-not-writable-here",
     `${refusedCheck.status} ${refusedCheck.text.slice(0, 160)}`);
+
+  clause("14 · THE ONBOARDING COLUMNS PUT THEMSELVES BACK, on a real object, on real workerd");
+  // ⚠️ WHAT NO SUITE CAN STAGE. `TENANT_SCHEMA_VERSION` 5–7 added the columns the invite
+  // onboarding is made of — `members.paired_at`, `members.welcome_owed_at` and
+  // `invites.kind` — and every object anywhere else is BUILT in today's shape, so
+  // `applySchemaAdditions` has only ever been a no-op there. The one read that CANNOT wait
+  // for a write to run it is `TenantStore.welcome()`: `/onboarding/welcome` deliberately
+  // does not `init()` (a read never provisions), and it is what `/` and `/__onboarding/me`
+  // both call — so on an object built at an older version that SELECT threw and the whole
+  // workspace answered 503 until some unrelated write happened to run the ALTER. The fix is
+  // that the read migrates itself, and the only way to see it work is to take the columns
+  // away from a real Durable Object and make a real request.
+  //
+  // ⚠️ AND THE OBJECT HERE IS WARM, WHICH IS THE STRONGER CLAIM. `init()` short-circuits on
+  // `this.ready` for the life of an isolate, so nothing in this deployment will ever run the
+  // migration again — clause 6 takes the cold case, on its own fresh process. Everything
+  // that comes back below comes back because the READ asked for it.
+  const editorCookie = await signIn(THREE);   // an editor with a credential since clause 3
+  check("an editor signs in over the real form, so the reads below are a member's",
+    !!editorCookie, editorCookie.slice(0, 34) + "…");
+  const meBefore = await onboardingMe(editorCookie);
+  check("their onboarding read answers from the workspace object before anything is broken",
+    meBefore.status === 200 && meBefore.body && meBefore.body.backing === "workspace-object",
+    JSON.stringify(meBefore.body));
+
+  const dropOwed = await sql(`ALTER TABLE members DROP COLUMN welcome_owed_at`);
+  const dropPaired = await sql(`ALTER TABLE members DROP COLUMN paired_at`);
+  const dropKind = await sql(`ALTER TABLE invites DROP COLUMN kind`);
+  check("three v5–v7 columns are dropped, putting the object back in an earlier version's shape",
+    dropOwed.ok && dropPaired.ok && dropKind.ok,
+    JSON.stringify({ dropOwed, dropPaired, dropKind }).slice(0, 220));
+  const blindOwed = await sql(`SELECT welcome_owed_at FROM members LIMIT 1`);
+  const blindPaired = await sql(`SELECT paired_at FROM members LIMIT 1`);
+  const blindKind = await sql(`SELECT kind FROM invites LIMIT 1`);
+  check("and the object really cannot answer for any of them",
+    blindOwed.ok === false && blindPaired.ok === false && blindKind.ok === false,
+    JSON.stringify({ blindOwed, blindPaired, blindKind }).slice(0, 260));
+
+  // THE SELF-MIGRATING READ. One real request, through the real front door, by a real
+  // session — the same call the gallery's redirect and the welcome page's poll both make.
+  const meBlind = await onboardingMe(editorCookie);
+  check("GET /__onboarding/me ANSWERS 200 rather than 503 — the read migrated itself",
+    meBlind.status === 200, `${meBlind.status} ${JSON.stringify(meBlind.body).slice(0, 200)}`);
+  check("…and the answer is the member's own, not a degraded shape",
+    !!meBlind.body && meBlind.body.backing === "workspace-object"
+      && meBlind.body.role === "editor" && meBlind.body.gated === false && meBlind.body.paired === false,
+    JSON.stringify(meBlind.body));
+
+  const backMembers = await sql(`SELECT email, paired_at, welcome_owed_at FROM members WHERE email = ?`, [THREE]);
+  check("both members columns are BACK, and the row that was there is still there",
+    backMembers.ok && backMembers.rows.length === 1
+      && "paired_at" in backMembers.rows[0] && "welcome_owed_at" in backMembers.rows[0],
+    JSON.stringify(backMembers.rows).slice(0, 220));
+  const backKind = await sql(`SELECT kind FROM invites LIMIT 1`);
+  check("…and so is `invites.kind` — one pass adds every column the build declares, not only the one that threw",
+    backKind.ok, JSON.stringify(backKind).slice(0, 200));
+
+  // AND THE ANSWERS ARE RIGHT, not merely present. An invitation is minted through the
+  // admin route, and the restored column is what carries the fact that it IS one.
+  const tSeven = await inviteVia(cookie, SEVEN, { name: "Nell", role: "editor" });
+  const kindRow = await sql(`SELECT email, kind FROM invites WHERE token_hash = ?`, [inviteHash(tSeven)]);
+  check("a fresh invitation records kind='invite' in the column that was just restored",
+    kindRow.ok && kindRow.rows.length === 1 && kindRow.rows[0].email === SEVEN && kindRow.rows[0].kind === "invite",
+    JSON.stringify(kindRow.rows));
+
+  const redeemed = await req("/__invite", form({ token: tSeven, password: PASSWORD }));
+  check("redeeming it admits them", redeemed.status === 303 && !!redeemed.setCookie, `${redeemed.status}`);
+  const owedRow = await sql(`SELECT welcome_owed_at FROM members WHERE email = ?`, [SEVEN]);
+  check("REDEEMING AN INVITATION OWES THEM THE WELCOME — the column carries the stamp",
+    owedRow.ok && owedRow.rows.length === 1 && owedRow.rows[0].welcome_owed_at !== null,
+    JSON.stringify(owedRow.rows));
+  const sevenCookie = redeemed.setCookie.split(";")[0];
+  const meSeven = await onboardingMe(sevenCookie);
+  check("and their own read says so: gated, on the real route, with the real session",
+    meSeven.status === 200 && meSeven.body && meSeven.body.gated === true && meSeven.body.role === "editor",
+    JSON.stringify(meSeven.body));
+
+  // THE CONTRAST, which is what makes the clause above mean something. A PASSWORD RESET
+  // mints the same link through the same door and readmits somebody who is already here —
+  // so it must owe nobody anything. Same runtime, same column, opposite verdict.
+  const tReset = await mintVia(cookie, THREE);
+  const resetKind = await sql(`SELECT kind FROM invites WHERE token_hash = ?`, [inviteHash(tReset)]);
+  check("a reset records kind='reset' in the same column", resetKind.ok && resetKind.rows[0]
+    && resetKind.rows[0].kind === "reset", JSON.stringify(resetKind.rows));
+  const reRedeemed = await req("/__invite", form({ token: tReset, password: PASSWORD }));
+  check("redeeming the reset admits them again", reRedeemed.status === 303 && !!reRedeemed.setCookie, `${reRedeemed.status}`);
+  const notOwed = await sql(`SELECT welcome_owed_at FROM members WHERE email = ?`, [THREE]);
+  check("AND OWES THEM NOTHING — a reset is not an arrival",
+    notOwed.ok && notOwed.rows.length === 1 && notOwed.rows[0].welcome_owed_at === null,
+    JSON.stringify(notOwed.rows));
+  const meAfterReset = await onboardingMe(reRedeemed.setCookie.split(";")[0]);
+  check("so their own read is still not gated", meAfterReset.status === 200
+    && meAfterReset.body && meAfterReset.body.gated === false, JSON.stringify(meAfterReset.body));
+
+  // The escape hatch, on the real runtime: `later` lifts the gate for good, and it is a
+  // column on the same row the drops above took away.
+  const later = await req("/__onboarding/me", {
+    method: "POST", headers: { "content-type": "application/json" }, cookie: sevenCookie,
+    body: JSON.stringify({ later: true }),
+  });
+  const laterBody = (() => { try { return JSON.parse(later.text); } catch (e) { return null; } })();
+  check("POST {later:true} answers with the flag it wrote — the page navigates on nothing else",
+    later.status === 200 && laterBody && laterBody.later === true && laterBody.saved === true
+      && laterBody.gated === false,
+    `${later.status} ${later.text.slice(0, 200)}`);
 
   clause("2 · setup — an answer to compare, and a state only one store holds");
   await req("/__me", { cookie });                       // stamps lastseen on both stores
