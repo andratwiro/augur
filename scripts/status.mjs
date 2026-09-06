@@ -17,6 +17,7 @@ import { existsSync, readFileSync, readdirSync } from "node:fs";
 import path from "node:path";
 import { resolveOrigin, resolveToken, apiClient, buildStamp, ENGINE_ROOT } from "./lib/store.mjs";
 import { fetchMarks, markLine } from "./lib/marks.mjs";
+import { registryList, unitClient, draftsReport } from "./lib/draft.mjs";
 
 const args = process.argv.slice(2);
 const DO_FETCH = args.includes("--fetch");
@@ -147,6 +148,28 @@ if (markToken) {
   console.log("");
   console.log(`  ${C.dim}not paired with ${origin}. Publishing from here needs a token; get one without a password:${C.off}`);
   console.log(`  ${C.dim}  augur connect --origin ${origin}   (the owner approves a code in a signed-in browser)${C.off}`);
+}
+
+// ── drafts open on this machine (docs/drafts-that-land.md §4) ────────────────
+// Read from the machine's registry, so it costs nothing; who else is on each unit is asked
+// of the instance when a token is at hand, and the report stands without it.
+{
+  const mine = registryList().filter((e) => !e.readOnly);
+  if (mine.length) {
+    console.log("");
+    console.log(`  ${C.dim}drafts open on this machine${C.off}`);
+    const presence = {};
+    for (const unit of new Set(mine.map((e) => e.unit))) {
+      const e = mine.find((x) => x.unit === unit);
+      const tok = resolveToken(e.origin);
+      if (!tok) continue;
+      try {
+        const p = await unitClient({ origin: e.origin, token: tok, space: "", session: "" }).presence(unit);
+        if (p && p.drafts) presence[unit] = p.drafts;
+      } catch (e2) { /* the report stands without presence */ }
+    }
+    for (const line of draftsReport(mine, presence)) console.log(`  ${C.dim}  ${line}${C.off}`);
+  }
 }
 
 // Exit code is the answer, so this can gate a script: 0 = everything live is what

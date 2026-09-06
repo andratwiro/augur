@@ -9,9 +9,9 @@ const run = (script, args, cwd) => spawnSync(process.execPath, [path.resolve(`sc
 
 test("every verb is routed and refuses to run outside a draft folder with a sentence, not a stack", () => {
   const cli = fs.readFileSync("scripts/cli.mjs", "utf8");
-  for (const v of ["open", "save", "land", "sync", "close"]) assert.match(cli, new RegExp(`\\b${v}: "${v}\\.mjs"`));
+  for (const v of ["open", "save", "land", "sync", "close", "read", "watch", "hook"]) assert.match(cli, new RegExp(`\\b${v}: "${v}\\.mjs"`));
   const dir = fs.mkdtempSync(path.join(process.env.TMPDIR || "/tmp", "augur-cli-"));
-  for (const v of ["save", "land", "sync", "close"]) {
+  for (const v of ["save", "land", "sync", "close", "watch"]) {
     const r = run(`${v}.mjs`, [], dir);
     assert.equal(r.status, 1, `${v}: ${r.stderr}`);
     assert.match(r.stderr, /not a draft folder/);

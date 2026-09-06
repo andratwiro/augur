@@ -114,6 +114,7 @@ export function unitClient({ origin, token, space, session }) {
   return {
     open: (b) => post("open", b), save: (b) => post("save", b), land: (b) => post("land", b),
     sync: (b) => post("sync", b), discard: (b) => post("discard", b), presence: (unit) => get("presence", unit),
+    main: (unit) => get("main", unit),
     async blobPut(h, body) {
       const r = await fetch(`${origin}/__publish/${space}/blob/${h}`, { method: "PUT", headers, body });
       if (!r.ok && r.status !== 204) throw new Error(`blob upload failed: ${r.status}`);
@@ -283,7 +284,14 @@ function writeTheirs(dir, rel, bytes) {
 
 async function doCloseImpl({ client, dir, discard }) {
   const st = readState(dir);
-  if (!st) return { ok: false, error: "not-a-draft", dir };
+  if (!st) {
+    // A read-only copy has no state file; the registry is what says it is ours to remove.
+    const copy = registryList().find((e) => e.readOnly && path.resolve(e.dir) === path.resolve(dir));
+    if (!copy) return { ok: false, error: "not-a-draft", dir };
+    registryRemove(copy.dir);
+    fs.rmSync(dir, { recursive: true, force: true });
+    return { ok: true, readOnly: true };
+  }
   if (!st.landed && !discard) return { ok: false, error: "draft-still-open", draftId: st.draftId, address: st.address };
   if (!st.landed && discard) {
     const r = await client.discard({ unit: st.unit, draftId: st.draftId });
@@ -292,6 +300,53 @@ async function doCloseImpl({ client, dir, discard }) {
   registryRemove(dir);
   fs.rmSync(dir, { recursive: true, force: true });
   return { ok: true, discarded: !st.landed };
+}
+
+// ── read-only copies (§7 `read`) ─────────────────────────────────────────────
+// A unit materialised for CONTEXT, not for editing: beside the draft folders under `_read/`,
+// files with no write bit, and a registry row the deny hook reads so an editor that ignores
+// the mode is refused with the reason. No `.augur/draft.json` — a copy is not a draft.
+export const READ_DIR = "_read";
+export const readDirFor = (unit) => path.join(READ_DIR, ...unit.split("/").filter(Boolean));
+
+async function doReadImpl({ client, unit, dir, origin, now }) {
+  if (fs.existsSync(dir) && fs.readdirSync(dir).length) return { ok: false, error: "folder-not-empty", dir };
+  const m = await client.main(unit);
+  if (m.status) return { ok: false, ...m };
+  fs.mkdirSync(dir, { recursive: true });
+  await materialise(client, unit, m.table || {}, dir);
+  for (const p of Object.keys(m.table || {})) fs.chmodSync(path.join(dir, relOf(unit, p)), 0o444);
+  registryAdd({ dir, unit, origin, readOnly: true, openedAt: now, revision: m.revision });
+  return { ok: true, dir, files: Object.keys(m.table || {}).length, revision: m.revision };
+}
+
+// ── the watch loop (§7 `watch`) ──────────────────────────────────────────────
+// For people editing by hand in an editor that runs no hooks: every burst of changes is one
+// save. `fs.watch` with `recursive` is what every platform this repo supports offers; the
+// state file's own writes are ignored or a save would trigger the next.
+export function watchFolder(dir, onSettle, { debounceMs = 300 } = {}) {
+  let timer = null;
+  const watcher = fs.watch(dir, { recursive: true }, (_ev, name) => {
+    const rel = String(name || "");
+    if (rel === ".augur" || rel.startsWith(".augur" + path.sep) || rel.startsWith(".augur/")) return;
+    clearTimeout(timer);
+    timer = setTimeout(() => { timer = null; onSettle(); }, debounceMs);
+  });
+  return { close() { clearTimeout(timer); watcher.close(); } };
+}
+
+// ── what is open on this machine (§4 `status`) ───────────────────────────────
+export function draftsReport(entries, presenceByUnit = {}) {
+  const out = [];
+  for (const e of entries || []) {
+    if (!e || e.readOnly) continue;
+    out.push(`${e.unit.replace(/^\/|\/$/g, "")}  draft ${e.draftId}  ${e.dir}`);
+    for (const d of presenceByUnit[e.unit] || []) {
+      if (d.id === e.draftId) continue;
+      out.push(`    also here: ${d.name ? d.name + " · " : ""}${d.session || "someone"} (${d.active ? "active" : "idle"})`);
+    }
+  }
+  return out;
 }
 
 // Each verb's public surface is its body wrapped in `guarded` — see the comment above
@@ -303,3 +358,4 @@ export const doSave = guarded(doSaveImpl);
 export const doLand = guarded(doLandImpl);
 export const doSync = guarded(doSyncImpl);
 export const doClose = guarded(doCloseImpl);
+export const doRead = guarded(doReadImpl);

@@ -9,7 +9,14 @@ const die = (m) => { console.error(`\x1b[31m[close]\x1b[0m ${m}`); process.exit(
 const discard = process.argv.includes("--discard");
 const dir = process.cwd();
 const st = readState(dir);
-if (!st) die("not a draft folder — nothing to close here.");
+if (!st) {
+  // A read-only copy has no state file; doClose recognises it from the registry.
+  process.chdir("..");
+  const r = await doClose({ client: {}, dir, discard: false });
+  if (!r.ok) die("not a draft folder — nothing to close here.");
+  log("read-only copy removed");
+  process.exit(0);
+}
 const origin = st.origin || resolveOrigin();
 const token = resolveToken(origin);
 if (!token && !st.landed) die("no publish token — run `augur connect` once.");
