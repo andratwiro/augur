@@ -11,7 +11,13 @@ import { DatabaseSync } from "node:sqlite";
 import { __testables as W } from "../src/_worker.js";
 import { TenantStore } from "../src/tenant-do.js";
 import { SEED_ACTOR, isSeedSource } from "../src/provenance.mjs";
+import { personIdFor } from "../src/purge.mjs";
 import { makeEnv, ctxFor, cookieFor, ADA_MEMBER, VERA, manifestOf, remember } from "./fixtures/unit-env.mjs";
+
+// The member's page is keyed by the member id, not the local part of the address — see
+// src/welcome-unit.mjs. Computed once here rather than hard-coded, so a change to the id
+// format fails this file's own math instead of a stale literal.
+const ADA_UNIT = `/start-here/${personIdFor(ADA_MEMBER.email)}/`;
 
 // A DO storage stub with REAL transaction semantics — copied from
 // test/first-publish-signal.test.mjs so this file drives the same real TenantStore.
@@ -115,6 +121,13 @@ test("no tenant object: backing none, never gated", async () => {
   const ctx = ctxFor("t-none", [ADA_MEMBER]);
   const a = await me(env, ctx, ADA_MEMBER);
   assert.deepEqual([a.json.backing, a.json.gated], ["none", false]);
+  // The unit sub-route is a WRITE (it lands published content); a deployment with no
+  // tenant object cannot record who owns that write, so it must refuse rather than
+  // answer 200 while landing nothing — the same wording it already uses when BUNDLES
+  // is missing.
+  const u = await me(env, ctx, ADA_MEMBER, { method: "POST", url: "/__onboarding/me/unit" });
+  assert.equal(u.status, 501);
+  assert.equal(u.json.error, "units-not-configured");
 });
 
 test("a workspace-object failure on the pairing stamp never fails the approval", async () => {
@@ -158,36 +171,41 @@ test("POST /__onboarding/me/unit lands the member's page once, as seed-sourced, 
   const { env, ctx } = await wired([ADA_MEMBER], { live: manifestOf(3, { "/toolkit/a/": { "index.html": remember("<h1>a</h1>") } }) });
   const first = await me(env, ctx, ADA_MEMBER, { method: "POST", url: "/__onboarding/me/unit" });
   assert.equal(first.status, 200, JSON.stringify(first.json));
-  assert.equal(first.json.unit, "/start-here/ada/");
-  assert.equal(first.json.url, "https://acme.example/start-here/ada/");
+  assert.equal(first.json.unit, ADA_UNIT);
+  assert.equal(first.json.url, `https://acme.example${ADA_UNIT}`);
   assert.equal(first.json.backing, "workspace-object");
   const live = await liveManifest(env);
-  assert.ok(live.files["/start-here/ada/index.html"]);
+  assert.ok(live.files[`${ADA_UNIT}index.html`]);
   assert.ok(live.files["/toolkit/a/index.html"], "the rest of the manifest is untouched");
   assert.equal(live.version, 4);
-  assert.ok(live.routing.unitSources && live.routing.unitSources["/start-here/ada/"], "stamped as platform-made");
-  assert.equal(isSeedSource(live.routing.unitSources["/start-here/ada/"]), true);
+  assert.ok(live.routing.unitSources && live.routing.unitSources[ADA_UNIT], "stamped as platform-made");
+  assert.equal(isSeedSource(live.routing.unitSources[ADA_UNIT]), true);
   assert.equal(live.publishedBy, SEED_ACTOR, "the platform landed it, never the person");
-  assert.notEqual(live.files["/start-here/ada/index.html"].by, W.personId(ADA_MEMBER.email));
-  assert.ok(live.routing.publicPrefixes.includes("/start-here/ada/"), "and it is served");
-  const blob = await env.BUNDLES.get(`blobs/${live.files["/start-here/ada/index.html"].h}`);
+  assert.notEqual(live.files[`${ADA_UNIT}index.html`].by, W.personId(ADA_MEMBER.email));
+  assert.ok(live.routing.publicPrefixes.includes(ADA_UNIT), "and it is served");
+  const blob = await env.BUNDLES.get(`blobs/${live.files[`${ADA_UNIT}index.html`].h}`);
   assert.match(await blob.text(), /data-line="greeting"/, "the bytes were stored before the landing");
 
   const again = await me(env, ctx, ADA_MEMBER, { method: "POST", url: "/__onboarding/me/unit" });
-  assert.equal(again.json.unit, "/start-here/ada/");
+  assert.equal(again.json.unit, ADA_UNIT);
   assert.equal((await liveManifest(env)).version, 4, "idempotent");
 
   // The start unit is the member's, so a plain GET reports it without landing anything.
   const g = await me(env, ctx, ADA_MEMBER);
-  assert.equal(g.json.unit, "/start-here/ada/");
+  assert.equal(g.json.unit, ADA_UNIT);
+
+  // Landing the platform's own page is never a person's publish: the first-publish signal
+  // stays unflipped until a real one happens.
+  const status = await (await W.onboardingStatusApi(ctx, new Request("https://acme.example/__onboarding/status"), env, ADA_MEMBER)).json();
+  assert.equal(status.connected, false, "the platform landing never flips the first-publish signal");
 });
 
 test("the unit object adopts the platform's landing on the next open", async () => {
   const { env, ctx } = await wired([ADA_MEMBER], { live: manifestOf(3, {}) });
   await me(env, ctx, ADA_MEMBER, { method: "POST", url: "/__onboarding/me/unit" });
-  const o = await openUnit(env, ctx, "/start-here/ada/");
+  const o = await openUnit(env, ctx, ADA_UNIT);
   assert.equal(o.status, 200, JSON.stringify(o.body));
-  assert.ok(o.body.table["/start-here/ada/index.html"], "sync-main adopted the landing");
+  assert.ok(o.body.table[`${ADA_UNIT}index.html`], "sync-main adopted the landing");
 });
 
 test("a viewer is never handed a page to make", async () => {

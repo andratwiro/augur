@@ -10227,7 +10227,16 @@ async function onboardingMeApi(tctx, request, url, env, me) {
   const role = roleOf(me);
   const none = { role, gated: false, paired: false, pairedAt: null, unit: null, url: null, drafting: false, landed: false, landedAt: null, done: false, later: false };
   const stub = tenantStub(env, tctx && tctx.tenantId);
-  if (!stub) return jsonResponse({ ...none, backing: "none" });
+  if (!stub) {
+    // The unit sub-route is a WRITE — it lands published content and records who it
+    // belongs to — so a deployment with no tenant object to record that in must refuse
+    // it, the same as the "no BUNDLES" case below, rather than answer this route's
+    // ordinary 200 while landing nothing.
+    if (url.pathname === "/__onboarding/me/unit" && request.method === "POST") {
+      return jsonResponse({ error: "units-not-configured" }, 501);
+    }
+    return jsonResponse({ ...none, backing: "none" });
+  }
 
   // ── The member's own page, made for them and landed by the PLATFORM ──────────────────
   //
@@ -10254,6 +10263,11 @@ async function onboardingMeApi(tctx, request, url, env, me) {
     if (!spaceId || !env.BUNDLES) return jsonResponse({ error: "units-not-configured" }, 501);
     const { unit, files } = welcomeUnitFor({ name: me.name, email: me.email });
     const live = (await loadManifests(tctx.tenantId, env, true))[spaceId] || null;
+    // Sequential idempotence is what this check guarantees, not concurrent exclusion:
+    // two simultaneous first calls for the same member both read a live manifest with no
+    // unit yet, both land, and both write the same bytes under the same content-addressed
+    // path — so a race here still leaves the unit correctly formed, just with the write
+    // done twice rather than once.
     if (!Object.keys((live && live.files) || {}).some((p) => p.startsWith(unit))) {
       const bundles = bundlesFor(env, tctx.tenantId);
       const table = {}; const changed = [];

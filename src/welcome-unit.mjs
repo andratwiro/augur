@@ -10,17 +10,21 @@
 // else's workspace, so a font, a stylesheet or a script from anywhere but this string would
 // be that workspace phoning a third party on every visit, from a page nobody chose to
 // include. The style is inline and the page loads nothing at all.
+import { personIdFor } from "./purge.mjs";
 
 /**
- * The folder name a member's page lives under. The local part of the address, lowercased,
- * with every run of anything else collapsed to a dash — so the path is one URL-safe segment
- * whatever an address holds. Never empty: an address that is nothing but punctuation still
- * has to name a folder, and a folder named "" is a path outside the unit.
+ * The folder name a member's page lives under. NOT the local part of the address: two local
+ * parts collide across domains (`ada@a.test` and `ada@b.test` would share a page), an
+ * all-non-ASCII local part collapsed to the literal `"member"` for every such person, and on
+ * a gated workspace a guessable URL of that shape (`/start-here/member/`) confirms membership
+ * to anyone who tries it. Keyed instead by the engine's existing per-member id — the same
+ * djb2-base36 hash `by`/`owner` fields already carry (`personIdFor`, `src/purge.mjs`; the
+ * worker's own private `personId` is the identical function) — so the path is unguessable,
+ * collision-free within the address space that id already covers, and names nobody a second
+ * time over.
  */
 export function slugFor(email) {
-  const local = String(email || "").split("@")[0].toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
-  return local || "member";
+  return personIdFor(email);
 }
 
 // A name is the person's own text and it lands in a PUBLISHED page. It is escaped, never
