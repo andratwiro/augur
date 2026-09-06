@@ -29,3 +29,38 @@ export function renderPageText(raw, contentType) {
     .replace(/\s+/g, " ")
     .trim();
 }
+
+/**
+ * What the welcome page's approve form says on a successful `--type`, by path. Both
+ * `/__connect` and `/__welcome` post to the same `/__publish/_pair/approve` route (see
+ * `canType`), but they are two different pages with two different next steps: `/__connect`
+ * is a standalone page with nothing else to do (`connectPage` in src/_worker.js — "you can
+ * close this tab"), while `/__welcome`'s own approve form (`renderWelcomePage` in
+ * src/welcome-page.mjs) sits on a multi-step flow whose own Next button is what to press
+ * next. Getting this backwards would tell an invitee stuck on `/__welcome` to close the
+ * tab they still need.
+ */
+export function typeSuccessMessage(pathname) {
+  return /\/__welcome\b/.test(String(pathname || ""))
+    ? "Connected. Press Next."
+    : "Connected. You can close this tab.";
+}
+
+/**
+ * What the welcome page's "change" step would show, in the person's own words, for a given
+ * `/__onboarding/me` reading — the pure half of `--next` (see browser.mjs, which first
+ * ensures the unit exists via `/__onboarding/me/unit` before calling this). Mirrors
+ * `renderWelcomePage`'s own `show()`/`go()`: the change step's instruction paragraph names
+ * the unit once it exists, and its status line only ever says "It's live" once landed —
+ * everything in between ("waiting for a terminal", "your agent is editing") is not
+ * something the rig's person needs worded differently, so it is left to the one line below.
+ */
+export function meStateLine(j) {
+  if (!j || !j.paired) return "Waiting for a terminal…";
+  if (j.landed) return `It's live: ${j.url}. Press Next, then "Open the workspace".`;
+  if (j.unit) {
+    const id = String(j.unit).replace(/^\/|\/$/g, "");
+    return `Your page is live at ${j.url}. Ask your assistant to open ${id} and change the line on it.`;
+  }
+  return "Waiting for your agent…";
+}

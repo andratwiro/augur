@@ -10,7 +10,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { inviteOpenerInstruction } from "./live/first-experience/invited-lib.mjs";
-import { canAccept, canType, renderPageText } from "./live/first-experience/human-tools/browser-lib.mjs";
+import { canAccept, canType, renderPageText, typeSuccessMessage, meStateLine } from "./live/first-experience/human-tools/browser-lib.mjs";
 import { parseCredentialMail } from "./live/inbox.mjs";
 import { PERSONAS, ROSTER_PERSONAS, folderOf } from "./live/env.mjs";
 
@@ -63,6 +63,27 @@ test("parseCredentialMail pulls the invite link out of a realistic roster-invite
   ].join("\n\n");
   const { link } = parseCredentialMail(text);
   assert.equal(link, "https://acme.example/__invite?t=abcDEF123456");
+});
+
+test("typeSuccessMessage — the welcome page's own words after approval, not the connect page's", () => {
+  assert.equal(typeSuccessMessage("/__welcome"), "Connected. Press Next.");
+  assert.equal(typeSuccessMessage("/__connect"), "Connected. You can close this tab.");
+  // canType also allows a query string / trailing detail on the pathname; the message
+  // selection must not choke on it either.
+  assert.equal(typeSuccessMessage("/__welcome/"), "Connected. Press Next.");
+});
+
+test("meStateLine — what the change step would say, in the person's own words, for the three states --next can read", () => {
+  assert.equal(meStateLine({ paired: false }), "Waiting for a terminal…");
+  assert.equal(meStateLine(null), "Waiting for a terminal…");
+  assert.equal(
+    meStateLine({ paired: true, unit: "/start-here/qa-invitee/", url: "https://acme.example/start-here/qa-invitee/", landed: false }),
+    'Your page is live at https://acme.example/start-here/qa-invitee/. Ask your assistant to open start-here/qa-invitee and change the line on it.',
+  );
+  assert.equal(
+    meStateLine({ paired: true, unit: "/start-here/qa-invitee/", url: "https://acme.example/start-here/qa-invitee/", landed: true }),
+    'It\'s live: https://acme.example/start-here/qa-invitee/. Press Next, then "Open the workspace".',
+  );
 });
 
 test("the invited variant's person is addressable and files into its own mail folder, but is excluded from the roster-overlay shortcut", () => {

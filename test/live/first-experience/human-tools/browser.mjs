@@ -4,7 +4,9 @@
 //   browser <url>                  open a page and read it (as text)
 //   browser <url> --type <code>    type a code into the page's box and press the button
 //   browser <url> --accept         follow a passwordless invite link (keeps the cookie)
-//   browser <url> --next           press "Next" (client-side only: re-reads the status)
+//   browser <url> --next           press "Next" (creates the person's page the first time
+//                                   it is pressed while paired, exactly as the real page's
+//                                   own Next button does; otherwise just re-reads the status)
 //   browser <url> --finish         press "Open the workspace" (posts done:true)
 //
 // The page is fetched as the persona named in LIVE_HUMAN (default owner), signed in; the
@@ -12,7 +14,7 @@
 // workspace when they handed the assistant the link — EXCEPT for `--accept`, whose whole
 // point is that this person has no session at all until the invite link gives them one.
 import { human, saveCookies } from "../../persona.mjs";
-import { canAccept, canType, renderPageText } from "./browser-lib.mjs";
+import { canAccept, canType, renderPageText, typeSuccessMessage, meStateLine } from "./browser-lib.mjs";
 
 const args = process.argv.slice(2);
 const url = args.find((a) => /^https?:\/\//.test(a));
@@ -55,23 +57,32 @@ if (code) {
     process.exit(0);
   }
   const r = await h.approvePairing(code.replace(/[^A-Za-z0-9]/g, ""));
-  if (r.status === 200) console.log(`You type ${code} and press Approve. The page says: "Connected. You can close this tab."`);
+  if (r.status === 200) console.log(`You type ${code} and press Approve. The page says: "${typeSuccessMessage(u.pathname)}"`);
   else console.log(`You type ${code} and press Approve. The page says: "${r.message || r.error || "Something went wrong"}" (${r.status})`);
   process.exit(0);
 }
 
-if (next || finish) {
-  // "Next" is client-side state on the welcome page — nothing to press on the server, so
-  // this just re-reads the workspace's own record of where the person is. "Open the
-  // workspace" is the one button on that page that actually writes something.
-  if (finish) {
-    const r = await h.json("/__onboarding/me", { done: true });
-    console.log(`You press "Open the workspace". The page sends you to your workspace. (${r.status})`);
-  } else {
-    const r = await h.json("/__onboarding/me", null, "GET");
-    const line = r.landed ? `It's live: ${r.url}` : r.drafting ? "Your agent is editing…" : "Waiting for your agent…";
-    console.log(`You press Next. The page now says: "${line}"`);
+if (finish) {
+  // The one button on the page that actually writes something: "Open the workspace" posts
+  // `{done:true}`, exactly what `leave({done:true})` does in src/welcome-page.mjs.
+  await h.json("/__onboarding/me", { done: true });
+  const r = await h.json("/__onboarding/me", null, "GET");
+  console.log(`You're in. ${JSON.stringify(r)}`);
+  process.exit(0);
+}
+
+if (next) {
+  // "Next" on the connect/install step is what actually creates the person's page: the
+  // real page's `go("change")` calls `ensureUnit()`, which POSTs `/__onboarding/me/unit` —
+  // the ONLY thing that lands the unit and sets `unit`/`url`. Everywhere else "Next" is
+  // client-side state with nothing to press on the server, so this reads, creates the
+  // unit exactly once (only when paired and none exists yet), then re-reads.
+  let r = await h.json("/__onboarding/me", null, "GET");
+  if (r.paired && !r.unit) {
+    await h.json("/__onboarding/me/unit", null, "POST");
+    r = await h.json("/__onboarding/me", null, "GET");
   }
+  console.log(`You press Next. The page now says: "${meStateLine(r)}"`);
   process.exit(0);
 }
 

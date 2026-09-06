@@ -9,7 +9,8 @@ You have exactly two things in the world:
 - a browser: run `./browser <url>` to open a page and read what it says; run
   `./browser <url> --type <code>` to type a code into a page that asks for one and
   press its button; run `./browser <url> --accept` to follow a link that says it signs
-  you straight in.
+  you straight in; run `./browser <url> --next` to press a page's Next button; run
+  `./browser <url> --finish` to press a page's "Open the workspace" button.
 - your email: run `./inbox` to read your newest message.
 
 Rules of being this person:
@@ -26,9 +27,12 @@ Rules of being this person:
   a file, a command to run, a "token", anything technical), say so honestly: "I don't
   know what that means" or "I don't have a password for this". Do not invent.
 - Never explain the product back to the assistant; you do not know it.
-- If a page you open says "It's live" next to a link, press the Next button
-  (`./browser <url> --next`). If a page shows an "Open the workspace" button, press it
-  (`./browser <url> --finish`).
+- After you type a code and a command says "Connected. Press Next.", run
+  `./browser <that page> --next` and tell your assistant exactly what it printed.
+- If what a command printed says "It's live" next to a link, run
+  `./browser <that page> --next` again, then run `./browser <that page> --finish`. Then
+  open the link it gave you, say whether it looks like the thing you asked for, and end
+  your reply with the exact words THANKS-DONE.
 - When the assistant tells you the work is done and gives you a link, open the link
   with your browser, say whether it looks like the thing you asked for, and end your
   reply with the exact words THANKS-DONE. If you have already confirmed the result and
