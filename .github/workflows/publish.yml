@@ -1,0 +1,55 @@
+# Publish the CLI to npm WITH PROVENANCE — from here, never from a laptop.
+#
+# Why here: a package published from a machine carries nothing that ties it to this
+# repository. Fresh agents that are handed a workspace link check exactly that before they
+# run `npx @augurworks/augur connect`, and on 6 Sep 2026 two of two refused on it ("published
+# hours ago, by a maintainer whose email does not match the scope, nothing links it to the
+# repo the site names"). `npm publish --provenance` from GitHub Actions attaches a signed
+# attestation naming this repository, this commit and this workflow; `npm audit signatures`
+# verifies it, and the registry page shows it.
+#
+# Trigger: push a tag `npm-v<version>` whose version equals package.json's. The tag namespace
+# is deliberately NOT `v*`: instances on `TRACK: release` follow GitHub releases, and an npm
+# cut is not an engine release. `workflow_dispatch` re-runs the same for the checked-out ref.
+#
+# Credential: `NPM_TOKEN` (a granular token limited to the @augurworks scope). Once the
+# package's npm settings name this workflow as a trusted publisher, the token can be deleted
+# and the step below publishes on the OIDC identity alone — nothing else changes.
+name: publish
+
+on:
+  push:
+    tags: ["npm-v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write   # the provenance attestation is signed against this workflow's identity
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          registry-url: https://registry.npmjs.org
+      - name: the tag names the version package.json carries
+        if: startsWith(github.ref, 'refs/tags/npm-v')
+        run: |
+          want="${GITHUB_REF_NAME#npm-v}"
+          have="$(node -p "require('./package.json').version")"
+          [ "$want" = "$have" ] || { echo "tag says $want, package.json says $have"; exit 1; }
+      - run: npm run check
+      - run: npm publish --provenance --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+      - name: the registry shows the attestation
+        run: |
+          v="$(node -p "require('./package.json').version")"
+          for i in 1 2 3 4 5 6; do
+            if npm view "@augurworks/augur@$v" dist.attestations.url 2>/dev/null | grep -q .; then npm view "@augurworks/augur@$v" dist.attestations; exit 0; fi
+            sleep 20
+          done
+          echo "no attestation visible yet for $v"; exit 1
