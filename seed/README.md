@@ -59,7 +59,7 @@ Three things are substituted on the way in:
 
 | What | Where | Substituted with |
 | --- | --- | --- |
-| The connect command | `CONNECT_COMMAND` in `start-here/prototypes/connect-your-terminal/index.html` | `npx augur connect --origin https://<label><suffix>`, the workspace's real address, filled the moment the page is published |
+| The connect command | `CONNECT_COMMAND` in `start-here/prototypes/connect-your-terminal/index.html` | `npx @augurworks/augur connect --origin https://<label><suffix>`, the workspace's real address, filled the moment the page is published |
 | Comment timestamps | `at` in `threads.json` | the provisioning time, so day-one threads do not read as months old |
 | File timestamps | `editedAt` on every file in the manifest | the same provisioning time, all of them |
 

@@ -7,7 +7,7 @@
  * transcript. This asks for neither: it prints a code, you type that code into a browser
  * that already has your session, and the token approval mints comes back here.
  *
- *   npx augur connect [--origin https://your.site]
+ *   npx @augurworks/augur connect [--origin https://your.site]
  *
  * `augur login` stays for CI and scripts, where there is no browser to type into.
  *

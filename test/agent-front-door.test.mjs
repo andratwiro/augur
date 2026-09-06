@@ -81,7 +81,7 @@ test("/llms.txt is public text that names the workspace and the connect command"
   assert.equal(r.status, 200);
   assert.equal(r.ct, "text/plain");
   assert.match(r.body, /Augur workspace "acme"/);
-  assert.match(r.body, new RegExp(`npx augur connect --origin ${ORIGIN}`));
+  assert.match(r.body, new RegExp(`npx @augurworks/augur connect --origin ${ORIGIN}`));
   assert.match(r.body, /scripts\/cli\.mjs connect/, "names the not-on-npm fallback");
   assert.match(r.body, /signed in/i, "says the owner approves in a signed-in browser");
   assert.match(r.body, /\.well-known\/augur\.json/);
@@ -93,7 +93,7 @@ test("/llms.txt with pairing off says so and offers no connect command", async (
   const r = await get(env, "/llms.txt");
   assert.equal(r.status, 200);
   assert.match(r.body, /pairing is switched off/i);
-  assert.doesNotMatch(r.body, /npx augur connect/);
+  assert.doesNotMatch(r.body, /npx @augurworks\/augur connect/);
   assert.match(r.body, /invite/i, "says what to do instead");
 });
 
@@ -109,7 +109,7 @@ test("/.well-known/augur.json carries the same facts as data", async () => {
   assert.equal(r.json.origin, ORIGIN);
   assert.equal(r.json.engine.version, "0.15.1");
   assert.deepEqual(r.json.pairing, { enabled: true, start: "/__publish/_pair/start", approve: "/__connect" });
-  assert.equal(r.json.connect, `npx augur connect --origin ${ORIGIN}`);
+  assert.equal(r.json.connect, `npx @augurworks/augur connect --origin ${ORIGIN}`);
   assert.equal(r.json.docs, "/llms.txt");
   assert.equal(r.headers.get("cache-control"), "no-store");
   assert.doesNotMatch(r.body, /example\.test/);
@@ -130,7 +130,7 @@ test("a signed-out request for an engine path answers 401 JSON with the door in 
   assert.equal(r.status, 401);
   assert.equal(r.ct, "application/json");
   assert.equal(r.json.error, "sign-in-required");
-  assert.equal(r.json.connect, `npx augur connect --origin ${ORIGIN}`);
+  assert.equal(r.json.connect, `npx @augurworks/augur connect --origin ${ORIGIN}`);
   assert.equal(r.headers.get("www-authenticate"), 'Bearer realm="augur"');
 });
 

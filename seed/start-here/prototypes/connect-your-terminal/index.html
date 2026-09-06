@@ -91,7 +91,7 @@
         <h2 class="s-h2">Run this where your agent runs</h2>
         <p class="s-prose">In the folder you want this workspace to live in, run:</p>
         <div class="s-cmd">
-          <code class="s-cmd__text" id="cmd-connect">npx augur connect your-workspace</code>
+          <code class="s-cmd__text" id="cmd-connect">npx @augurworks/augur connect your-workspace</code>
           <button type="button" class="s-cmd__btn" data-s-copy="#cmd-connect">Copy</button>
         </div>
         <p class="s-prose" style="margin-top: var(--starter-s4)">A browser tab opens and asks you to
@@ -105,7 +105,7 @@
           <div>
             <p class="ask__why">Paste this into your agent instead of running the command yourself.</p>
             <div class="s-cmd s-cmd--paste">
-              <code class="s-cmd__text s-cmd__text--plain" id="ask-agent">Run `npx augur connect your-workspace` in this folder. It will open a browser tab for me to approve — tell me when it is waiting, and tell me exactly what it prints when it finishes.</code>
+              <code class="s-cmd__text s-cmd__text--plain" id="ask-agent">Run `npx @augurworks/augur connect your-workspace` in this folder. It will open a browser tab for me to approve — tell me when it is waiting, and tell me exactly what it prints when it finishes.</code>
               <button type="button" class="s-cmd__btn" data-s-copy="#ask-agent">Copy</button>
             </div>
           </div>
@@ -311,7 +311,7 @@
               <p class="s-prose">Last one. Ask the agent to connect, in plain language — it runs the
                 command for you:</p>
               <div class="s-cmd s-cmd--paste">
-                <code class="s-cmd__text s-cmd__text--plain" id="ask-5-do">Run `npx augur connect your-workspace` in this folder. It will open a browser tab for me to approve — tell me when it is waiting, and tell me exactly what it prints when it finishes.</code>
+                <code class="s-cmd__text s-cmd__text--plain" id="ask-5-do">Run `npx @augurworks/augur connect your-workspace` in this folder. It will open a browser tab for me to approve — tell me when it is waiting, and tell me exactly what it prints when it finishes.</code>
                 <button type="button" class="s-cmd__btn" data-s-copy="#ask-5-do">Copy</button>
               </div>
               <p class="s-prose">Approve the tab that opens. The terminal now has a key of its own, so
@@ -369,7 +369,7 @@
     var host = location.hostname || "";
     var label = host.split(".")[0];
     var named = host.indexOf(".") > 0 && label && label !== "localhost" && !/^\d+$/.test(label);
-    return named ? "npx augur connect --origin https://" + host : "npx augur connect your-workspace";
+    return named ? "npx @augurworks/augur connect --origin https://" + host : "npx @augurworks/augur connect your-workspace";
   }
 
   var cmd = connectCommand();
@@ -377,7 +377,7 @@
   if (cmdEl) cmdEl.textContent = cmd;
   ["ask-agent", "ask-5-do"].forEach(function (id) {
     var el = document.getElementById(id);
-    if (el) el.textContent = el.textContent.replace(/npx augur connect [\w-]+/, cmd);
+    if (el) el.textContent = el.textContent.replace(/npx @augurworks/augur connect [\w-]+/, cmd);
   });
 
   /* ── Which path you are on ────────────────────────────────────────────────

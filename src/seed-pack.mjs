@@ -44,7 +44,7 @@
 //
 // ONE SUBSTITUTION. connect-your-terminal ships with an empty `CONNECT_COMMAND` slot and
 // derives a command from the URL it is served on. Provisioning fills the slot with the
-// workspace's REAL command — `npx augur connect --origin https://<label><suffix>` — so the
+// workspace's REAL command — `npx @augurworks/augur connect --origin https://<label><suffix>` — so the
 // page is exact rather than merely not wrong. The filled page hashes differently, so it is
 // the one blob that is per-workspace rather than shared; everything else dedups.
 
@@ -60,7 +60,7 @@ export const SEED_CONNECT_SLOT = 'var CONNECT_COMMAND = "";';
 /** The one-line command a person runs to pair a terminal with their workspace. */
 export function connectCommandFor(origin) {
   const o = String(origin || "").replace(/\/+$/, "");
-  return o ? `npx augur connect --origin ${o}` : "";
+  return o ? `npx @augurworks/augur connect --origin ${o}` : "";
 }
 
 /**

@@ -173,15 +173,15 @@ test("the connect command is the CLI's real form, from the workspace's real orig
   assert.equal(workspaceOrigin({ TENANT_HOST_SUFFIX: SUFFIX }, WS), `https://${WS}${SUFFIX}`);
   assert.equal(workspaceOrigin({}, WS), null, "no suffix: not a hosted address");
   assert.equal(workspaceOrigin({ TENANT_HOST_SUFFIX: SUFFIX }, ""), null);
-  assert.equal(connectCommandFor(`https://${WS}${SUFFIX}/`), `npx augur connect --origin https://${WS}${SUFFIX}`);
+  assert.equal(connectCommandFor(`https://${WS}${SUFFIX}/`), `npx @augurworks/augur connect --origin https://${WS}${SUFFIX}`);
   assert.equal(connectCommandFor(""), "");
 });
 
 test("the slot is filled once, and a page with no slot or two is left alone", () => {
-  const cmd = "npx augur connect --origin https://a.b";
+  const cmd = "npx @augurworks/augur connect --origin https://a.b";
   const one = fillConnectCommand(`<script>${SEED_CONNECT_SLOT}</script>`, cmd);
   assert.equal(one.filled, true);
-  assert.equal(one.html, `<script>var CONNECT_COMMAND = "npx augur connect --origin https://a.b";</script>`);
+  assert.equal(one.html, `<script>var CONNECT_COMMAND = "npx @augurworks/augur connect --origin https://a.b";</script>`);
   assert.equal(fillConnectCommand("<script>var x = 1;</script>", cmd).filled, false);
   assert.equal(fillConnectCommand(`${SEED_CONNECT_SLOT} ${SEED_CONNECT_SLOT}`, cmd).filled, false);
   assert.equal(fillConnectCommand(SEED_CONNECT_SLOT, "").filled, false);
@@ -243,12 +243,12 @@ test("THE CONNECT COMMAND IS THIS WORKSPACE'S, filled at the moment it is publis
   const out = await publishSeedPack({
     store: bundleStore({ BUNDLES: r2 }, WS), pack: PACK, workspaceId: WS, at: AT, origin: `https://${WS}${SUFFIX}`,
   });
-  assert.equal(out.connectCommand, `npx augur connect --origin https://${WS}${SUFFIX}`);
+  assert.equal(out.connectCommand, `npx @augurworks/augur connect --origin https://${WS}${SUFFIX}`);
   const m = await manifestOf(r2);
   const entry = m.files[SEED_CONNECT_FILE];
   assert.notEqual(entry.h, PACK.files[SEED_CONNECT_FILE].h, "the filled page is a new blob");
   const html = await (await r2.get(`blobs/${entry.h}`)).text();
-  assert.ok(html.includes(`var CONNECT_COMMAND = "npx augur connect --origin https://${WS}${SUFFIX}";`));
+  assert.ok(html.includes(`var CONNECT_COMMAND = "npx @augurworks/augur connect --origin https://${WS}${SUFFIX}";`));
   assert.ok(!html.includes(SEED_CONNECT_SLOT));
   // Every other file is the pack's own blob, shared across workspaces.
   for (const [p, f] of Object.entries(m.files)) if (p !== SEED_CONNECT_FILE) assert.equal(f.h, PACK.files[p].h, p);
@@ -294,7 +294,7 @@ test("A PROVISIONING THAT ASKS FOR THE PACK OPENS WITH THE CONTENT LIVE, THE THR
   const out = await store.provision({ workspaceId: WS, adminEmail: ADMIN, seedPack: true, now: AT });
   assert.equal(out.created, true);
   assert.deepEqual({ space: out.seedPack.space, version: out.seedPack.version, files: out.seedPack.files, connectCommand: out.seedPack.connectCommand },
-    { space: spaceId, version: 1, files: Object.keys(PACK.files).length, connectCommand: `npx augur connect --origin https://${WS}${SUFFIX}` });
+    { space: spaceId, version: 1, files: Object.keys(PACK.files).length, connectCommand: `npx @augurworks/augur connect --origin https://${WS}${SUFFIX}` });
   assert.ok(!("overlay" in out.seedPack), "the overlay is not echoed back over the wire");
   assert.ok(store.isProvisioned());
   // The content, under this workspace's segment.
@@ -411,7 +411,7 @@ test("`provision {seedPack: true}` over /__control answers with what it furnishe
   assert.equal(body.created, true);
   assert.equal(body.seedPack.space, spaceId);
   assert.equal(body.seedPack.version, 1);
-  assert.equal(body.seedPack.connectCommand, `npx augur connect --origin https://${WS}${SUFFIX}`);
+  assert.equal(body.seedPack.connectCommand, `npx @augurworks/augur connect --origin https://${WS}${SUFFIX}`);
 });
 
 test("⚠️ A REFUSAL IS A 4xx/5xx, NEVER ok:false IN A 200 — and it creates nothing", async () => {

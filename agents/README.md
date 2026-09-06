@@ -21,7 +21,7 @@ prototypes needs a **publish token**, and an agent gets one by device pairing, n
 asking anyone for a password:
 
 ```
-npx augur connect --origin https://<the workspace>
+npx @augurworks/augur connect --origin https://<the workspace>
 ```
 
 It prints one line to relay — *ask the owner of this workspace to open `<link>` and
@@ -31,7 +31,7 @@ signed in to and types the code; the token lands in `~/.config/augur/tokens.json
 it finds no token, so inside a workspace tree nothing has to be done first. On a workspace
 that serves drafts (`/.well-known/augur.json` says `drafts.enabled`), the everyday verbs
 are `augur open` and `augur land` instead — see [drafts.md](./drafts.md). To get the
-tree from a hostname, pair first, then `npx augur clone --space <id>` — it reads the
+tree from a hostname, pair first, then `npx @augurworks/augur clone --space <id>` — it reads the
 origin from the pairing.
 
 Not on npm yet? The engine clone sits next to every workspace that publishes:

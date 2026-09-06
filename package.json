@@ -1,7 +1,6 @@
 {
-  "name": "augur",
-  "version": "0.15.1",
-  "private": true,
+  "name": "@augurworks/augur",
+  "version": "0.15.2",
   "files": [
     "scripts/",
     "build.js",
@@ -46,5 +45,13 @@
   },
   "devDependencies": {
     "playwright": "^1.60.0"
-  }
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/andratwiro/augur.git"
+  },
+  "homepage": "https://github.com/andratwiro/augur#readme"
 }

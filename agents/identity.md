@@ -3,7 +3,7 @@
 ## Getting in, if you are an agent
 
 You do not need a login. Publishing needs a **publish token**, and the way to get one
-is device pairing: `npx augur connect --origin <the workspace>` prints a link and a
+is device pairing: `npx @augurworks/augur connect --origin <the workspace>` prints a link and a
 code, the owner enters the code in a browser they are already signed in to, and the
 token lands on this machine. Nobody's password is asked for, typed or stored. The
 instance says the same at `GET /llms.txt`. The full shape is in [README.md](./README.md)

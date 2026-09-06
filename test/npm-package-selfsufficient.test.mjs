@@ -142,10 +142,14 @@ test("the tarball carries no credential-shaped file", () => {
   assert.deepEqual(bad, [], `the tarball ships credential-shaped files: ${bad.join(", ")}`);
 });
 
-test("it is still marked private, so nobody publishes it before the name is settled", () => {
-  // `augur` is taken on npm. Flipping this is the publish decision and it belongs to a
-  // person, along with choosing the scope or the new name. Until then the safety catch
-  // stays on, and this test is what says so out loud.
-  assert.equal(PKG.private, true,
-    "package.json is no longer private — if the name is settled, delete this test in the same commit that says what the name is");
+test("the name is settled: @augurworks/augur, public, with the bin still called augur", () => {
+  // `augur` is taken on npm by an unrelated package, so the published name carries the
+  // org scope. Every door that prints an install line (`/llms.txt`, the seed pack, the
+  // agent contracts) spells it this way; `agent-front-door.test.mjs` and
+  // `seed-pack.test.mjs` pin those lines. The bin stays `augur`, so once installed the
+  // verbs read exactly as the contracts say.
+  assert.equal(PKG.name, "@augurworks/augur");
+  assert.notEqual(PKG.private, true, "a private package cannot be published — the name is settled");
+  assert.equal(PKG.publishConfig && PKG.publishConfig.access, "public");
+  assert.deepEqual(PKG.bin, { augur: "scripts/cli.mjs" });
 });

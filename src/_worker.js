@@ -5935,7 +5935,7 @@ async function publishApi(tctx, request, url, env) {
         clientProtocol,
         minProtocol: tctx.MIN_CLIENT_PROTOCOL,
         protocol: PUBLISH_PROTOCOL,
-        upgrade: "npx augur@latest",
+        upgrade: "npx @augurworks/augur@latest",
       }, 426);
     }
     // Prune any publicPrefixes entry THIS manifest declares without backing it with
@@ -9099,7 +9099,7 @@ function doorFacts(tctx, url, env) {
     origin: url.origin,
     engine: tctx.INSTANCE_ENGINE_VERSION ? { version: tctx.INSTANCE_ENGINE_VERSION } : {},
     pairing: { enabled: pairing, start: "/__publish/_pair/start", approve: "/__connect" },
-    connect: pairing ? `npx augur connect --origin ${url.origin}` : null,
+    connect: pairing ? `npx @augurworks/augur connect --origin ${url.origin}` : null,
     docs: DOOR_DOCS,
     // Where drafts are served, a prototype is changed by opening it, not by shipping a
     // tree — and the door is where a cold agent learns which of the two this instance is.
@@ -9120,7 +9120,7 @@ function doorText(f) {
       + `It prints a link and a code. The owner of this workspace opens the link in a\n`
       + `browser they are already signed in to and enters the code. The token lands on\n`
       + `that machine, and \`augur publish\` / \`augur ship\` use it from then on. With no\n`
-      + `source tree yet, \`npx augur clone --space ${f.workspace}\` then fetches one (it reads\n`
+      + `source tree yet, \`npx @augurworks/augur clone --space ${f.workspace}\` then fetches one (it reads\n`
       + `the origin from the pairing).\n\n`
       + `Not on npm yet? The engine clone sits next to every workspace that publishes:\n\n`
       + `  node <engine>/scripts/cli.mjs connect --origin ${f.origin}\n\n`
