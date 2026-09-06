@@ -42,6 +42,12 @@ jobs:
           node-version: 24
           package-manager-cache: false
       - run: node -v && npm -v && npm config get registry
+      # The identity this run presents to npm, decoded — the trusted-publisher entry on the
+      # package must match these fields exactly (owner/repository, workflow file, environment).
+      - name: the OIDC claims this run presents
+        run: |
+          tok=$(curl -sS -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=npm:registry.npmjs.org" | node -p "JSON.parse(require('fs').readFileSync(0,'utf8')).value")
+          node -e "const c=JSON.parse(Buffer.from(process.argv[1].split('.')[1],'base64url'));for(const k of ['iss','aud','repository','repository_owner','workflow_ref','job_workflow_ref','environment','ref','event_name'])console.log(k.padEnd(18),c[k]??'(absent)')" "$tok"
       - name: the tag names the version package.json carries
         if: startsWith(github.ref, 'refs/tags/npm-v')
         run: |
