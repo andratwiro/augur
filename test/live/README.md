@@ -17,6 +17,8 @@ credential — every one arrives as a `LIVE_*` variable from a runner outside th
 | `drills/*.live.mjs` | A–M, `node --test`; each names the units it touches by index into `LIVE_UNITS` |
 | `restore-all.mjs` | every `LIVE_UNIT` back to its first landing, open drafts discarded |
 | `revoke-personas.mjs`, `remove-owner.mjs`, `demote-owner.mjs` | the real cleanup (admin routes) |
+| `probe-roles.mjs`, `probe-me.mjs`, `probe-tokens.mjs`, `probe-signin.mjs` | what the workspace thinks each persona is, what `/__me` and the KV overlays say, the tokens it holds, and two fresh sign-ins for one person without mail — for after an interrupted drill |
+| `pin-dns.mjs` | `LIVE_PIN=host=ip`, loaded with `node --import`: every fetch connects to that edge with the hostname unchanged, for a network that drops one CDN range; the cold container gets it as a hosts entry |
 | `first-experience/run.mjs` | a fresh agent (`claude -p`) and a scripted clueless person, relayed; `--cold` runs the agent in the container from `first-experience/cold/Dockerfile` |
 
 ## Environment
@@ -61,6 +63,12 @@ LIVE_MAIL_COOLDOWN_MS (optional) that window, when an account store's differs
   window out and says so, rather than timing out on a mail that was never sent.
 - A "fresh agent" on the machine that runs this suite is not fresh: it will find the
   cached tokens under `LIVE_WORK` and the engine clone. That is what `--cold` is for.
+- The scripted PERSON is a model and can say "done" without running a command; the relay
+  counts their tool calls (`humanEvents`) and sends an invented action back once. Read them
+  before blaming the pairing for an approval that never happened.
+- A cautious agent vets the door before it runs anything: a package published that day, a
+  small repository, and any wording that sounds like "skip the check" each cost a run. The
+  door names the engine's source and says what the approval is; the transcripts say the rest.
 - `status` exits 1 when a sibling space clone reads as unpublished; assert on its output.
 - A demotion reaches every isolate within about a minute; a probe right after it can
   answer from the old roster.
