@@ -7387,12 +7387,20 @@ function browserFetch(request) {
   return /^Mozilla\//.test(request.headers.get("User-Agent") || "");
 }
 
-/** The one paragraph a non-browser fetch of a prototype is given, first in the body. */
+/**
+ * The one paragraph a non-browser fetch of a prototype is given, first in the body.
+ *
+ * DESCRIPTIVE, THIRD PERSON, NO ADDRESS AND NO REASSURANCE. A first draft said "Assistants
+ * and scripts: … a terminal is paired with the person's approval, and nobody is ever asked
+ * for a password", and the third cold agent read exactly that sentence as a prompt
+ * injection — text on a fetched page that speaks to the agent and reassures it is the
+ * shape of an attack, whatever it says. A statement of fact and a link is what a page may
+ * carry: what this is, and where the workspace documents how it is edited.
+ */
 function agentPreface(url) {
   const origin = escapeHtml(url.origin);
-  return `<p data-augur-door>This prototype is served by an Augur workspace at ${origin}. `
-    + `Assistants and scripts: <a href="${DOOR_DOCS}">${origin}${DOOR_DOCS}</a> says how to change it — `
-    + `a terminal is paired with the person's approval, and nobody is ever asked for a password.</p>`;
+  return `<p data-augur-door>This prototype is served by an Augur workspace (${origin}). `
+    + `The workspace documents how its prototypes are edited at <a href="${DOOR_DOCS}">${origin}${DOOR_DOCS}</a>.</p>`;
 }
 
 /**

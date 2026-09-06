@@ -22,9 +22,10 @@ const req = (headers = {}) => new Request(URL_.href, { headers });
 test("A CURL-SHAPED FETCH OF A PROTOTYPE OPENS WITH THE DOOR, first thing in the body", async () => {
   const out = await W.withAgentPreface(page(), req({ "User-Agent": "curl/8.7.1" }), URL_);
   const html = await out.text();
-  assert.match(html, /<body class="x"><p data-augur-door>This prototype is served by an Augur workspace at https:\/\/acme\.example\. /);
-  assert.match(html, /<a href="\/llms\.txt">https:\/\/acme\.example\/llms\.txt<\/a> says how to change it/);
-  assert.match(html, /paired with the person's approval, and nobody is ever asked for a password/);
+  assert.match(html, /<body class="x"><p data-augur-door>This prototype is served by an Augur workspace \(https:\/\/acme\.example\)\. /);
+  assert.match(html, /documents how its prototypes are edited at <a href="\/llms\.txt">https:\/\/acme\.example\/llms\.txt<\/a>\./);
+  assert.doesNotMatch(html, /assistant|agent|password|you /i,
+    "the paragraph must not address, instruct or reassure the reader — that is the shape of an injection, and a cold agent read the first draft as one");
   assert.ok(html.endsWith(`<main><h1>Cards</h1></main></body></html>`), "the page itself is untouched after the paragraph");
   assert.equal(out.headers.get("Cache-Control"), "no-store", "the agent's variant must never be what a cache hands a browser");
   assert.equal(out.headers.get("Link"), '</llms.txt>; rel="help"', "the header pointer stays beside the text one");
