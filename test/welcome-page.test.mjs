@@ -252,17 +252,21 @@ test("a viewer asking for the mac installer is forbidden", async () => {
   const { env } = await wired([ADA_MEMBER, VERA]);
   const r = await fetchAs(env, VERA, "/__onboarding/installer/mac");
   assert.equal(r.status, 403);
+  assert.match(r.headers.get("content-type") || "", /application\/json/);
+  assert.deepEqual(await r.json(), { error: "forbidden" });
 });
 
-// ⚠️ THE LINK ON THE PAGE CARRIES `download`, and a `download` anchor saves whatever body
-// comes back under the filename in the header. Answering a signed-out request with the
-// login page — which is what this route used to do, mirroring /__welcome — therefore put
-// the sign-in HTML on somebody's disk as connect-<host>.zip, with nothing on screen. A
-// 303 sends the browser to /__welcome, which renders the login page itself.
+// ⚠️ THE LINK ON THE PAGE USED TO CARRY `download`, and a `download` anchor saves whatever
+// body a navigation ends on — redirects included — under the filename in the header.
+// Answering a signed-out request with the login page directly — which is what this route
+// used to do, mirroring /__welcome — therefore put the sign-in HTML on somebody's disk as
+// connect-<host>.zip, with nothing on screen. The attribute is gone now (it was redundant:
+// the 200 response already forces the save via Content-Disposition), so a plain 303 to
+// /__welcome genuinely renders the login page rather than saving it.
 test("signed out, the mac installer route redirects to /__welcome rather than serving a page as a file", async () => {
   const { env } = await wired([ADA_MEMBER]);
   const r = await fetchAs(env, null, "/__onboarding/installer/mac");
   assert.equal(r.status, 303);
   assert.equal(r.headers.get("location"), "/__welcome");
-  assert.equal(await r.text(), "", "no body at all — a download anchor would have saved one");
+  assert.equal(await r.text(), "", "no body at all — a stray body here would have been saved to disk under the old download-anchor behavior");
 });

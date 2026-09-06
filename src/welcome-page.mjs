@@ -90,7 +90,7 @@ export function renderWelcomePage({ origin, me, agentTool } = {}) {
   <section data-step="install">
     <h1>Set one up</h1>
     <p>One file for your Mac. It installs what is needed, connects to this workspace, and opens the approval page for you.</p>
-    <a class="primary" href="/__onboarding/installer/mac" download>Download for Mac</a>
+    <a class="primary" href="/__onboarding/installer/mac">Download for Mac</a>
     <p>${openLine} If your Mac says it is from an unidentified developer, right-click it and choose Open.</p>
     ${APPROVE_FORM}
     <p class="status" data-status>Waiting for a terminal…</p>

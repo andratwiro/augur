@@ -98,11 +98,26 @@ augur connect --origin ${origin} || fail "the pairing was not approved in time �
 # Keep the tools findable in Terminal windows opened later. One guarded line, appended
 # once: this script's own PATH export lives only in this process, so without it the person
 # gets a working agent today and "command not found" tomorrow.
+# Two things have to be true of the append: it lands on its OWN line, and running the
+# whole script again must not add a second copy. A profile that exists but does not end in
+# a newline would otherwise get PATH_LINE glued onto its last line — corrupting that line
+# AND breaking the grep -qF guard below, which then never matches again, so every later run
+# appends once more. Pad a trailing newline first, only when the file is non-empty and does
+# not already end in one.
 PROFILE="$HOME/.zprofile"
 PATH_LINE='export PATH="$HOME/.augur/node/bin:$HOME/.augur/npm/bin:$PATH"  # added by Augur'
 if ! grep -qF "$PATH_LINE" "$PROFILE" 2>/dev/null; then
-  printf '%s\\n' "$PATH_LINE" >> "$PROFILE" || fail "could not write to ~/.zprofile — everything else is installed, so open Terminal and type ${agentTool.bin} to start."
-  echo "added these tools to your PATH in ~/.zprofile, so new Terminal windows find them too"
+  if [ -s "$PROFILE" ] && [ "$(tail -c1 "$PROFILE" 2>/dev/null | wc -l)" -eq 0 ]; then
+    printf '\\n' >> "$PROFILE" 2>/dev/null || true
+  fi
+  # An unwritable profile is a warning, not a failure: pairing already succeeded and
+  # everything else is installed, so ending the script here over one shell-profile line
+  # would throw away real progress. Say what happened and what to type instead.
+  if printf '%s\\n' "$PATH_LINE" >> "$PROFILE" 2>/dev/null; then
+    echo "added these tools to your PATH in ~/.zprofile, so new Terminal windows find them too"
+  else
+    echo "Setup finished, but ~/.zprofile could not be updated. In any new Terminal window, run: $PATH_LINE — or just type ${agentTool.bin} from ~/Augur/${host} to start."
+  fi
 fi
 
 mkdir -p "$HOME/Augur/${host}"; cd "$HOME/Augur/${host}"

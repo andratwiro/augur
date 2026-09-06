@@ -12159,13 +12159,17 @@ async function handleRequest(request, env, ctx, url, trace) {
     // served directly saves as 0644 and Terminal refuses to run it — see src/zip-store.mjs.
     // The archive holds one entry at 0755, named by `installerFileNames` so the sentence
     // on the page and the file the person actually unpacks are built from one string.
-    // ⚠️ SIGNED OUT IS A REDIRECT, NOT A PAGE. The link on the welcome page carries
-    // `download`, and a `download` anchor saves whatever body comes back under the
-    // filename in the header — so answering with the login HTML here would put the sign-in
-    // page on somebody's disk as `connect-<host>.zip`. A 303 to /__welcome sends the
-    // browser somewhere it will render, and that path shows the login page itself. A
-    // viewer, who publishes nothing and has no pairing to approve, is refused with JSON
-    // rather than redirected: a download link has no page of its own to bounce them to.
+    // ⚠️ SIGNED OUT IS A REDIRECT, NOT A PAGE. The link on the welcome page USED TO carry
+    // `download`, and a `download` anchor saves whatever body the navigation ends on —
+    // redirects included — under the filename in the header, so answering with the login
+    // HTML here would have put the sign-in page on somebody's disk as `connect-<host>.zip`
+    // with nothing on screen. The attribute is gone now (src/welcome-page.mjs; it was
+    // redundant anyway, since the 200 response below already forces the save with its own
+    // `Content-Disposition: attachment`), so that is no longer a trap: a 303 to /__welcome
+    // really does send the browser somewhere it will render, and that path shows the login
+    // page itself. A viewer, who publishes nothing and has no pairing to approve, is
+    // refused with JSON rather than redirected: a download link has no page of its own to
+    // bounce them to.
     if (url.pathname === "/__onboarding/installer/mac" && welcomeFlow(tctx)) {
       if (request.method !== "GET") return new Response("Method Not Allowed", { status: 405 });
       const who = tctx.USERS.length ? await identify(request, env, tctx.USERS, { sessionKeys: tctx.SESSION_KEYS, tctx }) : null;

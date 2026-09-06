@@ -124,6 +124,59 @@ test("the PATH is persisted for later Terminal windows, once, and the person is 
   assert.match(s, /echo "added these tools to your PATH in ~\/\.zprofile/, "a change to a person's shell profile is announced, never silent");
 });
 
+// ── the ~/.zprofile append, run for real ────────────────────────────────────────────────
+//
+// Extracted as a standalone fragment rather than run through the whole installer, because
+// the rest of the script downloads Node and installs two globals. The fragment is exactly
+// what a real run executes — same text, same PROFILE/PATH_LINE variables, same guard.
+function extractProfileBlock(s) {
+  const start = s.indexOf('PROFILE="$HOME/.zprofile"');
+  const end = s.indexOf('\nmkdir -p "$HOME/Augur/', start);
+  assert.ok(start >= 0 && end > start, "the profile-append block markers were found in the generated script");
+  return s.slice(start, end);
+}
+const isRoot = () => typeof process.getuid === "function" && process.getuid() === 0;
+
+test("the ~/.zprofile append lands on its own line, exactly once, whatever the file looked like before", () => {
+  const block = extractProfileBlock(SCRIPT());
+  const cases = [
+    { label: "no ~/.zprofile at all", seed: null },
+    { label: "~/.zprofile already ends in a newline", seed: "export EDITOR=vim\n" },
+    { label: "~/.zprofile does NOT end in a newline", seed: "export EDITOR=vim" },
+  ];
+  for (const { label, seed } of cases) {
+    const home = fs.mkdtempSync(path.join(os.tmpdir(), "prof-"));
+    const profile = path.join(home, ".zprofile");
+    if (seed !== null) fs.writeFileSync(profile, seed);
+    for (let run = 1; run <= 2; run++) {
+      const r = spawnSync("/bin/bash", ["-c", `set -euo pipefail\n${block}`], { env: { ...process.env, HOME: home }, encoding: "utf8" });
+      assert.equal(r.status, 0, `${label}, run ${run}: ${r.stderr}`);
+    }
+    const text = fs.readFileSync(profile, "utf8");
+    const pathLines = text.split("\n").filter((l) => l.includes("added by Augur"));
+    assert.equal(pathLines.length, 1, `${label}: expected the PATH line exactly once, found ${pathLines.length}\n---\n${text}`);
+    assert.equal(pathLines[0], 'export PATH="$HOME/.augur/node/bin:$HOME/.augur/npm/bin:$PATH"  # added by Augur', `${label}: the PATH line is on its own line, not glued to another`);
+    if (seed) {
+      assert.ok(text.split("\n").includes("export EDITOR=vim"), `${label}: the pre-existing line survives intact, not corrupted by the append`);
+    }
+  }
+});
+
+test("an unwritable ~/.zprofile is a warning, not a failure — everything else already succeeded", (t) => {
+  if (isRoot()) { t.skip("running as root — file permissions do not block root, so this cannot be proven here"); return; }
+  const block = extractProfileBlock(SCRIPT());
+  const home = fs.mkdtempSync(path.join(os.tmpdir(), "prof-"));
+  const profile = path.join(home, ".zprofile");
+  fs.writeFileSync(profile, "export EDITOR=vim\n");
+  fs.chmodSync(profile, 0o444);
+  const r = spawnSync("/bin/bash", ["-c", `set -euo pipefail\n${block}`], { env: { ...process.env, HOME: home }, encoding: "utf8" });
+  assert.equal(r.status, 0, `an unwritable profile must not fail the script (pairing already succeeded): ${r.stderr}`);
+  assert.match(r.stdout, /Setup finished/, "says setup finished");
+  assert.match(r.stdout, /new Terminal window/i, "says what to do in a new Terminal");
+  assert.match(r.stdout, new RegExp(`\\b${AGENT_TOOL.bin}\\b`), "names the fallback command to start the agent directly");
+  assert.equal(fs.readFileSync(profile, "utf8"), "export EDITOR=vim\n", "the unwritable file itself is untouched");
+});
+
 test("connects with --no-wait first (to print the code) then again to collect it, opening /__welcome not /__connect", () => {
   const s = SCRIPT();
   assert.match(s, /connect --origin https:\/\/acme\.example --no-wait/);
