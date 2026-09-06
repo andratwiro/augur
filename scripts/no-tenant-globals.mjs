@@ -224,6 +224,7 @@ const ALLOWLIST = {
       "mcpHostAllowlist",
       "CANVAS_REGISTRY",
       "PITI_REMARKS",
+      "DERIVED",              // the two store reads a derived gallery needs, per manifest version — the status baseline and the design-system catalog
       "ROSTER_OVERLAY",
       "FREEZE_STATE",
       "SUSPENSION_STATE",
@@ -279,6 +280,21 @@ const ALLOWLIST = {
         proof: "test/tenant-isolation.test.mjs",
       },
     },
+  },
+
+  // The derived pages: pure renderers over the live store. Every table here is a fact
+  // about the engine's vocabulary — tier names, status words and glyphs, the emoji pool a
+  // card's leading glyph is picked from — the same for every workspace.
+  "src/galleries.mjs": {
+    frozen: [
+      "TIERS",        // the four library tiers whose demos are units
+      "TIER_TITLE",   // their titles
+      "TIER_COPY",    // their hints and empty states
+      "STATUS_META",  // status word → label + class
+      "STATUS_ICONS", // status word → glyph
+      "STATUS_RANK",  // the card order a status implies
+      "EMOJI_POOL",   // the leading-emoji pool, picked by slug hash
+    ],
   },
 
   "src/bundle-keys.mjs": {

@@ -104,6 +104,10 @@ import { PURGED_AUTHOR, purgeThreads, idCollisions } from "./purge.mjs";
 import { authoredUnits, unitOfPath, unitPaths } from "./publish-units.mjs";
 import { composePublish, forkLanded } from "./publish-compose.mjs";
 import { normUnit, splitDraftPath, unitTable, draftAddress, DRAFT_ID_RE } from "./unit-core.mjs";
+import {
+  siteModel, derivedPathKind, renderRootIndex, renderOpportunityIndex, renderPlaygroundIndex,
+  renderTierIndex, renderComponentsIndex, searchIndex, catalogFrom,
+} from "./galleries.mjs";
 // `F-fork-verb`. Fork as a deliberate verb — one unit aliased to a new path, zero bytes
 // moved — plus the rule that keeps a fork's lineage and owner alive across every later
 // publish. Both are pure, and both are the CLI's too if it ever needs them.
@@ -7238,6 +7242,73 @@ async function composeChrome(tctx, res, url) {
   return new Response(html, { status: res.status, statusText: res.statusText, headers });
 }
 
+// ---- Derived pages (drafts that land, §6.4) -------------------------------------
+// Where drafts are served, the gallery, each opportunity's index, the playground, the
+// library tiers and the finder's index are RENDERED HERE from the live store, so a landing
+// is on them at once and no client build ships them. The stored copies a publish once
+// baked are ignored on this path — they cannot know about a landing. Where drafts are not
+// served, nothing here runs and the stored pages serve exactly as before.
+//
+// Two store reads feed a render besides the manifest — the status baseline
+// (`/prototype-status.json`) and the design-system catalog (`/registry.json`) — cached per
+// manifest version; the status OVERLAY is read fresh every time, one get, as the status
+// route itself reads it. Per-request work after that is string rendering.
+const DERIVED = tenantCache("derived");
+const DERIVED_PATH_RE = /^\/(?:[^/]+\/?(?:index\.html)?|index\.html|__search\.json)?$/;
+async function derivedInputs(tctx, env, spaceId, manifest) {
+  const slot = DERIVED.entry(tctx.tenantId, () => ({ key: null, baseline: {}, catalog: {} }));
+  const key = `${spaceId}:${manifest.version}`;
+  if (slot.key === key) return slot;
+  const readJson = async (p) => {
+    const f = (manifest.files || {})[p];
+    if (!f || !env.BUNDLES) return null;
+    try {
+      const obj = await env.BUNDLES.get("blobs/" + f.h);
+      return obj ? JSON.parse(await obj.text()) : null;
+    } catch (e) { return null; }
+  };
+  const base = await readJson("/prototype-status.json");
+  const baseline = {};
+  for (const [k, v] of Object.entries(base && typeof base === "object" ? base : {})) {
+    if (!k.startsWith("_") && typeof v === "string") baseline[k] = v;
+  }
+  slot.baseline = baseline;
+  slot.catalog = catalogFrom(await readJson("/registry.json"));
+  slot.key = key;
+  return slot;
+}
+/** A derived page for this path, or null when the path is not one (or drafts are not served here). */
+async function derivedPage(tctx, env, url) {
+  if (!draftsServedHere(env) || !DERIVED_PATH_RE.test(url.pathname)) return null;
+  const manifests = await loadManifests(tctx.tenantId, env);
+  const spaceId = defaultSpaceIdFromCtx(tctx) || defaultSpaceIdFromManifests(manifests);
+  const manifest = spaceId ? manifests[spaceId] : null;
+  if (!manifest || !manifest.files) return null;
+  const inputs = await derivedInputs(tctx, env, spaceId, manifest);
+  const store = overlayFor(env, tctx);
+  let statuses = {};
+  try { statuses = store ? (await store.read("statuses")) || {} : {}; } catch (e) { statuses = {}; }
+  // A recorded author resolves to a face through the roster; an id nobody answers to
+  // (an ex-member, the `live` adoption) is nobody's face rather than a blank chip.
+  const people = (id) => { const f = personFace(tctx.USERS, id); return f.name ? { id, ...f } : null; };
+  const now = Date.now();
+  const model = siteModel({ manifest, statuses, baseline: inputs.baseline, people, now });
+  const kind = derivedPathKind(url.pathname, model);
+  if (!kind) return null;
+  const sp = (tctx.SPACES || []).find((s) => s.id === spaceId) || {};
+  const ctx = { spaces: tctx.SPACES || [], activeSpace: spaceId, chrome: tctx.CHROME_POINTER || null, projectsLabel: sp.projectsLabel || "", now };
+  if (kind.kind === "search") return jsonResponse(searchIndex(model, ctx), 200, { "Cache-Control": "no-cache" });
+  if (kind.kind === "opportunity" && !kind.slash) return Response.redirect(new URL(`/${encodeURIComponent(kind.name)}/${url.search}`, url).toString(), 308);
+  const html = kind.kind === "root" ? renderRootIndex(model, ctx)
+    : kind.kind === "opportunity" ? renderOpportunityIndex(model, kind.name, ctx)
+    : kind.kind === "playground" ? renderPlaygroundIndex(model, ctx)
+    : kind.kind === "tier" ? renderTierIndex(model, kind.tier, ctx)
+    : kind.kind === "components" ? renderComponentsIndex(model, inputs.catalog, ctx)
+    : null;
+  if (html == null) return null;
+  return new Response(html, { status: 200, headers: { "Content-Type": "text/html; charset=utf-8", "Cache-Control": ASSET_REVALIDATE } });
+}
+
 // ---- The draft bar (drafts that land, §5) -------------------------------------
 // A prototype is raw HTML from a space and carries no chrome; a draft has no build step
 // that could bake one in. So a member looking at a unit's page — main or a draft address —
@@ -12433,6 +12504,10 @@ async function handleRequest(request, env, ctx, url, trace) {
     // Past the gate (or nothing gates the site) → serve. A 404 gets one more chance
     // as a created canvas (a KV-registered board with no repo file — see canvasesApi).
     if (authed) {
+      // Where drafts are served, the gallery and its indexes are derived from the live
+      // store rather than read from it — a landing is on them at once.
+      const derived = await derivedPage(tctx, env, url);
+      if (derived) return derived.status === 308 ? derived : serveContent(tctx, derived, url, me, env);
       const asset = await assetFetch(tctx.tenantId, env, request);
       if (asset.status === 404) {
         const virt = await virtualCanvas(tctx, request, env, url);
@@ -12524,7 +12599,7 @@ export const __testables = Object.freeze({
   doorFacts, doorText, wantsMachineDoor, gateResponse, DOOR_DOCS, DOOR_WELL_KNOWN,
   resumeAfterDormancy,
   PITI_VIEW_KEY, PITI_REMARKS_KEY,
-  publishAuthDetailed, unitApi, unitCaller, personFace, withDraftUi, draftUiBoot, isEngineChrome, publishRefusalBody, splitDraftPath,
+  publishAuthDetailed, unitApi, unitCaller, personFace, withDraftUi, draftUiBoot, derivedPage, isEngineChrome, publishRefusalBody, splitDraftPath,
   adminStorageApi,
   adminCustomDomainApi,
   isPrefixBacked, backedPublicPrefixes,

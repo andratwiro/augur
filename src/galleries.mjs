@@ -11,7 +11,7 @@
 // on a baked one.
 //
 // ⚠️ NO NODE IMPORTS, NO I/O. The worker runs this per request.
-import { renderAppChrome, renderSpaceContextScript, CHROME_MARK_START, CHROME_MARK_END, UI_VERSION, escAttr, titleCase, fmtDate, relTime, ic } from "./chrome/appchrome.mjs";
+import { renderAppChrome, renderSpaceContextScript, CHROME_MARK_START, CHROME_MARK_END, UI_VERSION, escAttr, titleCase, fmtDate, relTime } from "./chrome/appchrome.mjs";
 import { authoredUnits } from "./publish-units.mjs";
 import { unitProvenance, unitKey, STATUS_LABELS } from "./currency.mjs";
 
@@ -30,8 +30,10 @@ const STATUS_ICONS = Object.freeze({
 });
 const STATUS_RANK = Object.freeze({ "dev-ready": 0, "in-progress": 1, ignore: 2 });
 const IC_STAR = `<svg class="pin-star" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z"/></svg>`;
-const IC_PLUS = ic(`<path d="M12 5v14"/><path d="M5 12h14"/>`);
-const EMOJI_POOL = ["🗳️", "🏛️", "📊", "🧭", "🛰️", "🧩", "🪧", "🌳", "🚲", "📣", "🗺️", "🧪", "💡", "🔭", "🪟", "🧱", "🎛️", "🛣️", "🧰", "📐", "🧮", "🗂️", "🔔", "🏘️", "🌍", "💬", "📝", "🚏", "🏙️", "🌿", "🎚️", "🧷"];
+// Spelled out rather than built with `ic()`: the module-scope lint reads a call initializer
+// as state it cannot prove pure, and a literal costs nothing.
+const IC_PLUS = `<svg class="gvic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v14"/><path d="M5 12h14"/></svg>`;
+const EMOJI_POOL = Object.freeze(["🗳️", "🏛️", "📊", "🧭", "🛰️", "🧩", "🪧", "🌳", "🚲", "📣", "🗺️", "🧪", "💡", "🔭", "🪟", "🧱", "🎛️", "🛣️", "🧰", "📐", "🧮", "🗂️", "🔔", "🏘️", "🌍", "💬", "📝", "🚏", "🏙️", "🌿", "🎚️", "🧷"]);
 
 const dec = (s) => { try { return decodeURIComponent(String(s)); } catch (e) { return String(s); } };
 const enc = (s) => encodeURIComponent(s);
