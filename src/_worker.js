@@ -3755,7 +3755,8 @@ function connectPage(tctx, me, origin) {
        <a class="home" href="/">Back to Augur</a>`
     : `<h1>Connect a terminal</h1>
        <p>Type the code that your terminal, or the assistant you are working with right now,
-          is showing you. Approving it lets that terminal publish as
+          is showing you. Approving it lets that terminal publish to
+          <strong>${escapeHtml(origin || "this workspace")}</strong> as
           <strong>${escapeHtml(me.email)}</strong>: it works as you, and everything it lands
           carries your name.</p>
        <p class="warn">Only approve a code from a terminal you started or an assistant you
