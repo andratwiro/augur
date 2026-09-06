@@ -49,7 +49,7 @@ jobs:
           have="$(node -p "require('./package.json').version")"
           [ "$want" = "$have" ] || { echo "tag says $want, package.json says $have"; exit 1; }
       - run: npm run check
-      - run: npm publish --provenance --access public --loglevel verbose 2>&1 | grep -viE "^npm (verb|http) (fetch|cache)" 
+      - run: set -o pipefail; npm publish --provenance --access public --loglevel verbose 2>&1 | grep -viE "^npm (verb|http) (fetch|cache)"
       - name: the registry shows the attestation
         run: |
           v="$(node -p "require('./package.json').version")"
