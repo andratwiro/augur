@@ -175,7 +175,12 @@ async function humanTurn(message, { retry = true } = {}) {
   }
   if (!text.trim()) text = r.err.slice(0, 1000) || "(the person said nothing)";
   text = text.trim();
-  const claimsAction = /\b(done|approved|typed|entered|opened|clicked|pressed|checked my (mail|inbox|email))\b/i.test(text);
+  // A POSITIVE claim only: "I opened it", "done", "I've typed it" — never "I have not typed",
+  // "I didn't approve", "nothing to run". A person who refused, or who did nothing and said
+  // so, is telling the truth and is not sent back.
+  const positive = /\b(done|i (have |'ve )?(opened|typed|entered|approved|pressed|clicked|checked)|it('s| is) (done|approved)|i did it)\b/i.test(text);
+  const negated = /\b(not|n't|never|nothing|no way|cannot|can't|refus\w*|won't|didn't|haven't|did not|have not)\b/i.test(text);
+  const claimsAction = positive && !negated;
   if (retry && tools === 0 && claimsAction) {
     say(`human claimed an action with no command run — sending it back once`);
     log.turns.push({ n: log.turns.length ? log.turns[log.turns.length - 1].n : 0, who: "human (retracted: no command was run)", text, at: now() });
