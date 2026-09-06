@@ -31,16 +31,17 @@ jobs:
   publish:
     runs-on: ubuntu-latest
     steps:
-      # setup-node v6 and npm >= 11.5.1 are what the trusted-publisher exchange needs; v4 wrote
-      # an .npmrc with an empty `_authToken=` that npm took for a credential, and the registry
-      # answered the unauthenticated upload with a 404 (the first cut this way, 6 Sep 2026).
+      # No `registry-url` here ON PURPOSE: with it, setup-node writes an .npmrc whose
+      # `_authToken` is a placeholder, npm takes that for a credential and skips the
+      # trusted-publisher exchange, and the registry answers the unauthenticated upload with
+      # a 404 (two cuts went that way on 6 Sep 2026). With nothing configured, npm >= 11.5.1
+      # trades the job's OIDC token for the publish itself.
       - uses: actions/checkout@v6
       - uses: actions/setup-node@v6
         with:
           node-version: 24
-          registry-url: https://registry.npmjs.org
           package-manager-cache: false
-      - run: node -v && npm -v
+      - run: node -v && npm -v && npm config get registry
       - name: the tag names the version package.json carries
         if: startsWith(github.ref, 'refs/tags/npm-v')
         run: |
@@ -48,7 +49,7 @@ jobs:
           have="$(node -p "require('./package.json').version")"
           [ "$want" = "$have" ] || { echo "tag says $want, package.json says $have"; exit 1; }
       - run: npm run check
-      - run: npm publish --provenance --access public
+      - run: npm publish --provenance --access public --loglevel verbose 2>&1 | grep -viE "^npm (verb|http) (fetch|cache)" 
       - name: the registry shows the attestation
         run: |
           v="$(node -p "require('./package.json').version")"
