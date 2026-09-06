@@ -155,7 +155,7 @@ async function agentTurn(message) {
  * polling for an approval that had not happened. A reply that claims an action with no
  * command behind it is sent back once, with the rule restated; the second answer stands.
  */
-async function humanTurn(message, { retry = true } = {}) {
+async function humanTurn(message, { retry = true, asked = true } = {}) {
   const args = ["-p", "--output-format", "stream-json", "--verbose", "--dangerously-skip-permissions",
     "--allowedTools", "Bash", "--disallowedTools", "Read", "Edit", "Write", "Glob", "Grep", "WebFetch", "WebSearch", "Agent", "NotebookEdit"];
   if (humanSession) args.push("--resume", humanSession);
@@ -178,10 +178,12 @@ async function humanTurn(message, { retry = true } = {}) {
   // A POSITIVE claim only: "I opened it", "done", "I've typed it" — never "I have not typed",
   // "I didn't approve", "nothing to run". A person who refused, or who did nothing and said
   // so, is telling the truth and is not sent back.
-  const positive = /\b(done|i (have |'ve )?(opened|typed|entered|approved|pressed|clicked|checked)|it('s| is) (done|approved)|i did it)\b/i.test(text);
+  const positive = /\b(done|i (have |'ve )?(opened|typed|entered|approved|pressed|clicked|checked|looked|logged|went|visited|refreshed)|it('s| is) (done|approved)|i did it)\b/i.test(text);
   const negated = /\b(not|n't|never|nothing|no way|cannot|can't|refus\w*|won't|didn't|haven't|did not|have not)\b/i.test(text);
   const claimsAction = positive && !negated;
-  if (retry && tools === 0 && claimsAction) {
+  // ...and only when the assistant asked for a browser action this turn: "all done" after a
+  // goodbye is not a claim about a command, and sending it back only made the run longer.
+  if (retry && asked && tools === 0 && claimsAction) {
     say(`human claimed an action with no command run — sending it back once`);
     log.turns.push({ n: log.turns.length ? log.turns[log.turns.length - 1].n : 0, who: "human (retracted: no command was run)", text, at: now() });
     return humanTurn("You did not run ./browser or ./inbox this turn, so you cannot have done that. "
@@ -211,7 +213,7 @@ if (COLD) await coldStart();
 if (variant === "collide") await startCollider();
 say(`agent starts in ${agentCwd}; human is ${HUMAN}; transcript at ${logPath}`);
 let message = task;
-let done = false;
+let done = false, windDown = 0;
 for (let turn = 1; turn <= MAX_TURNS && !done; turn++) {
   const a = await agentTurn(message);
   log.turns.push({ n: turn, who: "human→agent", text: message, at: now() });
@@ -219,11 +221,17 @@ for (let turn = 1; turn <= MAX_TURNS && !done; turn++) {
   saveLog();
   say(`agent (turn ${turn}): ${a.text.slice(0, 300).replace(/\n/g, " ")}`);
   if (variant === "collide" && turn === 1) await colliderLands();
-  const h = await humanTurn(a.text);
-  log.turns.push({ n: turn, who: "human", text: h, at: now() });
+  const asked = /\b(open|enter|type|approve|refresh|inbox|email|code|look|check|see|browser|dashboard|page)\b/i.test(a.text) || /https?:\/\/|\.augur\.page/.test(a.text);
+  const humanToolsBefore = log.humanEvents.length;
+  const h = await humanTurn(a.text, { asked });
+  log.turns.push({ n: turn, who: "human", text: h, at: now(), tools: log.humanEvents.length - humanToolsBefore });
   saveLog();
   say(`human: ${h.slice(0, 300).replace(/\n/g, " ")}`);
   if (/THANKS-DONE/.test(h)) { done = true; break; }
+  // Two turns in a row where nobody asked anything and nobody ran anything is a goodbye
+  // loop, not a session; the transcript already holds everything it will hold.
+  windDown = (!asked && !/\?/.test(a.text) && log.humanEvents.length === humanToolsBefore) ? windDown + 1 : 0;
+  if (windDown >= 2) { say("both sides are saying goodbye; ending the run"); log.endedBy = "wind-down"; break; }
   message = h.replace(/THANKS-DONE/g, "").trim();
 }
 

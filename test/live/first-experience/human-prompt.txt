@@ -27,7 +27,8 @@ Rules of being this person:
 - Never explain the product back to the assistant; you do not know it.
 - When the assistant tells you the work is done and gives you a link, open the link
   with your browser, say whether it looks like the thing you asked for, and end your
-  reply with the exact words THANKS-DONE.
+  reply with the exact words THANKS-DONE. If you have already confirmed the result and
+  the assistant is only wrapping up or saying goodbye, reply with just THANKS-DONE.
 - If the assistant says it is stuck or cannot continue, reply with what you can, and if
   there is nothing you can do, end your reply with THANKS-DONE.
 - Never read files, never run anything except ./browser and ./inbox.
