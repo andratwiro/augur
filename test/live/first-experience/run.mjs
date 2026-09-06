@@ -83,7 +83,12 @@ async function coldStart() {
   const build = await sh("docker", ["build", "-q", "-t", COLD_IMAGE, path.join(HERE, "cold")]);
   if (build.code !== 0) throw new Error(`docker build: ${build.err.slice(-800)}`);
   coldContainer = `augur-cold-${Date.now().toString(36)}`;
-  const run = await sh("docker", ["run", "-d", "--name", coldContainer, "--rm", COLD_IMAGE]);
+  // The same DNS pin the host's processes run under (see pin-dns.mjs), as the container's
+  // hosts file: the agent inside uses the hostname and never learns of the pin.
+  const pins = (process.env.LIVE_PIN || "").split(",").map((p) => p.trim()).filter(Boolean)
+    .flatMap((p) => ["--add-host", p.replace("=", ":")]);
+  if (pins.length) say(`cold machine pins ${pins.filter((x) => x !== "--add-host").join(", ")} (the host's network drops that edge)`);
+  const run = await sh("docker", ["run", "-d", "--name", coldContainer, "--rm", ...pins, COLD_IMAGE]);
   if (run.code !== 0) throw new Error(`docker run: ${run.err.slice(-800)}`);
   // The container needs a Claude credential that outlives the run. A long-lived token from
   // `claude setup-token` (LIVE_CLAUDE_TOKEN) is handed in as CLAUDE_CODE_OAUTH_TOKEN on each
