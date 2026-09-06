@@ -221,3 +221,35 @@ test("a roster member who is not in the default space gets the membership gate's
   assert.equal(r.status, 404, "a non-member must see the same refusal a stranger's guess would get");
   assert.notEqual(r.headers.get("location"), "/__welcome", "the welcome gate sits below the membership gate and must never fire first");
 });
+
+// ── /__onboarding/installer/mac ──────────────────────────────────────────────────────
+//
+// Same guard as /__welcome itself (welcomeFlow(tctx): device pairing on), since the
+// installer only exists to serve that flow's "not yet" branch. Signed out gets the same
+// login page /__welcome hands back rather than a bare 401 — the download link sits behind
+// the same gate as the page that links to it.
+
+test("an editor downloads the mac installer as a shell-script attachment", async () => {
+  const { env } = await wired([ADA_MEMBER, VERA]);
+  const r = await fetchAs(env, ADA_MEMBER, "/__onboarding/installer/mac");
+  assert.equal(r.status, 200);
+  assert.equal(r.headers.get("content-type"), "text/x-shellscript; charset=utf-8");
+  assert.equal(r.headers.get("content-disposition"), 'attachment; filename="connect-acme.example.command"');
+  const body = await r.text();
+  assert.match(body, /set -euo pipefail/);
+  assert.match(body, /connect --origin https:\/\/acme\.example/);
+});
+
+test("a viewer asking for the mac installer is forbidden", async () => {
+  const { env } = await wired([ADA_MEMBER, VERA]);
+  const r = await fetchAs(env, VERA, "/__onboarding/installer/mac");
+  assert.equal(r.status, 403);
+});
+
+test("signed out, the mac installer route answers like /__welcome does: the login page", async () => {
+  const { env } = await wired([ADA_MEMBER]);
+  const r = await fetchAs(env, null, "/__onboarding/installer/mac");
+  assert.equal(r.status, 200);
+  assert.match(r.headers.get("content-type") || "", /text\/html/);
+  assert.match(await r.text(), /id="email"/);
+});

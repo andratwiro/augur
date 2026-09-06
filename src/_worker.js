@@ -121,6 +121,7 @@ import { isSeedSource, seedSource, SEED_ACTOR } from "./provenance.mjs";
 import { welcomeUnitFor } from "./welcome-unit.mjs";
 import { renderWelcomePage } from "./welcome-page.mjs";
 import { AGENT_TOOL } from "./agent-tool.mjs";
+import { macInstallerScript } from "./installer-mac.mjs";
 
 const COOKIE = "gv_auth";
 const MAX_AGE = 60 * 60 * 24 * 7; // 7 days
@@ -12149,6 +12150,22 @@ async function handleRequest(request, env, ctx, url, trace) {
       if (!who && tctx.USERS.length) return htmlResponse(loginPage(tctx, WELCOME_PATH, false, url.href), 200);
       if (!who || roleOf(who) === "viewer") return new Response(null, { status: 303, headers: { Location: "/", "Cache-Control": "no-store" } });
       return htmlResponse(renderWelcomePage({ origin: url.origin, me: who, agentTool: AGENT_TOOL }), 200);
+    }
+    // The welcome flow's "not yet" download: a per-workspace .command that sets up Node,
+    // the agent and the CLI, then connects. It exists in the same slot as /__welcome, and
+    // nowhere without it — the flow it belongs to is what device pairing gates. Signed
+    // out gets the same login page /__welcome hands back (this file is one step of that
+    // page, not a separate surface with its own rules); a viewer, who publishes nothing
+    // and has no pairing to approve, is refused rather than redirected, since a download
+    // link has no page of its own to bounce them to.
+    if (url.pathname === "/__onboarding/installer/mac" && welcomeFlow(tctx)) {
+      if (request.method !== "GET") return new Response("Method Not Allowed", { status: 405 });
+      const who = tctx.USERS.length ? await identify(request, env, tctx.USERS, { sessionKeys: tctx.SESSION_KEYS, tctx }) : null;
+      if (!who && tctx.USERS.length) return htmlResponse(loginPage(tctx, url.pathname, false, url.href), 200);
+      if (!who || roleOf(who) === "viewer") return jsonResponse({ error: "forbidden" }, 403);
+      return new Response(macInstallerScript({ origin: url.origin, agentTool: AGENT_TOOL }), { status: 200, headers: {
+        "content-type": "text/x-shellscript; charset=utf-8", "cache-control": "no-store",
+        "content-disposition": `attachment; filename="connect-${url.host.replace(/[^a-z0-9.-]/gi, "")}.command"` } });
     }
     if (url.pathname.startsWith("/__publish/_pair/")) {
       // Identity is resolved here rather than reusing the gate's `me` below, because this
