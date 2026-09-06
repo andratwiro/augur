@@ -3879,6 +3879,7 @@ async function pairApi(tctx, request, url, env, me) {
       ...rec, status: "approved", token: minted.token, space: minted.space,
       expiresAt: minted.expiresAt, approvedBy: me.email,
     }), { expirationTtl: Math.ceil(PAIR_TTL_MS / 1000) });
+    await notePairing(env, tctx, me.email);
     return jsonResponse({ ok: true, space: minted.space });
   }
 
@@ -10194,6 +10195,53 @@ async function onboardingStatusApi(tctx, request, env, me) {
   }
 }
 
+// The stamp behind /__onboarding/me — see onboardingMeApi. Fire-and-await, like
+// noteFirstPublish: the approval already minted a token, so a lost stamp must never fail
+// the response, but it must land before the caller learns the approval succeeded.
+async function notePairing(env, tctx, email) {
+  const stub = tenantStub(env, tctx && tctx.tenantId);
+  if (!stub || !email) return null;
+  const res = await stub.fetch("https://workspace/onboarding/note-pair", {
+    method: "POST", headers: { "content-type": "application/json" },
+    body: JSON.stringify({ workspaceId: tctx.tenantId, email: lcEmail(email), at: new Date().toISOString() }),
+  });
+  return res.ok ? await res.json() : null;
+}
+
+// The member's own onboarding, for the welcome flow to poll. `drafting`/`landed` are read
+// from the member's start unit through its unit object: a landing whose `by` is this member.
+async function onboardingMeApi(tctx, request, url, env, me) {
+  if (!me) return jsonResponse({ error: "unauthorized" }, 401);
+  const role = roleOf(me);
+  const none = { role, gated: false, paired: false, pairedAt: null, unit: null, url: null, drafting: false, landed: false, landedAt: null, done: false, later: false };
+  const stub = tenantStub(env, tctx && tctx.tenantId);
+  if (!stub) return jsonResponse({ ...none, backing: "none" });
+  if (request.method === "POST") {
+    let body; try { body = await request.json(); } catch (e) { return jsonResponse({ error: "bad-json" }, 400); }
+    await stub.fetch("https://workspace/onboarding/welcome-set", { method: "POST", headers: { "content-type": "application/json" },
+      body: JSON.stringify({ workspaceId: tctx.tenantId, email: me.email, done: body.done === true, later: body.later === true }) });
+  } else if (request.method !== "GET") return jsonResponse({ error: "method" }, 405);
+  let w; try { w = await (await stub.fetch("https://workspace/onboarding/welcome", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ email: me.email }) })).json(); } catch (e) { w = null; }
+  if (!w) return jsonResponse({ error: "status-unavailable" }, 503);
+  const m = w.member || {};
+  const out = { ...none, paired: !!m.pairedAt, pairedAt: m.pairedAt || null, unit: m.startUnit || null, done: !!m.welcomeDoneAt, later: !!m.welcomeLaterAt, backing: "workspace-object" };
+  if (out.unit) {
+    out.url = `${url.origin}${out.unit}`;
+    const ustub = unitStub(env, tctx.tenantId, out.unit);
+    if (ustub) {
+      try {
+        const p = await (await ustub.fetch(`https://unit/presence?at=${encodeURIComponent(new Date().toISOString())}`)).json();
+        out.drafting = (p.drafts || []).some((d) => d.owner === personId(me.email));
+        const h = await (await ustub.fetch("https://unit/history")).json();
+        const mine = (h.landings || []).find((l) => l.by === personId(me.email));
+        if (mine) { out.landed = true; out.landedAt = mine.at; }
+      } catch (e) { /* the object is unreachable; the flags stay false and the page keeps polling */ }
+    }
+  }
+  out.gated = role !== "viewer" && !out.done && !out.later;
+  return jsonResponse(out);
+}
+
 /**
  * An admin signed in successfully. Offer the workspace the chance to come back.
  *
@@ -12091,6 +12139,10 @@ async function handleRequest(request, env, ctx, url, trace) {
     // without a session); see onboardingStatusApi for the auth decision.
     if (url.pathname === "/__onboarding/status") return onboardingStatusApi(tctx, request, env, me);
 
+    // The member's own onboarding gate — see onboardingMeApi. Same placement and the
+    // same self-check as /__onboarding/status above (401 without a session).
+    if (url.pathname === "/__onboarding/me") return onboardingMeApi(tctx, request, url, env, me);
+
     // Comment-author faces, same deal as /__me and /__avatar/ above: this route must
     // stay here, ahead of the auth gate, because intercepting first is what makes it
     // reachable without a session — there's no isPublicPath entry for it, and adding
@@ -12559,4 +12611,5 @@ export const __testables = Object.freeze({
   WORKSPACE_ENTER_PATH, enterHandoff, tenantAccountKey,
   noteMembershipUpstream,
   noteFirstPublish, noteRoleTransition, onboardingStatusApi,
+  notePairing, onboardingMeApi,
 });

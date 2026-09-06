@@ -10,8 +10,34 @@
 // below are mostly about what must NOT happen.
 import { test } from "node:test";
 import assert from "node:assert/strict";
+import { DatabaseSync } from "node:sqlite";
 import worker from "../src/_worker.js";
 import { __testables as W } from "../src/_worker.js";
+import { TenantStore } from "../src/tenant-do.js";
+
+// A DO storage stub with REAL transaction semantics — copied from
+// test/first-publish-signal.test.mjs / test/onboarding-me.test.mjs.
+function tenantStorage(db) {
+  const sql = {
+    exec(stmt, ...params) {
+      if (params.length) {
+        const s = db.prepare(stmt);
+        return /^\s*SELECT|RETURNING/i.test(stmt) ? s.all(...params) : (s.run(...params), []);
+      }
+      if (/^\s*SELECT/i.test(stmt)) return db.prepare(stmt).all();
+      db.exec(stmt);
+      return [];
+    },
+  };
+  return {
+    sql,
+    transactionSync(cb) {
+      db.exec("BEGIN");
+      try { const out = cb(); db.exec("COMMIT"); return out; }
+      catch (e) { db.exec("ROLLBACK"); throw e; }
+    },
+  };
+}
 
 // TWO caches have to be cleared between fixtures, not one. `resolveTenant` memoises the
 // answer in a single per-isolate slot with a TTL, so every fixture after the first
@@ -260,4 +286,43 @@ test("A TOKEN WITH NO EXPIRY IS UNAFFECTED — every token minted before this ex
   console.log = orig;
   assert.notEqual(res.status, 401, "a token with no expiry was refused");
   assert.notEqual(res.status, 403, "a token with no expiry was refused");
+});
+
+// ── the stamp: approve records a pairing on the workspace object ────────────
+
+test("approve with a wired tenant object records the pairing", async () => {
+  // Any non-empty passHash makes an account a test can sign in as — identify() compares
+  // an HMAC over the roster's secret and never verifies a password (see test/fixtures/
+  // unit-env.mjs, which uses the same trick).
+  const HASH = "pbkdf2$100000$dGVzdHNhbHQ$dGVzdGhhc2g";
+  const editor = { ...EDITOR, passHash: HASH };
+  const { env, tenantId } = instance({ users: [ADMIN, editor, VIEWER] });
+
+  const db = new DatabaseSync(":memory:");
+  const object = new TenantStore({ storage: tenantStorage(db), blockConcurrencyWhile: async (f) => f() }, {});
+  await object.provision({ workspaceId: tenantId, adminEmail: ADMIN.email, adminName: "" });
+  await object.fetch(new Request("https://workspace/identity/roster/write", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({
+      workspaceId: tenantId,
+      configUsers: [ADMIN, editor, VIEWER].map((u) => ({ email: u.email, role: u.role, name: u.name })),
+    }),
+  }));
+  env.TENANTS = {
+    idFromName: (n) => n,
+    get: (n) => ({ fetch: (input, init) => object.fetch(new Request(input, init)) }),
+  };
+
+  const start = (await call(env, "/__publish/_pair/start")).json;
+  const cookie = `${W.USER_COOKIE}=${editor.email}.${await W.userToken(env, editor, editor.passHash)}`;
+  const approve = await call(env, "/__publish/_pair/approve", { body: { code: start.code }, cookie });
+  assert.equal(approve.status, 200, JSON.stringify(approve.json));
+
+  const w = await (await object.fetch(new Request("https://workspace/onboarding/welcome", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ email: editor.email }),
+  }))).json();
+  assert.ok(w.member && w.member.pairedAt, "approve did not stamp the pairing on the workspace object");
 });
