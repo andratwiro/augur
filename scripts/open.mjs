@@ -10,6 +10,7 @@ import path from "node:path";
 import { target, buildStamp } from "./lib/store.mjs";
 import { markPathFor } from "./lib/marks.mjs";
 import { unitClient, doOpen } from "./lib/draft.mjs";
+import { installAdapters } from "./lib/adapters.mjs";
 import { normUnit } from "../src/unit-core.mjs";
 
 const log = (m) => console.error(`\x1b[35m[open]\x1b[0m ${m}`);
@@ -43,6 +44,14 @@ if (!r.ok) {
   die(`could not open: ${r.error || r.status}${r.reason ? ` (${r.reason})` : ""}`);
 }
 log(`draft ${r.draftId} on ${unit} — ${r.files} file(s) in ${dir}`);
+// The agent tool's hooks, installed for this machine the first time a draft is opened
+// here (idempotent; `AUGUR_NO_ADAPTERS=1` skips it — the suite and CI set it).
+if (!process.env.AUGUR_NO_ADAPTERS) {
+  for (const a of installAdapters()) {
+    if (a.result === "installed") log(`${a.name}: editor hooks installed (${a.path}) — edits in a draft folder save on their own; edits to a shared checkout's prototypes are refused.`);
+    else if (a.result === "updated") log(`${a.name}: editor hooks updated (${a.path}).`);
+  }
+}
 if (r.others.length) {
   log("also drafting this prototype right now:");
   for (const o of r.others) log(`  ${o.session || "someone"} (${o.active ? "active" : "idle"})`);

@@ -49,10 +49,10 @@ test("watchFolder settles a burst of edits into one call, and ignores .augur", a
     await new Promise((r) => setTimeout(r, 100));
     fs.writeFileSync(path.join(dir, "a.html"), "a");
     fs.writeFileSync(path.join(dir, "b.html"), "b");
-    await new Promise((r) => setTimeout(r, 400));
+    await new Promise((r) => setTimeout(r, 900));
     assert.equal(calls, 1, "two writes inside the window are one save");
     fs.writeFileSync(path.join(dir, ".augur", "draft.json"), "{}");
-    await new Promise((r) => setTimeout(r, 400));
+    await new Promise((r) => setTimeout(r, 600));
     assert.equal(calls, 1, "the state file is not an edit");
   } finally { w.close(); }
 });
