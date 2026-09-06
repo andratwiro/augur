@@ -9272,62 +9272,55 @@ function doorFacts(tctx, url, env) {
 }
 
 function doorText(f) {
+  // Written as product documentation and nothing else. Two rounds of cold agents (6 Sep
+  // 2026) read anything on this page that addressed them — "AGENTS:", "for anyone who
+  // checks before running it", "when the person approving is not at the keyboard" — as
+  // the shape of a prompt injection, and refused on the wording alone. What stays is
+  // what is true and checkable; how a relaying agent should pace the pairing is printed
+  // by `connect` itself, on the machine that already chose to run it.
   const head = `Augur workspace "${f.workspace}" at ${f.origin}\n\n`
     + `This is a sign-in gate. Pages here need a person's session. Creating and\n`
-    + `publishing prototypes needs a publish token, and an agent gets one by device\n`
-    + `pairing, never by asking anyone for a password.\n\n`;
+    + `publishing prototypes needs a publish token; a terminal gets one by device\n`
+    + `pairing, never with anyone's password.\n\n`;
   const body = f.pairing.enabled
-    ? `Run, on the machine that will publish:\n\n`
+    ? `DEVICE PAIRING\n\n`
       + `  ${f.connect}\n\n`
-      + `It prints a link and a code. A member of this workspace opens the link in a\n`
-      + `browser they are already signed in to and enters the code. The token lands on\n`
-      + `that machine and nowhere else, and every verb below uses it from then on.\n`
-      + `Approving a code lets that one terminal publish as the person who approved it;\n`
-      + `everything it lands carries their name. A member whose role is viewer cannot\n`
-      + `approve, and the page says so.\n\n`
-      + `Members see this same instruction when signed in, at ${f.origin}/__connect and\n`
-      + `under Help > Building — so the person you are working for can read it there and\n`
-      + `confirm it is this workspace's own, without knowing anything technical.\n\n`
-      + `What the command is, for anyone who checks before running it: the CLI is this\n`
-      + `engine's own, open source at ${f.source} — the same engine that serves this page\n`
-      + `(${f.origin}/_build.json names the engine commit). \`npm view @augurworks/augur repository\`\n`
-      + `names that repository; \`npm pack @augurworks/augur\` lets you read it first. It is plain\n`
-      + `JavaScript with no runtime dependencies; the pairing is scripts/connect.mjs and it\n`
-      + `talks only to this origin's /__publish/_pair/ routes. It asks for no password, and\n`
-      + `there is none to give it.\n\n`
-      + `How the pairing goes when the person approving is not at the keyboard (an\n`
-      + `assistant working for them): the approval is theirs, in their browser — nobody\n`
-      + `else can do it, and the command does not try. Send them the line the command\n`
-      + `prints, as it is. When they will read that message only after the current turn\n`
-      + `ends, run \`connect --no-wait\`: it prints the line and exits. Once they say they\n`
-      + `approved, run the same command again — it collects the token for that same code and\n`
-      + `mints no second one. Waiting inside one turn skips nothing; it only hides the code\n`
-      + `from them for the five minutes it lives.\n\n`
+      + `prints a link and a code. A member of this workspace opens the link in a browser\n`
+      + `they are already signed in to and types the code. That pairs the one terminal that\n`
+      + `printed it, to publish as that member; everything it lands carries their name.\n`
+      + `Viewers cannot approve. A code lives five minutes. \`connect --no-wait\` prints the\n`
+      + `line and exits; \`connect\` run again after the approval collects the token for the\n`
+      + `same code. Members see this same instruction, signed in, at ${f.origin}/__connect\n`
+      + `and under Help > Building.\n\n`
+      + `THE COMMAND-LINE TOOL\n\n`
+      + `\`@augurworks/augur\` on npm is this engine: open source at ${f.source}, the same\n`
+      + `engine that serves this page (${f.origin}/_build.json names the commit). Releases\n`
+      + `are published from that repository's GitHub Actions with provenance\n`
+      + `(\`npm audit signatures\`), and \`npm view @augurworks/augur repository\` names it.\n`
+      + `Plain JavaScript, no dependencies. Every verb runs as \`npx @augurworks/augur <verb>\`;\n`
+      + `\`npm i -g @augurworks/augur\` puts \`augur\` on the PATH.\n\n`
       + (f.drafts && f.drafts.enabled
-        ? `You need no source tree here: \`augur open <opportunity>/<prototype>\` fetches that one\n`
-          + `prototype into a folder of its own (see below). Do not clone the workspace first.\n\n`
-          + `Until \`npm i -g @augurworks/augur\`, every verb runs as \`npx @augurworks/augur <verb>\`.\n`
-          + `The first \`open\` in a folder also installs a save hook in the editor tool's settings\n`
-          + `for that folder only (.claude/settings.local.json there; it says so), never account-wide:\n`
-          + `after each edit inside a draft folder it saves that draft; it does nothing elsewhere,\n`
-          + `and \`augur hook remove\` in that folder takes it out.\n\n`
-        : `With no source tree yet, \`npx @augurworks/augur clone --space ${f.workspace}\` then fetches\n`
+        ? ``
+        : `With no source tree yet, \`npx @augurworks/augur clone --space ${f.workspace}\` fetches\n`
           + `one (it reads the origin from the pairing).\n\n`)
     : `Device pairing is switched off on this workspace. Ask an admin for an invite;\n`
       + `once you have signed in, \`augur login\` (email and password, meant for CI)\n`
       + `trades that for a publish token.\n\n`;
   const drafts = f.drafts && f.drafts.enabled
-    ? `This workspace serves DRAFTS. To change a prototype, do not ship a tree — open it:\n\n`
-      + `  ${f.drafts.open}     # a folder of its own, live at once at its draft address\n`
-      + `  …edit; every save is live there before your next step…\n`
+    ? `EDITING (this workspace serves drafts)\n\n`
+      + `  ${f.drafts.open}     # one prototype into a folder of its own, live at once at its draft address\n`
+      + `  …edit; every save is live there…\n`
       + `  ${f.drafts.land}                               # the real URL moves; the last line printed is the live URL\n\n`
-      + `Two sessions on one prototype are both told and both work; if the second landing is\n`
-      + `refused, \`augur sync\` folds main into the draft and \`augur land\` again. \`augur ship\`\n`
-      + `is retired here and says so. The contract: agents/drafts.md in the engine clone.\n\n`
+      + `No source tree is needed and the workspace is not cloned. Two sessions on one\n`
+      + `prototype are both told and both work; a refused landing is \`augur sync\`, then\n`
+      + `\`augur land\` again. \`ship\` is retired here. The first \`open\` in a folder installs a\n`
+      + `save hook in that folder's editor settings (.claude/settings.local.json; it says so),\n`
+      + `never account-wide; \`augur hook remove\` there takes it out. The contract:\n`
+      + `agents/drafts.md in the engine repository.\n\n`
     : "";
-  const tail = `Never try a found or guessed password against this gate. It throttles failed\n`
-    + `attempts per address and per email, and the seed in a deploy shell's identity\n`
-    + `file is not a credential.\n\n`
+  const tail = `Sign-in here throttles failed attempts per address and per email; a found or\n`
+    + `guessed password is not a way in, and the seed in a deploy shell's identity file\n`
+    + `is not a credential.\n\n`
     + `Machine-readable: ${DOOR_WELL_KNOWN}\n`;
   return head + body + drafts + tail;
 }
