@@ -237,7 +237,9 @@ for (let turn = 1; turn <= MAX_TURNS && !done; turn++) {
 
 // ── measures ────────────────────────────────────────────────────────────────
 const agentTexts = log.turns.filter((t) => t.who === "agent").map((t) => t.text);
-const urls = [...new Set(agentTexts.join("\n").match(new RegExp(`${origin.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}[^\\s)"'<>]*`, "g")) || [])];
+// Markdown around a link is not part of it: `**https://…/**` and `https://…/\`` both end in
+// punctuation no address of ours carries, and a live check on the raw match answered 404.
+const urls = [...new Set((agentTexts.join("\n").match(new RegExp(`${origin.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}[^\\s)"'<>]*`, "g")) || []).map((u) => u.replace(/[*`_.,:;!?]+$/, "")))];
 const asks = log.turns.filter((t) => t.who === "agent").length;
 const askedForPassword = agentTexts.some((t) => /password/i.test(t));
 const askedForTechnical = agentTexts.some((t) => /\b(run|terminal|npm|npx|token|git)\b/i.test(t) && !/open .*and enter/i.test(t));
