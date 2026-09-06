@@ -121,7 +121,8 @@ import { isSeedSource, seedSource, SEED_ACTOR } from "./provenance.mjs";
 import { welcomeUnitFor } from "./welcome-unit.mjs";
 import { renderWelcomePage } from "./welcome-page.mjs";
 import { AGENT_TOOL } from "./agent-tool.mjs";
-import { macInstallerScript } from "./installer-mac.mjs";
+import { macInstallerScript, installerFileNames } from "./installer-mac.mjs";
+import { zipSingleFile } from "./zip-store.mjs";
 
 const COOKIE = "gv_auth";
 const MAX_AGE = 60 * 60 * 24 * 7; // 7 days
@@ -12153,19 +12154,28 @@ async function handleRequest(request, env, ctx, url, trace) {
     }
     // The welcome flow's "not yet" download: a per-workspace .command that sets up Node,
     // the agent and the CLI, then connects. It exists in the same slot as /__welcome, and
-    // nowhere without it — the flow it belongs to is what device pairing gates. Signed
-    // out gets the same login page /__welcome hands back (this file is one step of that
-    // page, not a separate surface with its own rules); a viewer, who publishes nothing
-    // and has no pairing to approve, is refused rather than redirected, since a download
-    // link has no page of its own to bounce them to.
+    // nowhere without it — the flow it belongs to is what device pairing gates.
+    // ⚠️ IT ANSWERS WITH A ZIP, NOT THE SCRIPT. HTTP carries no file mode, so a `.command`
+    // served directly saves as 0644 and Terminal refuses to run it — see src/zip-store.mjs.
+    // The archive holds one entry at 0755, named by `installerFileNames` so the sentence
+    // on the page and the file the person actually unpacks are built from one string.
+    // ⚠️ SIGNED OUT IS A REDIRECT, NOT A PAGE. The link on the welcome page carries
+    // `download`, and a `download` anchor saves whatever body comes back under the
+    // filename in the header — so answering with the login HTML here would put the sign-in
+    // page on somebody's disk as `connect-<host>.zip`. A 303 to /__welcome sends the
+    // browser somewhere it will render, and that path shows the login page itself. A
+    // viewer, who publishes nothing and has no pairing to approve, is refused with JSON
+    // rather than redirected: a download link has no page of its own to bounce them to.
     if (url.pathname === "/__onboarding/installer/mac" && welcomeFlow(tctx)) {
       if (request.method !== "GET") return new Response("Method Not Allowed", { status: 405 });
       const who = tctx.USERS.length ? await identify(request, env, tctx.USERS, { sessionKeys: tctx.SESSION_KEYS, tctx }) : null;
-      if (!who && tctx.USERS.length) return htmlResponse(loginPage(tctx, url.pathname, false, url.href), 200);
+      if (!who && tctx.USERS.length) return new Response(null, { status: 303, headers: { Location: WELCOME_PATH, "Cache-Control": "no-store" } });
       if (!who || roleOf(who) === "viewer") return jsonResponse({ error: "forbidden" }, 403);
-      return new Response(macInstallerScript({ origin: url.origin, agentTool: AGENT_TOOL }), { status: 200, headers: {
-        "content-type": "text/x-shellscript; charset=utf-8", "cache-control": "no-store",
-        "content-disposition": `attachment; filename="connect-${url.host.replace(/[^a-z0-9.-]/gi, "")}.command"` } });
+      const names = installerFileNames(url.host);
+      const archive = zipSingleFile({ name: names.command, bytes: macInstallerScript({ origin: url.origin, agentTool: AGENT_TOOL }) });
+      return new Response(archive, { status: 200, headers: {
+        "content-type": "application/zip", "cache-control": "no-store",
+        "content-disposition": `attachment; filename="${names.zip}"` } });
     }
     if (url.pathname.startsWith("/__publish/_pair/")) {
       // Identity is resolved here rather than reusing the gate's `me` below, because this

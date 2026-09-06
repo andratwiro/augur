@@ -171,6 +171,9 @@ test("/__welcome is one self-contained page with the five steps and the command"
   assert.match(html, /npx @augurworks\/augur connect --origin https:\/\/acme\.example/);
   assert.match(html, /\/__onboarding\/me/);
   assert.match(html, /\/__onboarding\/installer\/mac/);
+  // The download is a zip, so the file a person opens is not the file they downloaded —
+  // the page names it, from the same helper that names it inside the archive.
+  assert.match(html, /connect-acme\.example\.command/, "the page says which file to open after unpacking");
   assert.doesNotMatch(html, /<script src=|<link rel="stylesheet"/, "no external request leaves this page");
   assert.match(html, /do this later/i);
 });
@@ -225,19 +228,24 @@ test("a roster member who is not in the default space gets the membership gate's
 // ── /__onboarding/installer/mac ──────────────────────────────────────────────────────
 //
 // Same guard as /__welcome itself (welcomeFlow(tctx): device pairing on), since the
-// installer only exists to serve that flow's "not yet" branch. Signed out gets the same
-// login page /__welcome hands back rather than a bare 401 — the download link sits behind
-// the same gate as the page that links to it.
+// installer only exists to serve that flow's "not yet" branch.
 
-test("an editor downloads the mac installer as a shell-script attachment", async () => {
+test("an editor downloads the mac installer as a ZIP whose one entry is the .command", async () => {
   const { env } = await wired([ADA_MEMBER, VERA]);
   const r = await fetchAs(env, ADA_MEMBER, "/__onboarding/installer/mac");
   assert.equal(r.status, 200);
-  assert.equal(r.headers.get("content-type"), "text/x-shellscript; charset=utf-8");
-  assert.equal(r.headers.get("content-disposition"), 'attachment; filename="connect-acme.example.command"');
-  const body = await r.text();
-  assert.match(body, /set -euo pipefail/);
-  assert.match(body, /connect --origin https:\/\/acme\.example/);
+  assert.equal(r.headers.get("content-type"), "application/zip");
+  assert.equal(r.headers.get("content-disposition"), 'attachment; filename="connect-acme.example.zip"');
+  const body = new Uint8Array(await r.arrayBuffer());
+  // A zip is what makes the file arrive executable — HTTP carries no mode, and a bare
+  // .command saves 0644, which Terminal refuses. src/zip-store.mjs writes the mode; the
+  // unpack itself is proven in test/installer-mac.test.mjs against a real `unzip`.
+  assert.deepEqual([...body.slice(0, 4)], [0x50, 0x4b, 0x03, 0x04], "PK\\x03\\x04 — a local file header");
+  const text = new TextDecoder().decode(body);
+  assert.match(text, /connect-acme\.example\.command/, "the entry is named for this workspace");
+  // STORE, not DEFLATE, so the script is legible in the archive's own bytes.
+  assert.match(text, /set -euo pipefail/);
+  assert.match(text, /connect --origin https:\/\/acme\.example/);
 });
 
 test("a viewer asking for the mac installer is forbidden", async () => {
@@ -246,10 +254,15 @@ test("a viewer asking for the mac installer is forbidden", async () => {
   assert.equal(r.status, 403);
 });
 
-test("signed out, the mac installer route answers like /__welcome does: the login page", async () => {
+// ⚠️ THE LINK ON THE PAGE CARRIES `download`, and a `download` anchor saves whatever body
+// comes back under the filename in the header. Answering a signed-out request with the
+// login page — which is what this route used to do, mirroring /__welcome — therefore put
+// the sign-in HTML on somebody's disk as connect-<host>.zip, with nothing on screen. A
+// 303 sends the browser to /__welcome, which renders the login page itself.
+test("signed out, the mac installer route redirects to /__welcome rather than serving a page as a file", async () => {
   const { env } = await wired([ADA_MEMBER]);
   const r = await fetchAs(env, null, "/__onboarding/installer/mac");
-  assert.equal(r.status, 200);
-  assert.match(r.headers.get("content-type") || "", /text\/html/);
-  assert.match(await r.text(), /id="email"/);
+  assert.equal(r.status, 303);
+  assert.equal(r.headers.get("location"), "/__welcome");
+  assert.equal(await r.text(), "", "no body at all — a download anchor would have saved one");
 });

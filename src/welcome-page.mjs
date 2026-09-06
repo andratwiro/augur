@@ -22,6 +22,8 @@
 // word, and every fact the page waits on (paired, drafting, landed) comes from
 // `/__onboarding/me`, which is the workspace's own record and agrees across devices.
 
+import { installerFileNames } from "./installer-mac.mjs";
+
 const esc = (s) => String(s === undefined || s === null ? "" : s)
   .replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 // A value going into the inline SCRIPT, not into markup: JSON with `<` escaped, so a
@@ -47,6 +49,15 @@ const APPROVE_FORM = `<form data-approve><input class="code" name="code" placeho
  */
 export function renderWelcomePage({ origin, me, agentTool } = {}) {
   const cmd = `npx @augurworks/augur connect --origin ${origin || ""}`;
+  // The name the download unpacks to, taken from the module that also names it inside the
+  // archive and in the route's Content-Disposition — one string, so the sentence telling
+  // somebody which file to open cannot come to describe a file that is not there. A host
+  // that will not parse leaves the copy without a name rather than with a wrong one.
+  let commandFile = "";
+  try { commandFile = installerFileNames(new URL(origin).host).command; } catch (e) { commandFile = ""; }
+  const openLine = commandFile
+    ? `The download unpacks to a file called <code>${esc(commandFile)}</code>. Open that one.`
+    : `Unpack the download, then open the <code>.command</code> file inside it.`;
   return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex, nofollow"><title>Welcome · Augur</title>
 <style>
@@ -80,7 +91,7 @@ export function renderWelcomePage({ origin, me, agentTool } = {}) {
     <h1>Set one up</h1>
     <p>One file for your Mac. It installs what is needed, connects to this workspace, and opens the approval page for you.</p>
     <a class="primary" href="/__onboarding/installer/mac" download>Download for Mac</a>
-    <p>Open it from your Downloads. If your Mac says it is from an unidentified developer, right-click it and choose Open.</p>
+    <p>${openLine} If your Mac says it is from an unidentified developer, right-click it and choose Open.</p>
     ${APPROVE_FORM}
     <p class="status" data-status>Waiting for a terminal…</p>
     <button class="primary" data-go="change" disabled data-needs="paired">Next</button>
