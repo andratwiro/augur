@@ -311,3 +311,24 @@ test("close refuses an open draft unless discarding", async () => {
   assert.equal(fs.existsSync(dir), false);
   assert.equal(inst.drafts.size, 0);
 });
+
+test("open refuses a unit that does not exist unless told it is new, and refuses --new on one that does", async () => {
+  const empty = fakeInstance({});
+  const dir1 = path.join(tmp(), "new");
+  const guessed = await doOpen({ client: empty.client, unit: U, dir: dir1, origin: "https://x.test", space: "alpha", session: "s", now: "2026-09-06T10:00:00.000Z" });
+  assert.equal(guessed.ok, false);
+  assert.equal(guessed.error, "unknown-unit");
+  assert.equal(empty.drafts.size, 0, "the draft it opened to find out was handed back");
+  assert.equal(fs.existsSync(dir1), false, "no folder was left behind");
+  const created = await doOpen({ client: empty.client, unit: U, dir: dir1, origin: "https://x.test", space: "alpha", session: "s", now: "2026-09-06T10:00:00.000Z", isNew: true });
+  assert.equal(created.ok, true, JSON.stringify(created));
+  assert.equal(created.isNew, true);
+  assert.equal(created.files, 0);
+  assert.ok(fs.existsSync(path.join(dir1, ".augur", "draft.json")), "an empty folder with its state file");
+  const full = fakeInstance({ "index.html": "<h1>x</h1>" });
+  const dir2 = path.join(tmp(), "existing");
+  const twice = await doOpen({ client: full.client, unit: U, dir: dir2, origin: "https://x.test", space: "alpha", session: "s", now: "", isNew: true });
+  assert.equal(twice.ok, false);
+  assert.equal(twice.error, "unit-exists");
+  assert.equal(full.drafts.size, 0);
+});

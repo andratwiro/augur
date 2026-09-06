@@ -5033,21 +5033,23 @@ const UNIT_CT_RE = /^[\w.+-]+\/[\w.+-]+(; ?charset=[\w-]+)?$/i;
 // to anonymous visitors, from a draft on a folder nobody edits.
 const isNewUnitPath = (unit) => unit.split("/").filter(Boolean).length === 2;
 // Top-level folders a NEW unit may not be created under. A landing replaces a unit's
-// folder wholesale, so a draft opened on `/components/button/` or `/skills/x-ui/` would
-// have replaced the design system's or the gallery's own files with whatever one draft
-// held. These are the folders a site builds from and every prototype reads: the design
-// system, the gallery pages, the changelog, the search index, engine chrome (`_`, `__`).
-// Stateless and the same on every workspace — an opportunity folder is anything else,
-// `/playground/<name>/` included. A unit the manifest ALREADY declares is never held to
-// this: the manifest is the authority on what exists.
+// folder wholesale, so the folders whose contents are GENERATED — the tokens page, the
+// primitives gallery, the changelog, the search index, fonts, engine chrome (`_`, `__`) —
+// are never a unit. The four library tiers are NOT here: `/components/button/` is one
+// demo folder, a unit like any prototype, and the tier's own index is a sibling file the
+// derived renderer owns. `skills` stays reserved with ONE exception, decided where the
+// workspace's declared design system is known (`unitApi`): the skill folder the space
+// names is the design-system unit. Stateless and the same on every workspace. A unit the
+// manifest ALREADY declares is never held to this: the manifest is the authority.
 const RESERVED_UNIT_FOLDERS = Object.freeze([
-  "base", "components", "pages", "patterns", "skills", "tokens", "fonts",
-  "admin", "changelog", "search",
+  "skills", "tokens", "primitives", "fonts", "tracks", "admin", "changelog", "search",
 ]);
 const isReservedUnitFolder = (unit) => {
   const first = unit.split("/").filter(Boolean)[0] || "";
   return first.startsWith("_") || RESERVED_UNIT_FOLDERS.includes(first);
 };
+/** The one unit allowed under `skills/`: the design system the workspace declares. */
+const isDeclaredSkillUnit = (unit, tctx) => ((tctx && tctx.PUBLIC_SKILL_PREFIXES) || []).some((p) => normUnit(p) === unit);
 const shortText = (s, n) => String(s == null ? "" : s).slice(0, n);
 // `tctx.SPACES` is a routing field, filled from the live manifests by `loadTenantContext`
 // on the request's normal path — which this route also goes through, since `handleRequest`
@@ -5144,7 +5146,11 @@ async function writeUnitLanding(tctx, env, spaceId, unit, table, changed, who, n
     // A unit the manifest already declares keeps the entry it has, spelling and all: the
     // set union that replaced it added a second, normalized entry beside one written
     // without its trailing slash, and two entries for one unit is two things to prune.
-    routing.publicPrefixes = authoredUnits(cur).has(unit)
+    // The design-system unit is the one landing that adds NO public prefix: its public
+    // surface is the rendered-asset rule `publicSkillPrefixes` already spells, and a whole
+    // skill folder opened to the gate would expose the documents that rule keeps gated.
+    const skillUnit = ((cur.routing || {}).publicSkillPrefixes || []).some((p) => normUnit(p) === unit);
+    routing.publicPrefixes = authoredUnits(cur).has(unit) || skillUnit
       ? [...(routing.publicPrefixes || [])]
       : [...(routing.publicPrefixes || []), unit];
     routing.unitSources = { ...(routing.unitSources || {}), [unit]: { sha: null, dirty: false, landed: true, by: who.personId, at: now } };
@@ -5301,7 +5307,7 @@ async function unitApi(tctx, request, url, env) {
   // reached, so a folder that is not one is never given a draft to be adopted from later.
   // A unit the space ALREADY publishes is a unit whatever its shape (the manifest is the
   // authority on what exists); anything else has to be the shape a new one is created in.
-  if (!authoredUnits(live).has(unit)) {
+  if (!authoredUnits(live).has(unit) && !isDeclaredSkillUnit(unit, tctx)) {
     if (!isNewUnitPath(unit)) return jsonResponse({ error: "bad-unit", reason: "not-a-prototype-folder" }, 400);
     if (isReservedUnitFolder(unit)) return jsonResponse({ error: "bad-unit", reason: "reserved-folder" }, 400);
   }

@@ -16,6 +16,12 @@ augur sync                               # only when land was refused: fold main
 That is it. There is no commit, no push, no build. The URL `land` prints is what you hand
 the person you are working for — never a localhost, never a `file://` path.
 
+A prototype that does not exist yet: `augur open --new <opportunity>/<name>` gives you an
+empty folder and an empty draft; write its `index.html` and land. The same works for a
+library demo (`components/<name>`, `base/…`, `patterns/…`, `pages/…`) and for the
+workspace's design system (`skills/<prefix>-ui`), which is one unit like any other.
+Without `--new`, a name that does not exist is refused rather than guessed at.
+
 ## What a draft is
 
 Your own live copy of one prototype, at its own address: the prototype's URL with `@` and

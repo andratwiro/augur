@@ -150,11 +150,19 @@ async function materialise(client, unit, table, dir) {
   }
 }
 
-async function doOpenImpl({ client, unit, dir, origin, space, session, now }) {
+async function doOpenImpl({ client, unit, dir, origin, space, session, now, isNew = false }) {
   if (fs.existsSync(dir) && fs.readdirSync(dir).length) return { ok: false, error: "folder-not-empty", dir };
   const createdFolder = !fs.existsSync(dir);
   const o = await client.open({ unit });
   if (o.status) return { ok: false, ...o };
+  // A unit with no files is one that does not exist yet. Creating one is a decision the
+  // caller states with `isNew`; without it, a typo would quietly open an empty draft on a
+  // prototype that was never there. Either mismatch hands the draft straight back.
+  const exists = Object.keys(o.table || {}).length > 0;
+  if (exists !== !isNew) {
+    try { await client.discard({ unit, draftId: o.draftId }); } catch (e) { /* best-effort */ }
+    return { ok: false, error: exists ? "unit-exists" : "unknown-unit", unit };
+  }
   // From here the server-side draft exists, so any failure below must both undo what we
   // wrote to disk and tell the server to drop the orphan — otherwise a retry finds a
   // half-materialised folder (`folder-not-empty`) and the draft it opened is never freed.
@@ -177,7 +185,7 @@ async function doOpenImpl({ client, unit, dir, origin, space, session, now }) {
     throw err;
   }
   const others = (o.presence || []).filter((d) => d.id !== o.draftId);
-  return { ok: true, draftId: o.draftId, address: `${origin}${o.address}`, files: Object.keys(o.table).length, others };
+  return { ok: true, draftId: o.draftId, address: `${origin}${o.address}`, files: Object.keys(o.table).length, others, isNew: !exists };
 }
 
 async function doSaveImpl({ client, dir, baseRevision, baseTable }) {

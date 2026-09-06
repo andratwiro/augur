@@ -403,19 +403,20 @@ test("an opportunity is not a unit, and a prototype folder is", async () => {
   }
 });
 
-// ── a new unit may not claim a shared folder ─────────────────────────────────
+// ── a new unit may not claim a GENERATED folder ──────────────────────────────
 //
-// A two-segment path was enough to open a NEW unit, so `/components/button/` or
-// `/skills/x-ui/` opened as one — and landing replaces a unit's folder wholesale, which
-// would have taken the design system's or the gallery's own files with it.
-test("a new unit may not sit under a folder the site shares", async () => {
+// A two-segment path was enough to open a NEW unit, so `/tokens/x/` or `/skills/x-ui/`
+// opened as one — and landing replaces a unit's folder wholesale, which would have taken
+// a generated page or an undeclared skill folder with it. A library demo folder is a unit
+// like any prototype (slice 5): the tier's index is a sibling the derived renderer owns.
+test("a new unit may not sit under a folder the site generates", async () => {
   const { ctx, env } = await setup();
-  for (const unit of ["/components/button/", "/skills/x-ui/", "/base/x/", "/pages/x/", "/patterns/x/"]) {
+  for (const unit of ["/tokens/x/", "/skills/x-ui/", "/primitives/x/", "/_read/x/"]) {
     const r = await json(await call(ctx, env, "open", { unit }));
     assert.equal(r.status, 400, `${unit} was opened`);
     assert.deepEqual(r.body, { error: "bad-unit", reason: "reserved-folder" });
   }
-  for (const unit of ["/checkout/fresh/", "/playground/sketch/"]) {
+  for (const unit of ["/checkout/fresh/", "/playground/sketch/", "/components/button/", "/base/x/", "/pages/x/", "/patterns/x/"]) {
     const r = await json(await call(ctx, env, "open", { unit }));
     assert.equal(r.status, 200, `${unit}: ${JSON.stringify(r.body)}`);
   }
@@ -678,4 +679,43 @@ test("the socket verb forwards the upgrade to the unit's object with the draft n
   assert.equal(sockets.length, 1, "a bad id never reaches the object");
   const plain = await W.unitApi(ctx, new Request(url, { headers: { Authorization: "Bearer tok" } }), new URL(url), env);
   assert.equal(plain.status, 426, "without an Upgrade the object says so");
+});
+
+test("every folder a person edits is a unit: library demos may be created, generated folders may not, and the declared design system is one unit", async () => {
+  const t = tenant(), ctx = { ...ctxFor(t), PUBLIC_SKILL_PREFIXES: ["/skills/starter-ui/"] };
+  const live = manifestOf(7, { [U]: { "index.html": INDEX } });
+  live.files["/skills/starter-ui/tokens.css"] = { h: sha(CSS), ct: "text/css; charset=utf-8", s: CSS.length };
+  live.routing.publicSkillPrefixes = ["/skills/starter-ui/"];
+  const env = await makeEnv({ live });
+  await env.BUNDLES.put(`blobs/${sha(CSS)}`, CSS);
+  W.__setTenantTestState({ memo: { at: Date.now(), tenantId: t } });
+  for (const unit of ["/components/card/", "/base/button/", "/patterns/hero/", "/pages/home/", "/playground/scratch/"]) {
+    const r = await json(await call(ctx, env, "open", { unit }));
+    assert.equal(r.status, 200, `${unit}: ${JSON.stringify(r.body)}`);
+    assert.deepEqual(r.body.table, {}, `${unit} is new and empty`);
+  }
+  for (const unit of ["/tokens/x/", "/primitives/x/", "/skills/other-ui/", "/_read/x/"]) {
+    const r = await json(await call(ctx, env, "open", { unit }));
+    assert.equal(r.status, 400, unit);
+    assert.equal(r.body.reason, "reserved-folder", unit);
+  }
+  for (const unit of ["/admin/x/", "/fonts/x/"]) {
+    const r = await json(await call(ctx, env, "open", { unit }));
+    assert.equal(r.status, 400, unit);
+    assert.equal(r.body.reason, "not-publishable", `${unit} is engine chrome, refused before the folder rule`);
+  }
+  // The declared design system opens with its files, lands, and never becomes a PUBLIC prefix.
+  const ds = await json(await call(ctx, env, "open", { unit: "/skills/starter-ui/" }));
+  assert.equal(ds.status, 200, JSON.stringify(ds.body));
+  assert.equal(ds.body.table["/skills/starter-ui/tokens.css"].h, sha(CSS));
+  const v2 = "h1{color:teal}";
+  await env.BUNDLES.put(`blobs/${sha(v2)}`, v2);
+  await call(ctx, env, "save", { unit: "/skills/starter-ui/", draftId: ds.body.draftId, draftRevision: 0,
+    changes: [{ path: "/skills/starter-ui/tokens.css", h: sha(v2), ct: "text/css; charset=utf-8", s: v2.length, baseHash: sha(CSS) }] });
+  const landed = await json(await call(ctx, env, "land", { unit: "/skills/starter-ui/", draftId: ds.body.draftId, baseRevision: ds.body.baseRevision, note: "teal" }));
+  assert.equal(landed.status, 200, JSON.stringify(landed.body));
+  const now = liveNow(env);
+  assert.equal(now.files["/skills/starter-ui/tokens.css"].h, sha(v2), "the design system's file moved");
+  assert.equal(now.routing.publicPrefixes.includes("/skills/starter-ui/"), false, "the skill folder is not a public prefix");
+  assert.ok(now.routing.unitSources["/skills/starter-ui/"].landed, "but the landing is recorded");
 });

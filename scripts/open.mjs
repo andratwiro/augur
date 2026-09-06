@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// augur open <prototype> [--dir <folder>] [--session <label>]
+// augur open <prototype> [--new] [--dir <folder>] [--session <label>]
 //
 // Open one prototype into a folder of its own, as a draft that is live at once at its own
 // address. Prints who else is drafting it. The folder holds only that prototype's files and
@@ -35,15 +35,18 @@ const session = process.env.AUGUR_SESSION || opt("--session") || `session-${proc
 const dir = path.resolve(opt("--dir") || unit.split("/").filter(Boolean).pop());
 
 const client = unitClient({ origin, token, space, session });
-const r = await doOpen({ client, unit, dir, origin, space, session, now: new Date().toISOString() });
+const isNew = argv.includes("--new");
+const r = await doOpen({ client, unit, dir, origin, space, session, now: new Date().toISOString(), isNew });
 if (!r.ok) {
   if (r.error === "folder-not-empty") die(`${r.dir} is not empty — pick another folder with --dir.`);
+  if (r.error === "unknown-unit") die(`${unit} does not exist here. To create it: \`augur open --new ${unit.replace(/^\/|\/$/g, "")}\`.`);
+  if (r.error === "unit-exists") die(`${unit} exists already — open it without --new.`);
   if (r.error === "units-not-configured") die("this instance does not serve drafts yet (no unit store bound).");
   if (r.error === "bad-unit" && r.reason === "reserved-folder") die(`${unit} sits under a folder the engine reserves — a prototype lives at <opportunity>/<prototype>.`);
   if (r.error === "bad-unit" && r.reason === "not-a-prototype-folder") die(`${unit} is not a prototype folder — name one as <opportunity>/<prototype>.`);
   die(`could not open: ${r.error || r.status}${r.reason ? ` (${r.reason})` : ""}`);
 }
-log(`draft ${r.draftId} on ${unit} — ${r.files} file(s) in ${dir}`);
+log(r.isNew ? `draft ${r.draftId} on ${unit} — a NEW prototype; ${dir} is empty, write its index.html there` : `draft ${r.draftId} on ${unit} — ${r.files} file(s) in ${dir}`);
 // The agent tool's hooks, installed for this machine the first time a draft is opened
 // here (idempotent; `AUGUR_NO_ADAPTERS=1` skips it — the suite and CI set it).
 if (!process.env.AUGUR_NO_ADAPTERS) {
