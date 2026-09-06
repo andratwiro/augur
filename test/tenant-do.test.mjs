@@ -364,6 +364,35 @@ test("welcome_owed_at is absent until something stamps it, and the stamp is writ
   assert.ok(store.welcome("ada@x.test").member.welcomeLaterAt);
 });
 
+test("a v5-shaped object answers welcome() rather than throwing — the read migrates itself", async () => {
+  // ⚠️ THE ONE READ NO WRITE COMES BEFORE. `/onboarding/welcome` deliberately does not
+  // `init()`, so an object built by an engine that predates `welcome_owed_at` reaches this
+  // SELECT with the column still missing — and this is what `/` and `/__onboarding/me`
+  // call, so the workspace answered 503 on every load until some unrelated write happened
+  // to run the ALTER for it.
+  const { store, db } = workspace("ws-v5");
+  await store.init("ws-v5");
+  db.exec("ALTER TABLE members DROP COLUMN welcome_owed_at"); // back to the v5 shape
+  db.prepare("INSERT INTO members (email, role, name, added_at) VALUES (?,?,?,?)")
+    .run("ada@x.test", "editor", "Ada", "2026-09-06T09:00:00Z");
+
+  const w = store.welcome("ada@x.test");
+  assert.equal(w.provisioned, true);
+  assert.equal(w.member.welcomeOwedAt, null,
+    "a member who predates the column is not owed — that is the honest answer, and it is an ANSWER");
+
+  // And it healed the object rather than working around it once: the column is really
+  // there afterwards, so the next read needs no rescue.
+  assert.ok(db.prepare("PRAGMA table_info(members)").all().some((c) => c.name === "welcome_owed_at"),
+    "the additions were applied, not skipped");
+  assert.equal(store.welcome("ada@x.test").member.welcomeOwedAt, null);
+
+  // Anything that is NOT a missing column is a schema this build cannot read, and is
+  // rethrown: a read that answered around a broken table would serve wrong facts.
+  db.exec("ALTER TABLE members RENAME TO members_gone");
+  assert.throws(() => store.welcome("ada@x.test"), /no such table/i);
+});
+
 test("welcome_owed_at is in BOTH schema lists, so a migrated object and a fresh one agree", () => {
   // The generic parity test above walks every addition; this one names the column, so a
   // future edit that drops it from one list fails with the reason rather than a count.
@@ -372,4 +401,31 @@ test("welcome_owed_at is in BOTH schema lists, so a migrated object and a fresh 
   assert.ok(TENANT_SCHEMA.some((stmt) => /CREATE TABLE IF NOT EXISTS members/.test(stmt) && /welcome_owed_at TEXT/.test(stmt)),
     "welcome_owed_at is not in the CREATE — a freshly provisioned workspace would never have it");
   assert.ok(TENANT_SCHEMA_VERSION >= 6, "the version was not bumped with the column");
+});
+
+// ── kind: WHY a link was minted, which is what stops a password reset owing a welcome ──
+
+test("an invite's kind is in both schema lists, and round-trips through a real engine", async () => {
+  assert.ok(TENANT_SCHEMA_ADDITIONS.some((a) => a.table === "invites" && a.column === "kind"),
+    "invites.kind is not in TENANT_SCHEMA_ADDITIONS — an object built by an older engine would never get it");
+  assert.ok(TENANT_SCHEMA.some((stmt) => /CREATE TABLE IF NOT EXISTS invites/.test(stmt) && /kind\s+TEXT/.test(stmt)),
+    "invites.kind is not in the CREATE — a freshly provisioned workspace would never have it");
+  assert.ok(TENANT_SCHEMA_VERSION >= 7, "the version was not bumped with the column");
+
+  const { store } = workspace("ws-kind");
+  await store.init("ws-kind");
+  const now = Date.now();
+  const live = new Date(now + 60_000).toISOString();
+  store.inviteMint({ tokenHash: "h-inv", email: "a@x.test", createdAt: "2026-09-07T09:00:00Z", expiresAt: live, kind: "invite" }, now);
+  store.inviteMint({ tokenHash: "h-res", email: "b@x.test", createdAt: "2026-09-07T09:00:00Z", expiresAt: live, kind: "reset" }, now);
+  store.inviteMint({ tokenHash: "h-old", email: "c@x.test", createdAt: "2026-09-07T09:00:00Z", expiresAt: live }, now);
+
+  // The RECORD comes back, not the address: the redemption has to know what it burned,
+  // and once it is burned there is nothing left to ask.
+  assert.deepEqual(store.inviteRead("h-inv", now), { email: "a@x.test", kind: "invite" });
+  assert.deepEqual(store.inviteRead("h-res", now), { email: "b@x.test", kind: "reset" });
+  assert.deepEqual(store.inviteRead("h-old", now), { email: "c@x.test", kind: null },
+    "a mint that said nothing about why leaves the column NULL, never a default nobody chose");
+  assert.deepEqual(store.inviteConsume("h-res", now), { email: "b@x.test", kind: "reset" });
+  assert.equal(store.inviteRead("h-res", now), null, "and it is burned");
 });

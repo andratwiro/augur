@@ -297,9 +297,25 @@ test("mintInvite issues a token that reads back to its email", async () => {
 test("an invite is single-use", async () => {
   const kv = memKV(); const env = envWith(kv);
   const t = await W.mintInvite(null, env, "a@example.test");
-  assert.equal(await W.consumeInvite(null, env, t), "a@example.test");
+  // The consume answers with the RECORD — who it admits and why it was minted — because
+  // once the link is burned there is nothing left to ask about it.
+  assert.deepEqual(await W.consumeInvite(null, env, t), { email: "a@example.test", kind: "invite" });
   assert.equal(await W.consumeInvite(null, env, t), null, "second use fails");
   assert.equal(await W.readInvite(null, env, t), null);
+});
+
+test("a reset link says so, and a record from before the field says nothing", async () => {
+  const kv = memKV(); const env = envWith(kv);
+  const reset = await W.mintInvite(null, env, "a@example.test", undefined, { kind: "reset" });
+  assert.deepEqual(await W.consumeInvite(null, env, reset), { email: "a@example.test", kind: "reset" });
+
+  // What a link minted before the field existed looks like in KV: no such key at all.
+  const old = await W.mintInvite(null, env, "b@example.test");
+  const map = JSON.parse(await kv.get("users:invites"));
+  delete map[old].kind;
+  await kv.put("users:invites", JSON.stringify(map));
+  assert.deepEqual(await W.consumeInvite(null, env, old), { email: "b@example.test", kind: null },
+    "absent is no answer — never `invite` by default");
 });
 
 test("an invite expires after the TTL", async () => {
@@ -355,8 +371,8 @@ test("consumeInvite performs exactly one KV get of users:invites", async () => {
   const env = envWith(kv);
   const t = await W.mintInvite(null, env, "a@example.test");
   kv.getCounts.clear(); // only count gets during consumeInvite itself
-  const email = await W.consumeInvite(null, env, t);
-  assert.equal(email, "a@example.test");
+  const rec = await W.consumeInvite(null, env, t);
+  assert.equal(rec.email, "a@example.test");
   assert.equal(kv.getCounts.get("users:invites"), 1, "consumeInvite must do exactly one get of users:invites");
 });
 

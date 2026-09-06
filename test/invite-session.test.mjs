@@ -84,8 +84,11 @@ async function wired(base) {
     ...freshEnv(),
     TENANTS: { idFromName: (n) => n, get: () => ({ fetch: (input, init) => object.fetch(new Request(input, init)) }) },
   };
-  return { env, object, tctx: { ...base, tenantId } };
+  return { env, object, db, tctx: { ...base, tenantId } };
 }
+
+/** Whichever key this deployment's KV view put the invite map under. */
+const inviteDoc = (env) => [...env.COMMENTS.m.keys()].find((k) => k.endsWith("users:invites"));
 
 const owedAt = async (object, user) => {
   const res = await object.fetch(new Request("https://workspace/onboarding/welcome", {
@@ -350,4 +353,66 @@ test("a workspace object that refuses the stamp never costs the person their ses
   assert.ok(res.headers.get("Set-Cookie"), "and the session was issued");
   env.TENANTS.get = real;
   assert.equal(await owedAt(object, INVITEE), null, "the stamp is the only thing lost");
+});
+
+// ── and a PASSWORD RESET is not an arrival ───────────────────────────────────
+//
+// ⚠️ ONE MECHANISM SERVES BOTH, WHICH IS EXACTLY THE HAZARD. The reset op in
+// `adminUsersApi` mints through the same `mintInvite`, hands back the same `/__invite?t=`
+// link, and redeems through this same handler — so with nothing on the record saying why
+// it was minted, a member of five years recovering their password was stamped owed and
+// held at a door built for somebody's first day. The record carries the reason; the
+// redemption reads it.
+
+test("FLAG ON: a redeemed RESET link admits the person and owes them nothing", async () => {
+  const { env, object, tctx } = await wired(CTX_ON);
+  const t = await W.mintInvite(tctx, env, INVITEE.email, undefined, { kind: "reset" });
+  const res = await postRedeem(tctx, env, { token: t });
+  assert.equal(res.status, 303, "the reset link still lets them back in");
+  assert.ok(res.headers.get("Set-Cookie"), "with a real session");
+  assert.equal(await owedAt(object, INVITEE), null, "and no welcome flow is owed to somebody who was already here");
+});
+
+test("FLAG OFF: the password path reads the kind too — both doors, one rule", async () => {
+  const { env, object, tctx } = await wired(CTX_OFF);
+  const t = await W.mintInvite(tctx, env, INVITEE.email, undefined, { kind: "reset" });
+  assert.equal((await postRedeem(tctx, env, { token: t, password: "a-long-password" })).status, 303);
+  assert.equal(await owedAt(object, INVITEE), null);
+});
+
+test("a record minted before the kind existed is NOT read as an invitation", async () => {
+  const { env, object, db, tctx } = await wired(CTX_ON);
+  const t = await W.mintInvite(tctx, env, INVITEE.email);
+
+  // The shape a link minted before this deploy has in BOTH stores: the object's column
+  // says nothing, and the KV record carries no such field at all. Absent is no answer, and
+  // the welcome flow may only be owed by a link that provably invited somebody — so this
+  // fails toward NOT gated, the direction every degradation on this path takes.
+  db.exec("UPDATE invites SET kind = NULL");
+  const key = inviteDoc(env);
+  const map = JSON.parse(await env.COMMENTS.get(key));
+  for (const rec of Object.values(map)) delete rec.kind;
+  await env.COMMENTS.put(key, JSON.stringify(map));
+
+  assert.equal((await postRedeem(tctx, env, { token: t })).status, 303, "the old link still redeems");
+  assert.equal(await owedAt(object, INVITEE), null, "and stamps nobody");
+});
+
+test("the reset op mints a RESET and the invite op mints an INVITATION", async () => {
+  // Read at the seam the two ops share, so the kind is a property of what the ADMIN did
+  // rather than of what this test typed: the same panel, the same link, two records.
+  const { env, tctx } = await wired(CTX_ON);
+  const req = (body) => W.adminUsersApi(tctx, new Request(`${ORIGIN}/__admin/users`, {
+    method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body),
+  }), new URL(`${ORIGIN}/__admin/users`), env, HOLDER, ROSTER, ROSTER);
+
+  const reset = await req({ op: "reset", email: INVITEE.email });
+  assert.equal(reset.status, 200, await reset.clone().text());
+  const invite = await req({ op: "invite", email: "fresh@x.test", role: "editor" });
+  assert.equal(invite.status, 200, await invite.clone().text());
+
+  const map = JSON.parse(await env.COMMENTS.get(inviteDoc(env)));
+  const kinds = Object.fromEntries(Object.values(map).map((r) => [r.email.toLowerCase(), r.kind]));
+  assert.equal(kinds[INVITEE.email], "reset", "a reset link says it is a reset");
+  assert.equal(kinds["fresh@x.test"], "invite", "an invitation says it is one");
 });

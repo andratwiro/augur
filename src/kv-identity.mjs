@@ -188,6 +188,10 @@ export async function identityFromKv(families = {}, opts = {}) {
         // KV never recorded who sent an invite, and inventing a plausible author would be
         // read as a fact about who let somebody in.
         createdBy: null,
+        // Why the link was minted, carried verbatim. A record from before the field
+        // existed carries none, and the redemption reads that absence as "not an
+        // invitation" — the safe direction, and the one the object's column documents.
+        kind: rec.kind === "invite" || rec.kind === "reset" ? rec.kind : null,
       });
     }
   }

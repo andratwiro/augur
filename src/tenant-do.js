@@ -83,7 +83,15 @@ import { loadSeedPack, publishSeedPack, seedOverlayFrom, workspaceOrigin } from 
 // — stamped when a redemption succeeds — and never something a row's silence implies.
 // Nullable and additive: a row that predates it reads as not owed, which is the honest
 // answer for anybody who was already here.
-export const TENANT_SCHEMA_VERSION = 6;
+//
+// 6 → 7: `invites` gained `kind` — WHY a link was minted. One mechanism serves account
+// setup and password recovery, and until now nothing recorded which of the two a given
+// link was, so redeeming a RESET link ran the same redemption as an invitation and stamped
+// `welcome_owed_at` on a member who has been here for years. Nullable, and the null is
+// load-bearing exactly as `publish_tokens.scope`'s is: a row minted before the column
+// existed does not say why it was minted, and the welcome flow may only be owed by a link
+// that provably invited somebody — so no answer means NOT an invitation, never a guess.
+export const TENANT_SCHEMA_VERSION = 7;
 
 /**
  * The schema, as a list of statements so a migration can apply them one at a time and a
@@ -146,12 +154,20 @@ export const TENANT_SCHEMA = Object.freeze([
 
   // Outstanding invitations. Only the HASH of the token is stored, so a read of this
   // storage — a backup, an export, an operator looking — cannot redeem anybody's invite.
+  //
+  // ⚠️ `kind` IS WHY THE LINK EXISTS, and the redemption path reads it. `invite` admits a
+  // new person; `reset` gives an existing one a way back in after their credential was
+  // revoked. They are the same mechanism and differ only in wording — which is precisely
+  // why the difference has to be RECORDED: without it a reset redemption is indistinguishable
+  // from a first arrival, and the welcome flow is owed to somebody who has been a member for
+  // years. NULL means a row that predates the column and says nothing; see the version note.
   `CREATE TABLE IF NOT EXISTS invites (
      token_hash TEXT PRIMARY KEY,
      email      TEXT NOT NULL,
      created_at TEXT NOT NULL,
      expires_at TEXT NOT NULL,
-     created_by TEXT
+     created_by TEXT,
+     kind       TEXT
    )`,
   `CREATE INDEX IF NOT EXISTS invites_email ON invites (email)`,
 
@@ -387,6 +403,7 @@ export const TENANT_SCHEMA_ADDITIONS = Object.freeze([
   { table: "members", column: "start_unit", type: "TEXT" },
   { table: "publish_tokens", column: "scope", type: "TEXT" },
   { table: "publish_tokens", column: "caps", type: "TEXT" },
+  { table: "invites", column: "kind", type: "TEXT" },
 ]);
 
 /**
@@ -834,10 +851,10 @@ function writeIdentity(sql, identity, at, written = [], refused = [], { prune = 
   for (const i of list("invites")) {
     if (!i || !i.tokenHash) continue;
     sql.exec(
-      `INSERT INTO invites (token_hash, email, created_at, expires_at, created_by)
-         VALUES (?1,?2,?3,?4,?5)
-         ON CONFLICT(token_hash) DO UPDATE SET email = ?2, created_at = ?3, expires_at = ?4, created_by = ?5`,
-      String(i.tokenHash), String(i.email || ""), i.createdAt || at, i.expiresAt || at, i.createdBy ?? null,
+      `INSERT INTO invites (token_hash, email, created_at, expires_at, created_by, kind)
+         VALUES (?1,?2,?3,?4,?5,?6)
+         ON CONFLICT(token_hash) DO UPDATE SET email = ?2, created_at = ?3, expires_at = ?4, created_by = ?5, kind = ?6`,
+      String(i.tokenHash), String(i.email || ""), i.createdAt || at, i.expiresAt || at, i.createdBy ?? null, i.kind ?? null,
     );
     n++;
   }
@@ -1799,21 +1816,26 @@ export class TenantStore {
   // `stampMs` accepts both, and `src/kv-identity.mjs` no longer produces the second.
 
   /**
-   * An invite by its token HASH, or null if there is no live one.
+   * An invite by its token HASH — `{email, kind}` — or null if there is no live one.
    *
    * The raw token never reaches this object — see `inviteHash` in src/_worker.js. That is
    * the same contract the copy hashes on, so a link minted before the reads moved resolves
    * after them.
+   *
+   * ⚠️ IT ANSWERS WITH THE RECORD AND NOT WITH THE ADDRESS. Who a link admits and why it
+   * was minted are both facts about the same row, and the redemption needs both: the
+   * address to sign in, the kind to decide whether this was an arrival at all. Returning
+   * the address alone left the caller to infer the second from nothing.
    */
   inviteRead(tokenHash, nowMs = Date.now()) {
     if (!tokenHash) return null;
     const rows = [...this.sql.exec(
-      `SELECT email, expires_at FROM invites WHERE token_hash = ?`, String(tokenHash),
+      `SELECT email, expires_at, kind FROM invites WHERE token_hash = ?`, String(tokenHash),
     )];
     if (!rows.length) return null;
     const exp = stampMs(rows[0].expires_at);
     if (exp === null || exp <= nowMs) return null;
-    return rows[0].email;
+    return { email: rows[0].email, kind: rows[0].kind ?? null };
   }
 
   /**
@@ -1825,10 +1847,10 @@ export class TenantStore {
    * `consumeInvite` in the worker describes the window this closes.
    */
   inviteConsume(tokenHash, nowMs = Date.now()) {
-    const email = this.inviteRead(tokenHash, nowMs);
-    if (email === null) return null;
+    const rec = this.inviteRead(tokenHash, nowMs);
+    if (rec === null) return null;
     this.sql.exec(`DELETE FROM invites WHERE token_hash = ?`, String(tokenHash));
-    return email;
+    return rec;
   }
 
   /**
@@ -1838,15 +1860,15 @@ export class TenantStore {
    * the KV path already holds, and for the same reason: two live links for one person is
    * two ways in when somebody was handed one.
    */
-  inviteMint({ tokenHash, email, createdAt, expiresAt, createdBy = null }, nowMs = Date.now()) {
+  inviteMint({ tokenHash, email, createdAt, expiresAt, createdBy = null, kind = null }, nowMs = Date.now()) {
     if (!tokenHash || !email) return { ok: false };
     const at = new Date(nowMs).toISOString();
     this.inviteRevoke(email);
     this.sql.exec(
-      `INSERT INTO invites (token_hash, email, created_at, expires_at, created_by)
-         VALUES (?1,?2,?3,?4,?5)
-         ON CONFLICT(token_hash) DO UPDATE SET email = ?2, created_at = ?3, expires_at = ?4, created_by = ?5`,
-      String(tokenHash), lcAddr(email), createdAt || at, expiresAt || at, createdBy ?? null,
+      `INSERT INTO invites (token_hash, email, created_at, expires_at, created_by, kind)
+         VALUES (?1,?2,?3,?4,?5,?6)
+         ON CONFLICT(token_hash) DO UPDATE SET email = ?2, created_at = ?3, expires_at = ?4, created_by = ?5, kind = ?6`,
+      String(tokenHash), lcAddr(email), createdAt || at, expiresAt || at, createdBy ?? null, kind ?? null,
     );
     return { ok: true };
   }
@@ -2365,11 +2387,29 @@ export class TenantStore {
     const cur = [...this.sql.exec(`SELECT paired_at FROM members WHERE email = ? AND removed_at IS NULL`, e)][0];
     return { pairedAt: cur ? cur.paired_at : null, wrote: row.length === 1 };
   }
+  /**
+   * ⚠️ THIS READ MIGRATES ITSELF, because it is the one read no write comes before.
+   * `/onboarding/welcome` deliberately does not `init()` — a read never provisions — so an
+   * object built at an older version reaches this SELECT with `welcome_owed_at` still
+   * missing and throws, and this is what `/` and `/__onboarding/me` call: the whole
+   * workspace answered 503 until some unrelated write happened to run the ALTER. The
+   * additions are idempotent and cheap, so asking for them ONCE and retrying is the
+   * migration this read owes itself. Anything that is not a missing column is a schema
+   * this build cannot read, and is rethrown rather than answered around.
+   */
   welcome(email) {
     if (!this.hasMeta()) return { provisioned: false, member: null };
     const e = String(email || "").toLowerCase();
-    const r = [...this.sql.exec(
+    const row = () => [...this.sql.exec(
       `SELECT email, role, paired_at, first_publish_at, welcome_done_at, welcome_later_at, welcome_owed_at, start_unit FROM members WHERE email = ? AND removed_at IS NULL`, e)][0];
+    let r;
+    try {
+      r = row();
+    } catch (err) {
+      if (!/no such column/i.test(String((err && err.message) || err))) throw err;
+      applySchemaAdditions(this.sql);
+      r = row();
+    }
     return { provisioned: true, member: r ? {
       email: r.email, role: r.role, pairedAt: r.paired_at, firstPublishAt: r.first_publish_at,
       welcomeDoneAt: r.welcome_done_at, welcomeLaterAt: r.welcome_later_at,
@@ -2965,11 +3005,13 @@ export class TenantStore {
       await this.init(body.workspaceId);
       const now = Number.isFinite(body.now) ? body.now : Date.now();
       switch (url.pathname) {
-        // The raw token never crosses this wire — only its hash. See inviteRead.
+        // The raw token never crosses this wire — only its hash. See inviteRead. The
+        // answer is the RECORD (`{email, kind}`), and a miss is spelled as an absent
+        // address rather than as a null body, so a caller reads one shape either way.
         case "/identity/invite/read":
-          return Response.json({ email: this.inviteRead(body.tokenHash, now) });
+          return Response.json(this.inviteRead(body.tokenHash, now) || { email: null, kind: null });
         case "/identity/invite/consume":
-          return Response.json({ email: this.inviteConsume(body.tokenHash, now) });
+          return Response.json(this.inviteConsume(body.tokenHash, now) || { email: null, kind: null });
         case "/identity/invite/mint":
           return Response.json(this.inviteMint(body, now));
         case "/identity/invite/revoke":

@@ -2463,6 +2463,19 @@ async function clearFirstRunSeen(kv, email) {
 // One mechanism serves account setup and password recovery — they differ only in
 // wording. A token is single-use (consumed when a password is set), expires on its
 // own, and minting a new one for a user drops any outstanding token for that user.
+//
+// ⚠️ "THEY DIFFER ONLY IN WORDING" STOPPED BEING TRUE THE DAY A REDEMPTION MEANT SOMETHING.
+// The welcome flow is owed by ARRIVING, and a reset is an existing member coming back — so
+// the record carries WHY it was minted, and the redemption reads it. `INVITE_KINDS` is that
+// vocabulary; anything else, including the absence of a value on a record minted before this
+// existed, is NO ANSWER (`inviteKind` → null) and is treated as not an invitation. The fail
+// direction is deliberate and it is the same one the whole welcome path takes: a member who
+// is not gated has lost nothing, a member wrongly gated cannot reach their own workspace.
+const INVITE_KINDS = Object.freeze(["invite", "reset"]);
+const inviteKind = (v) => (INVITE_KINDS.includes(v) ? v : null);
+
+/** Did redeeming this record ADMIT somebody? Only then is the welcome flow owed. */
+const isInvitation = (rec) => !!rec && inviteKind(rec.kind) === "invite";
 
 async function readInvites(kv) {
   try {
@@ -2487,7 +2500,7 @@ function pruneInvites(map, nowMs) {
 // object is where the read comes from, and KV is what makes flipping the word back a
 // revert instead of a data loss. A KV blip does not fail the mint once the object has it —
 // the link the admin is handed already works.
-async function mintInvite(tctx, env, email, nowMs = Date.now()) {
+async function mintInvite(tctx, env, email, nowMs = Date.now(), { kind = "invite" } = {}) {
   const kv = kvFor(env, tctx);
   const ident = identityFor(env, tctx, "invites");
   if (!kv && !ident) throw new Error("no-kv-binding");
@@ -2501,6 +2514,7 @@ async function mintInvite(tctx, env, email, nowMs = Date.now()) {
       email: lcEmail(email),
       createdAt: new Date(nowMs).toISOString(),
       expiresAt: new Date(nowMs + INVITE_TTL_MS).toISOString(),
+      kind: inviteKind(kind),
     }, nowMs);
   }
   if (kv) {
@@ -2511,7 +2525,7 @@ async function mintInvite(tctx, env, email, nowMs = Date.now()) {
       // mints under the roster's canonical case) miss an invite minted under the lowercased
       // address, leaving two live links for one person.
       for (const [tok, rec] of Object.entries(map)) if (rec && lcEmail(rec.email) === lcEmail(email)) delete map[tok];
-      map[token] = { email, expires: nowMs + INVITE_TTL_MS };
+      map[token] = { email, expires: nowMs + INVITE_TTL_MS, kind: inviteKind(kind) };
       await kv.put(USER_INVITES_KEY, JSON.stringify(map));
     } catch (e) {
       if (!ident) throw e;
@@ -2535,10 +2549,10 @@ async function readInvite(tctx, env, token, nowMs = Date.now()) {
   if (typeof token !== "string" || !token) return null;
   const ident = identityFor(env, tctx, "invites");
   if (ident) {
-    let email;
-    try { email = await ident.inviteRead(await inviteHash(token), nowMs); }
+    let hit;
+    try { hit = await ident.inviteRead(await inviteHash(token), nowMs); }
     catch (e) { return null; }
-    if (email) return email;
+    if (hit) return hit.email;
   }
   const kv = kvFor(env, tctx);
   if (!kv) return null;
@@ -2561,11 +2575,15 @@ async function readInvite(tctx, env, token, nowMs = Date.now()) {
 // resolved would leave the other copy live, and the second click would then be answered by
 // the fallback — a single-use link used twice, which is the one thing this function is for.
 // The object's answer wins the RETURN and the KV delete runs regardless.
+//
+// ⚠️ IT ANSWERS WITH THE RECORD — `{email, kind}` — NOT THE ADDRESS. The caller has to know
+// whether the link it just burned was an invitation or a password reset, and once it is
+// burned there is nothing left to ask. Falsy on every refusal, exactly as before.
 async function consumeInvite(tctx, env, token, nowMs = Date.now()) {
   if (typeof token !== "string" || !token) return null;
   const ident = identityFor(env, tctx, "invites");
   const kv = kvFor(env, tctx);
-  let email = null;
+  let found = null;
   if (ident) {
     // On the object this is ONE act: single-threaded storage means the read and the delete
     // cannot interleave, so the second of two concurrent redemptions gets null rather than
@@ -2574,7 +2592,7 @@ async function consumeInvite(tctx, env, token, nowMs = Date.now()) {
     // An ERROR refuses outright and never reaches KV, for readInvite's reason: burning a
     // link out of the fallback while the store that was supposed to burn it is unreachable
     // would leave the object's row live and the link redeemable a second time.
-    try { email = await ident.inviteConsume(await inviteHash(token), nowMs); }
+    try { found = await ident.inviteConsume(await inviteHash(token), nowMs); }
     catch (e) { return null; }
   }
   if (kv) {
@@ -2582,7 +2600,7 @@ async function consumeInvite(tctx, env, token, nowMs = Date.now()) {
       const map = pruneInvites(await readInvites(kv), nowMs);
       const rec = map[token];
       if (rec && typeof rec.expires === "number" && rec.expires > nowMs) {
-        if (!email) email = rec.email;
+        if (!found) found = { email: rec.email, kind: inviteKind(rec.kind) };
         delete map[token];
         await kv.put(USER_INVITES_KEY, JSON.stringify(map));
       }
@@ -2590,7 +2608,7 @@ async function consumeInvite(tctx, env, token, nowMs = Date.now()) {
       if (!ident) throw e;
     }
   }
-  return email;
+  return found && found.email ? found : null;
 }
 
 const MIN_PASSWORD_LENGTH = 10;
@@ -2957,8 +2975,9 @@ async function inviteRedeemSession(tctx, token, env, users) {
   const token2 = await userToken(env, u, rot.key, true, tctx);
   // The redemption succeeded, so this person is owed the welcome flow — see
   // noteInviteRedeemed. After the consume, like the landing below, and it can never fail
-  // the redemption: the session is already minted.
-  if (roleOf(u) !== "viewer") await noteInviteRedeemed(env, tctx, u.email);
+  // the redemption: the session is already minted. ⚠️ ONLY AN INVITATION OWES IT: a reset
+  // link runs this exact path for somebody who has been a member for years.
+  if (isInvitation(consumed) && roleOf(u) !== "viewer") await noteInviteRedeemed(env, tctx, u.email);
   // Where a SUCCESSFUL redemption lands. After the consume on purpose: the landing
   // records the once-only first-run showing, and a refused redemption must record
   // nothing. "/" whenever the first-run flag is off or the surface has been seen.
@@ -3019,8 +3038,9 @@ async function invitePost(tctx, request, url, env, users = tctx.USERS) {
     const token2 = await userToken(env, u, undefined, tctx.SESSION_KEYS, tctx);
     // Same stamp as inviteRedeemSession, in the same place and for the same reason: a
     // redemption is what makes the welcome flow owed, whichever door the deployment's
-    // flag sends the person through.
-    if (roleOf(u) !== "viewer") await noteInviteRedeemed(env, tctx, u.email);
+    // flag sends the person through — and only an INVITATION is an arrival, so a reset
+    // redemption stamps nobody here either.
+    if (isInvitation(consumed) && roleOf(u) !== "viewer") await noteInviteRedeemed(env, tctx, u.email);
     // Same landing decision as inviteRedeemSession, for the same reason and in the same
     // place: after the redemption has succeeded, never before.
     const landing = await firstRunLanding(tctx, env, u.email);
@@ -8401,6 +8421,8 @@ function identityFor(env, tctx, family) {
  * redeem anybody's invitation, and sending the raw token over this wire to be hashed there
  * would put it in a request body for no gain.
  */
+const inviteRecordOf = (r) => (r && r.email ? { email: r.email, kind: inviteKind(r.kind) } : null);
+
 function doIdentity(stub, tenantId) {
   const call = async (op, body) => {
     const res = await stub.fetch(`https://workspace/identity/${op}`, {
@@ -8413,8 +8435,10 @@ function doIdentity(stub, tenantId) {
   };
   return {
     backing: "do",
-    inviteRead: async (tokenHash, now) => (await call("invite/read", { tokenHash, now })).email,
-    inviteConsume: async (tokenHash, now) => (await call("invite/consume", { tokenHash, now })).email,
+    // `{email, kind}` or null — the record, because a redemption needs to know what it
+    // redeemed and the row is gone by the time it could ask again.
+    inviteRead: async (tokenHash, now) => inviteRecordOf(await call("invite/read", { tokenHash, now })),
+    inviteConsume: async (tokenHash, now) => inviteRecordOf(await call("invite/consume", { tokenHash, now })),
     inviteMint: (rec, now) => call("invite/mint", { ...rec, now }),
     inviteRevoke: (email) => call("invite/revoke", { email }),
     lastseenRead: async () => (await call("lastseen/read", {})).map || {},
@@ -10245,7 +10269,9 @@ async function notePairing(env, tctx, email) {
  * who was already a member: not owed.
  *
  * Viewers are never stamped, for the reason they are never gated: there is nothing in the
- * flow for somebody who publishes nothing.
+ * flow for somebody who publishes nothing. Neither is a PASSWORD RESET: it mints the same
+ * link and redeems through the same door, but it readmits somebody who is already here, so
+ * the callers gate on `isInvitation(consumed)` and this is reached only by an arrival.
  *
  * Fire-and-forget-safe by construction: awaited inside a try/catch that swallows
  * everything, and called only AFTER the redemption has succeeded, so the worst a failure
@@ -11473,7 +11499,10 @@ async function adminUsersApi(tctx, request, url, env, me, users = tctx.USERS, co
       // where a known password is still live alongside a pending invite.
       await revokeSecret(env, u.email, tctx);
       await revokePublishTokens(tctx, env, u.email); // a reset password must not leave a live publish token
-      const token = await mintInvite(tctx, env, u.email);
+      // Minted as a RESET, and the kind travels with the record: redeeming this link is an
+      // existing member coming back, never an arrival, so it must not owe them the welcome
+      // flow. The link, the page and the redemption are otherwise identical.
+      const token = await mintInvite(tctx, env, u.email, undefined, { kind: "reset" });
       const mail = await mailLink(u.email, "credential-reset", token);
       return jsonResponse({ ok: true, email: u.email, url: link(token), mail });
     }

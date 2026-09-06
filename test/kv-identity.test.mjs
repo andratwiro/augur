@@ -133,11 +133,32 @@ test("an invite is re-keyed by hash, and the raw token never reaches the object"
     "users:invites": { "raw-token-abc": { email: "New@example.com", expires: "2026-09-01T00:00:00.000Z" } },
   }, { hashInvite, now: NOW });
 
+  // `kind` is null here on purpose: this record predates the field, and the copy states
+  // that rather than guessing. A redemption reads the absence as "not an invitation", so a
+  // carried-over link never owes somebody a welcome flow the copy could not vouch for.
   assert.deepEqual(identity.invites, [{
     tokenHash: HASH_OF_RAW, email: "new@example.com",
-    createdAt: NOW, expiresAt: "2026-09-01T00:00:00.000Z", createdBy: null,
+    createdAt: NOW, expiresAt: "2026-09-01T00:00:00.000Z", createdBy: null, kind: null,
   }]);
   assert.ok(!JSON.stringify(identity).includes("raw-token-abc"), "the raw token is nowhere in what is handed over");
+});
+
+test("an invite's kind travels with it, and only the two the mint writes", async () => {
+  const { identity } = await identityFromKv({
+    "users:invites": {
+      a: { email: "a@example.com", expires: 1788484474092, kind: "reset" },
+      b: { email: "b@example.com", expires: 1788484474092, kind: "invite" },
+      c: { email: "c@example.com", expires: 1788484474092, kind: "something-else" },
+    },
+  }, { hashInvite, now: NOW });
+
+  const kinds = Object.fromEntries(identity.invites.map((i) => [i.email, i.kind]));
+  assert.deepEqual(kinds, {
+    "a@example.com": "reset",
+    "b@example.com": "invite",
+    // A value outside the vocabulary is no answer at all, never "invite" by accident.
+    "c@example.com": null,
+  });
 });
 
 test("invites without a hash function is refused rather than copied in the clear", async () => {
