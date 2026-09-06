@@ -226,19 +226,33 @@ export const TEMPLATES = Object.freeze({
   // flag), and the message must describe that landing: a mail promising "choose a
   // password" above a link that signs the person straight in reads as a phishing tell,
   // and the reverse promises a sign-in the deployment will answer with a password form.
+  //
+  // An editor or admin is invited into a WORKSPACE, not an account form — they need to
+  // know what the thing even is before "open it" means anything, so their copy names
+  // the workspace in the heading (no icon: mail stays image-free) and says what they'll
+  // find there. A viewer's invite is unchanged: today's plain "you've been invited".
   "roster-invite": (v) => {
     const who = str(v.inviter);
-    const lines = [
-      who ? `${who} invited you to ${v.workspace}.` : `You have been invited to ${v.workspace}.`,
-      v.passwordless ? "Open the link and you're in — there is no password to set." : "Choose a password and you're in.",
-      expiryLine(v.expiresHours),
-    ];
+    const gated = v.role === "editor" || v.role === "admin";
+    const lines = gated
+      ? [
+          who ? `${who} invited you to ${v.workspace}.` : `You have been invited to ${v.workspace}.`,
+          "It is where the team's prototypes live: pages your coding agent builds and shares as real links.",
+          "Open it and it walks you through connecting your agent; the first thing you make appears on your own page.",
+          expiryLine(v.expiresHours),
+        ]
+      : [
+          who ? `${who} invited you to ${v.workspace}.` : `You have been invited to ${v.workspace}.`,
+          v.passwordless ? "Open the link and you're in — there is no password to set." : "Choose a password and you're in.",
+          expiryLine(v.expiresHours),
+        ];
     return {
       subject: `You're invited to ${str(v.workspace) || "a workspace"}`,
       text: textBody({ lines, link: v.link, footer: "If you weren't expecting this, ignore this message." }),
       html: htmlShell({
-        heading: "You've been invited",
-        lines, link: v.link, action: v.passwordless ? "Accept invitation" : "Set your password",
+        heading: gated ? `You're invited to ${str(v.workspace) || "a workspace"}` : "You've been invited",
+        lines, link: v.link,
+        action: gated ? `Open ${str(v.workspace) || "the workspace"}` : (v.passwordless ? "Accept invitation" : "Set your password"),
         footer: "If you weren't expecting this, ignore this message.",
       }),
     };
@@ -275,7 +289,7 @@ export const TEMPLATES = Object.freeze({
 export function renderMail(template, vars = {}) {
   const fn = TEMPLATES[template];
   if (!fn) return null;
-  const v = { workspace: "your workspace", link: "", inviter: "", expiresHours: 0, passwordless: false, ...vars };
+  const v = { workspace: "your workspace", link: "", inviter: "", expiresHours: 0, passwordless: false, role: "viewer", originHost: "", ...vars };
   return fn(v);
 }
 

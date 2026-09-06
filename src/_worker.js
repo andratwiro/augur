@@ -11399,7 +11399,7 @@ async function adminUsersApi(tctx, request, url, env, me, users = tctx.USERS, co
         user: { email, name, initials: roster.add[email].initials, color: roster.add[email].color, role },
         by: me.email,
       });
-      const mail = await mailLink(email, "roster-invite", token, { inviter: me.name || me.email });
+      const mail = await mailLink(email, "roster-invite", token, { inviter: me.name || me.email, role, originHost: url.host });
       return jsonResponse({ ok: true, email, url: link(token), fileSync, mail });
     }
 

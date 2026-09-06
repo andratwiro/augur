@@ -313,6 +313,16 @@ test("the expiry line reads in days when the window is a round number of them", 
   assert.match(renderMail("roster-invite", { link: "https://x.test/l" }).text, /can be used once/);
 });
 
+test("an editor's invite names the workspace in the heading and the action, and keeps the link in the text body", () => {
+  const m = renderMail("roster-invite", {
+    workspace: "Design System", link: "https://x.test/l", inviter: "Ada Admin", expiresHours: 168, role: "editor",
+  });
+  assert.equal(m.subject, "You're invited to Design System");
+  assert.match(m.html, /You're invited to Design System/);
+  assert.match(m.html, />Open Design System</);
+  assert.ok(m.text.includes("https://x.test/l"), "the plain-text body carries the link");
+});
+
 test("the invite names the person who sent it when there is one, and does not invent one", () => {
   const withInviter = renderMail("roster-invite", { workspace: "w", link: "https://x.test/l", inviter: "ada@example.test" });
   assert.ok(withInviter.text.includes("ada@example.test"));

@@ -138,6 +138,22 @@ test("the message names the workspace when the deployment has one, the host when
   } finally { bare.restore(); }
 });
 
+// ---- what an editor's invite says, versus a viewer's ----------------------------------
+
+test("an editor's invite names the inviter, says what the workspace is, and opens it; a viewer's is unchanged", async () => {
+  const { calls, restore } = withStubbedFetch(() => ({ status: 200, body: { id: "m1" } }));
+  try {
+    const env = { ...MAIL_ENV, COMMENTS: memKV() };
+    await W.adminUsersApi(CTX, adminReq({ op: "invite", email: THEM.email, role: "editor" }), usersUrl, env, ME);
+    const text = calls.at(-1).body.text;
+    assert.match(text, /Ada Admin invited you to/);
+    assert.match(text, /coding agent/);
+    assert.match(text, /walks you through connecting/);
+    await W.adminUsersApi(CTX, adminReq({ op: "invite", email: "v@x.test", role: "viewer" }), usersUrl, env, ME);
+    assert.doesNotMatch(calls.at(-1).body.text, /coding agent/);
+  } finally { restore(); }
+});
+
 // ---- the provider is down --------------------------------------------------------------
 
 test("a provider outage degrades: the admin sees the error AND still gets the link", async () => {
