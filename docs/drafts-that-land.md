@@ -199,8 +199,11 @@ without hooks), `watch` (a debounced save loop for people editing by hand).
   outside registered draft folders* before an edit, and *save the edited file* after it,
   failing with the server's reason when refused. The first adapter targets the tool the
   engine's own sessions run in; its hook payload provides the file path, the working
-  directory and a session id, and its session name is the label. Adding a tool is adding
-  a row.
+  directory and a session id, and its session name is the label. Adding a tool is adding a row.
+  The deny is narrow: a write is refused only inside a read-only copy, or inside a shared
+  checkout under a prototype's home that is not an open draft folder — a space's design
+  system, its research and everything off the space are untouched. `AUGUR_HOOKS_OFF=1`
+  makes both hooks inert; `augur hook install|remove|status` manages them by hand.
 - **Identity.** The person token from `augur connect`. The session label from the agent
   tool when present, else generated at open and kept in `draft.json`.
 
