@@ -9,6 +9,10 @@ A **mark** is a note on a path saying *something is editing here right now*. It
 carries the path, a one-way id for who left it, when it started, and how long it is
 good for. That is all it is.
 
+Where the workspace serves drafts, a draft IS the mark: `augur open` tells you who else
+has the prototype open and shows you on their chips, with nothing to leave and nothing to
+expire — see [drafts.md](./drafts.md). Marks stay for workspaces without drafts.
+
 ## ⚠️ It is not a lock, and you must not treat it as one
 
 A mark **grants nothing and refuses nothing**. A marked path can still be opened,

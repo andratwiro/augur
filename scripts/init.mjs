@@ -94,8 +94,9 @@ const html = `<!doctype html>
   <p>This file is <code>${rel}</code>. Edit it — it is
      self-contained static HTML with no build step, so it opens straight from disk
      and ships exactly as written.</p>
-  <p>When it works, run <code>augur ship</code>. That commits, publishes, and gives
-     you the live URL.</p>
+  <p>When it works, ship it: on a workspace that serves drafts,
+     <code>augur open ${project}/${proto}</code> then <code>augur land</code>; otherwise
+     <code>augur ship</code>. Either way you get the live URL.</p>
 </main>
 </body>
 </html>
@@ -118,4 +119,4 @@ log(`  space.json`);
 log(`  ${rel}`);
 if (wroteCanon) log(`  CANON.md`);
 if (!origin) log(`no siteOrigin set — add one to space.json (or pass --origin) so connect/login/publish work from this clone.`);
-log(`next: edit the prototype, then \`augur ship\`.`);
+log(`next: edit the prototype, then \`augur land\` (a workspace that serves drafts) or \`augur ship\`.`);

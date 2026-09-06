@@ -28,7 +28,9 @@ It prints one line to relay — *ask the owner of this workspace to open `<link>
 enter `<code>`* — and waits. The owner opens the link in a browser they are already
 signed in to and types the code; the token lands in `~/.config/augur/tokens.json`, and
 `augur ship` / `augur publish` use it from then on. `publish` runs the pairing itself when
-it finds no token, so inside a workspace tree nothing has to be done first. To get the
+it finds no token, so inside a workspace tree nothing has to be done first. On a workspace
+that serves drafts (`/.well-known/augur.json` says `drafts.enabled`), the everyday verbs
+are `augur open` and `augur land` instead — see [drafts.md](./drafts.md). To get the
 tree from a hostname, pair first, then `npx augur clone --space <id>` — it reads the
 origin from the pairing.
 
@@ -48,7 +50,8 @@ Read them by trigger, not up front:
 |---|---|
 | asking what is current here, or what changed lately | [currency.md](./currency.md) |
 | starting work on a prototype somebody else might also be in | [working-marks.md](./working-marks.md) — read it BEFORE the first edit |
-| shipping / going live | [publishing.md](./publishing.md) |
+| changing a prototype on a workspace that serves drafts | [drafts.md](./drafts.md) — open, edit, land |
+| shipping / going live on a workspace without drafts | [publishing.md](./publishing.md) |
 | acting on review comments | [review-feedback.md](./review-feedback.md) |
 | building a prototype folder | [prototype-contract.md](./prototype-contract.md) |
 | naming a canonical screen, or asked to "pull screens X, Y, Z" | [canon.md](./canon.md) |

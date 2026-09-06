@@ -1,5 +1,10 @@
 # Publishing — how work in a workspace goes live
 
+**Where the workspace serves drafts, this is the legacy path** — `augur ship` refuses
+there and points at `augur open` / `augur land`; read [drafts.md](./drafts.md). The
+instance says which it is at `/.well-known/augur.json` (`drafts.enabled`). Everything
+below is for a workspace that does not serve drafts yet.
+
 **One command, every time:**
 
 ```

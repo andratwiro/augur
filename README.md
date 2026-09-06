@@ -124,8 +124,10 @@ machine.
 - **A private deploy shell holds your instance.** The engine pin, the user
   list, every secret. Engine fixes reach your instance by pin bump, never by
   forking.
-- **Publishing is `augur publish`.** Seconds, atomic, straight from your
-  clone. A git push saves and shares work without deploying anything.
+- **Publishing is `augur land`** on a workspace that serves drafts — open one
+  prototype, edit, land; seconds, atomic, with history. Self-hosted instances
+  without a unit store publish with `augur publish`. A git push saves and shares
+  work without deploying anything.
 
 ## Run your own
 
