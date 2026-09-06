@@ -170,6 +170,11 @@ test("a browser request gets the HTML gate at 200 with the pointer", async () =>
   assert.equal(r.ct, "text/html");
   assert.match(r.body, /<!-- Agents and scripts: /);
   assert.equal(r.headers.get("link"), '</llms.txt>; rel="help"');
+  // Watched on a cold machine: an agent that fetches the gate through a summarising tool
+  // never sees a comment or a header. Two things it does see — the description and a line
+  // of visible text — say the same thing.
+  assert.match(r.body, /<meta name="description" content="[^"]*\/llms\.txt/);
+  assert.match(r.body, /Connecting an assistant or a script\? It reads <a href="\/llms\.txt">/);
 });
 
 test("the helpers decide 'machine' by path or by an explicit JSON accept only", () => {
@@ -203,4 +208,18 @@ test("where drafts are not served, the door says so as data and says nothing abo
   assert.deepEqual(j.json.drafts, { enabled: false });
   const t = await get(env, "/llms.txt");
   assert.doesNotMatch(t.body, /augur land|augur open/);
+});
+
+test("every served HTML page carries the help link, so a public prototype still points at the door", async () => {
+  // Watched on a cold machine: handed the URL of a PUBLIC prototype, an agent fetched a
+  // finished page with nothing on it about how it is edited, and gave up — it never met
+  // the gate. The header is the one pointer that costs the page nothing.
+  const html = new Response("<h1>hi</h1>", { status: 200, headers: { "Content-Type": "text/html; charset=utf-8" } });
+  const out = W.withDoorLink(html);
+  assert.equal(out.headers.get("link"), '</llms.txt>; rel="help"');
+  assert.equal(await out.text(), "<h1>hi</h1>", "the body is untouched");
+  const css = W.withDoorLink(new Response("a{}", { status: 200, headers: { "Content-Type": "text/css" } }));
+  assert.equal(css.headers.get("link"), null, "only pages");
+  const kept = W.withDoorLink(new Response("<p>x</p>", { status: 200, headers: { "Content-Type": "text/html", Link: "</other>; rel=\"preload\"" } }));
+  assert.equal(kept.headers.get("link"), '</other>; rel="preload"', "a page that already sets Link keeps its own");
 });

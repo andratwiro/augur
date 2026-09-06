@@ -85,20 +85,28 @@ async function coldStart() {
   coldContainer = `augur-cold-${Date.now().toString(36)}`;
   const run = await sh("docker", ["run", "-d", "--name", coldContainer, "--rm", COLD_IMAGE]);
   if (run.code !== 0) throw new Error(`docker run: ${run.err.slice(-800)}`);
-  // A short-lived ACCESS token only — read from this machine's keychain, never the refresh
-  // token, so the container can use Claude until it expires and can rotate nothing.
-  const cred = JSON.parse((await sh("security", ["find-generic-password", "-s", "Claude Code-credentials", "-w"])).out.trim());
-  const o = cred.claudeAiOauth || {};
-  const slim = JSON.stringify({ claudeAiOauth: { accessToken: o.accessToken, expiresAt: o.expiresAt, scopes: o.scopes, subscriptionType: o.subscriptionType } });
-  const put = await sh("docker", ["exec", "-i", coldContainer, "sh", "-c", "mkdir -p ~/.claude && cat > ~/.claude/.credentials.json && chmod 600 ~/.claude/.credentials.json"], { input: slim });
-  if (put.code !== 0) throw new Error(`credentials into container: ${put.err}`);
-  const ver = await sh("docker", ["exec", coldContainer, "claude", "--version"]);
+  // The container needs a Claude credential that outlives the run. A long-lived token from
+  // `claude setup-token` (LIVE_CLAUDE_TOKEN) is handed in as CLAUDE_CODE_OAUTH_TOKEN on each
+  // exec. Without one, the host keychain's short-lived ACCESS token is copied in instead —
+  // and the host revokes it when it refreshes, which killed a run mid-way once.
+  if (!process.env.LIVE_CLAUDE_TOKEN) {
+    say("no LIVE_CLAUDE_TOKEN: copying the host's short-lived access token (a long run may die on a 401)");
+    const cred = JSON.parse((await sh("security", ["find-generic-password", "-s", "Claude Code-credentials", "-w"])).out.trim());
+    const o = cred.claudeAiOauth || {};
+    const slim = JSON.stringify({ claudeAiOauth: { accessToken: o.accessToken, expiresAt: o.expiresAt, scopes: o.scopes, subscriptionType: o.subscriptionType } });
+    const put = await sh("docker", ["exec", "-i", coldContainer, "sh", "-c", "mkdir -p ~/.claude && cat > ~/.claude/.credentials.json && chmod 600 ~/.claude/.credentials.json"], { input: slim });
+    if (put.code !== 0) throw new Error(`credentials into container: ${put.err}`);
+  }
+  const ver = await sh("docker", ["exec", ...(process.env.LIVE_CLAUDE_TOKEN ? ["-e", `CLAUDE_CODE_OAUTH_TOKEN=${process.env.LIVE_CLAUDE_TOKEN}`] : []), coldContainer, "claude", "--version"]);
   say(`cold machine ${coldContainer}: claude ${ver.out.trim()}`);
 }
 async function coldStop() { if (coldContainer) await sh("docker", ["rm", "-f", coldContainer]); }
 
 function claude(args, { cwd, env, input, cold = false }) {
-  if (cold) return sh("docker", ["exec", "-i", "-w", "/home/person/work", coldContainer, "claude", ...args], { input });
+  if (cold) {
+    const tok = process.env.LIVE_CLAUDE_TOKEN ? ["-e", `CLAUDE_CODE_OAUTH_TOKEN=${process.env.LIVE_CLAUDE_TOKEN}`] : [];
+    return sh("docker", ["exec", "-i", ...tok, "-w", "/home/person/work", coldContainer, "claude", ...args], { input });
+  }
   return new Promise((resolve) => {
     const p = spawn("claude", args, { cwd, env, stdio: ["pipe", "pipe", "pipe"] });
     let out = "", err = "";

@@ -6920,6 +6920,7 @@ function loginPage(tctx, redirect, error, requestUrl, opts = {}) {
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="description" content="A sign-in gate. Assistants and scripts: GET /llms.txt says how to get in." />
   <meta name="robots" content="noindex, nofollow" />
   ${previewHead(tctx, requestUrl)}
   <link rel="preload" href="/fonts/inter-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin />
@@ -7026,6 +7027,7 @@ function loginPage(tctx, redirect, error, requestUrl, opts = {}) {
     </div>
     ${formBody}
     ${tctx.LOGIN_HINT && !passwordless ? `<p class="hint">${escapeHtml(tctx.LOGIN_HINT)}</p>` : ""}
+    <p class="hint door">Connecting an assistant or a script? It reads <a href="/llms.txt">/llms.txt</a>.</p>
   </main>
 </body>
 </html>`;
@@ -7364,7 +7366,21 @@ async function withDraftUi(tctx, res, url, me, env) {
 }
 /** A content response, dressed: the live-reload poll, the current chrome, the draft bar, the cache policy. */
 async function serveContent(tctx, asset, url, me, env) {
-  return withAssetCache(await withDraftUi(tctx, await composeChrome(tctx, withLiveReload(tctx, asset, url), url), url, me, env), url);
+  return withDoorLink(withAssetCache(await withDraftUi(tctx, await composeChrome(tctx, withLiveReload(tctx, asset, url), url), url, me, env), url));
+}
+/**
+ * A served page carries the same `Link: </llms.txt>; rel="help"` the gate carries. An agent
+ * handed the URL of a PUBLIC prototype never meets the gate — it fetches the page, finds a
+ * finished site with nothing on it about how it is edited, and gives up. The header is the
+ * one pointer that costs the page no bytes and no pixels; a scripted agent reads it, and a
+ * summarising one at least reaches the gate's own words at the workspace root.
+ */
+function withDoorLink(res) {
+  if (!res || !/text\/html/.test(res.headers.get("Content-Type") || "")) return res;
+  if (res.headers.get("Link")) return res;
+  const headers = new Headers(res.headers);
+  headers.set("Link", `<${DOOR_DOCS}>; rel="help"`);
+  return new Response(res.body, { status: res.status, statusText: res.statusText, headers });
 }
 
 // Test seam: loadConfig fills the chrome pointer, the workspace list and the runtime-
@@ -12380,7 +12396,7 @@ export const __testables = Object.freeze({
   doorFacts, doorText, wantsMachineDoor, gateResponse, DOOR_DOCS, DOOR_WELL_KNOWN,
   resumeAfterDormancy,
   PITI_VIEW_KEY, PITI_REMARKS_KEY,
-  publishAuthDetailed, unitApi, unitCaller, personFace, withDraftUi, draftUiBoot, derivedPage, dsOverlay, isEngineChrome, publishRefusalBody, splitDraftPath,
+  publishAuthDetailed, unitApi, unitCaller, personFace, withDoorLink, withDraftUi, draftUiBoot, derivedPage, dsOverlay, isEngineChrome, publishRefusalBody, splitDraftPath,
   adminStorageApi,
   adminCustomDomainApi,
   isPrefixBacked, backedPublicPrefixes,
