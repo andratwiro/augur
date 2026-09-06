@@ -1,6 +1,6 @@
 {
   "name": "@augurworks/augur",
-  "version": "0.15.12",
+  "version": "0.16.0",
   "files": [
     "scripts/",
     "build.js",
