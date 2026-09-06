@@ -10,7 +10,7 @@ import assert from "node:assert/strict";
 import { DatabaseSync } from "node:sqlite";
 import { __testables as W } from "../src/_worker.js";
 import { TenantStore } from "../src/tenant-do.js";
-import { makeEnv, ctxFor, cookieFor, ADA_MEMBER, VERA, manifestOf, remember } from "./fixtures/unit-env.mjs";
+import { makeEnv, ctxFor, cookieFor, ADA_MEMBER, VERA, manifestOf } from "./fixtures/unit-env.mjs";
 
 // A DO storage stub with REAL transaction semantics — copied from
 // test/first-publish-signal.test.mjs so this file drives the same real TenantStore.
@@ -74,6 +74,23 @@ const me = async (env, ctx, user, init = {}) => {
   return { status: res.status, json: await res.json() };
 };
 
+// Wrap a wired TENANTS namespace so its stub's `fetch` rejects for exactly `pathname`
+// and delegates every other path to the real object — the shape both containment
+// tests below share.
+function rejecting(env, pathname) {
+  const realGet = env.TENANTS.get;
+  env.TENANTS.get = (n) => {
+    const real = realGet(n);
+    return {
+      fetch: (input, init) => {
+        const path = new URL(typeof input === "string" ? input : input.url).pathname;
+        if (path === pathname) return Promise.reject(new Error(`workspace object unreachable for ${pathname}`));
+        return real.fetch(input, init);
+      },
+    };
+  };
+}
+
 test("a viewer is never gated; an editor is gated until done or later", async () => {
   const { env, ctx } = await wired([ADA_MEMBER, VERA]);
   assert.equal((await me(env, ctx, VERA)).json.gated, false);
@@ -100,23 +117,20 @@ test("no tenant object: backing none, never gated", async () => {
 
 test("a workspace-object failure on the pairing stamp never fails the approval", async () => {
   const { env, ctx } = await wired([ADA_MEMBER]);
-  // Wrap the wired TENANTS namespace so its stub's fetch throws for exactly
-  // /onboarding/note-pair and delegates every other path to the real object.
-  const realGet = env.TENANTS.get;
-  env.TENANTS.get = (n) => {
-    const real = realGet(n);
-    return {
-      fetch: (input, init) => {
-        const path = new URL(typeof input === "string" ? input : input.url).pathname;
-        if (path === "/onboarding/note-pair") return Promise.reject(new Error("workspace object unreachable"));
-        return real.fetch(input, init);
-      },
-    };
-  };
+  rejecting(env, "/onboarding/note-pair");
   await assert.doesNotReject(async () => {
     assert.equal(await W.notePairing(env, ctx, ADA_MEMBER.email), null);
   });
   const a = await me(env, ctx, ADA_MEMBER);
   assert.equal(a.status, 200);
   assert.equal(a.json.paired, false);
+});
+
+test("a workspace-object failure on the welcome-set write never fails the request", async () => {
+  const { env, ctx } = await wired([ADA_MEMBER]);
+  rejecting(env, "/onboarding/welcome-set");
+  const a = await me(env, ctx, ADA_MEMBER, { method: "POST", body: JSON.stringify({ later: true }) });
+  assert.equal(a.status, 200);
+  assert.equal(a.json.later, false);
+  assert.equal(a.json.gated, true);
 });
