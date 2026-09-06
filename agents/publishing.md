@@ -8,13 +8,13 @@ below is for a self-hosted instance without a unit store, which still publishes 
 **The command, every time your work is ready:**
 
 ```
-node ../augur/scripts/publish.mjs         # the working tree goes live; the last line is the URL
+augur publish                               # the working tree goes live; the last line is the URL
 git add -A && git commit -m "…" && git push   # then keep the repository true, yourself
 ```
 
-`augur publish` is the same thing, and only works if someone ran `npm link` in the
-engine clone on this machine. The `node …` form always works — prefer it in
-instructions, or an agent following them hits "command not found" and improvises.
+`augur` is the npm package `@augurworks/augur` (`npm i -g @augurworks/augur`, or
+`npx @augurworks/augur publish` for a one-off). On a machine that only has an engine
+clone beside the workspace, `node ../augur/scripts/publish.mjs` is the same command.
 (`augur ship`, which did the commit and the push for you, is retired: where drafts are
 served there is nothing to commit, and elsewhere the three steps are the two lines above.)
 
@@ -31,7 +31,9 @@ checkout, and telling them to run `git pull` is a support ticket you created.
 Assume **none of them know what git is** — that is the design target, not a
 worst case.
 
-So: keep the engine clone current yourself. `publish` fast-forwards it
+So: keep the engine current yourself. A package install updates with
+`npm i -g @augurworks/augur@latest`, and `publish` prints exactly that line when the
+instance speaks a newer protocol than the package. A clone `publish` fast-forwards
 automatically when the instance speaks a newer publish protocol (clean tree,
 `--ff-only`, once per run), and re-runs itself — you will see
 `engine updated <a> → <b>`. When it cannot (uncommitted changes in the engine
@@ -175,10 +177,10 @@ site doesn't show your change, the answer is always the same: it wasn't publishe
 
 ## The command
 
-From the workspace repo's root (the engine clone must sit next to it):
+From the workspace repo's root:
 
 ```
-node ../augur/scripts/publish.mjs        # or: augur publish
+augur publish                            # or, clone-only: node ../augur/scripts/publish.mjs
 ```
 
 - Infers the workspace from the working directory; `--dry-run` and `--engine`
@@ -227,7 +229,7 @@ them.
 purpose), say so:
 
 ```
-node ../augur/scripts/publish.mjs --allow-unpublish
+augur publish --allow-unpublish
 ```
 
 Adding pages is never blocked; only losing them is.
@@ -246,8 +248,7 @@ The first publish on a machine pairs it with your browser, on its own:
 
 Open the link in a browser where you are already signed in to the site, type the
 code, and the publish carries on. No password goes near the terminal, the shell
-history, or an agent transcript. `node ../augur/scripts/connect.mjs` (`augur connect`)
-runs that step by itself when you want it ahead of time. Agents: relay the link and
+history, or an agent transcript. `augur connect` runs that step by itself when you want it ahead of time. Agents: relay the link and
 the code to your human; that is the whole hand-off.
 
 `augur login` (web email + password) still exists for two cases: CI and scripts,
@@ -301,7 +302,7 @@ responses agree before declaring a chrome bug.
 
 ## Local preview (no publish involved)
 
-`node ../augur/scripts/dev.mjs` from the workspace root runs the full site shell
+`augur dev` from the workspace root runs the full site shell
 locally — login, rail, overlays, canvas, the same experience the live site
 gives (login `dev@local` / `dev` when no identity file is around). This is the
 **only** acceptable stand-in when you genuinely cannot publish, and always say

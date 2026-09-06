@@ -73,6 +73,9 @@ test("the first adapter reads its tool's payload: file path, notebook path, cwd,
   assert.match(a.matcher, /Edit/);
   assert.match(hookCommand("pre"), /hook\.mjs" pre$/);
   assert.ok(hookCommand("post").includes(HOOK_TAG));
+  // With the package on PATH the hook names the bin, not a path that moves on upgrade.
+  assert.equal(hookCommand("pre", { onPath: true }), "augur hook pre");
+  assert.equal(hookCommand("post", { onPath: true }), "augur hook post");
 });
 
 test("mergeHooks adds our two hooks beside whatever is there, once, and stripHooks takes only ours away", () => {
@@ -87,6 +90,14 @@ test("mergeHooks adds our two hooks beside whatever is there, once, and stripHoo
   const m2 = mergeHooks(m1.settings, "Write|Edit", { pre: 'node "/x/hook.mjs" pre', post: 'node "/x/hook.mjs" post' });
   assert.equal(m2.changed, false, "a second install changes nothing");
   assert.equal(m2.settings.hooks.PreToolUse.length, 2);
+  // An entry written by a clone-era engine is recognised as ours and REPLACED by the
+  // package-era spelling, and the reverse — never a second entry beside the first.
+  const m4 = mergeHooks(m1.settings, "Write|Edit", { pre: "augur hook pre", post: "augur hook post" });
+  assert.equal(m4.settings.hooks.PreToolUse.length, 2);
+  assert.equal(m4.settings.hooks.PreToolUse[1].hooks[0].command, "augur hook pre");
+  const m5 = mergeHooks(m4.settings, "Write|Edit", { pre: 'node "/x/hook.mjs" pre', post: 'node "/x/hook.mjs" post' });
+  assert.equal(m5.settings.hooks.PreToolUse.length, 2);
+  assert.equal(m5.settings.hooks.PreToolUse[1].hooks[0].command, 'node "/x/hook.mjs" pre');
   const m3 = mergeHooks(m1.settings, "Write|Edit", { pre: 'node "/elsewhere/hook.mjs" pre', post: 'node "/elsewhere/hook.mjs" post' });
   assert.equal(m3.changed, true, "a moved engine updates the command in place");
   assert.equal(m3.settings.hooks.PreToolUse.length, 2);

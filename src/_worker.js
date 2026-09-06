@@ -9119,11 +9119,9 @@ function doorText(f) {
       + `  ${f.connect}\n\n`
       + `It prints a link and a code. The owner of this workspace opens the link in a\n`
       + `browser they are already signed in to and enters the code. The token lands on\n`
-      + `that machine, and \`augur publish\` / \`augur ship\` use it from then on. With no\n`
+      + `that machine, and every verb below uses it from then on. With no\n`
       + `source tree yet, \`npx @augurworks/augur clone --space ${f.workspace}\` then fetches one (it reads\n`
       + `the origin from the pairing).\n\n`
-      + `Not on npm yet? The engine clone sits next to every workspace that publishes:\n\n`
-      + `  node <engine>/scripts/cli.mjs connect --origin ${f.origin}\n\n`
     : `Device pairing is switched off on this workspace. Ask an admin for an invite;\n`
       + `once you have signed in, \`augur login\` (email and password, meant for CI)\n`
       + `trades that for a publish token.\n\n`;

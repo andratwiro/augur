@@ -654,6 +654,13 @@ function selfUpdate(why) {
   if (NO_SELF_UPDATE || selfUpdateTried || process.env.AUGUR_SELF_UPDATED === "1") return false;
   selfUpdateTried = true;
   const git = (...a) => execFileSync("git", ["-C", ROOT, ...a], { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] }).trim();
+  // A package install (`npm i -g @augurworks/augur`, or an `npx` run) has no clone to
+  // fast-forward. Say the one line that updates it, in the same place the clone would
+  // have updated itself, and let the caller report the skew.
+  if (!existsSync(path.join(ROOT, ".git"))) {
+    log(`this engine is a package install and is behind what the instance speaks (${why}) — update it: npm i -g @augurworks/augur@latest`);
+    return false;
+  }
   try {
     if (git("rev-parse", "--is-inside-work-tree") !== "true") return false;
     if (git("status", "--porcelain")) {

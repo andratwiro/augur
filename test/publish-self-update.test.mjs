@@ -36,6 +36,10 @@ test("it requires an upstream, and treats anything unexpected as 'do not touch'"
 
 test("it cannot loop: one attempt per run, and the re-exec carries a guard", () => {
   assert.match(fn, /selfUpdateTried/, "one attempt per process");
+  // A package install has no clone to fast-forward: the one line that updates it is said
+  // before any git command runs, and nothing is mutated.
+  assert.ok(fn.indexOf('existsSync(path.join(ROOT, ".git"))') < fn.indexOf('git("rev-parse"'), "the package check comes before the first git call");
+  assert.match(fn, /npm i -g @augurworks\/augur@latest/, "the update line for a package install");
   assert.match(fn, /AUGUR_SELF_UPDATED/, "the child must know it is the retry");
   assert.match(SRC, /process\.env\.AUGUR_SELF_UPDATED === "1"/, "and must refuse to update again");
 });

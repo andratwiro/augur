@@ -34,10 +34,10 @@ are `augur open` and `augur land` instead — see [drafts.md](./drafts.md). To g
 tree from a hostname, pair first, then `npx @augurworks/augur clone --space <id>` — it reads the
 origin from the pairing.
 
-Not on npm yet? The engine clone sits next to every workspace that publishes:
-`node <engine>/scripts/cli.mjs connect --origin <origin>`. The instance says all of this
-itself at `GET /llms.txt` (and as data at `/.well-known/augur.json`); a signed-out
-request for an engine path answers `401` with the same facts.
+The instance says all of this itself at `GET /llms.txt` (and as data at
+`/.well-known/augur.json`); a signed-out request for an engine path answers `401` with
+the same facts. `npm i -g @augurworks/augur` puts `augur` on the PATH for good; an engine
+clone beside the workspace still works too (`node <engine>/scripts/cli.mjs <verb>`).
 
 Two things an agent never does: type a password into a terminal (`augur login` exists
 for CI, and says so), and try the `pass` field from a deploy shell's `identity.json` —

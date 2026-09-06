@@ -96,7 +96,7 @@ const html = `<!doctype html>
      and ships exactly as written.</p>
   <p>When it works, ship it: on a workspace that serves drafts,
      <code>augur open ${project}/${proto}</code> then <code>augur land</code>; otherwise
-     <code>augur ship</code>. Either way you get the live URL.</p>
+     <code>augur publish</code>. Either way you get the live URL.</p>
 </main>
 </body>
 </html>
@@ -119,4 +119,4 @@ log(`  space.json`);
 log(`  ${rel}`);
 if (wroteCanon) log(`  CANON.md`);
 if (!origin) log(`no siteOrigin set — add one to space.json (or pass --origin) so connect/login/publish work from this clone.`);
-log(`next: edit the prototype, then \`augur land\` (a workspace that serves drafts) or \`augur ship\`.`);
+log(`next: edit the prototype, then \`augur land\` (a workspace that serves drafts) or \`augur publish\`.`);

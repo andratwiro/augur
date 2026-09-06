@@ -12,7 +12,7 @@ That `file://`-ability is a property of the *files* — it keeps them portable a
 buildless, nothing more. It is not a hand-off channel: publish the change and
 share the live URL (see `agents/publishing.md`). The only acceptable local
 stand-in, and only when publishing is genuinely impossible, is the real shell
-(`node ../augur/scripts/dev.mjs`), said out loud to be exactly that — local
+(`augur dev`), said out loud to be exactly that — local
 only, not shipped, nobody else can see it.
 
 Neither is ever offered as a choice. An agent doesn't ask "should I publish

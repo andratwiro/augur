@@ -108,8 +108,9 @@ git clone https://github.com/andratwiro/augur.git augur
 The engine has no runtime dependencies — `login`, `publish`, `build` and `status` run on
 a bare clone with plain `node`. `npm install` is only needed for the Playwright-backed
 screenshot scripts. The commands below call the scripts by path
-(`node <parent>/augur/scripts/<name>.mjs`); `npm link` inside `augur/` gives you the
-shorter `augur <cmd>` form if you want it.
+(`node <parent>/augur/scripts/<name>.mjs`), which works on a bare clone;
+`npm i -g @augurworks/augur` gives you the shorter `augur <cmd>` form from the
+published package instead.
 
 Never nest one instance's parent inside another's — offline mode would serve both
 instances' spaces at once.

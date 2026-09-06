@@ -82,7 +82,8 @@ test("/llms.txt is public text that names the workspace and the connect command"
   assert.equal(r.ct, "text/plain");
   assert.match(r.body, /Augur workspace "acme"/);
   assert.match(r.body, new RegExp(`npx @augurworks/augur connect --origin ${ORIGIN}`));
-  assert.match(r.body, /scripts\/cli\.mjs connect/, "names the not-on-npm fallback");
+  assert.doesNotMatch(r.body, /not on npm/i, "the package is published; the clone-era fallback paragraph is gone");
+  assert.doesNotMatch(r.body, /augur ship/, "ship is retired and the door does not name it");
   assert.match(r.body, /signed in/i, "says the owner approves in a signed-in browser");
   assert.match(r.body, /\.well-known\/augur\.json/);
   assert.doesNotMatch(r.body, /example\.test/, "the door names nobody on the roster");

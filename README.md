@@ -96,11 +96,13 @@ clones, so a slower connection moves the number and nothing else does — the
 engine itself is about two seconds from cold to serving.
 
 ```bash
-git clone https://github.com/andratwiro/augur.git
 git clone https://github.com/andratwiro/augur-space-fulla.git
 cd augur-space-fulla
-node ../augur/scripts/dev.mjs
+npx @augurworks/augur dev
 ```
+
+Or, with an engine clone beside the workspace instead of the package:
+`git clone https://github.com/andratwiro/augur.git` and `node ../augur/scripts/dev.mjs`.
 
 There is no install step and no build step in that list, and that is not an
 omission: **the engine has no runtime dependencies**, so plain `node` is enough.

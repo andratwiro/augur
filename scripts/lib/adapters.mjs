@@ -16,12 +16,16 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { execFileSync } from "node:child_process";
 
 // What identifies OUR entries in a settings file: the quoted script name and the event,
 // exactly as `hookCommand` spells them — so an entry survives the engine moving on disk
 // (the path changes, the tail does not) and nobody else's hook is ever mistaken for ours.
 export const HOOK_TAG = 'hook.mjs"';
-const OURS_RE = /hook\.mjs" (?:pre|post)$/;
+// Two spellings are ours: the clone-era `node "<path>/hook.mjs" pre` and the package-era
+// `augur hook pre`. Both are matched so an entry written by an older engine is replaced
+// on the next `augur open`, never duplicated.
+const OURS_RE = /(?:hook\.mjs" |(?:^|\s)augur hook )(?:pre|post)$/;
 export const HOOK_SCRIPT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "hook.mjs");
 export const UNIT_HOME_RE = /^(?:([^/]+)\/prototypes\/([^/]+)|(playground)\/([^/]+))(?:\/|$)/;
 
@@ -90,7 +94,22 @@ export const ADAPTERS = Object.freeze([
   }),
 ]);
 
-export const hookCommand = (event) => `node "${HOOK_SCRIPT}" ${event}`;
+/**
+ * The command a tool runs for one of our hooks. With the package installed globally
+ * (`npm i -g @augurworks/augur`) `augur` resolves on PATH and the hook says so, because
+ * the absolute path of a global install moves on every upgrade. Otherwise — a clone, or
+ * a one-off `npx` run — the absolute path to this engine's hook.mjs is the one thing
+ * guaranteed to exist.
+ */
+export const hookCommand = (event, { onPath = false } = {}) =>
+  onPath ? `augur hook ${event}` : `node "${HOOK_SCRIPT}" ${event}`;
+/** Whether `augur` resolves on this machine's PATH. Asked once, at install time. */
+export function augurOnPath() {
+  try {
+    const out = execFileSync(process.platform === "win32" ? "where" : "which", ["augur"], { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] });
+    return out.trim().length > 0;
+  } catch (e) { return false; }
+}
 const ours = (h) => !!(h && Array.isArray(h.hooks) && h.hooks.some((x) => x && typeof x.command === "string" && OURS_RE.test(x.command.trim())));
 
 export function mergeHooks(settings, matcher, commands) {
@@ -146,7 +165,8 @@ function applyToAdapters({ home = os.homedir(), dryRun = false } = {}, decide) {
 /** Install the two hooks for every tool present on this machine. Idempotent; keeps every other hook. */
 export function installAdapters(opts = {}) {
   return applyToAdapters(opts, (a, cur) => {
-    const r = mergeHooks(cur, a.matcher, { pre: hookCommand("pre"), post: hookCommand("post") });
+    const onPath = typeof opts.onPath === "boolean" ? opts.onPath : augurOnPath();
+    const r = mergeHooks(cur, a.matcher, { pre: hookCommand("pre", { onPath }), post: hookCommand("post", { onPath }) });
     const had = !!(cur && cur.hooks && Object.values(cur.hooks).some((l) => Array.isArray(l) && l.some(ours)));
     return { ...r, did: had ? "updated" : "installed" };
   });
