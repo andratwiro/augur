@@ -41,8 +41,10 @@ LIVE_MAIL_COOLDOWN_MS (optional) that window, when an account store's differs
 ## Order
 
 1. `roster.mjs add` — once. Then `proof.mjs` to see one sign-in, one pairing, one read.
-2. Drills. Each touches its own units; A–D, G–M can run in two or three parallel chains;
-   I uses the first eight units, so run it alone.
+2. Drills. Each touches its own units; A, B, D, G, J, K, L, M can run in two or three
+   parallel chains. C and H change ROLES, and a demotion reaches every drill using that
+   person at the time — run them alone, after the chains. I uses the first eight units, so
+   it runs alone too.
 3. `first-experience/run.mjs <change|new|collide> --cold`. The agent container needs a
    Claude credential that outlives the run: a long-lived token from `claude setup-token`
    (the host's short-lived access token is revoked the moment the host refreshes).

@@ -56,12 +56,17 @@ async function probeToken() {
 
 test("H2: removed from the workspace mid-draft", async () => {
   const owner = await human("owner");
-  const b = await open("editor2", "h2-b", U);
+  // H1 put editor2 back as an editor seconds ago, and a role change takes up to a minute to
+  // reach every isolate: the open, and the first save after it, can still be refused as a
+  // viewer's ("This account can look around but not publish"). Both are waited for.
+  let b;
+  await until(async () => {
+    try { b = await open("editor2", "h2-b", U); return true; }
+    catch (e) { if (/403|look around/.test(String(e.message))) return false; throw e; }
+  }, { timeoutMs: 120000, everyMs: 5000, what: "editor2's open after H1's re-promotion reaching every isolate" });
   const findings = [];
   try {
     writeFile(b, "index.html", readFile(b, "index.html") + "\n" + stamp(b, "before-removal"));
-    // H1 put editor2 back as an editor seconds ago, and a role change takes up to a minute
-    // to reach every isolate: the first save here can still be refused as a viewer's.
     let first;
     await until(async () => { first = await save(b); return first.ok; },
       { timeoutMs: 120000, everyMs: 5000, what: "editor2's first save after H1's re-promotion reaching every isolate" }).catch(() => {});
