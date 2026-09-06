@@ -56,7 +56,7 @@ test("open installs the editor hooks into this machine's tool settings once; AUG
     const work = workDir();
     const first = await openIn(work, "checkout/flow", env);
     assert.equal(first.code, 0, first.err);
-    assert.match(first.err, /editor hooks installed/);
+    assert.match(first.err, /a save hook is now in/);
     const settings = JSON.parse(fs.readFileSync(path.join(home, ".claude", "settings.json"), "utf8"));
     assert.equal(settings.theme, "dark");
     assert.match(settings.hooks.PreToolUse[0].hooks[0].command, /hook\.mjs" pre$/);

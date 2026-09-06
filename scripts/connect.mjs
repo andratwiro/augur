@@ -19,6 +19,7 @@ import path from "node:path";
 import os from "node:os";
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { resolveOrigin } from "./lib/store.mjs";
+import { augurOnPath } from "./lib/adapters.mjs";
 
 const C = { dim: "\x1b[2m", bold: "\x1b[1m", ok: "\x1b[32m", warn: "\x1b[33m", off: "\x1b[0m" };
 const log = (m) => console.log(`\x1b[35m[connect]\x1b[0m ${m}`);
@@ -70,6 +71,11 @@ async function post(pathPart, body) {
 // token still answers, say so and stop; `--again` pairs afresh on purpose, and a token the
 // workspace no longer honours (revoked, another workspace's) falls through to a new pairing.
 const AGAIN = argv.includes("--again");
+// Whether this workspace serves drafts, from its own door — the success line names the
+// right next verb, not `publish` on a workspace that refuses it. Asked before any path
+// that can finish, including the one that collects a pairing started earlier.
+let draftsHere = false;
+try { const j = await (await fetch(`${ORIGIN}/.well-known/augur.json`, { headers: { Accept: "application/json" } })).json(); draftsHere = !!(j && j.drafts && j.drafts.enabled); } catch (e) { draftsHere = false; }
 const TOKENS_FILE = path.join(os.homedir(), ".config", "augur", "tokens.json");
 function savedToken() {
   try { const t = JSON.parse(readFileSync(TOKENS_FILE, "utf8"))[host]; return t && t.token ? t : null; } catch (e) { return null; }
@@ -178,7 +184,17 @@ all[new URL(ORIGIN).host] = {
 writeFileSync(file, JSON.stringify(all, null, 2), { mode: 0o600 });
 
 log(`${C.ok}paired — publish access: ${saved.space === "*" ? "all spaces" : saved.space}${C.off}`);
-console.log(`ready — \`augur publish\` will now use this token for ${ORIGIN}`);
+// The next verb, spelled so it runs from THIS machine: `augur` after a global install, the
+// package's own `npx` line otherwise — and the verb this workspace takes, which the door
+// knows (drafts: open and land; a whole-tree instance: publish).
+const verb = augurOnPath() ? "augur" : "npx @augurworks/augur";
+if (draftsHere) {
+  console.log(`ready — \`${verb} open <opportunity>/<prototype>\` opens one prototype as a draft (live at once at its own address);`);
+  console.log(`        edit the folder it makes, then \`${verb} land\` in that folder: the real URL moves.`);
+} else {
+  console.log(`ready — \`${verb} publish\` will now use this token for ${ORIGIN}`);
+}
+if (verb !== "augur") console.log(`${C.dim}(\`augur\` is not on this machine's PATH; \`npm i -g @augurworks/augur\` puts it there for good.)${C.off}`);
 if (saved.expiresAt) {
   const days = Math.max(0, Math.round((Date.parse(saved.expiresAt) - Date.now()) / 86400000));
   console.log(`${C.dim}It expires in ${days} days (${saved.expiresAt.slice(0, 10)}). Run \`augur connect\` again then.${C.off}`);

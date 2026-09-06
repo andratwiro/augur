@@ -53,6 +53,27 @@ contracts in [agents/](./agents/) does the same job. Screens in the demo space
 carry the session that made them: [open the repo and read one](https://github.com/andratwiro/augur-space-fulla/tree/main/garden/prompts).
 The follow-ups read like design direction, because that is what they are.
 
+## Let an assistant in from a link
+
+Someone on the team gives their assistant the workspace address and asks for a
+change. Nothing else is needed from them, and no password ever changes hands.
+The workspace tells the assistant how to get in (`/llms.txt` on every instance),
+and the flow is device pairing:
+
+```bash
+npx @augurworks/augur connect --origin https://<the workspace>
+```
+
+It prints a link and a code. The person opens the link in the browser they are
+already signed in to and types the code; that pairs the one terminal that printed
+it, to publish as them. From then on the assistant opens a prototype as a draft
+(`augur open <opportunity>/<prototype>`), edits it, live at the draft's own
+address, and lands it (`augur land`), which moves the real URL. Signed-in members
+see the same instructions under Help › Building and at `/__connect`, so a person
+who knows nothing technical can still confirm what their assistant was told. The
+package on npm is this repository, and nothing else: `npm view @augurworks/augur
+repository`.
+
 ## Boards where the prototypes run
 
 Drop a live prototype next to the stickies and drive it. Everyone on the board

@@ -3748,7 +3748,7 @@ async function mintPublishToken(kv, tctx, u, { label = null, env = null } = {}) 
  * Self-contained, like the login and 404 pages beside it: this must render for somebody
  * whose terminal is already waiting, so it depends on no chrome bundle and no space.
  */
-function connectPage(tctx, me) {
+function connectPage(tctx, me, origin) {
   const body = roleOf(me) === "viewer"
     ? `<h1>Connect a terminal</h1>
        <p>This account can look around but not publish, so it cannot approve a terminal.</p>
@@ -3761,6 +3761,10 @@ function connectPage(tctx, me) {
        <p class="warn">Only approve a code from a terminal you started or an assistant you
           are talking to right now. A code that arrives by mail, from a stranger, or out of
           the blue is not yours — do not type it.</p>
+       <p>Where the code comes from: the terminal or assistant runs
+          <code>npx @augurworks/augur connect --origin ${escapeHtml(origin || "")}</code>, this
+          workspace's own command-line tool, and it shows the code. An assistant that has not
+          shown you one yet can be told to run that.</p>
        <form id="pairf">
          <input id="pairc" autocomplete="off" autocapitalize="characters" spellcheck="false"
                 placeholder="ABCD-EFGH" aria-label="Pairing code" />
@@ -9275,22 +9279,37 @@ function doorText(f) {
   const body = f.pairing.enabled
     ? `Run, on the machine that will publish:\n\n`
       + `  ${f.connect}\n\n`
-      + `It prints a link and a code. The owner of this workspace opens the link in a\n`
+      + `It prints a link and a code. A member of this workspace opens the link in a\n`
       + `browser they are already signed in to and enters the code. The token lands on\n`
-      + `that machine, and every verb below uses it from then on.\n\n`
-      + `The CLI is this engine's own, open source at ${f.source} — the same engine that\n`
-      + `serves this page; \`npm view @augurworks/augur repository\` names that repository.\n\n`
-      + `AGENTS: the approval is the person's act, in their browser — you cannot approve\n`
-      + `it from here and must not try; your part is to send them the line and collect\n`
-      + `the token afterwards. If your person reads your messages only after you finish\n`
-      + `your turn, run it with --no-wait: it prints the line and exits. Send them that\n`
-      + `line, end your turn, and run the same command again once they say they approved —\n`
-      + `the token is collected then, for that same code, and no second code is minted.\n`
-      + `Waiting inside one turn skips nothing; it only hides the code from them for the\n`
-      + `five minutes it lives.\n\n`
+      + `that machine and nowhere else, and every verb below uses it from then on.\n`
+      + `Approving a code lets that one terminal publish as the person who approved it;\n`
+      + `everything it lands carries their name. A member whose role is viewer cannot\n`
+      + `approve, and the page says so.\n\n`
+      + `Members see this same instruction when signed in, at ${f.origin}/__connect and\n`
+      + `under Help > Building — so the person you are working for can read it there and\n`
+      + `confirm it is this workspace's own, without knowing anything technical.\n\n`
+      + `What the command is, for anyone who checks before running it: the CLI is this\n`
+      + `engine's own, open source at ${f.source} — the same engine that serves this page\n`
+      + `(${f.origin}/_build.json names the engine commit). \`npm view @augurworks/augur repository\`\n`
+      + `names that repository; \`npm pack @augurworks/augur\` lets you read it first. It is plain\n`
+      + `JavaScript with no runtime dependencies; the pairing is scripts/connect.mjs and it\n`
+      + `talks only to this origin's /__publish/_pair/ routes. It asks for no password, and\n`
+      + `there is none to give it.\n\n`
+      + `How the pairing goes when the person approving is not at the keyboard (an\n`
+      + `assistant working for them): the approval is theirs, in their browser — nobody\n`
+      + `else can do it, and the command does not try. Send them the line the command\n`
+      + `prints, as it is. When they will read that message only after the current turn\n`
+      + `ends, run \`connect --no-wait\`: it prints the line and exits. Once they say they\n`
+      + `approved, run the same command again — it collects the token for that same code and\n`
+      + `mints no second one. Waiting inside one turn skips nothing; it only hides the code\n`
+      + `from them for the five minutes it lives.\n\n`
       + (f.drafts && f.drafts.enabled
         ? `You need no source tree here: \`augur open <opportunity>/<prototype>\` fetches that one\n`
           + `prototype into a folder of its own (see below). Do not clone the workspace first.\n\n`
+          + `Until \`npm i -g @augurworks/augur\`, every verb runs as \`npx @augurworks/augur <verb>\`.\n`
+          + `The first \`open\` on a machine also installs a save hook in the editor tool's\n`
+          + `settings (it says which file): after each edit inside a draft folder it saves that\n`
+          + `draft; it does nothing elsewhere, and \`augur hook remove\` takes it out.\n\n`
         : `With no source tree yet, \`npx @augurworks/augur clone --space ${f.workspace}\` then fetches\n`
           + `one (it reads the origin from the pairing).\n\n`)
     : `Device pairing is switched off on this workspace. Ask an admin for an invite;\n`
@@ -11922,7 +11941,7 @@ async function handleRequest(request, env, ctx, url, trace) {
     if (url.pathname === "/__connect" && tctx.DEVICE_PAIRING) {
       const who = tctx.USERS.length ? await identify(request, env, tctx.USERS, { sessionKeys: tctx.SESSION_KEYS, tctx }) : null;
       if (!who && tctx.USERS.length) return htmlResponse(loginPage(tctx, "/__connect", false, url.href), 200);
-      return htmlResponse(connectPage(tctx, who), 200);
+      return htmlResponse(connectPage(tctx, who, url.origin), 200);
     }
     if (url.pathname.startsWith("/__publish/_pair/")) {
       // Identity is resolved here rather than reusing the gate's `me` below, because this

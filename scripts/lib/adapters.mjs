@@ -107,7 +107,12 @@ export const hookCommand = (event, { onPath = false } = {}) =>
 export function augurOnPath() {
   try {
     const out = execFileSync(process.platform === "win32" ? "where" : "which", ["augur"], { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] });
-    return out.trim().length > 0;
+    const found = out.trim().split(/\r?\n/)[0] || "";
+    // Inside an `npx` run the package's own bin dir is on PATH and `augur` resolves to a shim
+    // in the npx cache — gone the moment npx exits. A hook written as `augur hook pre` from
+    // there fails on every later edit (one cold agent's drafts never auto-saved, and its tool
+    // showed a "not found" on each write). That resolution counts as NOT on PATH.
+    return found.length > 0 && !/[\\/]_npx[\\/]/.test(found);
   } catch (e) { return false; }
 }
 const ours = (h) => !!(h && Array.isArray(h.hooks) && h.hooks.some((x) => x && typeof x.command === "string" && OURS_RE.test(x.command.trim())));

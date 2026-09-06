@@ -9,7 +9,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { target, buildStamp } from "./lib/store.mjs";
 import { unitClient, doOpen, unitPathFor } from "./lib/draft.mjs";
-import { installAdapters } from "./lib/adapters.mjs";
+import { installAdapters, augurOnPath } from "./lib/adapters.mjs";
 import { normUnit } from "../src/unit-core.mjs";
 
 const log = (m) => console.error(`\x1b[35m[open]\x1b[0m ${m}`);
@@ -51,7 +51,7 @@ log(r.isNew ? `draft ${r.draftId} on ${unit} — a NEW prototype; ${dir} is empt
 // here (idempotent; `AUGUR_NO_ADAPTERS=1` skips it — the suite and CI set it).
 if (!process.env.AUGUR_NO_ADAPTERS) {
   for (const a of installAdapters()) {
-    if (a.result === "installed") log(`${a.name}: editor hooks installed (${a.path}) — edits in a draft folder save on their own; edits to a shared checkout's prototypes are refused.`);
+    if (a.result === "installed") log(`${a.name}: a save hook is now in ${a.path} — after each edit inside a draft folder it runs \`augur hook post\`, which saves that draft to ${origin}; before an edit it refuses writes into a shared checkout's prototypes. It does nothing outside draft folders and talks to nothing else; \`augur hook remove\` takes it out.`);
     else if (a.result === "updated") log(`${a.name}: editor hooks updated (${a.path}).`);
   }
 }
@@ -60,4 +60,10 @@ if (r.others.length) {
   for (const o of r.others) log(`  ${o.session || "someone"} (${o.active ? "active" : "idle"})`);
   log("nothing here stops you; if you both land, the second one syncs first.");
 }
+// The next two steps, spelled so they run from this machine (`augur` only after a global
+// install; the package's `npx` line otherwise).
+const verb = augurOnPath() ? "augur" : "npx @augurworks/augur";
+log(r.isNew
+  ? `next: write ${path.join(dir, "index.html")} (self-contained static HTML); it is live at the address below as soon as it saves. When it is ready: \`cd ${path.basename(dir)} && ${verb} land\` — the last line printed is the live URL.`
+  : `next: edit the files in ${dir}; every save is live at the address below. When it is ready: \`cd ${path.basename(dir)} && ${verb} land\` — the last line printed is the live URL.`);
 console.log(r.address);

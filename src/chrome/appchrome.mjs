@@ -386,10 +386,16 @@ function helpDrawer(state) {
             <li>The design system is read-only from a prototype. Edit the skill's own source rather than copying its classes out.</li>
           </ul>
 
+          <h4>Working with an assistant</h4>
+          <ul>
+            <li>Give it this workspace's address and say what you want changed or made. It reads how to get in from this site and hands you a link and a short code.</li>
+            <li>Open the link here (<code>/__connect</code>) and type the code. That pairs its terminal to publish as you; everything it lands carries your name.</li>
+            <li>From then on it opens a prototype as a draft, edits it live at the draft's own address, and lands it when you say so. Viewers cannot approve a code.</li>
+          </ul>
+
           <h4>Comment loop <span class="gvhelp__tag">maintainer</span></h4>
           <ul>
-            <li><code>npm run review --open</code> lists open threads.</li>
-            <li>The agent fixes, replies, resolves in-thread. Put it on <code>/loop</code> to keep watching.</li>
+            <li>In a checkout, <code>npm run review --open</code> lists open threads; an agent fixes, replies and resolves in-thread.</li>
             <li>Not automated. You steer it.</li>
           </ul>${spaceHelpSections(state)}
         </section>

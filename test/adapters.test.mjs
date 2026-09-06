@@ -132,3 +132,26 @@ test("installAdapters writes only for tools present, idempotently, and removeAda
   assert.deepEqual(installAdapters({ home: home2 }).map((r) => r.result), ["installed"]);
   assert.deepEqual(Object.keys(JSON.parse(fs.readFileSync(path.join(home2, ".claude", "settings.json"), "utf8"))), ["hooks"]);
 });
+
+// An `npx` run puts the package's own bin dir on PATH, so `augur` resolves to a shim in the
+// npx cache that is gone when npx exits. A hook written as `augur hook pre` from there fails
+// on every later edit; that resolution must count as NOT on PATH.
+test("augurOnPath: a shim inside an npx cache does not count; a real install does", async () => {
+  const fs = await import("node:fs");
+  const os = await import("node:os");
+  const path = await import("node:path");
+  const { augurOnPath } = await import("../scripts/lib/adapters.mjs");
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "augur-onpath-"));
+  const mk = (dir) => { fs.mkdirSync(dir, { recursive: true }); const f = path.join(dir, "augur"); fs.writeFileSync(f, "#!/bin/sh\n"); fs.chmodSync(f, 0o755); return dir; };
+  const npxBin = mk(path.join(root, ".npm", "_npx", "abc123", "node_modules", ".bin"));
+  const realBin = mk(path.join(root, "usr", "local", "bin"));
+  const savedPath = process.env.PATH;
+  try {
+    process.env.PATH = `${npxBin}:/usr/bin:/bin`;
+    assert.equal(augurOnPath(), false, "the npx shim is transient");
+    process.env.PATH = `${realBin}:/usr/bin:/bin`;
+    assert.equal(augurOnPath(), true, "a real install is on PATH");
+    process.env.PATH = "/usr/bin:/bin";
+    assert.equal(augurOnPath(), false);
+  } finally { process.env.PATH = savedPath; fs.rmSync(root, { recursive: true, force: true }); }
+});
