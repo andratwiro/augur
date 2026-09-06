@@ -10201,11 +10201,15 @@ async function onboardingStatusApi(tctx, request, env, me) {
 async function notePairing(env, tctx, email) {
   const stub = tenantStub(env, tctx && tctx.tenantId);
   if (!stub || !email) return null;
-  const res = await stub.fetch("https://workspace/onboarding/note-pair", {
-    method: "POST", headers: { "content-type": "application/json" },
-    body: JSON.stringify({ workspaceId: tctx.tenantId, email: lcEmail(email), at: new Date().toISOString() }),
-  });
-  return res.ok ? await res.json() : null;
+  try {
+    const res = await stub.fetch("https://workspace/onboarding/note-pair", {
+      method: "POST", headers: { "content-type": "application/json" },
+      body: JSON.stringify({ workspaceId: tctx.tenantId, email: lcEmail(email), at: new Date().toISOString() }),
+    });
+    return res.ok ? await res.json() : null;
+  } catch (e) {
+    return null; // the approval is already persisted; a lost stamp costs nothing but the flag
+  }
 }
 
 // The member's own onboarding, for the welcome flow to poll. `drafting`/`landed` are read
@@ -10218,10 +10222,17 @@ async function onboardingMeApi(tctx, request, url, env, me) {
   if (!stub) return jsonResponse({ ...none, backing: "none" });
   if (request.method === "POST") {
     let body; try { body = await request.json(); } catch (e) { return jsonResponse({ error: "bad-json" }, 400); }
-    await stub.fetch("https://workspace/onboarding/welcome-set", { method: "POST", headers: { "content-type": "application/json" },
-      body: JSON.stringify({ workspaceId: tctx.tenantId, email: me.email, done: body.done === true, later: body.later === true }) });
+    try {
+      await stub.fetch("https://workspace/onboarding/welcome-set", { method: "POST", headers: { "content-type": "application/json" },
+        body: JSON.stringify({ workspaceId: tctx.tenantId, email: me.email, done: body.done === true, later: body.later === true }) });
+    } catch (e) { /* a lost write must not fail the request; the read below just shows the old flags */ }
   } else if (request.method !== "GET") return jsonResponse({ error: "method" }, 405);
-  let w; try { w = await (await stub.fetch("https://workspace/onboarding/welcome", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ email: me.email }) })).json(); } catch (e) { w = null; }
+  let w;
+  try {
+    const res = await stub.fetch("https://workspace/onboarding/welcome", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ email: me.email }) });
+    if (!res.ok) throw new Error(`workspace store answered ${res.status}`);
+    w = await res.json();
+  } catch (e) { w = null; }
   if (!w) return jsonResponse({ error: "status-unavailable" }, 503);
   const m = w.member || {};
   const out = { ...none, paired: !!m.pairedAt, pairedAt: m.pairedAt || null, unit: m.startUnit || null, done: !!m.welcomeDoneAt, later: !!m.welcomeLaterAt, backing: "workspace-object" };

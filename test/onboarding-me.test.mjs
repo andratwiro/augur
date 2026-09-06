@@ -97,3 +97,26 @@ test("no tenant object: backing none, never gated", async () => {
   const a = await me(env, ctx, ADA_MEMBER);
   assert.deepEqual([a.json.backing, a.json.gated], ["none", false]);
 });
+
+test("a workspace-object failure on the pairing stamp never fails the approval", async () => {
+  const { env, ctx } = await wired([ADA_MEMBER]);
+  // Wrap the wired TENANTS namespace so its stub's fetch throws for exactly
+  // /onboarding/note-pair and delegates every other path to the real object.
+  const realGet = env.TENANTS.get;
+  env.TENANTS.get = (n) => {
+    const real = realGet(n);
+    return {
+      fetch: (input, init) => {
+        const path = new URL(typeof input === "string" ? input : input.url).pathname;
+        if (path === "/onboarding/note-pair") return Promise.reject(new Error("workspace object unreachable"));
+        return real.fetch(input, init);
+      },
+    };
+  };
+  await assert.doesNotReject(async () => {
+    assert.equal(await W.notePairing(env, ctx, ADA_MEMBER.email), null);
+  });
+  const a = await me(env, ctx, ADA_MEMBER);
+  assert.equal(a.status, 200);
+  assert.equal(a.json.paired, false);
+});
