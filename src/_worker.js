@@ -117,7 +117,8 @@ import { composeFork, carriedLineage, assertedLineage } from "./publish-fork.mjs
 import { BOARD_PREFIX, boardKvKey, RT_WORKSPACE_HEADER } from "./board-key.mjs";
 import { signRoomTicket } from "./room-ticket.mjs";
 import { nameFromEmail, initialsFor, colorFor } from "./roster-chip.mjs";
-import { isSeedSource } from "./provenance.mjs";
+import { isSeedSource, seedSource, SEED_ACTOR } from "./provenance.mjs";
+import { welcomeUnitFor } from "./welcome-unit.mjs";
 
 const COOKIE = "gv_auth";
 const MAX_AGE = 60 * 60 * 24 * 7; // 7 days
@@ -5117,7 +5118,7 @@ function defaultSpaceIdFromManifests(manifests) {
 // landing at once needs. The CLI lands again on `manifest-contended` as well.
 const UNIT_LANDING_ATTEMPTS = 6;
 const landingBackoff = (attempt) => new Promise((r) => setTimeout(r, 30 + Math.random() * 90 * (attempt + 1)));
-async function writeUnitLanding(tctx, env, spaceId, unit, table, changed, who, now) {
+async function writeUnitLanding(tctx, env, spaceId, unit, table, changed, who, now, { unitSource } = {}) {
   const bundles = bundlesFor(env, tctx.tenantId);
   const key = `spaces/${spaceId}/manifest.json`;
   // ONE READ-MODIFY-WRITE PER ATTEMPT, UNDER A PRECONDITION. Two workers landing
@@ -5186,7 +5187,14 @@ async function writeUnitLanding(tctx, env, spaceId, unit, table, changed, who, n
     routing.publicPrefixes = authoredUnits(cur).has(unit) || skillUnit
       ? [...(routing.publicPrefixes || [])]
       : [...(routing.publicPrefixes || []), unit];
-    routing.unitSources = { ...(routing.unitSources || {}), [unit]: { sha: null, dirty: false, landed: true, by: who.personId, at: now } };
+    // `unitSources` is the per-unit source map the composed publish already reads — the one
+    // map, never a second one beside it. A caller landing on somebody's behalf hands its own
+    // stamp in (`unitSource`), which is how a page the PLATFORM made reads as the platform's
+    // to `isSeedSource` instead of as this member's first piece of work.
+    routing.unitSources = {
+      ...(routing.unitSources || {}),
+      [unit]: unitSource || { sha: null, dirty: false, landed: true, by: who.personId, at: now },
+    };
     const m = { ...cur, files, routing };
     // The same pruning the commit handler does, for the same reason: a prefix with no file
     // behind it serves nothing and only survives to trap the next publisher. It also
@@ -10220,6 +10228,63 @@ async function onboardingMeApi(tctx, request, url, env, me) {
   const none = { role, gated: false, paired: false, pairedAt: null, unit: null, url: null, drafting: false, landed: false, landedAt: null, done: false, later: false };
   const stub = tenantStub(env, tctx && tctx.tenantId);
   if (!stub) return jsonResponse({ ...none, backing: "none" });
+
+  // ── The member's own page, made for them and landed by the PLATFORM ──────────────────
+  //
+  // The welcome flow hands a person a real published URL to change, which means somebody
+  // has to make one. It cannot be the person: they have not published anything yet, and
+  // that is precisely the fact the onboarding signal is waiting for. So the platform lands
+  // it, and says so — `unitSource` is the seed sentinel, `who` is the seed actor, and
+  // `noteFirstPublish` is never on this path (it is called from the publish `commit`
+  // handler alone), so the workspace still reads as unconnected until a person publishes.
+  //
+  // IDEMPOTENT ON THE LIVE MANIFEST, not on the member's flag: the flag is what the landing
+  // is FOR, and a member whose row was lost must not get a second version of the same page
+  // landed on top of the one already serving. The live manifest is the authority on whether
+  // the unit exists, exactly as `unitApi` treats it.
+  if (url.pathname === "/__onboarding/me/unit") {
+    if (request.method !== "POST") return jsonResponse({ error: "method" }, 405);
+    // Viewers are never gated and never handed work to do. Same rule, same word, as the
+    // draft routes' refusal.
+    if (role === "viewer") return jsonResponse({ error: "viewer-role" }, 403);
+    // Space id resolution, exactly as `unitApi` does it: the request's own context first,
+    // the manifests only when it is empty (the test harness's shape).
+    let spaceId = defaultSpaceIdFromCtx(tctx);
+    if (!spaceId) spaceId = defaultSpaceIdFromManifests(await loadManifests(tctx.tenantId, env));
+    if (!spaceId || !env.BUNDLES) return jsonResponse({ error: "units-not-configured" }, 501);
+    const { unit, files } = welcomeUnitFor({ name: me.name, email: me.email });
+    const live = (await loadManifests(tctx.tenantId, env, true))[spaceId] || null;
+    if (!Object.keys((live && live.files) || {}).some((p) => p.startsWith(unit))) {
+      const bundles = bundlesFor(env, tctx.tenantId);
+      const table = {}; const changed = [];
+      for (const [p, f] of Object.entries(files)) {
+        const bytes = new TextEncoder().encode(f.body);
+        const h = [...new Uint8Array(await crypto.subtle.digest("SHA-256", bytes))].map((b) => b.toString(16).padStart(2, "0")).join("");
+        // THE BYTES BEFORE THE POINTER, always: a manifest naming a blob the store does not
+        // hold is a live 404 at somebody's welcome URL.
+        await bundles.put(`blobs/${h}`, bytes);
+        table[p] = { h, ct: f.ct, s: bytes.byteLength };
+        changed.push({ path: p });
+      }
+      const who = { personId: SEED_ACTOR, label: SEED_ACTOR };
+      const written = await writeUnitLanding(tctx, env, spaceId, unit, table, changed, who,
+        new Date().toISOString(), { unitSource: seedSource({ sha: null, dirty: false }) });
+      if (written.error) {
+        const { status, ...rest } = written;
+        return jsonResponse(rest, status || 503);
+      }
+    }
+    // The member's start unit, recorded once — the object COALESCEs it, so a second call
+    // never moves a person off the page they have already been working in.
+    try {
+      await stub.fetch("https://workspace/onboarding/welcome-set", { method: "POST", headers: { "content-type": "application/json" },
+        body: JSON.stringify({ workspaceId: tctx.tenantId, email: me.email, startUnit: unit }) });
+    } catch (e) { /* a lost write costs the flag, never the page: the read below reports what stands */ }
+    // Fall through to the ordinary GET shape, so this route has one answer and not a second
+    // description of the same member.
+    request = new Request(`${url.origin}/__onboarding/me`, { method: "GET", headers: request.headers });
+  }
+
   if (request.method === "POST") {
     let body; try { body = await request.json(); } catch (e) { return jsonResponse({ error: "bad-json" }, 400); }
     try {
@@ -12152,7 +12217,11 @@ async function handleRequest(request, env, ctx, url, trace) {
 
     // The member's own onboarding gate — see onboardingMeApi. Same placement and the
     // same self-check as /__onboarding/status above (401 without a session).
-    if (url.pathname === "/__onboarding/me") return onboardingMeApi(tctx, request, url, env, me);
+    // `/__onboarding/me/unit` is the same handler's sub-route: one member, one answer
+    // shape, whether the call is reading their onboarding or asking for their page.
+    if (url.pathname === "/__onboarding/me" || url.pathname === "/__onboarding/me/unit") {
+      return onboardingMeApi(tctx, request, url, env, me);
+    }
 
     // Comment-author faces, same deal as /__me and /__avatar/ above: this route must
     // stay here, ahead of the auth gate, because intercepting first is what makes it
