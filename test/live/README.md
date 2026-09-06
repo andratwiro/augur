@@ -30,6 +30,10 @@ LIVE_MAILBOX        an address whose mailbox the suite reads; personas are local
 LIVE_IMAP_HOST/USER/PASS
 LIVE_UNITS          comma-separated unit paths the drills may edit — old prototypes only
 LIVE_WORK           a folder for checkouts, registries, cached cookies and tokens
+LIVE_ACCOUNT_ORIGIN (optional) the hosted account origin; with LIVE_WORKSPACE, a person who
+LIVE_WORKSPACE      signed in once is signed in again through their account session, not a
+                    second mailed code — the mailer withholds one for 15 minutes per address
+LIVE_MAIL_COOLDOWN_MS (optional) that window, when an account store's differs
 ```
 
 ## Order
@@ -51,6 +55,10 @@ LIVE_WORK           a folder for checkouts, registries, cached cookies and token
   inbox reader searches that folder.
 - A role change or a removal revokes the person's tokens and their session. The suite
   re-pairs and re-signs-in on a 401/403; a drill that changes roles must expect it.
+- One mailed code per address per fifteen minutes: a second request inside the window
+  gets a 200 and no mail. The suite keeps the ACCOUNT session the first code opened and
+  signs in again through it (`LIVE_ACCOUNT_ORIGIN`); when it must mail, it waits the
+  window out and says so, rather than timing out on a mail that was never sent.
 - A "fresh agent" on the machine that runs this suite is not fresh: it will find the
   cached tokens under `LIVE_WORK` and the engine clone. That is what `--cold` is for.
 - `status` exits 1 when a sibling space clone reads as unpublished; assert on its output.

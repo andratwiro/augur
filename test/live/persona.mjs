@@ -25,22 +25,26 @@ const cookieFile = (p) => path.join(workDir("cookies"), `${p}.json`);
  */
 export async function human(persona, { fresh = false } = {}) {
   if (!PERSONAS[persona]) throw new Error(`no persona ${persona}`);
+  // `fresh` means "sign in again now", also for a person this process already holds: a
+  // drill that revoked their session (a role change, a removal) needs the next sign-in to
+  // happen, not the dead cookie handed back.
+  if (fresh) humans.delete(persona);
   if (!humans.has(persona)) {
     const h = new Human(persona);
     const f = cookieFile(persona);
     let ok = false;
-    if (!fresh && fs.existsSync(f)) {
-      try {
-        const saved = JSON.parse(fs.readFileSync(f, "utf8"));
-        h.jar.set(saved.name, { value: saved.value, host: new URL(h.origin).host });
-        ok = (await h.get("/__unit/drafts", { accept: "application/json" })).status === 200;
-        if (!ok) h.jar.clear();
-      } catch (e) { h.jar.clear(); }
+    // The whole jar comes back — the workspace cookie AND the account session the mailed
+    // sign-in opened — so a fresh sign-in can go through the account rather than the mailer.
+    if (fs.existsSync(f)) {
+      try { h.jarLoad(JSON.parse(fs.readFileSync(f, "utf8"))); } catch (e) { h.jar.clear(); }
+    }
+    if (!fresh && h.cookie) {
+      try { ok = (await h.get("/__unit/drafts", { accept: "application/json" })).status === 200; } catch (e) { ok = false; }
     }
     if (!ok) {
-      await h.signIn();
-      const c = h.jar.get("__Host-augur_user");
-      fs.writeFileSync(f, JSON.stringify({ name: "__Host-augur_user", value: c.value }));
+      h.jar.delete("__Host-augur_user");
+      try { await h.signIn(); }
+      finally { fs.writeFileSync(f, JSON.stringify(h.jarDump())); } // the account session is worth keeping even when the workspace said no
     }
     humans.set(persona, h);
   }

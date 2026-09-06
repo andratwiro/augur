@@ -30,6 +30,18 @@ export const SPACE = () => need("LIVE_SPACE");
 export const STAR = () => need("LIVE_STAR_TOKEN");
 export const UNITS = () => need("LIVE_UNITS").split(",").map((s) => s.trim()).filter(Boolean);
 
+/**
+ * The hosted account origin and this workspace's id there — OPTIONAL. Set, the suite signs
+ * a person back into the workspace through their account session (`/enter?workspace=`)
+ * rather than by mailing a second code: the mailer withholds a code for an address that
+ * was sent one inside MAIL_COOLDOWN_MS, so a drill that signs one person in twice would
+ * otherwise wait out a timeout on a mail that never comes. Unset, every sign-in mails.
+ */
+export const ACCOUNT_ORIGIN = () => (process.env.LIVE_ACCOUNT_ORIGIN || "").replace(/\/$/, "");
+export const WORKSPACE = () => process.env.LIVE_WORKSPACE || "";
+/** How long the account store withholds a second code for one address (its `PROOF_MINT_COOLDOWN_MS`). */
+export const MAIL_COOLDOWN_MS = Number(process.env.LIVE_MAIL_COOLDOWN_MS || 15 * 60 * 1000);
+
 /** The four people the suite plays, as plus-addresses on the readable mailbox. */
 export const PERSONAS = Object.freeze({
   owner: { tag: "owner", name: "QA Owner", role: "admin", initials: "QO", color: "#7c3aed" },

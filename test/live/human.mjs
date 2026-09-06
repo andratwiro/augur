@@ -4,14 +4,24 @@
 // approve an agent's pairing code, invite people and change roles, press Land or Discard
 // on the draft bar. It holds ONE cookie per person and sends exactly the requests the
 // engine's own forms and scripts send, so a drill that passes here passes in a browser.
-import { ORIGIN, imapConfig, folderOf, addressOf, sleep } from "./env.mjs";
+import fs from "node:fs";
+import path from "node:path";
+import { ORIGIN, ACCOUNT_ORIGIN, WORKSPACE, MAIL_COOLDOWN_MS, imapConfig, folderOf, addressOf, sleep, workDir } from "./env.mjs";
 import { waitForMail, parseCredentialMail } from "./inbox.mjs";
 
 const COOKIE = "__Host-augur_user";
+/** The account store's own session, set on ITS host by the code sign-in's hand-off. */
+const ACCOUNT_COOKIE = "__Host-augur_session";
 
-/** Follow a redirect chain by hand, keeping the workspace cookie when it is set. */
+/** The cookies the jar holds for one host, as a header value. */
+function cookiesFor(jar, host) {
+  return [...jar.entries()].filter(([, v]) => v.host === host).map(([k, v]) => `${k}=${v.value}`).join("; ");
+}
+
+/** Follow a redirect chain by hand, sending each host its own cookies and keeping every one set on the way. */
 async function follow(url, init, jar, hops = 6) {
-  let res = await fetch(url, { ...init, redirect: "manual" });
+  const first = cookiesFor(jar, new URL(url).host);
+  let res = await fetch(url, { ...init, headers: { ...((init && init.headers) || {}), ...(first ? { cookie: first } : {}) }, redirect: "manual" });
   for (let i = 0; i < hops; i++) {
     for (const sc of res.headers.getSetCookie ? res.headers.getSetCookie() : []) {
       const m = /^([^=]+)=([^;]*)/.exec(sc);
@@ -20,8 +30,7 @@ async function follow(url, init, jar, hops = 6) {
     const loc = res.headers.get("location");
     if (!loc || ![301, 302, 303, 307, 308].includes(res.status)) return { res, url };
     url = new URL(loc, url).href;
-    const host = new URL(url).host;
-    const cookie = [...jar.entries()].filter(([, v]) => v.host === host).map(([k, v]) => `${k}=${v.value}`).join("; ");
+    const cookie = cookiesFor(jar, new URL(url).host);
     res = await fetch(url, { redirect: "manual", headers: cookie ? { cookie } : {} });
   }
   return { res, url };
@@ -42,20 +51,84 @@ export class Human {
     return { ...(this.cookie ? { cookie: this.cookie } : {}), ...extra };
   }
 
-  /** Sign in at the workspace gate with the mailed six-digit code. Returns the cookie. */
+  /** The account session, when the jar holds one — set by the mailed sign-in's hand-off. */
+  get accountCookie() {
+    const c = this.jar.get(ACCOUNT_COOKIE);
+    return c ? c.value : "";
+  }
+
+  /** Everything the jar holds, for a caller that keeps it between processes. */
+  jarDump() {
+    return [...this.jar.entries()].map(([name, v]) => ({ name, value: v.value, host: v.host }));
+  }
+  jarLoad(saved) {
+    // The older file shape was the workspace cookie alone.
+    const list = Array.isArray(saved) ? saved : (saved && saved.name ? [{ ...saved, host: new URL(this.origin).host }] : []);
+    for (const c of list) if (c && c.name && c.value && c.host) this.jar.set(c.name, { value: c.value, host: c.host });
+  }
+
+  /**
+   * Sign in to the workspace. Returns the workspace cookie.
+   *
+   * Through the ACCOUNT SESSION when the jar holds one and the runner names the account
+   * origin: `GET <account>/enter?workspace=<id>` mints a hand-off and the chain ends with a
+   * workspace cookie — no mail. That is how a person who signed in once gets back into a
+   * workspace after a role change or a re-invite revoked their session, and it is what
+   * keeps a drill from asking the mailer for a second code inside its cooldown.
+   *
+   * A chain that ends WITHOUT a cookie is the workspace's answer to this person: a 404 for
+   * somebody it does not know (a removed member signs in like a stranger), and the error
+   * says so. A chain that ends back at the account's own sign-in is an account session that
+   * has expired, and the mailed code is the way in again.
+   */
   async signIn({ timeoutMs = 150000 } = {}) {
+    if (this.accountCookie && ACCOUNT_ORIGIN() && WORKSPACE()) {
+      const r = await follow(`${ACCOUNT_ORIGIN()}/enter?workspace=${encodeURIComponent(WORKSPACE())}`, { method: "GET" }, this.jar);
+      if (this.cookie) return this.cookie;
+      const end = new URL(r.url);
+      const backAtAccountGate = end.origin === ACCOUNT_ORIGIN() && r.res.status !== 404;
+      if (!backAtAccountGate) {
+        throw new Error(`signin: chain ended at ${end.origin}${end.pathname}${end.search.replace(/handoff=[^&]+/, "handoff=…")} with ${r.res.status} and no ${COOKIE}`);
+      }
+      this.jar.delete(ACCOUNT_COOKIE); // expired or refused: the mailed code opens a new one
+    }
+    return this.signInByMail({ timeoutMs });
+  }
+
+  /** The mailed six-digit code, the way a person with no session at all gets in. */
+  async signInByMail({ timeoutMs = 150000 } = {}) {
+    await this.waitOutMailCooldown();
     const since = new Date(Date.now() - 5000);
     const form = new URLSearchParams({ email: this.email });
     const r1 = await fetch(`${this.origin}/__signin`, { method: "POST", body: form, redirect: "manual" });
     if (r1.status !== 200) throw new Error(`signin: gate answered ${r1.status}`);
+    this.noteMailMint();
     const mail = await waitForMail({ folder: folderOf(this.persona), since, subjectRe: /code|sign/i, timeoutMs, cfg: imapConfig() });
     if (!mail) throw new Error(`signin: no code mail for ${this.persona} within ${timeoutMs} ms`);
     const { code } = parseCredentialMail(mail.text);
     if (!code) throw new Error(`signin: mail had no six-digit code: ${mail.subject}`);
     const r2 = await follow(`${this.origin}/__signin/code`, { method: "POST", body: new URLSearchParams({ email: this.email, code }) }, this.jar);
-    if (!this.cookie) throw new Error(`signin: chain ended at ${r2.url} with ${r2.res.status} and no ${COOKIE}`);
+    if (!this.cookie) throw new Error(`signin: chain ended at ${r2.url.replace(/handoff=[^&]+/, "handoff=…")} with ${r2.res.status} and no ${COOKIE}`);
     this.mail = mail;
     return this.cookie;
+  }
+
+  /**
+   * The account store mails ONE code per address per cooldown and withholds the next; a
+   * request inside the window gets a 200 and no mail, which used to surface as a timeout
+   * with a misleading message. The last request is remembered on disk, across processes,
+   * and a second one waits for the window to pass — slow, said out loud, and green.
+   */
+  mintFile() { return path.join(workDir("mail-mint"), `${this.persona}.json`); }
+  noteMailMint() { fs.writeFileSync(this.mintFile(), JSON.stringify({ at: Date.now() })); }
+  async waitOutMailCooldown() {
+    let at = 0;
+    try { at = JSON.parse(fs.readFileSync(this.mintFile(), "utf8")).at || 0; } catch (e) { /* never mailed */ }
+    const wait = at + MAIL_COOLDOWN_MS - Date.now();
+    if (wait > 0) {
+      console.error(`[live] ${this.persona}: a code was mailed ${Math.round((Date.now() - at) / 1000)} s ago; the mailer withholds another for ${Math.ceil(wait / 1000)} s — waiting`);
+      await sleep(wait + 2000);
+    }
   }
 
   /** A page or engine route as this person sees it. */

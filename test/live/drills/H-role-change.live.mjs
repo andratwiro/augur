@@ -6,7 +6,7 @@
 import { test } from "node:test";
 import { UNITS, RUN, addressOf } from "../env.mjs";
 import { human, token } from "../persona.mjs";
-import { assert, open, writeFile, readFile, stamp, save, draftIdOf, stateOf, close, resetUnit } from "./lib.mjs";
+import { assert, open, writeFile, readFile, stamp, save, draftIdOf, stateOf, close, resetUnit, until } from "./lib.mjs";
 import { execFileSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
@@ -71,17 +71,30 @@ test("H2: removed from the workspace mid-draft", async () => {
     const disc = await owner.discardFromBar(U, draftIdOf(b));
     findings.push({ what: "owner discards the removed person's draft", status: disc.status });
     // Their browser: the old cookie is dead, and a fresh sign-in ends at the workspace's
-    // hand-off as a stranger would — a 404 with no session (no membership oracle).
+    // hand-off as a stranger would — a 404 with no session (no membership oracle). The
+    // rig signs in through the account session it kept, so this asks the mailer nothing.
+    // A roster change reaches every isolate within about a minute; until it has, the
+    // hand-off can still answer from the old roster, so the stranger's 404 is waited for.
     let signin;
-    try { await human("editor2", { fresh: true }); signin = "signed in (unexpected)"; }
-    catch (e) { signin = String(e.message); }
+    await until(async () => {
+      try { await human("editor2", { fresh: true }); signin = "signed in (unexpected)"; }
+      catch (e) { signin = String(e.message); }
+      return /\b404\b/.test(signin);
+    }, { timeoutMs: 120000, everyMs: 5000, what: "the removed person's sign-in ending as a stranger's" }).catch(() => {});
     findings.push({ what: "removed person tries to sign in again", result: signin });
+    assert.match(signin, /\b404\b/, `a removed person's sign-in should end as a stranger's (404): ${signin}`);
   } finally {
     // Put editor2 back exactly as the roster tool wrote them (the remove wrote a tombstone),
-    // and pair them afresh: a removal revokes every token they held.
+    // and pair them afresh: a removal revokes every token they held. The re-add takes the
+    // same minute to reach every isolate, so the pairing is retried until it is accepted.
     execFileSync(process.execPath, [ROSTER, "add"], { env: process.env, stdio: "pipe" });
-    const again = await token("editor2", { fresh: true });
+    let again = { refused: true };
+    await until(async () => {
+      try { again = await token("editor2", { fresh: true }); } catch (e) { again = { refused: String(e.message) }; }
+      return !again.refused;
+    }, { timeoutMs: 120000, everyMs: 5000, what: "editor2's re-pairing after the re-add" }).catch(() => {});
     findings.push({ what: "editor2 re-added and re-paired", rePaired: !again.refused });
+    assert.ok(!again.refused, `editor2 could not pair again after the re-add: ${JSON.stringify(again.refused)}`);
     console.log("H2 findings:\n" + JSON.stringify(findings, null, 2));
     await close(b, true).catch(() => {});
     await resetUnit(U);

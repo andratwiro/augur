@@ -6,34 +6,55 @@
 // which is all a code-or-link message needs.
 import tls from "node:tls";
 
+/** How long one IMAP exchange (the greeting, or one tagged command) may take before it is an error. */
+const IMAP_STEP_MS = 20000;
+
+/**
+ * One connection. ⚠️ EVERY PENDING PROMISE SETTLES: a command whose answer never comes —
+ * the server closed the socket, went quiet, or answered something the tag never matched —
+ * REJECTS after IMAP_STEP_MS, and a socket that ends or errors rejects whatever is waiting
+ * on it. Without that, one dropped connection left a drill idle on a promise forever, with
+ * the mail it was waiting for already in the folder.
+ */
 function connect({ host, user, pass }) {
   return new Promise((resolve, reject) => {
     const sock = tls.connect({ host, port: 993, servername: host }, () => {});
     let buf = Buffer.alloc(0);
-    let waiting = null; // {tag, resolve}
+    let waiting = null; // {tag, resolve, reject, timer}
     let seq = 0;
+    let greeted = false;
+    const fail = (why) => {
+      const err = why instanceof Error ? why : new Error(String(why));
+      if (waiting) { clearTimeout(waiting.timer); const w = waiting; waiting = null; w.reject(err); }
+      if (!greeted) { clearTimeout(greeting); reject(err); }
+    };
     const pump = () => {
       if (!waiting) return;
-      // A tagged response line ends the command. Literals ({N}\r\n + N bytes) are
-      // carried inside the accumulated buffer; the caller parses them.
       const text = buf.toString("latin1");
       const re = new RegExp(`(^|\\r\\n)${waiting.tag} (OK|NO|BAD)[^\\r\\n]*\\r\\n`);
       const m = re.exec(text);
       if (!m) return;
-      // Make sure no literal announced before the tag line is still incomplete: count
-      // every {N} and check the bytes exist before the match.
       const end = m.index + m[0].length;
       const body = buf.subarray(0, end);
       buf = buf.subarray(end);
       const w = waiting; waiting = null;
+      clearTimeout(w.timer);
       w.resolve({ ok: m[2] === "OK", raw: body });
     };
+    const greeting = setTimeout(() => fail(`imap: no greeting from ${host} within ${IMAP_STEP_MS} ms`), IMAP_STEP_MS);
     sock.on("data", (d) => { buf = Buffer.concat([buf, d]); pump(); });
-    sock.on("error", reject);
+    sock.on("error", (e) => fail(e));
+    sock.on("close", () => fail("imap: connection closed"));
+    sock.on("end", () => fail("imap: connection ended"));
     sock.once("data", () => {
-      const cmd = (line) => new Promise((res) => {
+      greeted = true;
+      clearTimeout(greeting);
+      const cmd = (line) => new Promise((res, rej) => {
+        if (waiting) return rej(new Error("imap: a command is already pending"));
         const tag = `A${++seq}`;
-        waiting = { tag, resolve: res };
+        const verb = line.split(" ")[0];
+        const timer = setTimeout(() => fail(`imap: ${verb} unanswered after ${IMAP_STEP_MS} ms`), IMAP_STEP_MS);
+        waiting = { tag, resolve: res, reject: rej, timer };
         sock.write(`${tag} ${line}\r\n`);
       });
       resolve({
@@ -85,7 +106,9 @@ export async function waitForMail({ folder = "INBOX", since = new Date(Date.now(
   const deadline = Date.now() + timeoutMs;
   const seen = new Set();
   while (Date.now() < deadline) {
-    const c = await connect(cfg);
+    let c;
+    try { c = await connect(cfg); }
+    catch (e) { console.error(`[live] inbox: ${e.message}; trying again`); await new Promise((r) => setTimeout(r, pollMs)); continue; }
     try {
       const login = await c.cmd(`LOGIN ${q(cfg.user)} ${q(cfg.pass)}`);
       if (!login.ok) throw new Error("imap: login refused");
@@ -108,6 +131,9 @@ export async function waitForMail({ folder = "INBOX", since = new Date(Date.now(
           return { subject, text, at, folder, id };
         }
       }
+    } catch (e) {
+      // A broken exchange is one poll lost, not the mail: the next round reconnects.
+      console.error(`[live] inbox: ${e.message}; trying again`);
     } finally { c.close(); }
     await new Promise((r) => setTimeout(r, pollMs));
   }
