@@ -44,15 +44,19 @@ test("watchFolder settles a burst of edits into one call, and ignores .augur", a
   const dir = tmp();
   fs.mkdirSync(path.join(dir, ".augur"));
   let calls = 0;
-  const w = watchFolder(dir, () => { calls++; }, { debounceMs: 120 });
+  // A wide window on purpose: under a full-suite run the two change events can arrive
+  // hundreds of milliseconds apart, and the property is "one save per burst", not a timing.
+  const w = watchFolder(dir, () => { calls++; }, { debounceMs: 700 });
+  const until = async (pred, ms) => { const t0 = Date.now(); while (!pred() && Date.now() - t0 < ms) await new Promise((r) => setTimeout(r, 50)); };
   try {
     await new Promise((r) => setTimeout(r, 100));
     fs.writeFileSync(path.join(dir, "a.html"), "a");
     fs.writeFileSync(path.join(dir, "b.html"), "b");
+    await until(() => calls >= 1, 4000);
     await new Promise((r) => setTimeout(r, 900));
     assert.equal(calls, 1, "two writes inside the window are one save");
     fs.writeFileSync(path.join(dir, ".augur", "draft.json"), "{}");
-    await new Promise((r) => setTimeout(r, 600));
+    await new Promise((r) => setTimeout(r, 1200));
     assert.equal(calls, 1, "the state file is not an edit");
   } finally { w.close(); }
 });

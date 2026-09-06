@@ -35,9 +35,11 @@ function spaceFolder(origin) {
   return dir;
 }
 // Async on purpose: the door server lives in this process. A bogus token keeps publish
-// from starting a pairing that would wait for a browser.
-const run = (script, cwd, args) => new Promise((resolve) => {
-  const child = spawn(process.execPath, [script, ...args], { cwd, env: { ...process.env, AUGUR_ORIGIN: "", AUGUR_TOKEN: "not-a-token" } });
+// from starting a pairing that would wait for a browser. The origin is passed EXPLICITLY:
+// an empty AUGUR_ORIGIN falls through to a developer machine's `.env.deploy`, which names
+// a real instance, and a test that asked a live workspace would answer for it.
+const run = (script, cwd, args, origin = "") => new Promise((resolve) => {
+  const child = spawn(process.execPath, [script, ...args], { cwd, env: { ...process.env, AUGUR_ORIGIN: origin, AUGUR_TOKEN: "not-a-token" } });
   let out = "", err = "";
   child.stdout.on("data", (d) => { out += d; }); child.stderr.on("data", (d) => { err += d; });
   child.on("close", (code) => resolve({ code, out, err }));
@@ -57,7 +59,7 @@ test("publish refuses on a drafts instance with the open/land instructions, befo
   const d = await door(true);
   try {
     const dir = spaceFolder(d.origin);
-    const r = await run(PUBLISH, dir, ["--dry-run"]);
+    const r = await run(PUBLISH, dir, ["--dry-run"], d.origin);
     assert.equal(r.code, 1);
     assert.match(r.err, /augur open <opportunity>\/<prototype>/);
     assert.match(r.err, /augur land/);
@@ -70,7 +72,7 @@ test("publish refuses on a drafts instance with the open/land instructions, befo
 test("publish on an instance without drafts says nothing about them", async () => {
   const d = await door(false);
   try {
-    const r = await run(PUBLISH, spaceFolder(d.origin), ["--dry-run"]);
+    const r = await run(PUBLISH, spaceFolder(d.origin), ["--dry-run"], d.origin);
     assert.doesNotMatch(r.err, /augur open|augur land/);
   } finally { await d.close(); }
 });
