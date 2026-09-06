@@ -89,6 +89,7 @@ test("the other refusals keep the error code they had, and gain a sentence", asy
     assert.match(b.message, re, reason);
   }
   assert.deepEqual(W.publishRefusalBody("unknown-token"), { error: "forbidden" });
+  assert.deepEqual(W.publishRefusalBody("wrong-space"), { error: "forbidden" }, "the CLI says the sentence for these two, never the server");
   assert.deepEqual(W.publishRefusalBody("no-token"), { error: "forbidden" });
   assert.deepEqual(W.publishRefusalBody(undefined), { error: "forbidden" });
 });

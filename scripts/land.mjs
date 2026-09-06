@@ -26,7 +26,10 @@ if (!r.ok) {
     die("run `augur sync` to fold those in, check the draft address, then `augur land` again.");
   }
   if (r.error === "landing-in-progress") die("somebody is landing this prototype right now — try again in a few seconds.");
-  die(`land refused: ${r.error || r.status}`);
+  if (r.error === "manifest-contended") die("the workspace was busy landing other prototypes — nothing changed; run augur land again.");
+  if (r.error === "draft-closed") die(`this draft was ${r.landed ? `landed by ${r.name || r.by || "someone"}${r.session ? ` (${r.session})` : ""} at ${r.at}` : "discarded"} — the folder is no longer a draft. Your edits are still here; run augur open on the prototype again and copy them in.`);
+  if (r.error === "network") die(`could not reach the instance (${r.message}). Nothing is lost — run augur land again.`);
+  die(`land refused: ${r.error || r.status}${r.message ? ` — ${r.message}` : ""}`);
 }
 // The bytes are live; when `recorded` is false only the history entry is missing. Said out
 // loud because the next call adopts that landing as the instance's own, and nobody would

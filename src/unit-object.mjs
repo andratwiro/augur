@@ -109,6 +109,24 @@ export class UnitObject {
     const rows = [...this.sql.exec(`SELECT * FROM drafts WHERE id = ?`, id)];
     return rows.length ? rowDraft(rows[0]) : null;
   }
+  /**
+   * A verb on a draft that no longer exists as a draft. A draft nobody ever opened is
+   * `unknown-draft`; one that was CLOSED answers `draft-closed` and says how — landed
+   * (with who landed it, from the landing row it produced) or discarded — because the
+   * one process that asks is the owner's terminal, which was not told: any member may
+   * land or discard any draft from the bar, and the owner's next save is where they
+   * find out. A bare 404 there read as "nothing to do"; this reads as what happened.
+   */
+  closedAnswer(d) {
+    if (!d) return [404, { error: "unknown-draft" }];
+    const landed = !d.discarded;
+    let by = null, session = null, at = d.closedAt, revision = null;
+    if (landed) {
+      const rows = [...this.sql.exec(`SELECT by, session, at, revision FROM landings WHERE draft_id = ? ORDER BY revision DESC LIMIT 1`, d.id)];
+      if (rows.length) ({ by, session, at, revision } = rows[0]);
+    }
+    return [410, { error: "draft-closed", draftId: d.id, landed, discarded: !landed, by, session, at, revision }];
+  }
   openDrafts() {
     return [...this.sql.exec(`SELECT * FROM drafts WHERE closed_at IS NULL ORDER BY opened_at`)].map(rowDraft);
   }
@@ -150,7 +168,7 @@ export class UnitObject {
 
   save({ draftId, draftRevision, changes, baseRevision, at }) {
     const d = this.draft(draftId);
-    if (!d || d.closedAt) return [404, { error: "unknown-draft" }];
+    if (!d || d.closedAt) return this.closedAnswer(d);
     const held = this.lease(Date.parse(at));
     if (held && held.draftId === draftId) return [409, { error: "landing-in-progress" }];
     if (Number(draftRevision) !== d.revision) return [409, { error: "stale-draft-revision", draftRevision: d.revision }];
@@ -185,7 +203,7 @@ export class UnitObject {
 
   land({ draftId, baseRevision, at }) {
     const d = this.draft(draftId);
-    if (!d || d.closedAt) return [404, { error: "unknown-draft" }];
+    if (!d || d.closedAt) return this.closedAnswer(d);
     const main = this.mainRevision();
     if (d.baseRevision !== main || Number(baseRevision) !== main) {
       const base = this.landing(d.baseRevision);
@@ -230,7 +248,7 @@ export class UnitObject {
 
   sync({ draftId }) {
     const d = this.draft(draftId);
-    if (!d || d.closedAt) return [404, { error: "unknown-draft" }];
+    if (!d || d.closedAt) return this.closedAnswer(d);
     const base = this.landing(d.baseRevision);
     const delta = tableDelta(base ? JSON.parse(base.tbl) : {}, this.mainTable());
     return [200, { mainRevision: this.mainRevision(), baseRevision: d.baseRevision, ...delta }];
@@ -238,7 +256,7 @@ export class UnitObject {
 
   discard({ draftId, at }) {
     const d = this.draft(draftId);
-    if (!d || d.closedAt) return [404, { error: "unknown-draft" }];
+    if (!d || d.closedAt) return this.closedAnswer(d);
     this.sql.exec(`UPDATE drafts SET closed_at = ?, discarded = 1 WHERE id = ?`, at, draftId);
     return [200, { closed: true }];
   }

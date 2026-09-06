@@ -3,7 +3,8 @@
 // under _read/<unit>/ beside the draft folders; files carry no write bit and the deny hook
 // refuses edits there. `augur close` inside it removes it. See docs/drafts-that-land.md §7.
 import path from "node:path";
-import { target } from "./lib/store.mjs";
+import fs from "node:fs";
+import { target, buildStamp } from "./lib/store.mjs";
 import { unitClient, doRead, readDirFor, unitPathFor } from "./lib/draft.mjs";
 import { normUnit } from "../src/unit-core.mjs";
 
@@ -19,12 +20,19 @@ if (!unit) die(`"${raw}" is not a prototype path.`);
 let origin, token;
 try { ({ origin, token } = target({ needToken: true })); } catch (e) { die(e.message); }
 const dir = path.resolve(opt("--dir") || readDirFor(unit));
-const client = unitClient({ origin, token, space: "", session: "" });
+// The blob routes are per space, so the copy needs the space id exactly as `open` does:
+// from a space.json in this folder, else from what the instance says it serves.
+let space = null;
+try { space = JSON.parse(fs.readFileSync("space.json", "utf8")).id; } catch (e) { /* not in a space folder */ }
+if (!space) { try { space = Object.keys((await buildStamp(origin)).spaces || {})[0] || null; } catch (e) { /* stamp unreachable */ } }
+if (!space) die("could not tell which space this instance serves — run from a folder with space.json, or set AUGUR_ORIGIN.");
+const client = unitClient({ origin, token, space, session: "" });
 const r = await doRead({ client, unit, dir, origin, now: new Date().toISOString() });
 if (!r.ok) {
   if (r.error === "folder-not-empty") die(`${r.dir} is not empty — pick another folder with --dir.`);
   if (r.error === "units-not-configured") die("this instance does not serve drafts yet (no unit store bound).");
-  die(`could not read: ${r.error || r.status}${r.reason ? ` (${r.reason})` : ""}`);
+  if (r.error === "network") die(`could not reach the instance (${r.message}).`);
+  die(`could not read: ${r.error || r.status}${r.reason ? ` (${r.reason})` : ""}${r.message ? ` — ${r.message}` : ""}`);
 }
 log(`${r.files} file(s) of ${unit} at revision ${r.revision}, read-only`);
 console.log(dir);

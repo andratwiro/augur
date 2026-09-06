@@ -11,6 +11,8 @@ import { createHash } from "node:crypto";
 import { merge3 } from "./merge3.mjs";
 
 export const STATE_FILE = ".augur/draft.json";
+/** How many times `land` tries again when the space's manifest is contended. */
+export const LAND_RETRIES = 4;
 export const THEIRS_DIR = ".augur/theirs";
 // The machine-wide registry of open draft folders. `AUGUR_DRAFTS_REGISTRY` exists for the
 // test suite, which must never write into the developer's own home folder.
@@ -111,17 +113,30 @@ export const registryList = () => readRegistry().drafts;
  * `/__unit/<verb>` and blobs at `/__publish/<space>/blob/<hash>`. Non-2xx answers come back
  * as `{status, ...body}` rather than throwing, because a 409 is an answer, not a failure.
  */
+/**
+ * The server answers a token it does not know with a bare `forbidden` and no sentence,
+ * ON PURPOSE — a guessed token must learn nothing. This side knows something the server
+ * will not say: the token it just sent is the one saved on this machine, so a bare
+ * refusal means that token is dead here — revoked by a role change or a removal, or
+ * minted for another workspace — and the way back is to pair again.
+ */
+export const TOKEN_NOT_ACCEPTED = "this machine's publish token is not accepted here — it may have been revoked (a role change or a removal does that), or it belongs to another workspace. Run `augur connect` again.";
+export function explainRefusal(body, status) {
+  if (status === 403 && body && body.error === "forbidden" && !body.message) return { ...body, message: TOKEN_NOT_ACCEPTED };
+  return body;
+}
+
 export function unitClient({ origin, token, space, session }) {
   const headers = { Authorization: `Bearer ${token}`, "X-Augur-Session": session || "" };
   const post = async (verb, body) => {
     const r = await fetch(`${origin}/__unit/${verb}`, { method: "POST", headers: { ...headers, "content-type": "application/json" }, body: JSON.stringify(body) });
     const out = await r.json().catch(() => ({}));
-    return r.ok ? out : { status: r.status, ...out };
+    return r.ok ? out : { status: r.status, ...explainRefusal(out, r.status) };
   };
   const get = async (verb, unit) => {
     const r = await fetch(`${origin}/__unit/${verb}?unit=${encodeURIComponent(unit)}`, { headers });
     const out = await r.json().catch(() => ({}));
-    return r.ok ? out : { status: r.status, ...out };
+    return r.ok ? out : { status: r.status, ...explainRefusal(out, r.status) };
   };
   return {
     open: (b) => post("open", b), save: (b) => post("save", b), land: (b) => post("land", b),
@@ -129,14 +144,29 @@ export function unitClient({ origin, token, space, session }) {
     main: (unit) => get("main", unit),
     async blobPut(h, body) {
       const r = await fetch(`${origin}/__publish/${space}/blob/${h}`, { method: "PUT", headers, body });
-      if (!r.ok && r.status !== 204) throw new Error(`blob upload failed: ${r.status}`);
+      if (!r.ok && r.status !== 204) throw await refusalError("blob upload", r);
     },
     async blobGet(h) {
       const r = await fetch(`${origin}/__publish/${space}/blob/${h}`, { headers });
-      if (!r.ok) throw new Error(`blob fetch failed: ${r.status}`);
+      if (!r.ok) throw await refusalError("blob fetch", r);
       return Buffer.from(await r.arrayBuffer());
     },
   };
+}
+
+/**
+ * A non-2xx answer from the blob routes, carried as an error that REMEMBERS it was an
+ * answer: the status and whatever the server said. `guarded` turns that back into a
+ * result, so a role refusal on an upload reads as the refusal it is — before this, a
+ * viewer's save came back as "unreachable, nothing is lost", which was neither.
+ */
+async function refusalError(what, r) {
+  let body = null;
+  try { body = await r.json(); } catch (e) { /* not JSON */ }
+  const err = new Error(`${what} failed: ${r.status}${body && body.error ? ` ${body.error}` : ""}`);
+  err.status = r.status;
+  err.body = body && typeof body === "object" ? explainRefusal(body, r.status) : null;
+  return err;
 }
 
 // ── the verbs ────────────────────────────────────────────────────────────────
@@ -150,7 +180,15 @@ export function unitClient({ origin, token, space, session }) {
 function guarded(fn) {
   return async (...args) => {
     try { return await fn(...args); }
-    catch (err) { return { ok: false, error: "network", message: String((err && err.message) || err) }; }
+    catch (err) {
+      // An answer the server gave (a status) is a refusal and keeps the server's words;
+      // anything else — DNS, a dropped connection, a thrown fixture — is the network.
+      if (err && err.status) {
+        const body = err.body || {};
+        return { ok: false, status: err.status, error: body.error || "refused", message: body.message || String(err.message), ...(body.reason ? { reason: body.reason } : {}) };
+      }
+      return { ok: false, error: "network", message: String((err && err.message) || err) };
+    }
   };
 }
 
@@ -226,7 +264,17 @@ async function doLandImpl({ client, dir, note }) {
   if (!st) return { ok: false, error: "not-a-draft", dir };
   const saved = await doSave({ client, dir });
   if (!saved.ok) return saved;
-  const r = await client.land({ unit: st.unit, draftId: st.draftId, baseRevision: st.baseRevision, note: note || "" });
+  // Every landing in a space writes the one manifest by compare-and-set, so eight agents
+  // landing eight prototypes in the same second contend on it. The server retries a few
+  // times and then answers `manifest-contended`; that is a moment, not a refusal — the
+  // draft is still open, its lease released — so this side lands again, with a little
+  // jitter, before telling anyone. Measured live: 8 parallel landings, 2 contended.
+  let r;
+  for (let attempt = 0; ; attempt++) {
+    r = await client.land({ unit: st.unit, draftId: st.draftId, baseRevision: st.baseRevision, note: note || "" });
+    if (r.error !== "manifest-contended" || attempt >= LAND_RETRIES) break;
+    await new Promise((res) => setTimeout(res, 150 + Math.random() * 400 * (attempt + 1)));
+  }
   if (r.status) return { ok: false, ...r };
   st.landed = true; st.landedRevision = r.revision;
   writeState(dir, st);

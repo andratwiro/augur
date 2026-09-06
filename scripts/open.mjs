@@ -43,7 +43,8 @@ if (!r.ok) {
   if (r.error === "units-not-configured") die("this instance does not serve drafts yet (no unit store bound).");
   if (r.error === "bad-unit" && r.reason === "reserved-folder") die(`${unit} sits under a folder the engine reserves — a prototype lives at <opportunity>/<prototype>.`);
   if (r.error === "bad-unit" && r.reason === "not-a-prototype-folder") die(`${unit} is not a prototype folder — name one as <opportunity>/<prototype>.`);
-  die(`could not open: ${r.error || r.status}${r.reason ? ` (${r.reason})` : ""}`);
+  if (r.error === "network") die(`could not reach the instance (${r.message}).`);
+  die(`could not open: ${r.error || r.status}${r.reason ? ` (${r.reason})` : ""}${r.message ? ` — ${r.message}` : ""}`);
 }
 log(r.isNew ? `draft ${r.draftId} on ${unit} — a NEW prototype; ${dir} is empty, write its index.html there` : `draft ${r.draftId} on ${unit} — ${r.files} file(s) in ${dir}`);
 // The agent tool's hooks, installed for this machine the first time a draft is opened

@@ -4803,6 +4803,9 @@ function publishRefusalBody(refusal) {
     "viewer-role": "This account can look around but not publish.",
     "not-an-admin": "This token was minted for an admin and this account is no longer one. Run `augur login` again for a token scoped to what it may still publish.",
   }[refusal];
+  // `unknown-token` and `wrong-space` stay a bare `forbidden` ON PURPOSE: a guessed token
+  // must not learn whether it exists somewhere. The sentence a person needs — pair again —
+  // is said by the CLI, which knows it just used a saved token (scripts/lib/draft.mjs).
   return message ? { error: "forbidden", message } : { error: "forbidden" };
 }
 
@@ -5099,7 +5102,12 @@ function defaultSpaceIdFromManifests(manifests) {
  * rule the commit handler already keeps. `unitSources` records the landing so the old
  * composed publish treats the unit as somebody's work rather than as a fast-forward.
  */
-const UNIT_LANDING_ATTEMPTS = 3;
+// Every landing in a space writes the one manifest by compare-and-set. Three attempts
+// with no pause between them lost 2 of 8 landings made in the same second (measured live,
+// 6 Sep 2026); six attempts with a little jitter between them is what a burst of agents
+// landing at once needs. The CLI lands again on `manifest-contended` as well.
+const UNIT_LANDING_ATTEMPTS = 6;
+const landingBackoff = (attempt) => new Promise((r) => setTimeout(r, 30 + Math.random() * 90 * (attempt + 1)));
 async function writeUnitLanding(tctx, env, spaceId, unit, table, changed, who, now) {
   const bundles = bundlesFor(env, tctx.tenantId);
   const key = `spaces/${spaceId}/manifest.json`;
@@ -5184,7 +5192,7 @@ async function writeUnitLanding(tctx, env, spaceId, unit, table, changed, who, n
     // A store that answers `null` refused the precondition — R2's way of saying the object
     // moved under us. Anything else is a write.
     const wrote = await bundles.put(key, JSON.stringify(out), etag ? { onlyIf: { etagMatches: etag } } : undefined);
-    if (etag && wrote === null) { bustManifests(tctx.tenantId); continue; }
+    if (etag && wrote === null) { bustManifests(tctx.tenantId); await landingBackoff(attempt); continue; }
     // THE BYTES ARE LIVE FROM HERE: the manifest is the pointer visitors follow. The version
     // document is the rollback record, and a store failure writing it must not turn a landing
     // that already happened into a reported failure with no lease release — it is logged as
@@ -5273,6 +5281,12 @@ async function unitCaller(tctx, request, env, spaceId) {
     return { refusal: jsonResponse({ error: "viewer-role", message: "This account can look around but not land or discard drafts." }, 403) };
   }
   return { who: { personId: personId(me.email), label: me.email }, session: session || "browser" };
+}
+
+/** A `draft-closed` answer names who landed it by id; the roster puts the face on it. */
+function closedFace(tctx, body) {
+  if (!body || body.error !== "draft-closed" || !body.by) return body;
+  return { ...body, ...personFace(tctx.USERS, body.by) };
 }
 
 async function unitApi(tctx, request, url, env) {
@@ -5399,13 +5413,13 @@ async function unitApi(tctx, request, url, env) {
     }
     if (missing.length) return jsonResponse({ error: "missing-blobs", missing: [...new Set(missing)] }, 409);
     const r = await unitCall(stub, "/save", { draftId: body.draftId, draftRevision: body.draftRevision, changes, baseRevision: body.baseRevision, at: now });
-    return jsonResponse(r.body, r.status);
+    return jsonResponse(closedFace(tctx, r.body), r.status);
   }
   if (verb === "land" || verb === "restore") {
     const r = await unitCall(stub, `/${verb}`, verb === "land"
       ? { draftId: body.draftId, baseRevision: body.baseRevision, at: now }
       : { revision: body.revision, at: now });
-    if (r.status !== 200) return jsonResponse(r.body, r.status);
+    if (r.status !== 200) return jsonResponse(closedFace(tctx, r.body), r.status);
     const written = await writeUnitLanding(tctx, env, spaceId, unit, r.body.table, r.body.changed, who, now);
     if (written.error) {
       await unitCall(stub, "/abandon-land", { lease: r.body.lease });
@@ -5444,7 +5458,7 @@ async function unitApi(tctx, request, url, env) {
   if (verb === "sync" || verb === "discard") {
     const r = await unitCall(stub, `/${verb}`, { draftId: body.draftId, at: now });
     if (verb === "discard" && r.status === 200) await noteUnitDrafts(tctx, env, stub, unit, now);
-    return jsonResponse(r.body, r.status);
+    return jsonResponse(closedFace(tctx, r.body), r.status);
   }
   return jsonResponse({ error: "unknown-verb" }, 404);
 }

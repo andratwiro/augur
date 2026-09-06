@@ -199,7 +199,8 @@ test("discard closes a draft and it leaves presence", async () => {
   const p = await call(obj, `/presence?at=${encodeURIComponent(later(2))}`, null, "GET");
   assert.deepEqual(p.body.drafts, []);
   const s = await call(obj, "/save", { draftId: a.draftId, draftRevision: 0, at: later(3), changes: [] });
-  assert.equal(s.status, 404);
+  assert.equal(s.status, 410, "a closed draft is gone, and says how");
+  assert.equal(s.body.error, "draft-closed"); assert.equal(s.body.discarded, true);
 });
 
 test("a save during a held landing is refused, and the lease lands exactly the table it verified", async () => {
@@ -376,4 +377,33 @@ test("a refused verb reaches nobody, a ping is answered, and a dead socket is cl
   assert.equal((await call(obj, "/save", { draftId: o.draftId, draftRevision: 0, changes: [], at: later(2) })).status, 200);
   assert.equal(sockets[0].closed, true, "a socket that cannot be sent to is closed");
   assert.equal(events(sockets[1]).length, 2, "the live one still heard the save");
+});
+
+test("a verb on a draft somebody else landed says so, with who and when — not unknown-draft", async () => {
+  const { obj } = await fresh();
+  const a = await call(obj, "/open", { owner: "p1", session: "agent a", at: T0 });
+  const b = await call(obj, "/open", { owner: "p2", session: "browser", at: later(1) });
+  // p2 lands a's draft from the bar (any member may), as the worker does it: lease, then landed.
+  const lease = await call(obj, "/land", { draftId: a.body.draftId, baseRevision: 1, at: later(2) });
+  assert.equal(lease.status, 200);
+  const landed = await call(obj, "/landed", { lease: lease.body.lease, draftId: a.body.draftId, note: "from the bar", by: "p2", session: "browser", at: later(3) });
+  assert.equal(landed.status, 200, JSON.stringify(landed.body));
+  // a's terminal, unaware, saves again.
+  const s = await call(obj, "/save", { draftId: a.body.draftId, draftRevision: 0, changes: [], at: later(4) });
+  assert.equal(s.status, 410);
+  assert.equal(s.body.error, "draft-closed");
+  assert.equal(s.body.landed, true);
+  assert.equal(s.body.by, "p2");
+  assert.equal(s.body.session, "browser");
+  assert.equal(s.body.revision, 2);
+  assert.equal(s.body.at, later(3));
+  // And a discarded draft says that instead.
+  const d = await call(obj, "/discard", { draftId: b.body.draftId, at: later(5) });
+  assert.equal(d.status, 200);
+  const s2 = await call(obj, "/sync", { draftId: b.body.draftId });
+  assert.equal(s2.status, 410);
+  assert.deepEqual({ error: s2.body.error, landed: s2.body.landed, discarded: s2.body.discarded, at: s2.body.at }, { error: "draft-closed", landed: false, discarded: true, at: later(5) });
+  // A draft nobody ever opened is still unknown.
+  const u = await call(obj, "/save", { draftId: "nope00", draftRevision: 0, changes: [], at: later(6) });
+  assert.equal(u.status, 404); assert.equal(u.body.error, "unknown-draft");
 });

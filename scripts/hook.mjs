@@ -63,5 +63,6 @@ const client = unitClient({ origin, token, space: st.space, session: st.session 
 const r = await doSave({ client, dir: target.dir });
 if (r.ok) process.exit(0);
 if (r.error === "stale-draft" || r.error === "stale-draft-revision") refuse(`draft ${st.draftId} not saved: it moved under you (another process saved to it) — run augur sync, then augur save.`);
+if (r.error === "draft-closed") refuse(`draft ${st.draftId} not saved: it was ${r.landed ? `landed by ${r.name || r.by || "someone"}${r.session ? ` (${r.session})` : ""} at ${r.at}` : "discarded"} — this folder is no longer a draft. Your edits are still here; run augur open on the prototype again and copy them in.`);
 if (r.error === "network") refuse(`draft ${st.draftId} not saved: ${origin} is unreachable (${r.message}). Nothing is lost — the next save carries every change since.`);
-refuse(`draft ${st.draftId} not saved: ${r.error || r.status}${r.reason ? ` (${r.reason})` : ""}. Fix it and run augur save.`);
+refuse(`draft ${st.draftId} not saved: ${r.error || r.status}${r.reason ? ` (${r.reason})` : ""}${r.message ? ` — ${r.message}` : ""}. Fix it and run augur save.`);

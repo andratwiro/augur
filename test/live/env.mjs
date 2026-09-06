@@ -1,0 +1,69 @@
+// test/live/env.mjs — the live suite's one reading of its environment.
+//
+// Nothing under test/live/ names an instance, a domain, a person or a credential. Every
+// address and secret arrives as a `LIVE_*` variable, set by a runner OUTSIDE this repo
+// that reads them by path from wherever the deployment keeps them. A missing variable is
+// a refusal with the variable's name, never a default: a live drill that silently ran
+// against the wrong origin would be worse than one that did not run.
+//
+//   LIVE_ORIGIN        the workspace's origin, e.g. https://acme.example
+//   LIVE_SPACE         the space id the unit routes belong to
+//   LIVE_STAR_TOKEN    a star-scope publish token (state export/import, roster setup)
+//   LIVE_MAILBOX       an address whose mailbox the suite can read; personas are
+//                      plus-addresses on it (local+tag@domain)
+//   LIVE_IMAP_HOST / LIVE_IMAP_USER / LIVE_IMAP_PASS   how to read that mailbox
+//   LIVE_UNITS         comma-separated unit paths the drills may edit (old prototypes),
+//                      e.g. /toolkit/cards-embed/,/broad-listening/queue/
+//   LIVE_WORK          a folder for draft checkouts and registries (default: a temp dir)
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
+
+export function need(name) {
+  const v = process.env[name];
+  if (!v) throw new Error(`live suite: ${name} is not set — set it in the runner, never in the repo`);
+  return v;
+}
+
+export const ORIGIN = () => need("LIVE_ORIGIN").replace(/\/$/, "");
+export const SPACE = () => need("LIVE_SPACE");
+export const STAR = () => need("LIVE_STAR_TOKEN");
+export const UNITS = () => need("LIVE_UNITS").split(",").map((s) => s.trim()).filter(Boolean);
+
+/** The four people the suite plays, as plus-addresses on the readable mailbox. */
+export const PERSONAS = Object.freeze({
+  owner: { tag: "owner", name: "QA Owner", role: "admin", initials: "QO", color: "#7c3aed" },
+  editor: { tag: "editor", name: "QA Editor", role: "editor", initials: "QE", color: "#0891b2" },
+  editor2: { tag: "editor2", name: "QA Editor Two", role: "editor", initials: "Q2", color: "#059669" },
+  viewer: { tag: "viewer", name: "QA Viewer", role: "viewer", initials: "QV", color: "#b45309" },
+});
+
+export function addressOf(persona) {
+  const box = need("LIVE_MAILBOX");
+  const at = box.indexOf("@");
+  return `${box.slice(0, at)}+${PERSONAS[persona].tag}${box.slice(at)}`;
+}
+/** The mailbox folder a plus-tagged message lands in (the provider files by tag). */
+export const folderOf = (persona) => PERSONAS[persona].tag;
+
+export function imapConfig() {
+  return { host: need("LIVE_IMAP_HOST"), user: need("LIVE_IMAP_USER"), pass: need("LIVE_IMAP_PASS") };
+}
+
+let workRoot = null;
+/** A scratch folder for this run; one per process, removed by the caller when it wants to. */
+export function workDir(sub = "") {
+  if (!workRoot) {
+    workRoot = process.env.LIVE_WORK || fs.mkdtempSync(path.join(os.tmpdir(), "augur-live-"));
+    fs.mkdirSync(workRoot, { recursive: true });
+  }
+  const d = path.join(workRoot, sub);
+  fs.mkdirSync(d, { recursive: true });
+  return d;
+}
+
+export const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+export const now = () => new Date().toISOString();
+
+/** A short stamp that makes every test edit recognisable and every run distinguishable. */
+export const RUN = process.env.LIVE_RUN || `live-${Date.now().toString(36)}`;

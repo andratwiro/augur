@@ -78,6 +78,9 @@ you do not want (its saves stay on the instance for a while; nothing else is tou
 |---|---|---|
 | `main-moved` / "sync first" | somebody landed since you opened | `augur sync`, then `augur land` |
 | `stale-draft` | another process saved to this same draft | `augur sync`, then `augur save` |
+| `draft-closed` | somebody landed or discarded this draft from the site (it says who and when) | your edits are still in the folder; `augur open` the prototype again and copy them in |
+| `manifest-contended` | many landings hit the workspace in the same second; `land` already tried again | `augur land` once more |
+| `forbidden` with "run `augur connect` again" | this machine's token was revoked (a role change or a removal) or belongs to another workspace | `augur connect` |
 | `would-unpublish` | the draft has no files (the folder is empty) | check the folder; a deletion is its own verb |
 | `not-a-prototype-folder` / `reserved-folder` | the path is not `<opportunity>/<prototype>` | name the prototype folder |
 | `units-not-configured` | this instance does not serve drafts | `augur publish` — see publishing.md |

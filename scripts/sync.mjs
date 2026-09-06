@@ -15,7 +15,9 @@ const token = resolveToken(origin);
 if (!token) die("no publish token — run `augur connect` once.");
 const client = unitClient({ origin, token, space: st.space, session: st.session });
 const r = await doSync({ client, dir });
-if (!r.ok) die(`sync refused: ${r.error || r.status}`);
+if (!r.ok && r.error === "draft-closed") die(`this draft was ${r.landed ? `landed by ${r.name || r.by || "someone"}${r.session ? ` (${r.session})` : ""} at ${r.at}` : "discarded"} — the folder is no longer a draft. Your edits are still here; run augur open on the prototype again and copy them in.`);
+if (!r.ok && r.error === "network") die(`could not reach the instance (${r.message}). Nothing is lost — run augur sync again.`);
+if (!r.ok) die(`sync refused: ${r.error || r.status}${r.message ? ` — ${r.message}` : ""}`);
 for (const f of r.taken) log(`took theirs   ${f}`);
 for (const f of r.merged) log(`merged        ${f}`);
 for (const c of r.conflicts) {
