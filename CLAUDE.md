@@ -941,9 +941,20 @@ name, initials, colour and role. Passwords live in KV as PBKDF2 hashes under
   Reads take the object
   first and KV as a FALLBACK, which is what carries an invite link somebody is already
   holding across the cut; **writes go to BOTH stores**, which is what makes flipping one word
-  back a revert rather than a rollback (and what keeps `augur export --full`, which walks KV,
-  a complete copy). A deployment with no `TENANTS` binding — every self-hosted instance —
-  has no object, so `identityFor` answers null and nothing changes for it.
+  back a revert rather than a rollback. ⚠️ **`augur export --full` does NOT trust that
+  straddle for `publish:tokens`**: it reads the UNION of both stores, the object's row
+  winning, because a row can be in one store and not the other (a copy that predates the
+  cut, a KV write that failed after the object took the row) and a "full" copy taken from
+  KV alone omitted tokens that were live and answering — found on a real workspace, 6 Sep
+  2026. An object that cannot be listed goes under `failed`, which a restore refuses.
+  **And a restore of `users:roster` into the object REMOVES NOBODY unless asked**: on KV the
+  overlay is one document and an import replaces it; on the object the rows the copy names
+  are upserted and the members it does not name are KEPT and NAMED in the response
+  (`members.kept`) — a restore says "at least this". `prune` says "exactly this" and removes
+  them the way the admin panel's remove does (tombstone, tokens, invites, session —
+  `members.removed`). `test/state-import-members.test.mjs` pins both. A deployment with no
+  `TENANTS` binding — every self-hosted instance — has no object, so `identityFor` answers
+  null and nothing changes for it.
   **An unreadable object is a REFUSAL and does not reach the fallback**: an ANSWER of "no
   such invite" is a fact and an ERROR is the absence of one, and falling through on the
   second would make a broken store fail OPEN onto KV, which is the shape the whole gate

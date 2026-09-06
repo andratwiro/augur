@@ -739,7 +739,7 @@ function seedCount(seed) {
  * `users:roster`'s `remove` list, and dropping the person here instead would let a
  * re-invite inherit the role the last holder of that address had.
  */
-function writeIdentity(sql, identity, at, written = [], refused = []) {
+function writeIdentity(sql, identity, at, written = [], refused = [], { prune = false } = {}) {
   if (!identity || typeof identity !== "object") return { written, refused };
   const list = (k) => (Array.isArray(identity[k]) ? identity[k] : []);
   const touched = (family, n) => { if (n) written.push(family); };
@@ -774,6 +774,39 @@ function writeIdentity(sql, identity, at, written = [], refused = []) {
   }
   touched("members", n);
   if (n) markSeeded(sql, "roster", at);
+
+  // ── the people the copy does NOT name ──────────────────────────────────────────
+  //
+  // On KV the roster overlay is one document and an import replaces it, so anybody the
+  // copy does not name is gone. Here the rows above were upserted and every other row was
+  // left as it was — a member the copy does not name STAYS, with their session and their
+  // tokens, and for a while this reported `users:roster` as written and said nothing else,
+  // which read as a replace. So the ones left are counted and named:
+  //
+  //   · a plain restore says "at least this" and KEEPS them — `kept` says who, so a person
+  //     reading the result cannot mistake a keep for a replace;
+  //   · `prune` says "exactly this" and REMOVES them the way the admin panel's remove
+  //     does — a tombstone (a re-invite must not inherit the old role), no publish token,
+  //     no outstanding invite. The worker revokes the session and the KV-side copies.
+  //
+  // Only overlay rows: a config member is the durable roster, not the copy's to remove.
+  // Only when the copy CARRIED the roster family — a copy of nothing but statuses says
+  // nothing about who belongs. `rosterCarried` is the worker's word for that.
+  let members;
+  if (identity.rosterCarried) {
+    const named = new Set(list("members").map((m) => lcAddr(m && m.email)).filter(Boolean));
+    const left = [...sql.exec(
+      `SELECT email FROM members WHERE source = 'overlay' AND removed_at IS NULL ORDER BY email`,
+    )].map((r) => String(r.email)).filter((e) => !named.has(e));
+    members = { kept: [], removed: [] };
+    for (const e of left) {
+      if (!prune) { members.kept.push(e); continue; }
+      sql.exec(`UPDATE members SET removed_at = ? WHERE email = ?`, at, e);
+      sql.exec(`DELETE FROM publish_tokens WHERE LOWER(label) = ?`, e);
+      sql.exec(`DELETE FROM invites WHERE email = ?`, e);
+      members.removed.push(e);
+    }
+  }
 
   n = 0;
   for (const i of list("invites")) {
@@ -838,7 +871,7 @@ function writeIdentity(sql, identity, at, written = [], refused = []) {
   }
   touched("blobs", n);
 
-  return { written, refused };
+  return { written, refused, members };
 }
 
 /**
@@ -2550,11 +2583,12 @@ export class TenantStore {
           written.push(scope ? `${family}/${scope}` : family);
         }
       }
-      writeIdentity(this.sql, identity, stamp, written, refused);
+      members = writeIdentity(this.sql, identity, stamp, written, refused, { prune }).members;
     };
+    let members;
     const atomic = typeof this.ctx.storage.transactionSync === "function";
     if (atomic) this.ctx.storage.transactionSync(body); else body();
-    return { written, refused, atomic };
+    return members ? { written, refused, atomic, members } : { written, refused, atomic };
   }
 
   /**

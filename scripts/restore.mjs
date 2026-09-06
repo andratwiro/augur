@@ -292,6 +292,14 @@ if (STATE) {
     })).json();
     if (!res.ok) die(`the instance refused the state: ${res.reason}${res.failed ? ` (${res.failed.join(", ")})` : ""}`);
     if (res.skipped && res.skipped.length) log(`\x1b[33mskipped (not in the instance's inventory): ${res.skipped.join(", ")}\x1b[0m`);
+    // A restore says "at least this": a member the copy does not name stays, and the
+    // instance names them so a keep is never mistaken for a replace.
+    if (res.members && res.members.kept && res.members.kept.length) {
+      log(`\x1b[33mkept ${res.members.kept.length} member(s) this copy does not name (a restore removes nobody): ${res.members.kept.join(", ")} — remove them in the people panel if they should go\x1b[0m`);
+    }
+    if (res.members && res.members.removed && res.members.removed.length) {
+      log(`removed ${res.members.removed.length} member(s) this copy does not name: ${res.members.removed.join(", ")}`);
+    }
     stateReport = res;
   }
 }

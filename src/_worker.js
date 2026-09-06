@@ -8406,6 +8406,43 @@ async function readStateFamily(tctx, env, entry, store, kv) {
     }
     return await store.read(family, "");
   }
+  // ── the identity families the workspace OBJECT holds since the cut-over ──────────
+  //
+  // `publish:tokens` is read by the publish path from the object FIRST and KV second, and a
+  // mint writes both — so a row can be in one store and not the other. Reading KV alone
+  // here (which is what this did) produced a `--full` copy that omitted tokens which were
+  // live and answering; a restore from it would have dropped them without a word. The copy
+  // is the union of both stores.
+  //
+  // ⚠️ FOR A HASH BOTH STORES HOLD, KV'S RECORD IS THE ONE COPIED, VERBATIM. The object's
+  // row is a projection into columns — it stamps a `createdAt` on a record the copy never
+  // carried and spells `label` as null where the record had none — and a copy that took
+  // the projection stopped verifying: `augur migrate` compares the target's export with the
+  // source's, and a KV→workspace migration reported `publish:tokens` as not matching on
+  // data that had landed. What the object ADDS is the rows KV lacks; what KV holds is what a
+  // restore wrote and what a verifier reads back. (The admin panel lists the same union the
+  // other way round — the object's row is what governs a publish — and that is a display
+  // question, not a copy question.)
+  //
+  // An object that CANNOT be asked throws, and the export files that under `failed` — a
+  // restore refuses such a copy. Answering from KV alone instead would be a copy that calls
+  // itself full while missing every object-held token, the exact thing this branch closes.
+  if (entry.id === PUBLISH_TOKENS_KEY) {
+    const ident = identityFor(env, tctx, "publishTokens");
+    if (ident) {
+      const listed = await ident.tokenList();
+      const held = (listed && listed.tokens && typeof listed.tokens === "object") ? listed.tokens : {};
+      let map = null;
+      if (kv) {
+        const raw = await kv.get(entry.id);
+        if (raw != null) { try { map = JSON.parse(raw); } catch (e) { map = null; } }
+      }
+      // Absent stays absent: no document in KV and no row in the object is the one answer a
+      // restore must LEAVE alone (it clears a `{}`). A seeded-but-empty object is `{}`.
+      if (map === null && !Object.keys(held).length && !(listed && listed.seeded)) return null;
+      return { ...held, ...(map || {}) };
+    }
+  }
   if (!kv) return null;
   if (STATE_KV_PREFIXED.includes(entry.id)) {
     const out = {};
@@ -8672,6 +8709,9 @@ async function importState(tctx, env, doc) {
       },
     );
 
+    // Whether the copy carried the roster overlay at all: the object counts the people
+    // the copy does not name only when the copy claims to say who belongs.
+    identity.rosterCarried = Object.prototype.hasOwnProperty.call(doc.families, "users:roster");
     const res = await stub.fetch("https://workspace/state/import", {
       method: "POST",
       headers: { "content-type": "application/json" },
@@ -8680,7 +8720,15 @@ async function importState(tctx, env, doc) {
       }),
     });
     if (!res.ok) return { ok: false, reason: "workspace-refused", status: res.status };
-    const { atomic, refused } = await res.json();
+    const { atomic, refused, members } = await res.json();
+    // The people `prune` removed from the object are removed the way the admin panel
+    // removes them: the session, the KV-side token and invite copies go too. Best-effort
+    // and after the object's transaction — the row is the fact, these are its consequences.
+    for (const email of (members && members.removed) || []) {
+      try { await revokeSecret(env, email, tctx); } catch (e) { /* no KV binding: nothing to revoke there */ }
+      await revokePublishTokens(tctx, env, email);
+      await revokeInvitesFor(tctx, env, email);
+    }
     // ⚠️ THE IDENTITY FAMILIES GO TO BOTH, AND THAT IS THE POINT OF THE SPLIT.
     // The object gets a faithful copy and KV stays exactly what the KV path reads, so a
     // restore cannot take an instance down whichever store is currently answering. With the
@@ -8701,6 +8749,9 @@ async function importState(tctx, env, doc) {
       // from a complete one, which is the failure this whole path exists to avoid.
       unmapped: identitySkipped,
       refusedRows: refused || [],
+      // Who the copy did not name and what became of them — `kept` on a plain restore,
+      // `removed` under `prune`. Absent when the copy carried no roster.
+      ...(members ? { members } : {}),
     };
   }
 
