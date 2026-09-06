@@ -22,6 +22,39 @@ library demo (`components/<name>`, `base/…`, `patterns/…`, `pages/…`) and 
 workspace's design system (`skills/<prefix>-ui`), which is one unit like any other.
 Without `--new`, a name that does not exist is refused rather than guessed at.
 
+## What is already here
+
+```
+augur ls                  # the opportunities, one per line, with a prototype count
+augur ls <opportunity>    # its prototypes, one per line, as <opportunity>/<name>
+```
+
+Read from the LIVE manifest, so it is never stale and never a guess. Run it before you
+create anything. Asked to "put it under Broad Listening", `augur ls` is how you find that
+the folder is called `broad-listening` — rather than inventing a second top-level folder
+beside it, or naming one with a capital letter and a space in it.
+
+`augur ls <opportunity>` on a name that is not there is refused, and says to run
+`augur ls`.
+
+## Naming a new one
+
+`--new` refuses two things before anything reaches the workspace, so a guessed name never
+opens even an empty draft:
+
+- **`unslugged-unit`** — a path segment that is not lowercase letters, digits and dashes.
+  The refusal names the slug it would accept, so the fix is the message:
+  `augur open --new "Broad Listening/New Idea"` comes back with
+  `try \`augur open --new broad-listening/new-idea\``.
+- **`unknown-opportunity`** — the first segment names no opportunity this workspace has.
+  `augur ls` lists them; `--new-opportunity` is how you say you meant to start one. A
+  workspace with nothing published yet has no opportunities to compare against, so a new
+  unit there is allowed straight through.
+
+A prototype is exactly two segments, `<opportunity>/<prototype>`. One segment, three, or a
+folder the engine reserves is `not-a-prototype-folder` / `reserved-folder` — see the table
+below.
+
 ## What a draft is
 
 Your own live copy of one prototype, at its own address: the prototype's URL with `@` and
@@ -83,7 +116,9 @@ you do not want (its saves stay on the instance for a while; nothing else is tou
 | `manifest-contended` | many landings hit the workspace in the same second; `land` already tried again | `augur land` once more |
 | `forbidden` with "run `augur connect` again" | this machine's token was revoked (a role change or a removal) or belongs to another workspace | `augur connect` |
 | `would-unpublish` | the draft has no files (the folder is empty) | check the folder; a deletion is its own verb |
-| `not-a-prototype-folder` / `reserved-folder` | the path is not `<opportunity>/<prototype>` | name the prototype folder |
+| `not-a-prototype-folder` / `reserved-folder` | the path is not `<opportunity>/<prototype>` (exactly two segments, and not a folder the engine generates) | name the prototype folder |
+| `unslugged-unit` | `--new` with a name that is not lowercase letters, digits and dashes | run the slug the refusal prints |
+| `unknown-opportunity` | `--new` under a top-level folder this workspace does not have | `augur ls`; `--new-opportunity` to start one on purpose |
 | `units-not-configured` | this instance does not serve drafts | `augur publish` — see publishing.md |
 | no publish token | this machine is not paired | `augur connect` (never a password) |
 | unreachable | the instance could not be reached | nothing is lost; the next save carries every change since |

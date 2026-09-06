@@ -815,9 +815,15 @@ name, initials, colour and role. Passwords live in KV as PBKDF2 hashes under
   the invite flow is byte-for-byte what predates it.
 - **⚠️ `FIRST_RUN` moves where a successful redemption LANDS, once per person, ever.**
   With the instance flag on (`firstRun: true`, explicit true only), the first invite a
-  person ever redeems 303s to `/__welcome` — a deliberately placeholder surface whose
-  words live in `FIRST_RUN_COPY` and nowhere else — and every redemption after lands on
-  `/` as always. The once-only record is the WORKSPACE'S (`users:firstrun`, segmented
+  person ever redeems 303s to `/__welcome` and every redemption after lands on
+  `/` as always. ⚠️ **The placeholder behind that path exists ONLY under `firstRun: true`.**
+  `WELCOME_PATH` is literally the same constant as `FIRST_RUN_PATH`, and which page stands
+  in the slot is decided by the flag rather than by the order of two branches in the
+  router: with the flag on it is the placeholder surface whose words live in
+  `FIRST_RUN_COPY` and nowhere else, and OTHERWISE it is the real welcome flow — five
+  steps, `src/welcome-page.mjs`, reached by a redirect on `/` and lifted by "do this later"
+  (`docs/welcome-flow.md`). A person meets one or the other and never both. ⏳ When
+  FIRST_RUN retires, the placeholder and both its guards retire with it. The once-only record is the WORKSPACE'S (`users:firstrun`, segmented
   like every identity document), never a cookie: a second device and a sign-out agree
   about it. It is written BEFORE the redirect is issued, and every degraded case — flag
   off, no store, unreadable store, failed write — lands on `/`: nothing is SHOWN that
