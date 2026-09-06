@@ -6,6 +6,8 @@
 //   … --no-push                     commit + publish only (offline)
 //   … --dry-run                     say what would happen, change nothing
 //   … --allow-unpublish             let this ship take live public pages down
+//   … --legacy                      on a workspace that serves drafts, ship a tree anyway
+//                                   (one release; the way there is `augur open` / `augur land`)
 //
 // Three jobs used to be three decisions, and skipping any of them was silent:
 //   commit   local, instant, cannot fail — the step that makes losing work
@@ -25,6 +27,7 @@
 // human. Progress goes to stderr. Exit code is truth.
 
 import { spawn, execFileSync } from "node:child_process";
+import { draftsServed } from "./lib/draft.mjs";
 import { existsSync, readFileSync, readdirSync, writeFileSync, mkdirSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -83,6 +86,30 @@ if (want) {
 }
 if (!dir) die("run this from a space folder, or name one with --space <id>.");
 const SPACE = idOf(dir);
+
+// ── drafts that land: where the instance serves drafts, ship is not the way ─
+// One fact, read from the instance's public well-known file: does it serve drafts? Where
+// it does, a prototype is changed by opening it, editing and landing — a whole tree is no
+// longer what goes live, and shipping one here would put every session's half-done work
+// on the site at once. Where it does not (every self-hosted instance today) nothing here
+// changes. `--legacy` runs the old path for one release, and says so.
+const LEGACY = flag("--legacy");
+{
+  let origin = process.env.AUGUR_ORIGIN || "";
+  try { origin = origin || JSON.parse(readFileSync(path.join(dir, "space.json"), "utf8")).siteOrigin || ""; } catch (e) { /* no origin known: nothing to ask */ }
+  if (origin && await draftsServed(origin)) {
+    if (LEGACY) warn("this workspace serves drafts; shipping a whole tree here is the legacy path and goes away next release.");
+    else {
+      console.error(`\x1b[31m[ship]\x1b[0m ${origin} serves drafts, so a prototype is changed by opening it, not by shipping a tree:\n\n` +
+        `  augur open <opportunity>/<prototype>     # a folder of its own, live at once at its draft address\n` +
+        `  …edit; every save is live there…\n` +
+        `  augur land                               # the real URL moves; the last line printed is the live URL\n\n` +
+        `If the landing is refused because main moved: augur sync, then augur land again.\n` +
+        `Read agents/drafts.md in the engine clone. \`augur ship --legacy\` runs the old path for one release.`);
+      process.exit(1);
+    }
+  }
+}
 
 const git = (...a) => execFileSync("git", ["-C", dir, ...a], { encoding: "utf8" }).trim();
 const gitQuiet = (...a) => {

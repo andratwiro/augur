@@ -335,6 +335,22 @@ export function watchFolder(dir, onSettle, { debounceMs = 300 } = {}) {
   return { close() { clearTimeout(timer); watcher.close(); } };
 }
 
+// ── does the instance serve drafts at all (§10) ───────────────────────────────
+// Read from the public well-known file, so it needs no token and answers before anything
+// is committed or built. False on ANY failure: an instance that cannot be asked is treated
+// as one that does not serve drafts, which is the path that already works everywhere.
+export async function draftsServed(origin, { timeoutMs = 2500 } = {}) {
+  if (!origin) return false;
+  try {
+    const r = await fetch(`${String(origin).replace(/\/+$/, "")}/.well-known/augur.json`, {
+      signal: AbortSignal.timeout(timeoutMs), headers: { Accept: "application/json" },
+    });
+    if (!r.ok) return false;
+    const j = await r.json();
+    return !!(j && j.drafts && j.drafts.enabled === true);
+  } catch (e) { return false; }
+}
+
 // ── what is open on this machine (§4 `status`) ───────────────────────────────
 export function draftsReport(entries, presenceByUnit = {}) {
   const out = [];
