@@ -19,6 +19,7 @@ const CONNECT = path.resolve("scripts/connect.mjs");
 /** The two pairing routes, as small as the CLI needs them, with an `approve()` the test flips. */
 function pairServer() {
   const codes = new Map();
+  const revoked = new Set();
   let starts = 0;
   const srv = http.createServer((req, res) => {
     let body = "";
@@ -30,6 +31,12 @@ function pairServer() {
         const code = `CODE${String(starts).padStart(4, "0")}`;
         codes.set(code, { deviceSecret: `secret-${starts}`, approved: false });
         return json(200, { code, deviceSecret: `secret-${starts}`, approveUrl: `http://x/__connect`, expiresInMs: 300000 });
+      }
+      if (req.url === "/__unit/drafts") {
+        // What a connected machine can read: 200 with the right token, 401 without.
+        const auth = req.headers.authorization || "";
+        const ok = [...codes.keys()].length === 0 || true;
+        return json(/^Bearer tok-CODE\d+$/.test(auth) && !revoked.has(auth.slice(7)) ? 200 : 401, ok ? { drafts: [] } : {});
       }
       if (req.url === "/__publish/_pair/claim") {
         const { code, deviceSecret } = JSON.parse(body || "{}");
@@ -45,6 +52,7 @@ function pairServer() {
   return new Promise((resolve) => srv.listen(0, "127.0.0.1", () => resolve({
     origin: `http://127.0.0.1:${srv.address().port}`,
     approve: (code) => { codes.get(code).approved = true; },
+    revoke: (token) => { revoked.add(token); },
     get starts() { return starts; },
     close: () => new Promise((r) => srv.close(r)),
   })));
@@ -123,5 +131,40 @@ test("the waiting form says it can be interrupted and resumed", async () => {
     assert.match(out, /--no-wait/, "names the flag for message-relayed agents");
     const pending = JSON.parse(fs.readFileSync(path.join(home, ".config", "augur", "pairing.json"), "utf8"));
     assert.ok(pending[new URL(srv.origin).host], "the pairing survives the interrupt");
+  } finally { await srv.close(); }
+});
+
+test("A MACHINE THAT IS ALREADY CONNECTED DOES NOT PAIR AGAIN BY ACCIDENT — --again does, and a dead token does", async () => {
+  const srv = await pairServer();
+  const home = fs.mkdtempSync(path.join(os.tmpdir(), "augur-connect-"));
+  const env = { ...process.env, HOME: home, AUGUR_ORIGIN: srv.origin };
+  delete env.AUGUR_TOKEN;
+  try {
+    const first = await run(["--no-wait"], env);
+    assert.equal(first.code, 0, first.err);
+    srv.approve("CODE0001");
+    const collected = await run(["--no-wait"], env);
+    assert.match(collected.err + collected.out, /paired/);
+    assert.equal(srv.starts, 1);
+
+    // The agent runs connect again without reading the answer: no new code, a plain sentence.
+    const again = await run([], env);
+    assert.equal(again.code, 0, again.err);
+    assert.match(again.out, /already connected to .*127\.0\.0\.1:\d+/);
+    assert.match(again.out, /Nothing to approve/);
+    assert.match(again.out, /augur connect --again/);
+    assert.equal(srv.starts, 1, "no second code was minted");
+
+    // On purpose: --again pairs afresh.
+    const fresh = await run(["--no-wait", "--again"], env);
+    assert.equal(fresh.code, 0, fresh.err);
+    assert.match(fresh.out, /CODE-0002/);
+    assert.equal(srv.starts, 2);
+
+    // A token the workspace no longer honours falls through to a new pairing without being asked.
+    srv.revoke("tok-CODE0001");
+    const dead = await run(["--no-wait"], env);
+    assert.equal(dead.code, 0, dead.err);
+    assert.match(dead.out, /CODE-000[23]/, "a code is shown, not 'already connected'");
   } finally { await srv.close(); }
 });

@@ -64,6 +64,32 @@ async function post(pathPart, body) {
   return { status: r.status, json };
 }
 
+// A machine that is ALREADY connected to this origin does not pair again by accident. One
+// cold agent collected its token with a blocking `connect`, did not read the answer, ran
+// `connect` again, minted a second code, and had the person approve that too. If the saved
+// token still answers, say so and stop; `--again` pairs afresh on purpose, and a token the
+// workspace no longer honours (revoked, another workspace's) falls through to a new pairing.
+const AGAIN = argv.includes("--again");
+const TOKENS_FILE = path.join(os.homedir(), ".config", "augur", "tokens.json");
+function savedToken() {
+  try { const t = JSON.parse(readFileSync(TOKENS_FILE, "utf8"))[host]; return t && t.token ? t : null; } catch (e) { return null; }
+}
+if (!AGAIN && !process.env.AUGUR_TOKEN) {
+  const saved = savedToken();
+  if (saved && !(saved.expiresAt && Date.parse(saved.expiresAt) <= Date.now())) {
+    let live = false;
+    try {
+      const r = await fetch(`${ORIGIN}/__unit/drafts`, { headers: { Authorization: `Bearer ${saved.token}`, Accept: "application/json" } });
+      live = r.status === 200;
+    } catch (e) { live = false; }
+    if (live) {
+      log(`this machine is already connected to ${C.bold}${host}${C.off}${saved.at ? ` (since ${saved.at.slice(0, 16).replace("T", " ")})` : ""}. Nothing to approve.`);
+      console.log(`  ${C.dim}\`augur open <opportunity>/<prototype>\` works from here. \`augur connect --again\` pairs afresh.${C.off}`);
+      process.exit(0);
+    }
+  }
+}
+
 // A pairing this machine already started and nobody has collected: ask once whether it
 // was approved meanwhile, and if not, keep waiting on THAT code rather than minting a
 // second one for the same person to type.
