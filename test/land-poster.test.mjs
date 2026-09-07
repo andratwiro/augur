@@ -91,3 +91,65 @@ test("with the tools, a shot lands a real WebP; without them, the reason is name
   assert.equal((await posterFor(dir)).skipped, "current", "a second land does not reshoot an untouched folder");
   try { execFileSync("cwebp", ["-version"], { stdio: "ignore" }); } catch { assert.fail("cwebp was reported present"); }
 });
+
+// The whole way up, against the fixture instance: `augur land` from a draft folder whose
+// source is newer than its (absent) poster. Where the tools exist the landing carries
+// preview.webp as image/webp and says so; where they do not, the landing happens all the
+// same and the reason is on stderr. Both are the contract; CI is the second case.
+import { spawn } from "node:child_process";
+import { startUnitServer } from "./fixtures/unit-server.mjs";
+import { manifestOf, remember, liveNow } from "./fixtures/unit-env.mjs";
+
+// Async on purpose: the CLI talks to the fixture server living in THIS process, and a
+// synchronous spawn would block the loop that answers it.
+const run = (args, cwd, env) => new Promise((resolve) => {
+  const child = spawn(process.execPath, args, { cwd, env });
+  let stdout = "", stderr = "";
+  child.stdout.on("data", (d) => { stdout += d; }); child.stderr.on("data", (d) => { stderr += d; });
+  child.on("close", (status) => resolve({ status, stdout, stderr }));
+});
+
+test("a landing from a draft folder carries the poster where the tools exist, and lands anyway where they do not", async (t) => {
+  const U = "/checkout/flow/";
+  const srv = await startUnitServer({ live: manifestOf(5, { [U]: { "index.html": remember("<h1>flow</h1>") } }), tenantId: "cli-land-poster" });
+  try {
+    const home = fs.mkdtempSync(path.join(os.tmpdir(), "augur-home-"));
+    const work = fs.mkdtempSync(path.join(os.tmpdir(), "augur-work-"));
+    fs.writeFileSync(path.join(work, "space.json"), JSON.stringify({ id: "alpha" }));
+    // A private HOME keeps the run off this machine's settings; Playwright keeps its
+    // browsers under the real one, so say where they are or the CLI sees no browser.
+    const browsers = process.env.PLAYWRIGHT_BROWSERS_PATH
+      || [path.join(os.homedir(), "Library", "Caches", "ms-playwright"), path.join(os.homedir(), ".cache", "ms-playwright")].find((d) => fs.existsSync(d));
+    const env = { ...process.env, HOME: home, AUGUR_ORIGIN: srv.origin, AUGUR_TOKEN: "tok",
+      AUGUR_DRAFTS_REGISTRY: path.join(home, "drafts.json"), AUGUR_NO_ADAPTERS: "1",
+      ...(browsers ? { PLAYWRIGHT_BROWSERS_PATH: browsers } : {}) };
+    delete env.AUGUR_NO_POSTER;
+    const opened = await run([path.resolve("scripts/open.mjs"), "checkout/flow", "--dir", "flow"], work, env);
+    assert.equal(opened.status, 0, opened.stderr);
+    const dir = path.join(work, "flow");
+    fs.writeFileSync(path.join(dir, "index.html"), "<!doctype html><body style='background:#f59e0b'><h1>flow, edited</h1></body>");
+    const landed = await run([path.resolve("scripts/land.mjs"), "-m", "edited"], dir, env);
+    assert.equal(landed.status, 0, landed.stderr);
+    assert.match(landed.stderr, /landed as revision/);
+    t.diagnostic(landed.stderr.split("\n").filter((l) => /poster/.test(l)).join(" | ") || "no poster line");
+    const files = liveNow(srv.env).files;
+    assert.ok(files[U + "index.html"], "the edit landed");
+    const tools = await posterTools();
+    if (/no poster \((no-tools|no-browser)\)/.test(landed.stderr)) {
+      assert.equal(tools.ok && !/no-browser/.test(landed.stderr), false, "a skip for tools is only right when a tool is missing");
+      assert.equal(files[U + POSTER], undefined, "nothing was invented");
+      return;
+    }
+    assert.match(landed.stderr, /poster shot/);
+    assert.ok(files[U + POSTER], "the landing carries the poster");
+    assert.equal(files[U + POSTER].ct, "image/webp");
+    assert.ok(fs.existsSync(path.join(dir, POSTER)), "and the folder keeps it for the next land");
+    // The next land, untouched, neither reshoots nor re-uploads — the poster is current.
+    const again = await run([path.resolve("scripts/open.mjs"), "checkout/flow", "--dir", "flow2"], work, env);
+    assert.equal(again.status, 0, again.stderr);
+    const dir2 = path.join(work, "flow2");
+    assert.ok(fs.existsSync(path.join(dir2, POSTER)), "open materialises the poster with the unit");
+    const landed2 = await run([path.resolve("scripts/land.mjs"), "-m", "nothing"], dir2, env);
+    assert.doesNotMatch(landed2.stderr, /poster shot/);
+  } finally { await srv.close(); }
+});
