@@ -71,7 +71,23 @@ const t0 = Date.now();
 // Neither session may know it runs inside another Claude session, or the suite's secrets.
 const strip = (env, re) => Object.fromEntries(Object.entries(env).filter(([k]) => !re.test(k)));
 const agentEnv = strip(process.env, /^(LIVE_|AUGUR_|CLAUDE)/);
-const humanEnv = { ...strip(process.env, /^CLAUDE/), LIVE_HUMAN: HUMAN };
+// The person's tool runs from a PRIVATE config dir holding only its two allow rules, so this
+// machine's own permissions (which allow cat, grep, ls, node…) cannot widen it: --allowedTools
+// ADDS to the user's settings, it does not replace them (measured 7 Sep 2026: with the flags
+// alone, `ls -la`, `cat notes.txt` and `node -e` all ran). A relocated config dir has no
+// login of its own, so the long-lived token the cold container also uses is handed in.
+const humanConfigDir = path.join(runDir, "human-config");
+fs.mkdirSync(humanConfigDir, { recursive: true });
+fs.writeFileSync(path.join(humanConfigDir, "settings.json"), JSON.stringify({
+  permissions: {
+    defaultMode: "default",
+    allow: ["Bash(./browser:*)", "Bash(./inbox:*)"],
+    deny: ["Read", "Edit", "Write", "MultiEdit", "Glob", "Grep", "WebFetch", "WebSearch", "Agent", "NotebookEdit", "ToolSearch",
+      "Bash(cd:*)", "Bash(cat:*)", "Bash(ls:*)", "Bash(grep:*)", "Bash(sed:*)", "Bash(head:*)", "Bash(tail:*)", "Bash(find:*)", "Bash(node:*)", "Bash(npm:*)", "Bash(npx:*)", "Bash(python3:*)", "Bash(curl:*)", "Bash(sh:*)", "Bash(bash:*)"],
+  },
+}, null, 2));
+const humanEnv = { ...strip(process.env, /^CLAUDE/), LIVE_HUMAN: HUMAN, CLAUDE_CONFIG_DIR: humanConfigDir,
+  ...(process.env.LIVE_CLAUDE_TOKEN ? { CLAUDE_CODE_OAUTH_TOKEN: process.env.LIVE_CLAUDE_TOKEN } : {}) };
 
 // ── the cold machine ─────────────────────────────────────────────────────────
 const COLD_IMAGE = "augur-cold-agent";
