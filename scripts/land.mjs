@@ -1,9 +1,13 @@
 #!/usr/bin/env node
-// augur land [-m "note"] — replace the prototype's main with this draft. The real URL moves;
-// its address is the last line of stdout. Refused when main moved since the draft opened:
-// then `augur sync`, check the draft address, and land again. See docs/drafts-that-land.md.
+// augur land [-m "note"] [--no-poster] — replace the prototype's main with this draft. The
+// real URL moves; its address is the last line of stdout. Refused when main moved since the
+// draft opened: then `augur sync`, check the draft address, and land again. On the way up
+// the folder's card picture (preview.webp) is shot when this machine has the tools for it
+// and the source is newer than the poster — the gallery renders nothing for a prototype
+// without one. See docs/drafts-that-land.md.
 import { resolveOrigin, resolveToken } from "./lib/store.mjs";
 import { readState, unitClient, doLand } from "./lib/draft.mjs";
+import { posterFor } from "./lib/poster.mjs";
 
 const log = (m) => console.error(`\x1b[35m[land]\x1b[0m ${m}`);
 const die = (m) => { console.error(`\x1b[31m[land]\x1b[0m ${m}`); process.exit(1); };
@@ -17,6 +21,10 @@ const origin = st.origin || resolveOrigin();
 const token = resolveToken(origin);
 if (!token) die("no publish token — run `augur connect` once.");
 const client = unitClient({ origin, token, space: st.space, session: st.session });
+// The picture first, so the save inside `land` carries it. A skip is said and never fatal.
+const poster = await posterFor(dir, { log, enabled: !argv.includes("--no-poster") });
+if (poster.shot) log("poster shot — preview.webp goes up with the landing");
+else if (poster.skipped !== "current" && poster.skipped !== "disabled") log(`no poster (${poster.skipped}): ${poster.why}`);
 const r = await doLand({ client, dir, note });
 if (!r.ok) {
   if (r.error === "main-moved") {

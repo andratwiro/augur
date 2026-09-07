@@ -136,6 +136,7 @@ export async function cliEnv(persona, session) {
     AUGUR_SESSION: session,
     AUGUR_DRAFTS_REGISTRY: path.join(workDir(`registry-${persona}`), "drafts.json"),
     AUGUR_NO_ADAPTERS: "1",
+    AUGUR_NO_POSTER: "1",
   };
 }
 

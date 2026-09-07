@@ -10,8 +10,13 @@
 // (the collaborator layout: a lone space clone with no shell anywhere — the one
 // public fact a space repo knows about its instance).
 //
-// Token, in order: AUGUR_TOKEN env · .env.deploy · the credential `augur login`
-// saved for this origin.
+// Token, in order: AUGUR_TOKEN env · the pairing `augur connect` saved for this origin ·
+// the engine's .env.deploy. The pairing beats the file on purpose: a draft and a landing
+// are recorded under the token's label, and a .env.deploy token is the MACHINE's — the one
+// a deploy shell's CI publishes with, labelled by whoever minted it — while a pairing is
+// the person at the keyboard. With the file first, every landing made from a maintainer's
+// clone was the CI token's and nobody's face on the card. Explicit env still wins: CI, the
+// test suites and a person choosing a token for one command set it on purpose.
 
 import { existsSync, readFileSync } from "node:fs";
 import os from "node:os";
@@ -64,15 +69,17 @@ export function pairedOrigin() {
 }
 
 export function resolveToken(origin, root = ENGINE_ROOT) {
-  const env = readEnvFile(path.join(root, ".env.deploy"));
-  let token = process.env.AUGUR_TOKEN || env.AUGUR_TOKEN || "";
-  if (!token && origin) {
-    try {
-      const saved = JSON.parse(readFileSync(path.join(os.homedir(), ".config", "augur", "tokens.json"), "utf8"));
-      token = (saved[new URL(origin).host] || {}).token || "";
-    } catch (e) {}
-  }
-  return token;
+  if (process.env.AUGUR_TOKEN) return process.env.AUGUR_TOKEN;
+  return pairedToken(origin) || readEnvFile(path.join(root, ".env.deploy")).AUGUR_TOKEN || "";
+}
+
+/** The token `augur connect` saved for this origin's host, or "". */
+export function pairedToken(origin) {
+  if (!origin) return "";
+  try {
+    const saved = JSON.parse(readFileSync(path.join(os.homedir(), ".config", "augur", "tokens.json"), "utf8"));
+    return (saved[new URL(origin).host] || {}).token || "";
+  } catch (e) { return ""; }
 }
 
 // Both, with the failure messages a human can act on. `needToken: false` for the

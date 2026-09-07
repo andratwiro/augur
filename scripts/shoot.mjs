@@ -28,23 +28,14 @@ import { promisify } from "node:util";
 import path from "node:path";
 import os from "node:os";
 import { fileURLToPath } from "node:url";
+// The one-folder shoot lives in lib/poster.mjs so `augur land` can take the same picture
+// of a draft on its way up; this script is the whole-space loop on top of it.
+import { VIEWPORT, WEBP_W, WEBP_Q, exists, entryOf as entry, isCanvasEntry, needsPoster, shootFolder } from "./lib/poster.mjs";
 
 const execFileP = promisify(execFile);
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-const VIEWPORT = { width: 1280, height: 800 }; // 16:10 — matches the card aspect ratio
-const WEBP_W = 768; // shown at ≤260px; 768px covers 2–3× DPR crisply
-const WEBP_Q = 72;
 
-async function exists(p) { try { await fs.access(p); return true; } catch { return false; } }
 async function isDir(p) { try { return (await fs.stat(p)).isDirectory(); } catch { return false; } }
-
-// Entry HTML for a folder: index.html, else the first .html.
-async function entry(dir) {
-  if (await exists(path.join(dir, "index.html"))) return path.join(dir, "index.html");
-  const es = await fs.readdir(dir, { withFileTypes: true });
-  const h = es.find((e) => e.isFile() && e.name.endsWith(".html"));
-  return h ? path.join(dir, h.name) : null;
-}
 
 // A canvas board can't be shot from source: its entry html is a thin shell that
 // loads /__canvas/canvas.js by absolute path (dead over file://) and the board
@@ -55,10 +46,7 @@ async function entry(dir) {
 // and haunt presence; POST /__board is answered locally; the overlay/companion
 // scripts are blocked for the same clean-shot reason source shots use file://.
 // No siteOrigin, offline, or a gate answering the URL → skip, keeping whatever
-// poster is committed.
-async function isCanvasEntry(file) {
-  try { return /\/__canvas\/canvas\.js/.test(await fs.readFile(file, "utf8")); } catch { return false; }
-}
+// poster is committed. (`isCanvasEntry` is lib/poster.mjs's.)
 
 // A card folder's live URL: walk up to its space root (space.json), mount the
 // default space at "/" and others at "/<id>/" (build.js's rule), and drop the
@@ -185,59 +173,17 @@ async function targets() {
 }
 
 // Newest mtime (ms) of any file in a folder tree, ignoring the poster itself.
-async function newestMtime(dir, ignore) {
-  let latest = 0;
-  for (const e of await fs.readdir(dir, { withFileTypes: true })) {
-    if (e.name === ignore) continue;
-    const p = path.join(dir, e.name);
-    if (e.isDirectory()) latest = Math.max(latest, await newestMtime(p, ignore));
-    else if (e.isFile()) latest = Math.max(latest, (await fs.stat(p)).mtimeMs);
-  }
-  return latest;
-}
-
 // A folder needs reshooting when it has no poster, or its source is newer than one.
-async function needsShoot(dir) {
-  const poster = path.join(dir, "preview.webp");
-  if (!(await exists(poster))) return true;
-  return (await newestMtime(dir, "preview.webp")) > (await fs.stat(poster)).mtimeMs;
-}
+const needsShoot = needsPoster;
 
+// One card folder: a board from its live page, anything else from source. Any single
+// poster's failure is logged and the run keeps going — the committed poster stays.
 async function shoot(browser, dir) {
   const file = await entry(dir);
   const rel = path.relative(ROOT, dir);
   if (!file) { console.log("· skip (no html):", rel); return false; }
   if (await isCanvasEntry(file)) return shootLiveCanvas(browser, dir, rel);
-  const tmp = path.join(os.tmpdir(), "shoot-" + rel.replace(/[^a-z0-9]+/gi, "-") + ".png");
-  const outWebp = path.join(dir, "preview.webp");
-  // Up to 2 attempts. Headless captures occasionally produce an empty/corrupt PNG
-  // that cwebp then can't read; previously the unguarded cwebp rejection crashed the
-  // whole run (aborting `npm run deploy`). Now any single-poster failure is caught and
-  // logged — the run keeps going and the existing committed poster is left in place —
-  // and a retry clears the common transient case.
-  for (let attempt = 1; attempt <= 2; attempt++) {
-    const page = await browser.newPage({ viewport: VIEWPORT });
-    try {
-      await page.goto("file://" + file, { waitUntil: "load", timeout: 20000 });
-      await page.waitForTimeout(900); // let fonts/layout settle
-      await page.screenshot({ path: tmp, clip: { x: 0, y: 0, ...VIEWPORT } });
-      const png = await fs.stat(tmp).catch(() => null);
-      if (!png || png.size === 0) throw new Error("empty screenshot");
-      await execFileP("cwebp", ["-quiet", "-q", String(WEBP_Q), "-resize", String(WEBP_W), "0", tmp, "-o", outWebp]);
-      const kb = Math.round((await fs.stat(outWebp)).size / 1024);
-      console.log("✓", rel + "/preview.webp", kb + "KB");
-      return true;
-    } catch (e) {
-      const msg = e.message.split("\n")[0];
-      if (attempt < 2) { console.log("· retry", rel, "—", msg); continue; }
-      console.log("✗ FAIL", rel, "—", msg);
-      return false;
-    } finally {
-      await page.close().catch(() => {});
-      await fs.unlink(tmp).catch(() => {});
-    }
-  }
-  return false;
+  return shootFolder(browser, dir, { label: rel, log: (m) => console.log(m) });
 }
 
 const argv = process.argv.slice(2);

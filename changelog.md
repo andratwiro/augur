@@ -20,6 +20,11 @@ The date is the day the update went live. The page works out "Today / 3 days ago
 
 ---
 
+## 2026-09-07 — Landed prototypes get their picture
+When your agent lands a prototype, its card in the gallery now shows a picture of it
+instead of a blank tile — taken on the way up, on the machine that landed it. And the
+little face on a draft is the person whose agent it is, whichever address they used.
+
 ## 2026-09-06 — Augur installs from npm
 Your agent can now fetch the Augur tool with one line, `npx @augurworks/augur`, on any
 machine with Node. Nothing to clone first: the workspace's own front door prints that

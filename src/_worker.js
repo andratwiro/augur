@@ -2126,6 +2126,20 @@ function publicUser(u) {
 // Ungated for the same reason /__avatar/ is: a gated fetch from a public prototype
 // would return the login page instead of the data.
 const PEOPLE_LOOKUP_MAX = 50;
+// Every id a roster member is known by: their primary address first, then each address in
+// `emails` — a previous primary, a git alias — that a landing, a draft or a file stamp may
+// carry from a token minted under it. One person, one face, whichever address wrote.
+function personIdsOf(u) {
+  const ids = [personId(u.email)];
+  for (const a of Array.isArray(u.emails) ? u.emails : []) if (a) ids.push(personId(a));
+  return [...new Set(ids)];
+}
+/** The roster member a recorded person id names, by any of their addresses. */
+function userByPersonId(users, id) {
+  if (!id) return null;
+  return (users || []).find((x) => x && x.email && personIdsOf(x).includes(id)) || null;
+}
+
 function peopleApi(url, users) {
   const csv = (k) => (url.searchParams.get(k) || "").split(",").map((s) => s.trim()).filter(Boolean);
   const ids = csv("ids"), names = csv("names");
@@ -2133,15 +2147,21 @@ function peopleApi(url, users) {
     return jsonResponse({ error: "too-many" }, 400);
   }
   const wantId = new Set(ids), wantName = new Set(names);
-  const people = users
-    .filter((u) => wantId.has(personId(u.email)) || wantName.has(u.name))
-    .map((u) => ({
-      id: personId(u.email),
+  const people = [];
+  for (const u of users) {
+    const own = personIdsOf(u);
+    const asked = own.filter((id) => wantId.has(id));
+    if (!asked.length && !wantName.has(u.name)) continue;
+    const face = {
       name: u.name,
       initials: u.initials || initialsFor(u.name || nameFromEmail(u.email)),
       color: u.color || colorFor(u.email),
       avatar: avatarUrl(u),
-    }));
+    };
+    // One entry per id the caller asked by — a chip resolves by the id IT carries — and the
+    // primary id when asked by name.
+    for (const id of asked.length ? asked : [own[0]]) people.push({ id, ...face });
+  }
   return jsonResponse({ people }, 200, {
     // Long enough to spare a fetch per navigation, short enough that an admin-panel
     // photo swap lands within the minute.
@@ -5283,7 +5303,7 @@ async function writeUnitLanding(tctx, env, spaceId, unit, table, changed, who, n
 
 /** The face behind a one-way person id, from the roster; nulls when nobody answers to it. */
 function personFace(users, id) {
-  const u = (users || []).find((x) => x && personId(x.email) === id);
+  const u = userByPersonId(users, id);
   return u
     ? { name: u.name || nameFromEmail(u.email), initials: u.initials || initialsFor(u.name || u.email), color: u.color || colorFor(u.email) }
     : { name: null, initials: null, color: null };
@@ -12867,7 +12887,7 @@ export const __testables = Object.freeze({
   personId, avatarKey, publicUser, stampAuthor, sanitizeMsg, applyOp, reviewApi, reviewExport,
   purgeThreads, purgeUser, PURGED_AUTHOR,
   redactPublishedBy, redactProvenance, PURGED_PUBLISHER,
-  peopleApi,
+  peopleApi, userByPersonId, personIdsOf,
   tokenFor, hmacToken, userToken, identify, effectiveSecret,
   sessionBinding, rotateSessionKey, clearSessionKey, SESSION_KEYS_KEY, SESSION_KEY_PREFIX,
   sessionKeyName, readSessionKey, sessionKeyHolders, USER_COOKIE,

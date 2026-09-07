@@ -192,7 +192,12 @@ without hooks), `watch` (a debounced save loop for people editing by hand).
   batch, updates `draft.json`. Files are sent as they are. There is no build.
 - **Land** calls `land`; on refusal prints the changed files and the sync hint and exits
   non-zero. On success prints the live URL as the last line of stdout and closes the draft
-  locally (the folder stays until `close`).
+  locally (the folder stays until `close`). Before it saves, it shoots the folder's card
+  picture (`preview.webp`, from source over file://) when the source is newer than the
+  poster and this machine has Playwright and cwebp — the gallery renders a blank tile for
+  a prototype without one, and nothing on the serving side renders posters yet (section
+  6.4 is where that goes). Missing tools, a board, or `--no-poster` / `AUGUR_NO_POSTER=1`
+  skip it with a reason, never a failed landing.
 - **Sync** calls `sync`, merges as in section 4, saves the result, advances the base.
 - **Read** materialises a unit read-only into `_read/<unit>/` beside the draft folders.
 - **Adapters.** A small table maps a detected agent tool to two hooks: *deny writes
@@ -211,8 +216,12 @@ without hooks), `watch` (a debounced save loop for people editing by hand).
   lands, so a session whose hooks did not fire loses nothing. `AUGUR_HOOKS_OFF=1` makes
   both hooks inert; `augur hook install|remove|status` manages them by hand, for the
   folder they run in.
-- **Identity.** The person token from `augur connect`. The session label from the agent
-  tool when present, else generated at open and kept in `draft.json`.
+- **Identity.** The person token from `augur connect`, which beats a token in the engine
+  clone's `.env.deploy` (that one is the machine's — a deploy shell's CI credential — and a
+  landing made with it is nobody's face); an explicit `AUGUR_TOKEN` beats both. The session
+  label from the agent tool when present, else generated at open and kept in `draft.json`.
+  Faces resolve by any address a member is known by: a landing stamped under a previous
+  primary address or a git alias is the same person.
 
 ## 8. The shared design system
 
