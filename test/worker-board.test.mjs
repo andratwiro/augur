@@ -311,3 +311,53 @@ test("with no KV, or an empty registry, virtualCanvas falls through", async () =
   assert.equal(await W.virtualCanvas(VC_CTX, req, {}, url), null);
   assert.equal(await W.virtualCanvas(VC_CTX, req, envWith(memKV()), url), null);
 });
+
+// ---- Where the deployment serves its own rooms, the board lives in the room's mirror ----
+// The room is a board's authority and Workers KV is its mirror — the one store both writers
+// reach. A workspace OBJECT holds boards only as a migration brought them in; a board born in
+// a room since never reaches it. A rail that read the object alone answered `null` for a live
+// board of two hundred nodes, and the folder card wore an empty dotted poster of it.
+import { DatabaseSync } from "node:sqlite";
+import { TenantStore } from "../src/tenant-do.js";
+function objectNamespace() {
+  const objects = new Map();
+  return {
+    idFromName(name) { return { name, toString: () => `id:${name}` }; },
+    get(id) {
+      if (!objects.has(id.name)) {
+        const db = new DatabaseSync(":memory:");
+        const sql = { exec(stmt, ...params) {
+          if (params.length) return db.prepare(stmt).all(...params);
+          if (/^\s*(SELECT|INSERT|UPDATE)/i.test(stmt) && /RETURNING/i.test(stmt)) return db.prepare(stmt).all();
+          if (/^\s*SELECT/i.test(stmt)) return db.prepare(stmt).all();
+          db.exec(stmt); return [];
+        } };
+        objects.set(id.name, new TenantStore({ storage: { sql }, blockConcurrencyWhile: async (f) => f() }, {}));
+      }
+      const store = objects.get(id.name);
+      return { id, store, fetch: (u, init) => store.fetch(new Request(u, init)) };
+    },
+  };
+}
+test("on an object-backed workspace that serves rooms, the rail reads the board the room mirrored into KV", async () => {
+  const kv = memKV();
+  const env = { ...envWith(kv), TENANTS: objectNamespace(), ROOMS: { idFromName: (n) => ({ n }), get: () => ({}) } };
+  const doc = { name: "Audit", nameV: 1, nodes: [{ id: "n1", t: "sticky", v: "must-build" }], tombs: {}, clock: 7 };
+  // What src/board-room.mjs writes: the same key the rail builds, workspace segment and all.
+  await kv.put(`board:${TENANT}:/compass/audit/`, JSON.stringify(doc));
+  const read = await W.boardApi(TENANT_CTX, new Request(boardUrl("/compass/audit/")), boardUrl("/compass/audit/"), env);
+  assert.deepEqual((await read.json()).doc, doc, "the room's mirror is what the rail answers");
+  // A save through the rail lands where the room will fold it in: the mirror, not only the object.
+  const doc2 = { ...doc, clock: 8, nodes: [...doc.nodes, { id: "n2", t: "text", v: "nice-to-have" }] };
+  const write = await W.boardApi(TENANT_CTX, post(boardUrl("/compass/audit/"), { doc: doc2 }), boardUrl("/compass/audit/"), env, ME);
+  assert.equal(write.status, 200);
+  assert.deepEqual(JSON.parse(await kv.get(`board:${TENANT}:/compass/audit/`)), doc2, "the mirror carries the save");
+  const again = await W.boardApi(TENANT_CTX, new Request(boardUrl("/compass/audit/")), boardUrl("/compass/audit/"), env);
+  assert.deepEqual((await again.json()).doc, doc2);
+  // A board only the object holds (a migration brought it in, nothing has mirrored it) still answers.
+  const objectOnly = { name: "Old", nodes: [{ id: "o1", t: "text", v: "imported" }] };
+  const stub = env.TENANTS.get(env.TENANTS.idFromName(TENANT));
+  await stub.fetch("https://workspace/overlay/set", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ family: "boards", scope: "", k: "/legacy/board/", v: objectOnly, owner: null }) });
+  const legacy = await W.boardApi(TENANT_CTX, new Request(boardUrl("/legacy/board/")), boardUrl("/legacy/board/"), env);
+  assert.deepEqual((await legacy.json()).doc, objectOnly, "the object is still the fallback");
+});

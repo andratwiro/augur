@@ -11117,14 +11117,31 @@ async function virtualCanvas(tctx, request, env, url) {
 // tests and read by nothing, which is the state a drift starts from.
 const BOARD_MAX_BYTES = 20 * 1024 * 1024; // under KV's 25MB per-value ceiling (inline images)
 
-async function boardApi(tctx, request, url, env, me) {
+/**
+ * The board's stores. Where this deployment serves its own rooms, the room is the board's
+ * authority and Workers KV is its mirror — the one store both writers reach (the room from
+ * src/board-room.mjs, this rail from here). A workspace OBJECT holds boards only as a
+ * migration brought them in: a board born in a room since never reaches it, and a rail that
+ * read the object alone answered `null` for a live board of two hundred nodes. So on an
+ * object-backed workspace with rooms, the mirror is read first and written always; the
+ * object stays the fallback for what only a migration put there, and keeps receiving the
+ * rail's writes so an export of the object misses nothing it used to hold.
+ */
+function boardStores(env, tctx) {
   const store = overlayFor(env, tctx);
+  const kv = env && env.ROOMS && tenantStub(env, tctx && tctx.tenantId) ? kvFor(env) : null;
+  const mirror = kv ? kvOverlay(kv, kvWorkspaceSegment(env, tctx)) : null;
+  return { store, mirror };
+}
+async function boardApi(tctx, request, url, env, me) {
+  const { store, mirror } = boardStores(env, tctx);
   if (!store) return jsonResponse({ doc: null, warning: "no-kv-binding" });
   const path = clamp(url.searchParams.get("path"), 600);
   if (!path) return jsonResponse({ error: "bad-input" }, 400);
 
   if (request.method === "GET") {
-    return jsonResponse({ doc: (await store.readKey("boards", "", path)) || null });
+    const mirrored = mirror ? await mirror.readKey("boards", "", path) : null;
+    return jsonResponse({ doc: mirrored || (await store.readKey("boards", "", path)) || null });
   }
   if (request.method === "POST" || request.method === "PUT") {
     const body = await request.text();
@@ -11151,6 +11168,7 @@ async function boardApi(tctx, request, url, env, me) {
     // than inventing one; what it must never do is take an address from the body, which is
     // why nothing here reads one.
     await store.set("boards", "", path, doc, me ? me.email : null);
+    if (mirror) await mirror.set("boards", "", path, doc, me ? me.email : null);
     return jsonResponse({ ok: true });
   }
   return jsonResponse({ error: "method-not-allowed" }, 405);
@@ -11198,7 +11216,10 @@ async function assetGc(env, tctx, { graceMs = ASSET_GC_GRACE_MS, now = Date.now(
 
   // Every board document, as text. A node's shape has changed more than once and will
   // again; the URL has not, and searching for it finds a reference wherever it is nested.
-  const boards = await store.read("boards");
+  // Both stores: the room's mirror holds what was born in a room, the object what a
+  // migration brought in (see boardStores) — a reference in either keeps the asset.
+  const { mirror } = boardStores(env, tctx);
+  const boards = { ...(await store.read("boards")), ...(mirror ? await mirror.read("boards") : {}) };
   const referenced = new Set();
   for (const doc of Object.values(boards)) {
     const text = JSON.stringify(doc || null);
