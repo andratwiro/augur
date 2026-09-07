@@ -74,7 +74,7 @@ const ROUTING = JSON.stringify({
  * with the two flags injectable, because "flag off is untouched" is a claim about the
  * same deployment differing in one config word.
  */
-async function deployment({ firstRun = true, sessionKeys = true, devicePairing = false } = {}) {
+async function deployment({ firstRun = true, sessionKeys = true, devicePairing = false, welcomeFlow = devicePairing } = {}) {
   const kv = memKV();
   const r2 = memR2();
   const pending = [];
@@ -99,7 +99,7 @@ async function deployment({ firstRun = true, sessionKeys = true, devicePairing =
     { email: ADMIN, name: "Ada", initials: "A", role: "admin", passHash: PASS_HASH },
   ];
   await r2.put(W.bundleKey("config/instance.json", ""), Buffer.from(JSON.stringify({
-    tenantId: WS, users, sessionKeys, firstRun, devicePairing,
+    tenantId: WS, users, sessionKeys, firstRun, devicePairing, welcomeFlow,
   })));
   await r2.put(W.bundleKey("spaces/one/manifest.json", ""), Buffer.from(JSON.stringify({
     version: 1, space: "one", files: {}, routing: { publicPrefixes: [], versionMap: {} },

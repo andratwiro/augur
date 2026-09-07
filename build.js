@@ -7816,6 +7816,8 @@ async function main() {
     userImages: DEPLOY.userImages !== false,
     // Explicit true only — see DEVICE_PAIRING in src/tenant-context.mjs.
     devicePairing: DEPLOY.devicePairing === true,
+    // Explicit true only — the welcome flow is parked; see WELCOME_FLOW in src/tenant-context.mjs.
+    welcomeFlow: DEPLOY.welcomeFlow === true,
     // How long a publish token minted for a person lives. Carried raw: the worker is where
     // a bad value falls back to the default, so build and runtime cannot disagree about
     // what a typo means. See PUBLISH_TOKEN_TTL_DAYS in src/tenant-context.mjs.

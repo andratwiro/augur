@@ -118,6 +118,12 @@ const FIELDS = Object.freeze({
   // explicit `true` only, same reasoning as DEVICE_PAIRING: a config typo must not move
   // where redemption lands.
   FIRST_RUN:               { source: "instance", make: () => false },
+  // The welcome flow (/__welcome: connect a terminal, change one line, in) — PARKED. It
+  // stands in front of an invited editor only where this is spelled true AND pairing is
+  // on; off, an invitation lands in the workspace as it always did. Off by default and
+  // explicit `true` only, because a flow that is not finished must never be a config
+  // typo away from the door of somebody's workspace. See docs/welcome-flow.md.
+  WELCOME_FLOW:            { source: "instance", make: () => false },
   // How long a publish token minted for a PERSON lives, in days. Both human doors —
   // `augur login` and `augur connect` — read this one number, because two doors that hand
   // out the same credential with different lifetimes is a difference nobody chose.
@@ -218,6 +224,7 @@ export function instanceFields(inst) {
     DEVICE_PAIRING: doc.devicePairing === true,
     SESSION_KEYS: doc.sessionKeys === true,
     FIRST_RUN: doc.firstRun === true,
+    WELCOME_FLOW: doc.welcomeFlow === true,
     // A number, and only a number. A typo — a string, null, a negative — falls back to the
     // default rather than to "no expiry": a config mistake must not be the thing that
     // quietly returns publish tokens to living forever. An explicit 0 IS honoured, because

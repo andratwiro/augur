@@ -56,7 +56,7 @@ let SEQ = 0;
  * no `/__welcome` to be sent to, so nobody is gated however owed they are. The one test
  * below that turns it off is the one that pins exactly that.
  */
-async function wired(users, { live, pairing = true } = {}) {
+async function wired(users, { live, pairing = true, welcomeFlow = pairing } = {}) {
   const tenantId = `onboarding-me-${++SEQ}`;
   const db = new DatabaseSync(":memory:");
   const object = new TenantStore({ storage: storage(db), blockConcurrencyWhile: async (f) => f() }, {});
@@ -74,7 +74,7 @@ async function wired(users, { live, pairing = true } = {}) {
     idFromName: (n) => n,
     get: (n) => ({ fetch: (input, init) => object.fetch(new Request(input, init)) }),
   };
-  const ctx = { ...ctxFor(tenantId, users), DEVICE_PAIRING: pairing };
+  const ctx = { ...ctxFor(tenantId, users), DEVICE_PAIRING: pairing, WELCOME_FLOW: welcomeFlow };
   return { env, ctx, object, tenantId };
 }
 
@@ -165,6 +165,19 @@ test("with device pairing off nobody is gated, however owed — `gated` agrees w
   const a = await me(env, ctx, ADA_MEMBER);
   assert.equal(a.status, 200, "the member's own onboarding read is unconditional, pairing or not");
   assert.equal(a.json.gated, false);
+});
+
+// The park. Pairing on is the ordinary hosted state; the flow stands in its slot only where
+// the instance also spells `welcomeFlow: true`, and nothing in the config does today.
+test("with pairing on and the welcome flow unspoken — the default — nobody is gated, however owed", async () => {
+  const { env, ctx } = await wired([ADA_MEMBER], { pairing: true, welcomeFlow: false });
+  await owe(env, ctx, ADA_MEMBER);
+  const a = await me(env, ctx, ADA_MEMBER);
+  assert.equal(a.status, 200);
+  assert.equal(a.json.gated, false, "an invited editor lands in the workspace, not on a parked flow");
+  assert.equal(W.welcomeFlow({ DEVICE_PAIRING: true, FIRST_RUN: false }), false, "unspoken is off");
+  assert.equal(W.welcomeFlow({ DEVICE_PAIRING: true, FIRST_RUN: false, WELCOME_FLOW: "true" }), false, "a string is a typo, not a yes");
+  assert.equal(W.welcomeFlow({ DEVICE_PAIRING: true, FIRST_RUN: false, WELCOME_FLOW: true }), true);
 });
 
 test("approving a pairing stamps the member, and the status flips", async () => {

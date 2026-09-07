@@ -1,5 +1,47 @@
 # The welcome flow — who is owed it, and what lifts it
 
+## ⏸ Parked — off unless an instance spells `welcomeFlow: true`
+
+The flow is built, live-tested on the invited drill, and **not ready to stand in front of a
+person**. So it is parked: `welcomeFlow(tctx)` also requires the instance config to spell
+`welcomeFlow: true` (explicit true only, like `devicePairing`; `WELCOME_FLOW` in
+`src/tenant-context.mjs`, `welcomeFlow` in a deploy shell's `deploy.config.json`). No
+hosted workspace spells it. With it unspoken:
+
+- an invitation lands in the workspace, as it did before the flow existed — no redirect on `/`;
+- `/__welcome` and the installer download are not served, and `/__onboarding/me` answers `gated: false`;
+- `augur connect` opens the plain approval page, `/__connect?code=…`, with the code filled
+  in. That page is the whole of what an existing editor needs: the command to run, the code
+  field, Approve. The rest of the CLI (`open`, `land`) is unchanged.
+
+**What still stamps.** Redeeming an invitation still writes `welcome_owed_at` on the member.
+Turning the flag on later therefore gates everybody invited while it was off. Before
+switching it on for a workspace with a team, clear those stamps or accept that.
+
+**Why it is parked — the questions to settle together, not in code first:**
+
+1. *The first question.* "Do you already run a coding agent in a terminal?" reads as the
+   only door; the "Not yet" branch led to a download with no way back to the command
+   (fixed on main: each step offers the other, and a code in the link always opens the
+   command step — but the framing itself is the open question).
+2. *A code relayed through an assistant.* A cold agent still refuses the connect step on
+   the shape of the request (magic-link invite, `npx` from a page, a code read out to it),
+   even when its own person asks. The verify for `F-onboarding-flow` is unmet.
+3. *The macOS installer.* A zip holding a `.command`; Rob's double-click test against
+   Gatekeeper is not done. Is a downloadable installer the right shape at all?
+4. *The member page.* `/start-here/<member-id>/` is served unlisted with the display name
+   in the body and survives removal — public by URL. Rob's decision.
+5. *Expired codes.* A code lives five minutes; the page now says to run the command again,
+   but the flow has no way to ask the terminal for a fresh one.
+6. *The signup door.* Signup (not invitation) never meets this flow; the seed pack's
+   connect page is its onboarding. Two onboardings or one?
+
+Where the work is parked: the plan item `F-onboarding-flow` on the hosted plan page
+carries the same list as its status note; this section is the engine-side copy. Resume by
+settling the list, then spelling `welcomeFlow: true` on one workspace and running the
+invited live drill (`augur-live-drills`).
+
+
 The five-step page a person meets once, between redeeming their invitation and the
 workspace: connect an agent in a terminal, change one line on a page of their own, see it
 live. `src/welcome-page.mjs` is the page, `src/_worker.js` is the gate, and

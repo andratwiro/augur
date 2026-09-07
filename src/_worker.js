@@ -10489,7 +10489,12 @@ const WELCOME_PATH = FIRST_RUN_PATH;
 // but a flow that opens onto a dead end on every load is not a welcome. With pairing off,
 // `/__welcome` and the `/` redirect behave exactly as they did before this feature:
 // no route (whatever the router does for an unknown `/__` path) and no redirect.
-const welcomeFlow = (tctx) => !!tctx && !tctx.FIRST_RUN && !!tctx.DEVICE_PAIRING;
+//
+// AND ONLY WHERE THE INSTANCE SPELLS `welcomeFlow: true`. The flow is parked: it is not
+// finished (docs/welcome-flow.md, "Parked"), and an unfinished flow must not stand in
+// front of anybody's workspace by default. `augur connect` opens the plain approval page
+// (/__connect) meanwhile, which is the whole of what an existing editor needs.
+const welcomeFlow = (tctx) => !!tctx && !tctx.FIRST_RUN && !!tctx.DEVICE_PAIRING && tctx.WELCOME_FLOW === true;
 
 /**
  * Is this person still owed the welcome? ONE definition, read by both callers — the
@@ -12968,5 +12973,5 @@ export const __testables = Object.freeze({
   WORKSPACE_ENTER_PATH, enterHandoff, tenantAccountKey,
   noteMembershipUpstream,
   noteFirstPublish, noteRoleTransition, onboardingStatusApi,
-  notePairing, noteInviteRedeemed, onboardingMeApi, WELCOME_PATH, welcomeGated, owedWelcome, renderWelcomePage,
+  notePairing, noteInviteRedeemed, onboardingMeApi, WELCOME_PATH, welcomeGated, owedWelcome, welcomeFlow, renderWelcomePage,
 });

@@ -207,7 +207,7 @@ test("a waiting connect opens the approval page with the code in it — and --no
     assert.match(out, /A browser tab with the code filled in/, "and it says a tab should have opened");
     assert.match(out, /if it\n?\s*did not, send the line above/, "with the printed line as the fallback");
     const opened = await settle();
-    assert.match(opened, new RegExp(`^${srv.origin.replace(/[.]/g, "\\.")}/__welcome\\?code=CODE0001$`, "m"),
+    assert.match(opened, new RegExp(`^${srv.origin.replace(/[.]/g, "\\.")}/__connect\\?code=CODE0001$`, "m"),
       "the approval page, carrying the code");
 
     // --no-open: same pairing, same printed line, no opener touched.

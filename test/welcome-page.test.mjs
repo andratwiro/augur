@@ -117,7 +117,7 @@ async function wired(users, { pairing = true, publicPrefixes = [] } = {}) {
       fetch: async (req) => {
         const p = new URL(typeof req === "string" ? req : req.url).pathname;
         if (p === "/__config/instance.json") {
-          return new Response(JSON.stringify({ users, tenantId, devicePairing: pairing }), { headers: { "content-type": "application/json" } });
+          return new Response(JSON.stringify({ users, tenantId, devicePairing: pairing, welcomeFlow: pairing }), { headers: { "content-type": "application/json" } });
         }
         if (p === "/__config/routing.json") {
           return new Response(JSON.stringify({ spaces: [{ id: "acme", default: true }], publicPrefixes }), { headers: { "content-type": "application/json" } });
@@ -221,8 +221,8 @@ test("A CODE IN THE LINK IS FILLED IN, NEVER APPROVED — and it answers questio
   const html = await (await fetchAs(env, ADA_MEMBER, "/__welcome")).text();
   assert.match(html, /new URLSearchParams\(location\.search\)\.get\("code"\)/, "the page reads ?code= off its own URL");
   assert.match(html, /\[data-approve\] input\.code/, "and fills the approve field with it");
-  assert.match(html, /if \(at === "agent"\) at = "connect"/,
-    "a code exists only because a terminal is already running, so question one is answered");
+  assert.match(html, /if \(linkCode\) \{\s*at = "connect";/,
+    "a code exists only because a terminal is already running, so question one is answered — whatever step this browser remembered");
   // Nothing in the document approves on load: the only call to the approve route is the
   // form's own submit handler, which is a person pressing a button.
   assert.equal((html.match(/_pair\/approve/g) || []).length, 1, "one approve call, and it is the submit handler");
@@ -277,7 +277,8 @@ test("a viewer asking for /__welcome is sent to /", async () => {
 
 // ── the flow exists only where device pairing is on ─────────────────────────────────
 //
-// welcomeFlow(tctx) in _worker.js is `!!tctx && !tctx.FIRST_RUN && !!tctx.DEVICE_PAIRING`:
+// welcomeFlow(tctx) in _worker.js is `!!tctx && !tctx.FIRST_RUN && !!tctx.DEVICE_PAIRING && tctx.WELCOME_FLOW === true`
+// (the last clause is the park — test/onboarding-me.test.mjs pins it on its own):
 // the flow's own middle (connect/install → approve a code) is `pairApi`, which answers
 // null with pairing off, so a deployment that has not turned pairing on would show a
 // flow with no way past step two. With pairing off the surface reverts to what it was

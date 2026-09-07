@@ -120,6 +120,9 @@ function instanceDoc(n) {
     // the same reason sessionKeys is (the flag moves a redirect on the auth surface), and
     // varied with devicePairing, against the two above.
     firstRun: n.charCodeAt(0) % 2 !== 0,
+    // Whether the parked welcome flow stands in front of this workspace's invitations — a
+    // per-workspace door on the auth surface like firstRun, varied with devicePairing.
+    welcomeFlow: n.charCodeAt(0) % 2 !== 0,
     // How long this workspace's publish tokens live. A number rather than a flag, and one
     // a workspace legitimately sets for itself — a demo with a published password wants a
     // shorter one than a private instance.

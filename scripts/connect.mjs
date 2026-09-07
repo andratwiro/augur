@@ -169,7 +169,9 @@ console.log(`  The code is good for ${mins} minutes and only for this terminal. 
 console.log("");
 console.log(`  ${C.warn}If you did not just run this command, do not approve it.${C.off}`);
 console.log("");
-if (!NO_WAIT && !NO_OPEN && openApprovalPage(`${ORIGIN}/__welcome?code=${encodeURIComponent(code)}`)) {
+// The plain approval page, with the code in the field: one Approve and the terminal is
+// paired. (Not /__welcome — the welcome flow is parked, see docs/welcome-flow.md.)
+if (!NO_WAIT && !NO_OPEN && openApprovalPage(`${ORIGIN}/__connect?code=${encodeURIComponent(code)}`)) {
   console.log(`  ${C.dim}A browser tab with the code filled in should have opened on this machine; if it`);
   console.log(`  did not, send the line above.${C.off}`);
   console.log("");
