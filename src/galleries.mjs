@@ -80,7 +80,11 @@ function unitEntry(manifest, unit, home, { statuses, baseline, people, now }) {
   const status = (statuses && Object.prototype.hasOwnProperty.call(statuses, key) && statuses[key])
     || (baseline && baseline[key]) || null;
   const ids = [...new Set(inUnit.map((p) => files[p] && files[p].by).filter(Boolean))];
-  const editors = ids.map((id) => people(id)).filter(Boolean);
+  // One face per PERSON: `people` answers a person's canonical id, so two stamps under two
+  // of their addresses (a work and a personal git identity) fold into one chip.
+  const seen = new Map();
+  for (const id of ids) { const u = people(id); if (u && !seen.has(u.id)) seen.set(u.id, u); }
+  const editors = [...seen.values()];
   return {
     name: home.name, unit, href: unit, file,
     poster: inUnit.some((p) => rel(p) === "preview.webp"),

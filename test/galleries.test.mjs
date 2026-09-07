@@ -201,3 +201,21 @@ test("a welcome-kind unit is not listed anywhere derived, and an ordinary unit s
   const m2 = siteModel({ manifest: plain, people, now: NOW });
   assert.deepEqual(m2.opportunities.map((o) => o.name).sort(), ["checkout", "start-here"]);
 });
+
+test("two stamps under two of one person's addresses are ONE face on the card", () => {
+  // `people` answers the person's canonical id for an alias id, the way the worker does.
+  const fold = (id) => (id === "p1b" ? { id: "p1", name: "Ada", initials: "AD", color: "#111111" } : people(id));
+  const m = {
+    version: 1,
+    files: {
+      "/checkout/flow/index.html": f("a", { by: "p1", editedAt: "2026-09-05T10:00:00.000Z" }),
+      "/checkout/flow/notes.md": f("b", { by: "p1b", editedAt: "2026-09-04T10:00:00.000Z" }),
+      "/checkout/flow/css/a.css": f("c", { by: "p2", editedAt: "2026-09-01T10:00:00.000Z" }),
+    },
+    routing: { publicPrefixes: ["/checkout/flow/"] },
+  };
+  const model = siteModel({ manifest: m, people: fold, now: NOW });
+  const flow = model.opportunities[0].prototypes[0];
+  assert.deepEqual(flow.editors.map((e) => e.name), ["Ada", "Ben"]);
+  assert.deepEqual(model.opportunities[0].people.map((e) => e.id), ["p1", "p2"]);
+});

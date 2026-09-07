@@ -7382,7 +7382,10 @@ async function derivedPage(tctx, env, url) {
   try { statuses = store ? (await store.read("statuses")) || {} : {}; } catch (e) { statuses = {}; }
   // A recorded author resolves to a face through the roster; an id nobody answers to
   // (an ex-member, the `live` adoption) is nobody's face rather than a blank chip.
-  const people = (id) => { const f = personFace(tctx.USERS, id); return f.name ? { id, ...f } : null; };
+  // The face carries the person's PRIMARY id: two stamps under two of their addresses are
+  // one contributor on the card (galleries dedupes by this id), and the photo overlay asks
+  // /__people by it.
+  const people = (id) => { const u = userByPersonId(tctx.USERS, id); return u ? { id: personId(u.email), ...personFace(tctx.USERS, id) } : null; };
   const now = Date.now();
   const model = siteModel({ manifest, statuses, baseline: inputs.baseline, people, now });
   const kind = derivedPathKind(url.pathname, model);
