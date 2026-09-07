@@ -129,7 +129,7 @@ export function tokenNotAccepted(origin) {
   return `this machine's publish token is not accepted by ${origin} — revoked (a role change or a removal does that), expired, or minted for another workspace.
   Pair again: the workspace member you are working with runs this, in a terminal on THIS machine:
       ${connectLine(origin)}
-  and presses Approve in the tab it opens. Then run this command again.`;
+  and presses Approve in the tab it opens — no password is involved. Then run this command again.`;
 }
 export function explainRefusal(body, status, origin = "") {
   if (status === 403 && body && body.error === "forbidden" && !body.message) return { ...body, message: tokenNotAccepted(origin) };
