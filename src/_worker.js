@@ -3778,8 +3778,11 @@ async function mintPublishToken(kv, tctx, u, { label = null, env = null } = {}) 
  * plainly where a legitimate code comes from — the phishing residual is somebody being
  * talked into approving a code that is not theirs, and no code length fixes that.
  *
- * The code is TYPED, never carried in the link. A URL that approves on click is a URL
- * somebody can be sent.
+ * The code is never APPROVED by the link. `?code=` fills the field in — which is what the
+ * terminal on this machine does when it opens this page itself, so nobody has to read a
+ * code out to an assistant and have it read back (the shape of a device-code phishing
+ * attack, and a thing an assistant is right to refuse). The person still presses Approve,
+ * so a URL somebody can be SENT still approves nothing on its own.
  *
  * Self-contained, like the login and 404 pages beside it: this must render for somebody
  * whose terminal is already waiting, so it depends on no chrome bundle and no space.
@@ -3841,6 +3844,12 @@ function connectPage(tctx, me, origin) {
   (function(){
     var f=document.getElementById('pairf'); if(!f) return;
     var i=document.getElementById('pairc'), m=document.getElementById('pairm');
+    try{
+      var q=new URLSearchParams(location.search).get('code')||'';
+      var c=q.replace(/[^A-Za-z0-9]/g,'').toUpperCase();
+      if(c){ i.value=c.length===8?c.slice(0,4)+'-'+c.slice(4):c;
+             var b=f.querySelector('button'); if(b) b.focus(); }
+    }catch(e){}
     f.addEventListener('submit',function(e){
       e.preventDefault(); m.textContent='Approving\u2026';
       fetch('/__publish/_pair/approve',{method:'POST',headers:{'content-type':'application/json'},

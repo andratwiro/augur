@@ -25,7 +25,10 @@ npx @augurworks/augur connect --origin https://<the workspace>
 ```
 
 It prints one line to relay — *ask the owner of this workspace to open `<link>` and
-enter `<code>`* — and waits. If your person reads you through messages rather than a
+enter `<code>`* — and waits. Waiting, it also opens that page in this machine's browser
+with the code already in the field, so on the usual setup — your terminal and their
+browser on one machine — the code need not travel through you at all: they press Approve.
+(`--no-open`, or `AUGUR_NO_OPEN=1`, does not try.) If your person reads you through messages rather than a
 terminal, run it with `--no-wait`: it prints the line and exits, and running it again
 after they approve collects the token for that same code. The owner opens the link in a browser they are already
 signed in to and types the code; the token lands in `~/.config/augur/tokens.json`, and

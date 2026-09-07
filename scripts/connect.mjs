@@ -7,7 +7,11 @@
  * transcript. This asks for neither: it prints a code, you type that code into a browser
  * that already has your session, and the token approval mints comes back here.
  *
- *   npx @augurworks/augur connect [--origin https://your.site]
+ *   npx @augurworks/augur connect [--origin https://your.site] [--no-wait] [--no-open]
+ *
+ * Waiting, it opens the approval page on THIS machine with the code already in the field
+ * (`--no-open`, or `AUGUR_NO_OPEN=1`, does not) — so where the terminal and the browser
+ * are the same machine, which is the common case, the code never travels through an agent.
  *
  * `augur login` stays for CI and scripts, where there is no browser to type into.
  *
@@ -18,6 +22,7 @@
 import path from "node:path";
 import os from "node:os";
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { spawn } from "node:child_process";
 import { resolveOrigin } from "./lib/store.mjs";
 import { augurOnPath } from "./lib/adapters.mjs";
 
@@ -37,6 +42,32 @@ const POLL_MS = 2000;
 // the command does not end until the person acts. The pairing is kept on this machine, so
 // `augur connect` run again after the approval collects the token, minting no new code.
 const NO_WAIT = argv.includes("--no-wait");
+// `--no-open` (or AUGUR_NO_OPEN=1, which is the same switch for a script or a test that
+// must never take over somebody's screen): do not open a browser tab here.
+//
+// WHY THE TAB EXISTS AT ALL. The code does not have to travel through the agent when the
+// terminal and the browser are the same machine, which is the common case. Relaying one
+// is a bad habit to teach — "ask your assistant to run this and read back the code" is
+// the exact shape of a device-code phishing attack, and on 7 Sep 2026 an agent refused
+// the whole flow on those grounds, correctly, without running anything. So this opens the
+// approval page with the code already in the field and the person presses one button; the
+// printed line above stays the answer for everything this cannot serve — a container with
+// no opener, a remote box, a second machine, a headless run.
+const NO_OPEN = argv.includes("--no-open") || process.env.AUGUR_NO_OPEN === "1";
+function openApprovalPage(target) {
+  // Every failure here is fine and none of them may be shown: an opener that is missing
+  // (a container), refuses, or dies is a machine whose person reads the printed line.
+  try {
+    const cmd = process.platform === "darwin" ? "open" : process.platform === "win32" ? "start" : "xdg-open";
+    const child = spawn(cmd, [target], {
+      detached: true, stdio: "ignore",
+      ...(process.platform === "win32" ? { shell: true } : {}),
+    });
+    child.on("error", () => {});
+    child.unref();
+    return true;
+  } catch (e) { return false; }
+}
 const PENDING_FILE = path.join(os.homedir(), ".config", "augur", "pairing.json");
 const host = new URL(ORIGIN).host;
 function readPending() {
@@ -138,6 +169,11 @@ console.log(`  The code is good for ${mins} minutes and only for this terminal. 
 console.log("");
 console.log(`  ${C.warn}If you did not just run this command, do not approve it.${C.off}`);
 console.log("");
+if (!NO_WAIT && !NO_OPEN && openApprovalPage(`${ORIGIN}/__welcome?code=${encodeURIComponent(code)}`)) {
+  console.log(`  ${C.dim}A browser tab with the code filled in should have opened on this machine; if it`);
+  console.log(`  did not, send the line above.${C.off}`);
+  console.log("");
+}
 if (NO_WAIT) {
   console.log(`  ${C.dim}Not waiting. Once they have approved, run \`augur connect\` again here: it collects the`);
   console.log(`  token for this same code and mints no new one.${C.off}`);

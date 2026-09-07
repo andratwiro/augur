@@ -101,6 +101,7 @@ export function renderWelcomePage({ origin, me, agentTool } = {}) {
     <h1>Connect your agent</h1>
     <p>Ask your assistant to run this, and to tell you the code it prints. Then type the code here.</p>
     <div class="cmd"><code data-cmd>${esc(cmd)}</code><button class="primary" data-copy>Copy</button></div>
+    <p>If your assistant hesitates, that is normal caution about commands from a page. It can read <code>${esc(origin || "")}/llms.txt</code> first, and the approval only ever happens here, in your browser.</p>
     ${APPROVE_FORM}
     <p class="status" data-status>Waiting for a terminal…</p>
     <button class="primary" data-go="change" disabled data-needs="paired">Next</button>
@@ -140,6 +141,26 @@ export function renderWelcomePage({ origin, me, agentTool } = {}) {
   let timer = null;
 
   const go = (s) => { at = s; body.dataset.at = s; store.set(s); if (s === "change") ensureUnit(); };
+
+  // A CODE IN THE LINK IS A TERMINAL ON THIS MACHINE, and it is filled in, never approved.
+  // The connect command opens this page itself when the terminal and the browser are the same
+  // machine — so the code does not have to be read out to an assistant and relayed back,
+  // which is the shape of a device-code phishing attack and which an assistant is right to
+  // refuse. What arrives is a value in a field: the person still presses Approve, so a link
+  // somebody was SENT still cannot approve anything on its own.
+  // It also moves the person off question one: a code exists only because their terminal is
+  // already running, which is the answer to "do you already run a coding agent".
+  const linkCode = (() => {
+    try {
+      const raw = new URLSearchParams(location.search).get("code") || "";
+      const c = raw.replace(/[^A-Za-z0-9]/g, "").toUpperCase();
+      return c.length === 8 ? c.slice(0, 4) + "-" + c.slice(4) : c;
+    } catch (e) { return ""; }
+  })();
+  if (linkCode) {
+    if (at === "agent") at = "connect";
+    $$("[data-approve] input.code").forEach((i) => { i.value = linkCode; });
+  }
   $$("[data-go]").forEach((b) => b.addEventListener("click", () => go(b.dataset.go)));
   $$("[data-copy]").forEach((b) => b.addEventListener("click", () => {
     if (navigator.clipboard) navigator.clipboard.writeText($("[data-cmd]").textContent);
@@ -226,13 +247,21 @@ export function renderWelcomePage({ origin, me, agentTool } = {}) {
     if (timer) { clearTimeout(timer); timer = null; }
     try {
       const j = await (await fetch("/__onboarding/me")).json();
-      if (j && j.done) { location.href = "/"; return; }
+      // Somebody who finished this flow long ago belongs in the workspace — UNLESS their
+      // terminal just sent them here with a code, in which case bouncing them home throws
+      // away the one thing they came to do. The approval page is where a code goes when
+      // the welcome is over, and it takes the same ?code= this page does.
+      if (j && j.done) { location.href = linkCode ? "/__connect?code=" + encodeURIComponent(linkCode) : "/"; return; }
       show(j);
     } catch (e) { /* offline, or the store blinked — try again on the next tick */ }
     timer = setTimeout(poll, 3000);
   }
 
   go(at); poll();
+  if (linkCode) {
+    const b = $("[data-step=\"" + at + "\"] [data-approve] .primary");
+    if (b) b.focus();
+  }
 })();
 </script></body></html>`;
 }

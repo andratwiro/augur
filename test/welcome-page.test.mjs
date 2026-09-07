@@ -210,6 +210,46 @@ test("/__welcome is one self-contained page with the five steps and the command"
   assert.match(html, /do this later/i);
 });
 
+test("A CODE IN THE LINK IS FILLED IN, NEVER APPROVED — and it answers question one", async () => {
+  // The live invited run (7 Sep 2026): the person relayed "ask your assistant to run this
+  // and read back the code" in their own words, and the assistant refused without running
+  // anything — correctly, because that is the shape of a device-code phishing attack. When
+  // the terminal and the browser are the same machine the code never has to travel through
+  // the assistant at all: `augur connect` opens this page with `?code=` and the person
+  // presses Approve. Three properties, and the third is the security one.
+  const { env } = await wired([ADA_MEMBER]);
+  const html = await (await fetchAs(env, ADA_MEMBER, "/__welcome")).text();
+  assert.match(html, /new URLSearchParams\(location\.search\)\.get\("code"\)/, "the page reads ?code= off its own URL");
+  assert.match(html, /\[data-approve\] input\.code/, "and fills the approve field with it");
+  assert.match(html, /if \(at === "agent"\) at = "connect"/,
+    "a code exists only because a terminal is already running, so question one is answered");
+  // Nothing in the document approves on load: the only call to the approve route is the
+  // form's own submit handler, which is a person pressing a button.
+  assert.equal((html.match(/_pair\/approve/g) || []).length, 1, "one approve call, and it is the submit handler");
+  assert.match(html, /f\.addEventListener\("submit"/, "and that call sits inside the submit handler");
+});
+
+test("the connect step tells the person an assistant's caution is normal", async () => {
+  // Not a prompt to paste and not an instruction to the assistant — one sentence to the
+  // PERSON, so a refusal reads as care rather than as the flow being broken. It names the
+  // door an assistant can check for itself, and where the approval actually happens.
+  const { env } = await wired([ADA_MEMBER]);
+  const html = await (await fetchAs(env, ADA_MEMBER, "/__welcome")).text();
+  assert.match(html, /If your assistant hesitates, that is normal caution about commands from a page\./);
+  assert.match(html, /https:\/\/acme\.example\/llms\.txt/, "it names this workspace's own door");
+  assert.match(html, /the approval only ever happens here, in your browser/);
+});
+
+test("/__connect fills a ?code= in too, and still approves nothing on its own", async () => {
+  const { env } = await wired([ADA_MEMBER]);
+  const r = await fetchAs(env, ADA_MEMBER, "/__connect?code=ABCD-EFGH");
+  assert.equal(r.status, 200);
+  const html = await r.text();
+  assert.match(html, /new URLSearchParams\(location\.search\)\.get\('code'\)/, "reads the code off the URL");
+  assert.match(html, /b\.focus\(\)/, "and puts the person on the Approve button");
+  assert.equal((html.match(/_pair\/approve/g) || []).length, 1, "still one approve call, in the submit handler");
+});
+
 test("the page leaves ONLY on a flag that came back, and says so when the write failed", async () => {
   // ⚠️ THE ESCAPE HATCH MUST NOT FAIL INTO THE WALL. "do this later" and "Open the
   // workspace" both navigate to `/`, which is exactly where the gate is — so leaving on a
