@@ -9,6 +9,7 @@ import os from "node:os";
 import path from "node:path";
 import { createHash } from "node:crypto";
 import { merge3 } from "./merge3.mjs";
+import { connectLine } from "./store.mjs";
 import { authoredUnits } from "../../src/publish-units.mjs";
 
 export const STATE_FILE = ".augur/draft.json";
@@ -122,8 +123,16 @@ export const registryList = () => readRegistry().drafts;
  * minted for another workspace — and the way back is to pair again.
  */
 export const TOKEN_NOT_ACCEPTED = "this machine's publish token is not accepted here — it may have been revoked (a role change or a removal does that), or it belongs to another workspace. Run `augur connect` again.";
-export function explainRefusal(body, status) {
-  if (status === 403 && body && body.error === "forbidden" && !body.message) return { ...body, message: TOKEN_NOT_ACCEPTED };
+/** The same, naming the workspace and carrying the line to run — see notPairedMessage. */
+export function tokenNotAccepted(origin) {
+  if (!origin) return TOKEN_NOT_ACCEPTED;
+  return `this machine's publish token is not accepted by ${origin} — revoked (a role change or a removal does that), expired, or minted for another workspace.
+  Pair again: the workspace member you are working with runs this, in a terminal on THIS machine:
+      ${connectLine(origin)}
+  and presses Approve in the tab it opens. Then run this command again.`;
+}
+export function explainRefusal(body, status, origin = "") {
+  if (status === 403 && body && body.error === "forbidden" && !body.message) return { ...body, message: tokenNotAccepted(origin) };
   return body;
 }
 
@@ -132,12 +141,12 @@ export function unitClient({ origin, token, space, session }) {
   const post = async (verb, body) => {
     const r = await fetch(`${origin}/__unit/${verb}`, { method: "POST", headers: { ...headers, "content-type": "application/json" }, body: JSON.stringify(body) });
     const out = await r.json().catch(() => ({}));
-    return r.ok ? out : { status: r.status, ...explainRefusal(out, r.status) };
+    return r.ok ? out : { status: r.status, ...explainRefusal(out, r.status, origin) };
   };
   const get = async (verb, unit) => {
     const r = await fetch(`${origin}/__unit/${verb}?unit=${encodeURIComponent(unit)}`, { headers });
     const out = await r.json().catch(() => ({}));
-    return r.ok ? out : { status: r.status, ...explainRefusal(out, r.status) };
+    return r.ok ? out : { status: r.status, ...explainRefusal(out, r.status, origin) };
   };
   return {
     open: (b) => post("open", b), save: (b) => post("save", b), land: (b) => post("land", b),
@@ -175,7 +184,9 @@ async function refusalError(what, r) {
   try { body = await r.json(); } catch (e) { /* not JSON */ }
   const err = new Error(`${what} failed: ${r.status}${body && body.error ? ` ${body.error}` : ""}`);
   err.status = r.status;
-  err.body = body && typeof body === "object" ? explainRefusal(body, r.status) : null;
+  let origin = "";
+  try { origin = new URL(r.url).origin; } catch (e) { /* a response with no url */ }
+  err.body = body && typeof body === "object" ? explainRefusal(body, r.status, origin) : null;
   return err;
 }
 

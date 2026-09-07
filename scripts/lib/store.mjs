@@ -23,6 +23,7 @@ import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { deployConfig, originHost } from "./instance.mjs";
+import { augurOnPath } from "./adapters.mjs";
 
 export const ENGINE_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
 
@@ -90,10 +91,28 @@ export function target({ root = ENGINE_ROOT, needToken = true } = {}) {
     throw new Error('no target origin — set AUGUR_ORIGIN, or add "siteOrigin" to space.json.');
   }
   const token = resolveToken(origin, root);
-  if (needToken && !token) {
-    throw new Error("no publish token — run `augur connect` (or `augur login`, which uses your web credentials) once.");
-  }
+  if (needToken && !token) throw new Error(notPairedMessage(origin));
   return { origin, token };
+}
+
+/** The pairing command for this origin, spelled the way this machine can run it. */
+export function connectLine(origin) {
+  return `${augurOnPath() ? "augur" : "npx @augurworks/augur"} connect --origin ${origin}`;
+}
+
+/**
+ * What a verb says when this machine holds no token for the workspace. Written to be
+ * RELAYED: the usual reader is an agent, and the person it works with is the one who has
+ * to act — run the command on this machine and press Approve in the tab it opens. So it
+ * names them, names the workspace, and carries the whole line; a bare "run augur connect"
+ * left the agent guessing at the origin and the person unmentioned.
+ */
+export function notPairedMessage(origin) {
+  return `no publish token for ${origin} — this machine is not paired with that workspace.
+  The workspace member you are working with runs this, in a terminal on THIS machine:
+      ${connectLine(origin)}
+  A browser tab opens with a code already filled in; they press Approve there, signed in as
+  themselves. Nothing is typed here and no password is involved. Then run this command again.`;
 }
 
 // One fetch wrapper for the whole publish API: bearer auth, non-2xx throws with

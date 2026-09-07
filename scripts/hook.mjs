@@ -17,7 +17,7 @@
 import fs from "node:fs";
 import { ADAPTERS, denyDecision, saveDecision, installAdapters, removeAdapters } from "./lib/adapters.mjs";
 import { registryList, readState, unitClient, doSave } from "./lib/draft.mjs";
-import { resolveToken } from "./lib/store.mjs";
+import { resolveToken, notPairedMessage } from "./lib/store.mjs";
 
 const event = process.argv[2];
 const refuse = (m) => { process.stderr.write(m + "\n"); process.exit(2); };
@@ -60,7 +60,7 @@ if (!st) process.exit(0);
 const origin = st.origin;
 // `AUGUR_TOKEN` set — even to nothing — is the answer; otherwise the saved tokens.
 const token = process.env.AUGUR_TOKEN !== undefined ? process.env.AUGUR_TOKEN : resolveToken(origin);
-if (!token) refuse(`draft ${st.draftId} not saved: no publish token for ${origin} — run augur connect once, then save with augur save.`);
+if (!token) refuse(`draft ${st.draftId} not saved: ${notPairedMessage(origin)} Then save with augur save.`);
 const client = unitClient({ origin, token, space: st.space, session: st.session });
 const r = await doSave({ client, dir: target.dir });
 if (r.ok) process.exit(0);
