@@ -5235,9 +5235,18 @@ async function writeUnitLanding(tctx, env, spaceId, unit, table, changed, who, n
     // map, never a second one beside it. A caller landing on somebody's behalf hands its own
     // stamp in (`unitSource`), which is how a page the PLATFORM made reads as the platform's
     // to `isSeedSource` instead of as this member's first piece of work.
+    //
+    // An ordinary landing (no `unitSource` passed) carries the prior entry's `kind` forward
+    // instead of dropping it: the welcome page's `kind: "welcome"` stamp is what keeps it off
+    // the gallery, and the welcome flow REQUIRES the member to land on it (step 3) — losing
+    // the stamp there would put every member's page back on the gallery the moment they finish.
+    const priorSource = (cur.routing || {}).unitSources?.[unit];
     routing.unitSources = {
       ...(routing.unitSources || {}),
-      [unit]: unitSource || { sha: null, dirty: false, landed: true, by: who.personId, at: now },
+      [unit]: unitSource || {
+        ...(priorSource && priorSource.kind ? { kind: priorSource.kind } : {}),
+        sha: null, dirty: false, landed: true, by: who.personId, at: now,
+      },
     };
     const m = { ...cur, files, routing };
     // The same pruning the commit handler does, for the same reason: a prefix with no file

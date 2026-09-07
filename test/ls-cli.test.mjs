@@ -8,6 +8,7 @@ import os from "node:os";
 import path from "node:path";
 import { startUnitServer } from "./fixtures/unit-server.mjs";
 import { manifestOf, remember } from "./fixtures/unit-env.mjs";
+import { seedSource } from "../src/provenance.mjs";
 
 // Async on purpose, like `openIn` in draft-cli.test.mjs: the fixture server this hits lives
 // in THIS process, so a synchronous spawn would block the event loop the server needs to
@@ -41,5 +42,27 @@ test("ls lists opportunities, then one opportunity's prototypes, from the live m
     const c = await run("ls.mjs", ["nope"], os.tmpdir(), env);
     assert.equal(c.status, 1);
     assert.match(c.stderr, /no opportunity "nope"/);
+  } finally { await srv.close(); }
+});
+
+// ── the member's own welcome page is served, never listed — `augur ls` agrees with the
+// gallery (`isWelcomeUnit`, src/galleries.mjs) so an agent asked to survey the workspace
+// does not report a page nobody published as one of its prototypes.
+test("ls does not list, or count, a unit stamped kind: welcome", async () => {
+  const live = manifestOf(2, {
+    "/toolkit/cards/": { "index.html": remember("<h1>c</h1>") },
+    "/start-here/k3f9x2/": { "index.html": remember("<h1>w</h1>") },
+  });
+  live.routing.unitSources = { "/start-here/k3f9x2/": seedSource({ kind: "welcome", sha: null, dirty: false }) };
+  const srv = await startUnitServer({ live, tenantId: "cli-ls-2" });
+  try {
+    const env = { ...process.env, AUGUR_ORIGIN: srv.origin, AUGUR_TOKEN: "tok" };
+    const a = await run("ls.mjs", [], os.tmpdir(), env);
+    assert.equal(a.status, 0, a.stderr);
+    assert.match(a.stdout, /^toolkit\s+1 prototype$/m);
+    assert.doesNotMatch(a.stdout, /start-here/, "the member's page is not one of the opportunities");
+    const b = await run("ls.mjs", ["start-here"], os.tmpdir(), env);
+    assert.equal(b.status, 1, "no opportunity is left once its only unit is filtered");
+    assert.match(b.stderr, /no opportunity "start-here"/);
   } finally { await srv.close(); }
 });

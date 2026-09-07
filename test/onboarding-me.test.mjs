@@ -13,7 +13,7 @@ import { TenantStore } from "../src/tenant-do.js";
 import { SEED_ACTOR, isSeedSource } from "../src/provenance.mjs";
 import { personIdFor } from "../src/purge.mjs";
 import { siteModel, isWelcomeUnit } from "../src/galleries.mjs";
-import { makeEnv, ctxFor, cookieFor, ADA_MEMBER, VERA, manifestOf, remember } from "./fixtures/unit-env.mjs";
+import { makeEnv, ctxFor, cookieFor, ADA_MEMBER, VERA, manifestOf, remember, sha } from "./fixtures/unit-env.mjs";
 
 // The member's page is keyed by the member id, not the local part of the address — see
 // src/welcome-unit.mjs. Computed once here rather than hard-coded, so a change to the id
@@ -299,6 +299,64 @@ test("the unit object adopts the platform's landing on the next open", async () 
   const o = await openUnit(env, ctx, ADA_UNIT);
   assert.equal(o.status, 200, JSON.stringify(o.body));
   assert.ok(o.body.table[`${ADA_UNIT}index.html`], "sync-main adopted the landing");
+});
+
+// ── the member's own landing must not erase the welcome stamp (Task 9c) ────────────────
+//
+// The welcome flow REQUIRES the member to land on their page (step 3) — so if `land`
+// stripped `kind: "welcome"` off `routing.unitSources[unit]`, every member's page would
+// reappear on the derived gallery the moment they finished the flow that was supposed to
+// keep it off. `writeUnitLanding`'s default stamp now carries the prior entry's `kind`
+// forward when the caller passes no `unitSource` of its own — exactly the ordinary `land`
+// path, unlike the platform's own write to `/__onboarding/me/unit`, which always hands one.
+const unitCall = (env, ctx, verb, body) => W.unitApi(ctx, new Request(`https://acme.example/__unit/${verb}`, {
+  method: "POST",
+  headers: { Authorization: "Bearer tok", "content-type": "application/json", "X-Augur-Session": "welcome" },
+  body: JSON.stringify(body),
+}), new URL(`https://acme.example/__unit/${verb}`), env).then(async (r) => ({ status: r.status, body: await r.json() }));
+
+test("the member's own landing on step 3 keeps the page off the gallery, and `land` carries the stamp for any ordinary unit", async () => {
+  const { env, ctx } = await wired([ADA_MEMBER], { live: manifestOf(3, {}) });
+  const made = await me(env, ctx, ADA_MEMBER, { method: "POST", url: "/__onboarding/me/unit" });
+  assert.equal(made.status, 200, JSON.stringify(made.json));
+
+  // Step 3: the member opens their own page, changes something, and lands it — the same
+  // three calls `augur open`/`save`/`land` make for any prototype.
+  const o = await unitCall(env, ctx, "open", { unit: ADA_UNIT });
+  assert.equal(o.status, 200, JSON.stringify(o.body));
+  const baseHash = o.body.table[`${ADA_UNIT}index.html`].h;
+  const newBody = "<h1>my page, edited</h1>";
+  await env.BUNDLES.put(`blobs/${sha(newBody)}`, newBody);
+  const s = await unitCall(env, ctx, "save", {
+    unit: ADA_UNIT, draftId: o.body.draftId, draftRevision: 0,
+    changes: [{ path: `${ADA_UNIT}index.html`, h: sha(newBody), ct: "text/html; charset=utf-8", s: newBody.length, baseHash }],
+  });
+  assert.equal(s.status, 200, JSON.stringify(s.body));
+  const l = await unitCall(env, ctx, "land", { unit: ADA_UNIT, draftId: o.body.draftId, baseRevision: o.body.baseRevision, note: "my edit" });
+  assert.equal(l.status, 200, JSON.stringify(l.body));
+
+  const live = await liveManifest(env);
+  assert.equal(live.files[`${ADA_UNIT}index.html`].h, sha(newBody), "the member's edit really landed");
+  assert.equal(live.routing.unitSources[ADA_UNIT].kind, "welcome", "the stamp survives the member's own landing");
+  assert.equal(isWelcomeUnit(live.routing.unitSources[ADA_UNIT]), true);
+  assert.equal(siteModel({ manifest: live }).units.some((u) => u.unit === ADA_UNIT), false,
+    "still off every derived page after the member finished the flow");
+
+  // An ORDINARY unit, with no prior `kind` at all, is unaffected: `land` still stamps the
+  // plain shape it always has, with no `kind` field invented for it.
+  const U = "/checkout/flow/";
+  const { env: env2, ctx: ctx2 } = await wired([ADA_MEMBER], { live: manifestOf(5, { [U]: { "index.html": remember("<h1>flow</h1>") } }) });
+  const o2 = await unitCall(env2, ctx2, "open", { unit: U });
+  const body2 = "<h1>flow v2</h1>";
+  await env2.BUNDLES.put(`blobs/${sha(body2)}`, body2);
+  await unitCall(env2, ctx2, "save", {
+    unit: U, draftId: o2.body.draftId, draftRevision: 0,
+    changes: [{ path: `${U}index.html`, h: sha(body2), ct: "text/html; charset=utf-8", s: body2.length, baseHash: o2.body.table[`${U}index.html`].h }],
+  });
+  const l2 = await unitCall(env2, ctx2, "land", { unit: U, draftId: o2.body.draftId, baseRevision: o2.body.baseRevision, note: "v2" });
+  assert.equal(l2.status, 200, JSON.stringify(l2.body));
+  const live2 = await liveManifest(env2);
+  assert.equal("kind" in live2.routing.unitSources[U], false, "no kind field appears out of nowhere");
 });
 
 test("a viewer is never handed a page to make", async () => {

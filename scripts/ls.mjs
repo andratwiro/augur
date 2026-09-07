@@ -8,6 +8,7 @@
 // top-level project, or using a display name with a space.
 import { target, apiClient, buildStamp } from "./lib/store.mjs";
 import { authoredUnits } from "../src/publish-units.mjs";
+import { isWelcomeUnit } from "../src/galleries.mjs";
 
 const die = (m) => { console.error(`\x1b[31m[ls]\x1b[0m ${m}`); process.exit(1); };
 const want = process.argv.slice(2).find((a) => !a.startsWith("--")) || null;
@@ -25,8 +26,13 @@ let live;
 try { live = await (await req(`${space}/manifest`)).json(); }
 catch (e) { die(`could not read the live manifest (${e.message}).`); }
 
+const sources = (live && live.routing && live.routing.unitSources) || {};
 const byOpp = new Map();
 for (const u of authoredUnits(live)) {
+  // A member's own welcome page lists in the manifest like any other authored unit, but it
+  // was landed by the platform for one person, not published by a person for the team — the
+  // gallery agrees (`isWelcomeUnit`, src/galleries.mjs) and the CLI must not disagree.
+  if (isWelcomeUnit(sources[u])) continue;
   const [opp, name] = u.replace(/^\/|\/$/g, "").split("/");
   if (!opp || !name) continue;
   if (!byOpp.has(opp)) byOpp.set(opp, []);

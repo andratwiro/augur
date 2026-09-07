@@ -57,10 +57,14 @@ yet — that is the fact the onboarding signal is waiting for. So the PLATFORM l
   the seed sentinel and the platform actor, and `noteFirstPublish` is never on that path —
   it is called from the publish `commit` handler alone. The workspace still reads as
   unconnected until a person publishes something themselves.
-- **It is served, and it is not listed.** The unit's stamp carries `kind: "welcome"`, and
-  the derived gallery skips it (`isWelcomeUnit`, `src/galleries.mjs`): a team of twenty
-  would otherwise put twenty hash-named cards on the first page the workspace shows. The
-  URL keeps working — the welcome page's own preview and the person's link both fetch it.
+- **It is served, and it is not listed** — including after the member's own landings. The
+  unit's stamp carries `kind: "welcome"`, and the derived gallery skips it (`isWelcomeUnit`,
+  `src/galleries.mjs`): a team of twenty would otherwise put twenty hash-named cards on the
+  first page the workspace shows. `writeUnitLanding` carries the stamp's `kind` forward on
+  every ordinary landing, so the page the welcome flow requires the member to land on (step
+  3) does not reappear on the gallery the moment they finish it. `augur ls` reads the same
+  stamp and agrees. The URL keeps working — the welcome page's own preview and the person's
+  link both fetch it.
 - **The folder is the member id, not the local part of an address.** Two local parts collide
   across domains, a non-ASCII one collapses to a literal, and a guessable URL on a gated
   workspace confirms membership to anyone who tries it.

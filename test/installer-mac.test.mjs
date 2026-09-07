@@ -177,11 +177,13 @@ test("an unwritable ~/.zprofile is a warning, not a failure — everything else 
   assert.equal(fs.readFileSync(profile, "utf8"), "export EDITOR=vim\n", "the unwritable file itself is untouched");
 });
 
-test("connects with --no-wait first (to print the code) then again to collect it, opening /__welcome not /__connect", () => {
+test("connects with --no-wait first (to print the code) then again to collect it — the second call opens the tab itself, so the installer never opens one of its own", () => {
   const s = SCRIPT();
   assert.match(s, /connect --origin "https:\/\/acme\.example" --no-wait/);
-  assert.match(s, /open "https:\/\/acme\.example\/__welcome"/);
-  assert.doesNotMatch(s, /open "https:\/\/acme\.example\/__connect"/);
+  // Since 9b, a waiting `augur connect` opens /__welcome?code=… itself (scripts/connect.mjs)
+  // with the code already filled in — an installer-side `open` would be a second tab.
+  assert.doesNotMatch(s, /\bopen "https:\/\/acme\.example/);
+  assert.match(s, /code below already filled in/);
 });
 
 test("exports npm_config_prefix before installing the CLI with npm", () => {

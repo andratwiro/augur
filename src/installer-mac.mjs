@@ -90,10 +90,9 @@ npm install -g @augurworks/augur || fail "could not install Augur's command line
 command -v augur >/dev/null 2>&1 || fail "Augur's command line installed but this Terminal cannot find it — close this window, open a new one, and run this file again."
 
 say "4/4  Connect to ${host}"
-echo "A browser tab will open on the workspace. Type the code shown below into it."
+echo "A browser tab will open on the workspace with the code below already filled in. Check it matches, then press Approve."
 augur connect --origin "${origin}" --no-wait || fail "the workspace did not answer — check you are online and run this file again. If it keeps happening, ask the person who invited you for a fresh link."
-open "${origin}/__welcome" >/dev/null 2>&1 || true
-augur connect --origin "${origin}" || fail "the pairing was not approved in time — run this file again for a fresh code, and type that code into the page that opens."
+augur connect --origin "${origin}" || fail "the pairing was not approved in time — run this file again for a fresh code and press Approve on the page that opens."
 
 # Keep the tools findable in Terminal windows opened later. One guarded line, appended
 # once: this script's own PATH export lives only in this process, so without it the person
