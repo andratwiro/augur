@@ -27,10 +27,10 @@ switching it on for a workspace with a team, clear those stamps or accept that.
 2. *A code relayed through an assistant.* A cold agent still refuses the connect step on
    the shape of the request (magic-link invite, `npx` from a page, a code read out to it),
    even when its own person asks. The verify for `F-onboarding-flow` is unmet.
-3. *The macOS installer.* A zip holding a `.command`; Rob's double-click test against
+3. *The macOS installer.* A zip holding a `.command`; the operator's double-click test against
    Gatekeeper is not done. Is a downloadable installer the right shape at all?
 4. *The member page.* `/start-here/<member-id>/` is served unlisted with the display name
-   in the body and survives removal — public by URL. Rob's decision.
+   in the body and survives removal — public by URL. The operator's decision.
 5. *Expired codes.* A code lives five minutes; the page now says to run the command again,
    but the flow has no way to ask the terminal for a fresh one.
 6. *The signup door.* Signup (not invitation) never meets this flow; the seed pack's
