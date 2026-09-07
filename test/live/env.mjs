@@ -44,13 +44,13 @@ export const MAIL_COOLDOWN_MS = Number(process.env.LIVE_MAIL_COOLDOWN_MS || 15 *
 
 /** The people the suite plays, as plus-addresses on the readable mailbox. */
 export const PERSONAS = Object.freeze({
-  owner: { tag: "owner", name: "QA Owner", role: "admin", initials: "QO", color: "#7c3aed" },
+  owner: { tag: "owner", name: "Maya Ortiz", role: "admin", initials: "MO", color: "#7c3aed" },
   editor: { tag: "editor", name: "QA Editor", role: "editor", initials: "QE", color: "#0891b2" },
   editor2: { tag: "editor2", name: "QA Editor Two", role: "editor", initials: "Q2", color: "#059669" },
   viewer: { tag: "viewer", name: "QA Viewer", role: "viewer", initials: "QV", color: "#b45309" },
   // The `invited` variant's person: mailed a real invite, never added to the roster ahead
   // of time. Starts with no session and no cookie at all — see `human(..., {noSignIn})`.
-  invitee: { tag: "invitee", name: "QA Invitee", role: "editor", initials: "QI", color: "#dc2626" },
+  invitee: { tag: "invitee", name: "Sam Reyes", role: "editor", initials: "SR", color: "#dc2626" },
 });
 
 /**
