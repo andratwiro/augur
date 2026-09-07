@@ -12259,7 +12259,7 @@ async function handleRequest(request, env, ctx, url, trace) {
     // an authenticated browser — and absent entirely when the instance has not opted in.
     if (url.pathname === "/__connect" && tctx.DEVICE_PAIRING) {
       const who = tctx.USERS.length ? await identify(request, env, tctx.USERS, { sessionKeys: tctx.SESSION_KEYS, tctx }) : null;
-      if (!who && tctx.USERS.length) return htmlResponse(loginPage(tctx, "/__connect", false, url.href), 200);
+      if (!who && tctx.USERS.length) return htmlResponse(loginPage(tctx, "/__connect" + url.search, false, url.href), 200);
       return htmlResponse(connectPage(tctx, who, url.origin), 200);
     }
     // The welcome flow — the one page that says this workspace is built from a terminal,
@@ -12270,7 +12270,7 @@ async function handleRequest(request, env, ctx, url, trace) {
     if (url.pathname === WELCOME_PATH && welcomeFlow(tctx)) {
       if (request.method !== "GET") return new Response("Method Not Allowed", { status: 405 });
       const who = tctx.USERS.length ? await identify(request, env, tctx.USERS, { sessionKeys: tctx.SESSION_KEYS, tctx }) : null;
-      if (!who && tctx.USERS.length) return htmlResponse(loginPage(tctx, WELCOME_PATH, false, url.href), 200);
+      if (!who && tctx.USERS.length) return htmlResponse(loginPage(tctx, WELCOME_PATH + url.search, false, url.href), 200);
       if (!who || roleOf(who) === "viewer") return new Response(null, { status: 303, headers: { Location: "/", "Cache-Control": "no-store" } });
       return htmlResponse(renderWelcomePage({ origin: url.origin, me: who, agentTool: AGENT_TOOL }), 200);
     }

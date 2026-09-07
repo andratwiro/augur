@@ -18,7 +18,7 @@ const ROOT = fileURLToPath(new URL("..", import.meta.url));
 const PUBLISH = path.join(ROOT, "scripts", "publish.mjs");
 
 const run = (argv, env) => new Promise((resolve) => {
-  execFile(process.execPath, [PUBLISH, ...argv], { cwd: ROOT, env: { ...process.env, AUGUR_NO_SELF_UPDATE: "1", ...env } },
+  execFile(process.execPath, [PUBLISH, ...argv], { cwd: ROOT, env: { ...process.env, AUGUR_NO_SELF_UPDATE: "1", AUGUR_NO_OPEN: "1", ...env } },
     (err, stdout, stderr) => resolve({ code: err ? err.code || 1 : 0, out: `${stdout}${stderr}` }));
 });
 
