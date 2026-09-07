@@ -245,7 +245,10 @@ export function renderRootIndex(model, ctx) {
   }
   const cards = model.opportunities.map((opp) => {
     const oppPath = `${enc(opp.name)}/`;
-    const cover = opp.prototypes[0];
+    // The cover is the first prototype in order that HAS a poster. A unit landed from a
+    // machine without the shooting tools carries none, and it sorts first (newest) — it
+    // must not blank a folder whose other prototypes were all shot.
+    const cover = opp.prototypes.find((p) => p.poster) || opp.prototypes[0];
     const coverSrc = cover ? cover.href : "";
     return `
         <div class="card-opp" data-fitem data-fkey="${titleCase(opp.name)}">

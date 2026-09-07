@@ -63,6 +63,32 @@ test("the site model groups units, orders by status then recency, and resolves f
   assert.deepEqual(m.tiers.pages, []);
 });
 
+test("the folder card's cover is the first prototype in order that HAS a poster, not the first prototype", () => {
+  // A unit landed from a machine without the shooting tools has no poster. It sorts first
+  // (newest), and it must not blank a folder whose other prototypes were all shot.
+  const m2 = {
+    version: 9,
+    files: {
+      "/checkout/newest/index.html": f("a", { by: "p1", editedAt: "2026-09-06T10:00:00.000Z" }),
+      "/checkout/shot/index.html": f("b", { by: "p1", editedAt: "2026-09-01T10:00:00.000Z" }),
+      "/checkout/shot/preview.webp": f("c", { ct: "image/webp" }),
+      "/checkout/older/index.html": f("d", { by: "p1", editedAt: "2026-08-01T10:00:00.000Z" }),
+      "/checkout/older/preview.webp": f("e", { ct: "image/webp" }),
+      "/bare/one/index.html": f("g", { by: "p1", editedAt: "2026-09-05T10:00:00.000Z" }),
+      "/index.html": f("z"),
+    },
+    routing: { publicPrefixes: ["/checkout/newest/", "/checkout/shot/", "/checkout/older/", "/bare/one/"] },
+  };
+  const m = siteModel({ manifest: m2, people, now: NOW });
+  assert.deepEqual(m.opportunities[0].prototypes.map((p) => p.name), ["newest", "shot", "older"], "order is untouched");
+  const html = renderRootIndex(m, ctx);
+  assert.match(html, /src="\/checkout\/shot\/preview\.webp"/, "the newest prototype WITH a poster is the cover");
+  assert.doesNotMatch(html, /\/checkout\/newest\/preview\.webp/);
+  // A folder with no poster anywhere still renders the placeholder, never a broken image.
+  assert.match(html, /data-fkey="Bare">[\s\S]*?<div class="preview preview--ph">/, "no poster at all → placeholder tile");
+  assert.doesNotMatch(html, /\/bare\/one\/preview\.webp/);
+});
+
 test("derivedPathKind names the derived surfaces and nothing else", () => {
   const m = siteModel({ manifest, people, now: NOW });
   assert.deepEqual(derivedPathKind("/", m), { kind: "root" });
