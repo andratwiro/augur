@@ -42,6 +42,27 @@ test("a folder with nothing to shoot, and a board, are named as such", async () 
   assert.deepEqual(listing(board), ["index.html"]);
 });
 
+test("a page that pulls its stylesheets or scripts from outside the folder is not shot from source", async () => {
+  // A draft folder holds the unit and nothing else. Rendered over file://, a stylesheet at
+  // `../../skills/ui.css` or `/skills/ui.css` resolves to nothing, and the shot is a white
+  // page with a stray bar — a poster worse than none, since the folder card then wears it.
+  for (const href of ["../../skills/ui/tokens.css", "/skills/ui/tokens.css"]) {
+    const dir = folder({ "index.html": `<link rel="stylesheet" href="${href}"><h1>hi</h1>` });
+    const r = await posterFor(dir);
+    assert.equal(r.skipped, "outside-folder", href);
+    assert.match(r.why, /npm run shoot/);
+    assert.deepEqual(listing(dir), ["index.html"], "nothing was written");
+  }
+  const script = folder({ "index.html": '<script src="../shared/app.js"></script>' });
+  assert.equal((await posterFor(script)).skipped, "outside-folder");
+  // Assets the engine serves by absolute path are not "outside": every deployment has them.
+  const engine = folder({ "index.html": '<link rel="stylesheet" href="/__canvas/canvas.css"><script src="/piti.js"></script><h1>x</h1>' });
+  assert.notEqual((await posterFor(engine)).skipped, "outside-folder");
+  // A relative path INSIDE the folder is fine.
+  const inside = folder({ "index.html": '<link rel="stylesheet" href="./css/a.css"><script src="app.js"></script>' });
+  assert.notEqual((await posterFor(inside)).skipped, "outside-folder");
+});
+
 test("a poster newer than every source file is current; an older one is not", async () => {
   const dir = folder({ "index.html": "<h1>hi</h1>" });
   assert.equal(await needsPoster(dir), true, "no poster yet");

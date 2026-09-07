@@ -44,6 +44,34 @@ export async function isCanvasEntry(file) {
   try { return /\/__canvas\/canvas\.js/.test(await fs.readFile(file, "utf8")); } catch { return false; }
 }
 
+// Engine assets every deployment serves by absolute path. Dead over file:// too, but a page
+// without them still paints its own content — a missing font falls back; a missing stylesheet
+// does not.
+const ENGINE_ABS = /^\/(?:__|piti\.js$|fonts\/|_chrome\.|sw\.js$)/;
+
+/**
+ * Does the page pull a stylesheet or a script from OUTSIDE its folder — `../x.css`, or
+ * `/skills/x.css`? A draft folder holds the unit and nothing else, and file:// resolves
+ * neither, so the shot would be a white page with a stray bar: a poster worse than none,
+ * since the folder card then wears it. Such a page is shot from the space clone, where the
+ * paths resolve, by `npm run shoot`.
+ */
+export async function pullsFromOutside(file) {
+  let html = "";
+  try { html = await fs.readFile(file, "utf8"); } catch { return false; }
+  const tags = html.match(/<(?:link|script)\b[^>]*>/gi) || [];
+  for (const tag of tags) {
+    if (/^<link/i.test(tag) && !/\brel\s*=\s*["']?[^"'>]*stylesheet/i.test(tag)) continue;
+    const m = /\b(?:href|src)\s*=\s*["']([^"']+)["']/i.exec(tag);
+    if (!m) continue;
+    const u = m[1].trim();
+    if (/^(?:[a-z]+:)?\/\//i.test(u) || /^(?:data|blob):/i.test(u)) continue; // the network is not the folder
+    if (u.startsWith("../")) return true;
+    if (u.startsWith("/") && !ENGINE_ABS.test(u)) return true;
+  }
+  return false;
+}
+
 async function newestMtime(dir, ignore) {
   let latest = 0;
   for (const e of await fs.readdir(dir, { withFileTypes: true })) {
@@ -115,6 +143,8 @@ export async function posterTools() {
  *   current        the poster is newer than every source file
  *   no-html        nothing to shoot
  *   canvas         a board; shot from the live page by `npm run shoot`, not from source
+ *   outside-folder the page pulls a stylesheet/script from outside the folder (`../`, `/skills/…`);
+ *                  a draft cannot render it — `npm run shoot` from the space clone can
  *   no-tools       Playwright or cwebp is missing (`why` names which)
  *   no-browser     Playwright is installed and its browser is not (`npx playwright install chromium`)
  *   failed         the capture failed twice
@@ -124,6 +154,7 @@ export async function posterFor(dir, { log = () => {}, enabled = true } = {}) {
   const file = await entryOf(dir);
   if (!file) return { skipped: "no-html", why: "the folder has no html page to shoot" };
   if (await isCanvasEntry(file)) return { skipped: "canvas", why: "a board is shot from its live page by `npm run shoot`, not from source" };
+  if (await pullsFromOutside(file)) return { skipped: "outside-folder", why: "the page pulls a stylesheet or script from outside this folder, which a draft does not hold — shoot it from the space clone with `npm run shoot -- <folder>` and commit the poster" };
   if (!(await needsPoster(dir))) return { skipped: "current", why: `${POSTER} is newer than the source` };
   const tools = await posterTools();
   if (!tools.ok) return { skipped: "no-tools", why: tools.why };
