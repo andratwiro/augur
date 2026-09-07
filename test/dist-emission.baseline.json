@@ -57,7 +57,7 @@
   "tenant-context.mjs": "sha256:75c2ab155a3ad477",
   "tenant-host.mjs": "sha256:1313487083264a52",
   "unit-core.mjs": "sha256:86fa09fb1bcaad7c",
-  "welcome-page.mjs": "sha256:c89df4324ab047f8",
+  "welcome-page.mjs": "sha256:2dacf00eb0cb6bda",
   "welcome-unit.mjs": "sha256:517d041d4fdeb6d1",
   "zip-store.mjs": "sha256:4e2bd5983ec358b9"
 }

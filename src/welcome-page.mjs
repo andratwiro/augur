@@ -72,6 +72,7 @@ export function renderWelcomePage({ origin, me, agentTool } = {}) {
   .primary{font:600 15px inherit;color:#fff;background:var(--accent);border:0;border-radius:9px;padding:.7rem 1.1rem;cursor:pointer;align-self:flex-start;text-decoration:none;display:inline-block} .primary[disabled]{opacity:.45;cursor:default}
   .status{font-size:.95rem;color:var(--muted)} .status[data-on="1"]{color:#137333;font-weight:600}
   .later{position:fixed;right:1rem;bottom:1rem;font-size:.85rem;color:var(--muted)}
+  .switch{font-size:.95rem;color:var(--muted)} button.link{font:inherit;color:var(--accent);background:none;border:0;padding:0;cursor:pointer;text-decoration:underline}
   .leave-status{position:fixed;right:1rem;bottom:2.4rem;margin:0;font-size:.85rem;color:#b3261e}
   form[data-approve]{display:flex;gap:.5rem;align-items:center}
   input.code{font:600 16px ui-monospace,Menlo,monospace;letter-spacing:.12em;padding:.6rem .8rem;border:1px solid var(--line);border-radius:8px;width:11em}
@@ -93,6 +94,7 @@ export function renderWelcomePage({ origin, me, agentTool } = {}) {
     <p>One file for your Mac. It installs what is needed, connects to this workspace, and opens the approval page for you.</p>
     <a class="primary" href="/__onboarding/installer/mac">Download for Mac</a>
     <p>${openLine} If your Mac says it is from an unidentified developer, right-click it and choose Open.</p>
+    <p class="switch">Already have a terminal? <button class="link" data-go="connect">Get the command instead.</button></p>
     ${APPROVE_FORM}
     <p class="status" data-status>Waiting for a terminal…</p>
     <button class="primary" data-go="change" disabled data-needs="paired">Next</button>
@@ -102,6 +104,7 @@ export function renderWelcomePage({ origin, me, agentTool } = {}) {
     <p>Ask your assistant to run this, and to tell you the code it prints. Then type the code here.</p>
     <div class="cmd"><code data-cmd>${esc(cmd)}</code><button class="primary" data-copy>Copy</button></div>
     <p>If your assistant hesitates, that is normal caution about commands from a page. It can read <code>${esc(origin || "")}/llms.txt</code> first, and the approval only ever happens here, in your browser.</p>
+    <p class="switch">No terminal yet? <button class="link" data-go="install">Download the Mac setup instead.</button></p>
     ${APPROVE_FORM}
     <p class="status" data-status>Waiting for a terminal…</p>
     <button class="primary" data-go="change" disabled data-needs="paired">Next</button>
@@ -148,8 +151,10 @@ export function renderWelcomePage({ origin, me, agentTool } = {}) {
   // which is the shape of a device-code phishing attack and which an assistant is right to
   // refuse. What arrives is a value in a field: the person still presses Approve, so a link
   // somebody was SENT still cannot approve anything on its own.
-  // It also moves the person off question one: a code exists only because their terminal is
-  // already running, which is the answer to "do you already run a coding agent".
+  // It also settles which step shows: a code exists only because a terminal is already
+  // running, which answers "do you already run a coding agent" and makes the download step
+  // the wrong place — whatever this browser remembered from an earlier visit. (Somebody who
+  // finished the flow is sent on to the approval page by the first poll below.)
   const linkCode = (() => {
     try {
       const raw = new URLSearchParams(location.search).get("code") || "";
@@ -158,7 +163,7 @@ export function renderWelcomePage({ origin, me, agentTool } = {}) {
     } catch (e) { return ""; }
   })();
   if (linkCode) {
-    if (at === "agent") at = "connect";
+    at = "connect";
     $$("[data-approve] input.code").forEach((i) => { i.value = linkCode; });
   }
   $$("[data-go]").forEach((b) => b.addEventListener("click", () => go(b.dataset.go)));
@@ -177,7 +182,7 @@ export function renderWelcomePage({ origin, me, agentTool } = {}) {
         r = await fetch("/__publish/_pair/approve", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ code }) });
         j = await r.json().catch(() => ({}));
       } catch (err) { return say("That did not work."); }
-      if (!r.ok) return say(j.error === "no-such-code" ? "That code is not waiting any more. Ask for a fresh one." : (j.message || "That did not work."));
+      if (!r.ok) return say(j.error === "no-such-code" ? "That code has expired. Run the command again for a fresh one." : (j.message || "That did not work."));
       notice = ""; f.reset(); poll();
     });
   });
