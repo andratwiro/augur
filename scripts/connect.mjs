@@ -181,6 +181,14 @@ if (NO_WAIT) {
   console.log(`  token for this same code and mints no new one.${C.off}`);
   process.exit(0);
 }
+// Run INLINE by a verb (open, land … — AUGUR_PAIR_INLINE), the wait is that verb's: the tab
+// is already open on this machine, the person presses Approve, the verb carries on. The
+// paragraphs for a standalone run — stop waiting, agents do not poll here — would only
+// tell the agent to abandon a verb that is about to finish.
+if (process.env.AUGUR_PAIR_INLINE === "1") {
+  console.log(`  ${C.dim}Waiting for Approve in that tab (up to ${mins} minutes)…${C.off}`);
+  console.log("");
+} else {
 console.log(`  ${C.dim}You can stop waiting (Ctrl-C) and run \`augur connect\` again after they approve —`);
 console.log(`  it collects the token for this same code.${C.off}`);
 console.log("");
@@ -192,6 +200,7 @@ console.log(`  Stop now, send them the first line above, and run \`augur connect
 console.log(`  they have approved — it collects the token then. (\`augur connect --no-wait\` does`);
 console.log(`  exactly that in one step.)${C.off}`);
 console.log("");
+}
 
 const deadline = Date.now() + (expiresInMs || 300000);
 let saved = null;

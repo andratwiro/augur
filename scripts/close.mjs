@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // augur close [--discard] — remove this draft folder. A landed draft closes freely; an open
 // one is kept unless --discard, which also abandons the draft on the instance.
-import { resolveOrigin, resolveToken } from "./lib/store.mjs";
+import { resolveOrigin, resolveToken, tokenOrPair } from "./lib/store.mjs";
 import { readState, unitClient, doClose } from "./lib/draft.mjs";
 
 const log = (m) => console.error(`\x1b[35m[close]\x1b[0m ${m}`);
@@ -18,8 +18,8 @@ if (!st) {
   process.exit(0);
 }
 const origin = st.origin || resolveOrigin();
-const token = resolveToken(origin);
-if (!token && !st.landed) die("no publish token — run `augur connect` once.");
+let token = resolveToken(origin);
+if (!token && !st.landed) { try { token = await tokenOrPair(origin); } catch (e) { die(e.message); } }
 const client = unitClient({ origin, token, space: st.space, session: st.session });
 process.chdir("..");
 const r = await doClose({ client, dir, discard });

@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // augur watch — save this draft folder on every burst of changes, until Ctrl-C. For people
 // editing by hand in an editor that runs no hooks. See docs/drafts-that-land.md §7.
-import { resolveOrigin, resolveToken } from "./lib/store.mjs";
+import { resolveOrigin, tokenOrPair } from "./lib/store.mjs";
 import { readState, unitClient, doSave, watchFolder } from "./lib/draft.mjs";
 
 const log = (m) => console.error(`\x1b[35m[watch]\x1b[0m ${m}`);
@@ -10,8 +10,8 @@ const dir = process.cwd();
 const st = readState(dir);
 if (!st) die("not a draft folder — run `augur open <prototype>` first.");
 const origin = st.origin || resolveOrigin();
-const token = resolveToken(origin);
-if (!token) die("no publish token — run `augur connect` once.");
+let token;
+try { token = await tokenOrPair(origin); } catch (e) { die(e.message); }
 const client = unitClient({ origin, token, space: st.space, session: st.session });
 let running = false, again = false;
 async function save() {

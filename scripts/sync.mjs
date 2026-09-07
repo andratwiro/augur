@@ -2,7 +2,7 @@
 // augur sync — fold what landed on main since this draft opened into the draft. One-sided
 // changes are taken; a file changed on both sides is merged where the lines do not overlap
 // and left to you where they do (theirs is written under .augur/theirs/). Nothing is guessed.
-import { resolveOrigin, resolveToken } from "./lib/store.mjs";
+import { resolveOrigin, tokenOrPair } from "./lib/store.mjs";
 import { readState, unitClient, doSync, THEIRS_DIR } from "./lib/draft.mjs";
 
 const log = (m) => console.error(`\x1b[35m[sync]\x1b[0m ${m}`);
@@ -11,8 +11,8 @@ const dir = process.cwd();
 const st = readState(dir);
 if (!st) die("not a draft folder — run `augur open <prototype>` first.");
 const origin = st.origin || resolveOrigin();
-const token = resolveToken(origin);
-if (!token) die("no publish token — run `augur connect` once.");
+let token;
+try { token = await tokenOrPair(origin); } catch (e) { die(e.message); }
 const client = unitClient({ origin, token, space: st.space, session: st.session });
 const r = await doSync({ client, dir });
 if (!r.ok && r.error === "draft-closed") die(`this draft was ${r.landed ? `landed by ${r.name || r.by || "someone"}${r.session ? ` (${r.session})` : ""} at ${r.at}` : "discarded"} — the folder is no longer a draft. Your edits are still here; run augur open on the prototype again and copy them in.`);

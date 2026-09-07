@@ -114,13 +114,13 @@ you do not want (its saves stay on the instance for a while; nothing else is tou
 | `stale-draft` | another process saved to this same draft | `augur sync`, then `augur save` |
 | `draft-closed` | somebody landed or discarded this draft from the site (it says who and when) | your edits are still in the folder; `augur open` the prototype again and copy them in |
 | `manifest-contended` | many landings hit the workspace in the same second; `land` already tried again | `augur land` once more |
-| `forbidden` with "run `augur connect` again" | this machine's token was revoked (a role change or a removal) or belongs to another workspace | `augur connect` |
+| `forbidden` with "run `augur connect` again" | this machine's token was revoked (a role change or a removal) or belongs to another workspace | nothing: `open` and `land` pair afresh on the spot — a tab opens for the person, they press Approve. Only where that cannot happen (CI, a machine token) does the refusal print what to run |
 | `would-unpublish` | the draft has no files (the folder is empty) | check the folder; a deletion is its own verb |
 | `not-a-prototype-folder` / `reserved-folder` | the path is not `<opportunity>/<prototype>` (exactly two segments, and not a folder the engine generates) | name the prototype folder |
 | `unslugged-unit` | `--new` with a name that is not lowercase letters, digits and dashes | run the slug the refusal prints |
 | `unknown-opportunity` | `--new` under a top-level folder this workspace does not have | `augur ls`; `--new-opportunity` to start one on purpose |
 | `units-not-configured` | this instance does not serve drafts | `augur publish` — see publishing.md |
-| no publish token | this machine is not paired | `augur connect` (never a password) |
+| no publish token | this machine is not paired | nothing: the verb pairs this machine itself — a tab opens for the person with the code filled in, they press Approve, the verb carries on. Tell them that one sentence. `augur connect` by hand is for CI or a machine with no browser (never a password) |
 | unreachable | the instance could not be reached | nothing is lost; the next save carries every change since |
 
 ## What you never do

@@ -6,7 +6,7 @@
 // manifest, so it is never stale and never a guess. Exists so an agent asked to "put it
 // under Broad Listening" finds `broad-listening` instead of guessing, inventing a new
 // top-level project, or using a display name with a space.
-import { target, apiClient, buildStamp } from "./lib/store.mjs";
+import { targetPaired, apiClient, buildStamp } from "./lib/store.mjs";
 import { authoredUnits } from "../src/publish-units.mjs";
 import { isWelcomeUnit } from "../src/galleries.mjs";
 
@@ -14,7 +14,7 @@ const die = (m) => { console.error(`\x1b[31m[ls]\x1b[0m ${m}`); process.exit(1);
 const want = process.argv.slice(2).find((a) => !a.startsWith("--")) || null;
 
 let origin, token;
-try { ({ origin, token } = target({ needToken: true })); } catch (e) { die(e.message); }
+try { ({ origin, token } = await targetPaired({ needToken: true })); } catch (e) { die(e.message); }
 
 let space;
 try { space = Object.keys((await buildStamp(origin)).spaces || {})[0]; }

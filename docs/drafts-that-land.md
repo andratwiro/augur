@@ -216,7 +216,12 @@ without hooks), `watch` (a debounced save loop for people editing by hand).
   lands, so a session whose hooks did not fire loses nothing. `AUGUR_HOOKS_OFF=1` makes
   both hooks inert; `augur hook install|remove|status` manages them by hand, for the
   folder they run in.
-- **Identity.** The person token from `augur connect`, which beats a token in the engine
+- **Identity.** The person token from `augur connect` — which every verb runs ITSELF when
+  this machine holds no token for the workspace, or holds one the workspace refuses
+  (`pairHere` in `scripts/lib/store.mjs`): the approval tab opens on this machine with the
+  code filled in, the member presses Approve, the verb carries on. Off for an explicit
+  `AUGUR_TOKEN`, in CI, or with `AUGUR_NO_PAIR=1`, where the refusal prints what to run.
+  The saved pairing beats a token in the engine
   clone's `.env.deploy` (that one is the machine's — a deploy shell's CI credential — and a
   landing made with it is nobody's face); an explicit `AUGUR_TOKEN` beats both. The session
   label from the agent tool when present, else generated at open and kept in `draft.json`.

@@ -7,7 +7,7 @@
 // See docs/drafts-that-land.md §4.
 import fs from "node:fs";
 import path from "node:path";
-import { target, buildStamp } from "./lib/store.mjs";
+import { targetPaired, tokenOrPair, buildStamp } from "./lib/store.mjs";
 import { unitClient, doOpen, unitPathFor } from "./lib/draft.mjs";
 import { installAdapters, augurOnPath } from "./lib/adapters.mjs";
 import { normUnit } from "../src/unit-core.mjs";
@@ -23,7 +23,7 @@ if (!raw) die("name a prototype: `augur open <opportunity>/<prototype>` (a folde
 const unit = normUnit(unitPathFor(raw) || raw);
 if (!unit) die(`"${raw}" is not a prototype path.`);
 let origin, token;
-try { ({ origin, token } = target({ needToken: true })); } catch (e) { die(e.message); }
+try { ({ origin, token } = await targetPaired({ needToken: true })); } catch (e) { die(e.message); }
 // The space id addresses blob uploads. A folder with a space.json names it; otherwise the
 // instance's own build stamp does (one workspace serves one space).
 let space = null;
@@ -33,10 +33,17 @@ if (!space) die("could not tell which space this instance serves — run from a 
 const session = process.env.AUGUR_SESSION || opt("--session") || `session-${process.pid}`;
 const dir = path.resolve(opt("--dir") || unit.split("/").filter(Boolean).pop());
 
-const client = unitClient({ origin, token, space, session });
+let client = unitClient({ origin, token, space, session });
 const isNew = argv.includes("--new");
 const allowNewOpportunity = argv.includes("--new-opportunity");
-const r = await doOpen({ client, unit, dir, origin, space, session, now: new Date().toISOString(), isNew, allowNewOpportunity });
+const attempt = () => doOpen({ client, unit, dir, origin, space, session, now: new Date().toISOString(), isNew, allowNewOpportunity });
+let r = await attempt();
+// A token the workspace refuses is not a question for the person either: pair afresh, once,
+// and try again. Only when that cannot happen here does the refusal reach the screen.
+if (!r.ok && r.error === "forbidden") {
+  try { token = await tokenOrPair(origin, { again: true, why: `this machine's token is not accepted by ${origin}` }); client = unitClient({ origin, token, space, session }); r = await attempt(); }
+  catch (e) { die(e.message); }
+}
 if (!r.ok) {
   if (r.error === "folder-not-empty") die(`${r.dir} is not empty — pick another folder with --dir.`);
   if (r.error === "unknown-unit") die(`${unit} does not exist here. To create it: \`augur open --new ${unit.replace(/^\/|\/$/g, "")}\`.`);

@@ -20,6 +20,11 @@ The date is the day the update went live. The page works out "Today / 3 days ago
 
 ---
 
+## 2026-09-07 — Your agent connects itself
+The first time an agent works on a workspace from a new machine, it no longer stops to ask
+you to run anything. A tab opens in your browser with the code already typed; you press
+Approve, and the agent carries on with what it was doing.
+
 ## 2026-09-07 — Landed prototypes get their picture
 When your agent lands a prototype, its card in the gallery now shows a picture of it
 instead of a blank tile — taken on the way up, on the machine that landed it. And the

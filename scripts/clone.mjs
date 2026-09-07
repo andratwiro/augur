@@ -61,7 +61,7 @@ import os from "node:os";
 import { mkdir, writeFile, readFile, readdir } from "node:fs/promises";
 import { existsSync, readFileSync, statSync } from "node:fs";
 import { createHash } from "node:crypto";
-import { target, apiClient } from "./lib/store.mjs";
+import { targetPaired, apiClient } from "./lib/store.mjs";
 import { materializePlan, synthesizeSpaceJson } from "./lib/materialize.mjs";
 import { stripBuildDecorations } from "./lib/publish-conflict.mjs";
 import {
@@ -142,7 +142,7 @@ async function graduate() {
     prefixes = await treePrefixes(root);
     read = async (f) => readFileSync(path.join(root, f.src));
   } else {
-    const t = target({ needToken: true });
+    const t = await targetPaired({ needToken: true });
     origin = t.origin;
     const req = apiClient(origin, t.token);
     sourceHost = new URL(origin).host;
@@ -282,7 +282,7 @@ async function graduate() {
 
 async function main() {
   if (flag("--prototype")) return graduate();
-  const { origin, token } = target({ needToken: true });
+  const { origin, token } = await targetPaired({ needToken: true });
   const req = apiClient(origin, token);
 
   // `pull` runs from inside a cloned tree, so the space is whatever that tree says it is.

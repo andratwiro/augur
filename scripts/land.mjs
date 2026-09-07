@@ -5,7 +5,7 @@
 // the folder's card picture (preview.webp) is shot when this machine has the tools for it
 // and the source is newer than the poster — the gallery renders nothing for a prototype
 // without one. See docs/drafts-that-land.md.
-import { resolveOrigin, resolveToken } from "./lib/store.mjs";
+import { resolveOrigin, tokenOrPair } from "./lib/store.mjs";
 import { readState, unitClient, doLand } from "./lib/draft.mjs";
 import { posterFor } from "./lib/poster.mjs";
 
@@ -18,14 +18,19 @@ const dir = process.cwd();
 const st = readState(dir);
 if (!st) die("not a draft folder — run `augur open <prototype>` first.");
 const origin = st.origin || resolveOrigin();
-const token = resolveToken(origin);
-if (!token) die("no publish token — run `augur connect` once.");
-const client = unitClient({ origin, token, space: st.space, session: st.session });
+let token;
+try { token = await tokenOrPair(origin); } catch (e) { die(e.message); }
+let client = unitClient({ origin, token, space: st.space, session: st.session });
 // The picture first, so the save inside `land` carries it. A skip is said and never fatal.
 const poster = await posterFor(dir, { log, enabled: !argv.includes("--no-poster") });
 if (poster.shot) log("poster shot — preview.webp goes up with the landing");
 else if (poster.skipped !== "current" && poster.skipped !== "disabled") log(`no poster (${poster.skipped}): ${poster.why}`);
-const r = await doLand({ client, dir, note });
+let r = await doLand({ client, dir, note });
+// A refused token pairs afresh, once, and lands again — see open.mjs.
+if (!r.ok && r.error === "forbidden") {
+  try { token = await tokenOrPair(origin, { again: true, why: `this machine's token is not accepted by ${origin}` }); client = unitClient({ origin, token, space: st.space, session: st.session }); r = await doLand({ client, dir, note }); }
+  catch (e) { die(e.message); }
+}
 if (!r.ok) {
   if (r.error === "main-moved") {
     log(`main moved since this draft opened (now revision ${r.mainRevision}):`);

@@ -19,6 +19,7 @@
 // test suites and a person choosing a token for one command set it on purpose.
 
 import { existsSync, readFileSync } from "node:fs";
+import { spawn } from "node:child_process";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -93,6 +94,49 @@ export function target({ root = ENGINE_ROOT, needToken = true } = {}) {
   const token = resolveToken(origin, root);
   if (needToken && !token) throw new Error(notPairedMessage(origin));
   return { origin, token };
+}
+
+/**
+ * NO TOKEN, OR A DEAD ONE, IS NOT A QUESTION FOR THE PERSON. Where the workspace offers
+ * device pairing, the verb that needed the token runs the pairing itself, right here: the
+ * approval tab opens on this machine with the code filled in, the workspace member presses
+ * Approve, and the verb carries on. The agent relays one sentence — "a tab opened, press
+ * Approve" — not a command. Off for an explicit machine token (AUGUR_TOKEN), in CI, or with
+ * AUGUR_NO_PAIR=1; then the verb says what to run instead (notPairedMessage).
+ *
+ * Resolves to the token `connect` saved, or "" when it could not pair here.
+ */
+export async function pairHere(origin, { why = "", again = false, root = ENGINE_ROOT } = {}) {
+  if (!origin || process.env.AUGUR_NO_PAIR === "1" || process.env.CI || process.env.AUGUR_TOKEN) return "";
+  let offered = false;
+  try {
+    const j = await (await fetch(`${origin}/.well-known/augur.json`, { headers: { Accept: "application/json" }, signal: AbortSignal.timeout(8000) })).json();
+    offered = !!(j && j.pairing && j.pairing.enabled);
+  } catch (e) { offered = false; }
+  if (!offered) return "";
+  console.error(`[augur] ${why || "no publish token for " + origin} — pairing this machine now. A browser tab opens here with the code filled in; the workspace member presses Approve. Nothing is typed in this terminal.`);
+  const code = await new Promise((resolve) => {
+    const child = spawn(process.execPath, [path.join(root, "scripts", "connect.mjs"), "--origin", origin, ...(again ? ["--again"] : [])],
+      { stdio: ["ignore", "inherit", "inherit"], env: { ...process.env, AUGUR_PAIR_INLINE: "1" } });
+    child.on("error", () => resolve(1));
+    child.on("close", resolve);
+  });
+  return code === 0 ? pairedToken(origin) : "";
+}
+
+/** A token for this origin — the saved one, or the one `pairHere` just obtained; throws with the instruction otherwise. */
+export async function tokenOrPair(origin, { root = ENGINE_ROOT, again = false, why = "" } = {}) {
+  const token = (!again && resolveToken(origin, root)) || await pairHere(origin, { why: why || `no publish token for ${origin}`, again, root });
+  if (!token) throw new Error(notPairedMessage(origin));
+  return token;
+}
+
+/** `target`, for verbs that may pair on the way: origin and token, pairing this machine when it holds none. */
+export async function targetPaired({ root = ENGINE_ROOT, needToken = true } = {}) {
+  const origin = resolveOrigin(root);
+  if (!origin) throw new Error('no target origin — set AUGUR_ORIGIN, or add "siteOrigin" to space.json.');
+  if (!needToken) return { origin, token: resolveToken(origin, root) };
+  return { origin, token: await tokenOrPair(origin, { root }) };
 }
 
 /** The pairing command for this origin, spelled the way this machine can run it. */

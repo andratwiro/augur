@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // augur save — push every changed file in this draft folder. Live at the draft address on
 // return. Exit 1 with the reason when the instance refuses. See docs/drafts-that-land.md §4.
-import { resolveOrigin, resolveToken } from "./lib/store.mjs";
+import { resolveOrigin, tokenOrPair } from "./lib/store.mjs";
 import { readState, unitClient, doSave } from "./lib/draft.mjs";
 
 const die = (m) => { console.error(`\x1b[31m[save]\x1b[0m ${m}`); process.exit(1); };
@@ -9,8 +9,8 @@ const dir = process.cwd();
 const st = readState(dir);
 if (!st) die("not a draft folder — run `augur open <prototype>` first.");
 const origin = st.origin || resolveOrigin();
-const token = resolveToken(origin);
-if (!token) die("no publish token — run `augur connect` once.");
+let token;
+try { token = await tokenOrPair(origin); } catch (e) { die(e.message); }
 const client = unitClient({ origin, token, space: st.space, session: st.session });
 const r = await doSave({ client, dir });
 if (!r.ok) {

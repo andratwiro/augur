@@ -4,7 +4,7 @@
 // refuses edits there. `augur close` inside it removes it. See docs/drafts-that-land.md §7.
 import path from "node:path";
 import fs from "node:fs";
-import { target, buildStamp } from "./lib/store.mjs";
+import { targetPaired, buildStamp } from "./lib/store.mjs";
 import { unitClient, doRead, readDirFor, unitPathFor } from "./lib/draft.mjs";
 import { normUnit } from "../src/unit-core.mjs";
 
@@ -18,7 +18,7 @@ if (!raw) die("name a prototype: `augur read <opportunity>/<prototype>`.");
 const unit = normUnit(unitPathFor(raw) || raw);
 if (!unit) die(`"${raw}" is not a prototype path.`);
 let origin, token;
-try { ({ origin, token } = target({ needToken: true })); } catch (e) { die(e.message); }
+try { ({ origin, token } = await targetPaired({ needToken: true })); } catch (e) { die(e.message); }
 const dir = path.resolve(opt("--dir") || readDirFor(unit));
 // The blob routes are per space, so the copy needs the space id exactly as `open` does:
 // from a space.json in this folder, else from what the instance says it serves.
