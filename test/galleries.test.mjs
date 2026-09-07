@@ -89,6 +89,28 @@ test("the folder card's cover is the first prototype in order that HAS a poster,
   assert.doesNotMatch(html, /\/bare\/one\/preview\.webp/);
 });
 
+test("a poster's stamp is not an editor: the faces come from what people wrote", () => {
+  // `augur land` shoots preview.webp on the way up and the store stamps it with the
+  // lander, like any file. The date rule (unitProvenance) already skips generated assets;
+  // the face pile must follow the same rule, or landing a poster on a colleague's work
+  // puts your face on their card.
+  const m3 = {
+    version: 9,
+    files: {
+      "/checkout/flow/index.html": f("a", { by: "p2", editedAt: "2026-09-01T10:00:00.000Z" }),
+      "/checkout/flow/preview.webp": f("b", { ct: "image/webp", by: "p1", editedAt: "2026-09-06T10:00:00.000Z" }),
+      "/index.html": f("z"),
+    },
+    routing: { publicPrefixes: ["/checkout/flow/"] },
+  };
+  const m = siteModel({ manifest: m3, people, now: NOW });
+  const flow = m.opportunities[0].prototypes[0];
+  assert.deepEqual(flow.editors.map((u) => u.id), ["p2"], "the poster's lander is not an editor");
+  assert.equal(flow.by, "p2");
+  assert.equal(flow.editedAt, "2026-09-01T10:00:00.000Z", "and the poster does not move the date");
+  assert.deepEqual(m.opportunities[0].people.map((u) => u.id), ["p2"]);
+});
+
 test("derivedPathKind names the derived surfaces and nothing else", () => {
   const m = siteModel({ manifest, people, now: NOW });
   assert.deepEqual(derivedPathKind("/", m), { kind: "root" });

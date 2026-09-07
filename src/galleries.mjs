@@ -13,7 +13,7 @@
 // ⚠️ NO NODE IMPORTS, NO I/O. The worker runs this per request.
 import { renderAppChrome, renderSpaceContextScript, CHROME_MARK_START, CHROME_MARK_END, UI_VERSION, escAttr, titleCase, fmtDate, relTime } from "./chrome/appchrome.mjs";
 import { authoredUnits } from "./publish-units.mjs";
-import { unitProvenance, unitKey, STATUS_LABELS } from "./currency.mjs";
+import { unitProvenance, unitKey, isGeneratedAsset, STATUS_LABELS } from "./currency.mjs";
 
 export const TIERS = Object.freeze(["base", "components", "patterns", "pages"]);
 const TIER_TITLE = Object.freeze({ base: "Base", components: "Components", patterns: "Patterns", pages: "Pages" });
@@ -79,7 +79,9 @@ function unitEntry(manifest, unit, home, { statuses, baseline, people, now }) {
   const key = unitKey(unit);
   const status = (statuses && Object.prototype.hasOwnProperty.call(statuses, key) && statuses[key])
     || (baseline && baseline[key]) || null;
-  const ids = [...new Set(inUnit.map((p) => files[p] && files[p].by).filter(Boolean))];
+  // A poster is shot by a tool and stamped with whoever landed it; it is a picture of the
+  // work, not work — the same rule the date follows (unitProvenance).
+  const ids = [...new Set(inUnit.filter((p) => !isGeneratedAsset(p)).map((p) => files[p] && files[p].by).filter(Boolean))];
   // One face per PERSON: `people` answers a person's canonical id, so two stamps under two
   // of their addresses (a work and a personal git identity) fold into one chip.
   const seen = new Map();
