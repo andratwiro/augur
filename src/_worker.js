@@ -12890,7 +12890,7 @@ export const __testables = Object.freeze({
   personId, avatarKey, publicUser, stampAuthor, sanitizeMsg, applyOp, reviewApi, reviewExport,
   purgeThreads, purgeUser, PURGED_AUTHOR,
   redactPublishedBy, redactProvenance, PURGED_PUBLISHER,
-  peopleApi, userByPersonId, personIdsOf,
+  peopleApi, userByPersonId, personIdsOf, connectPage,
   tokenFor, hmacToken, userToken, identify, effectiveSecret,
   sessionBinding, rotateSessionKey, clearSessionKey, SESSION_KEYS_KEY, SESSION_KEY_PREFIX,
   sessionKeyName, readSessionKey, sessionKeyHolders, USER_COOKIE,

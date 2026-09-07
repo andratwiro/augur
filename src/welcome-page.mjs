@@ -259,7 +259,10 @@ export function renderWelcomePage({ origin, me, agentTool } = {}) {
 
   go(at); poll();
   if (linkCode) {
-    const b = $("[data-step=\"" + at + "\"] [data-approve] .primary");
+    // Single quotes on purpose: this is a template literal, and a \" inside one emits a bare
+    // quote — which is a syntax error in the page, and a page whose script does not parse
+    // has no buttons. test/inline-scripts-parse.test.mjs parses what this renders.
+    const b = $('[data-step="' + at + '"] [data-approve] .primary');
     if (b) b.focus();
   }
 })();
