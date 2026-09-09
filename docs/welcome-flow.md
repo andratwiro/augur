@@ -11,8 +11,8 @@ hosted workspace spells it. With it unspoken:
 - an invitation lands in the workspace, as it did before the flow existed — no redirect on `/`;
 - `/__welcome` and the installer download are not served, and `/__onboarding/me` answers `gated: false`;
 - `augur connect` opens the plain approval page, `/__connect?code=…`, with the code filled
-  in. That page is the whole of what an existing editor needs: the command to run, the code
-  field, Approve. The rest of the CLI (`open`, `land`) is unchanged.
+  in. That page is the whole of what an existing editor needs: who they are, which workspace,
+  the code field, Approve — the terminal has already said the rest. The rest of the CLI (`open`, `land`) is unchanged.
 
 **What still stamps.** Redeeming an invitation still writes `welcome_owed_at` on the member.
 Turning the flag on later therefore gates everybody invited while it was off. Before

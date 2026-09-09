@@ -69,8 +69,9 @@ already signed in to and types the code; that pairs the one terminal that printe
 it, to publish as them. From then on the assistant opens a prototype as a draft
 (`augur open <opportunity>/<prototype>`), edits it, live at the draft's own
 address, and lands it (`augur land`), which moves the real URL. Signed-in members
-see the same instructions under Help › Building and at `/__connect`, so a person
-who knows nothing technical can still confirm what their assistant was told. The
+see the same instructions under Help › Building, so a person who knows nothing
+technical can still confirm what their assistant was told; `/__connect` itself
+shows only who the terminal will publish as, where, and the code field. The
 package on npm is this repository, and nothing else: `npm view @augurworks/augur
 repository`.
 

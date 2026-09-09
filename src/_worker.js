@@ -3794,9 +3794,12 @@ async function mintPublishToken(kv, tctx, u, { label = null, env = null } = {}) 
 }
 
 /**
- * The approval page. This is the ONE surface a person judges the request on, so it says
- * plainly where a legitimate code comes from — the phishing residual is somebody being
- * talked into approving a code that is not theirs, and no code length fixes that.
+ * The approval page: who the terminal will publish as, where, and a field for the code.
+ * Nothing else. The person arrives here from a terminal that has already said what the
+ * code is for and where it came from (scripts/connect.mjs prints both, and warns "if you
+ * did not just run this command, do not approve it"), so the page repeats none of it. It
+ * shows the two facts a judgement needs — the person and the workspace — as chips, and
+ * takes the code. Approving turns the person's dot green and the page says "Connected".
  *
  * The code is never APPROVED by the link. `?code=` fills the field in — which is what the
  * terminal on this machine does when it opens this page itself, so nobody has to read a
@@ -3805,26 +3808,35 @@ async function mintPublishToken(kv, tctx, u, { label = null, env = null } = {}) 
  * so a URL somebody can be SENT still approves nothing on its own.
  *
  * Self-contained, like the login and 404 pages beside it: this must render for somebody
- * whose terminal is already waiting, so it depends on no chrome bundle and no space.
+ * whose terminal is already waiting, so it depends on no chrome bundle and no space. The
+ * two faces come from what those pages already use: the person's photo is served at
+ * /__avatar/ (ungated), the workspace's is brandMark() — the same icon the gate wears.
  */
 function connectPage(tctx, me, origin) {
+  const def = tctx.SPACES.find((s) => s.default);
+  let host = "";
+  try { host = new URL(origin).host; } catch (e) {}
+  const wsName = (def && typeof def.name === "string" && def.name.trim()) || host || "This workspace";
+  const name = me.name || nameFromEmail(me.email);
+  const photo = avatarUrl(me);
+  const face = photo
+    ? `<img src="${escapeHtml(photo)}" alt="" width="26" height="26" />`
+    : `<span class="initials" style="background:${escapeHtml(me.color || colorFor(me.email))}">${escapeHtml(me.initials || initialsFor(name))}</span>`;
   const body = roleOf(me) === "viewer"
     ? `<h1>Connect a terminal</h1>
        <p>This account can look around but not publish, so it cannot approve a terminal.</p>
        <a class="home" href="/">Back to Augur</a>`
     : `<h1>Connect a terminal</h1>
-       <p>Type the code that your terminal, or the assistant you are working with right now,
-          is showing you. Approving it lets that terminal publish to
-          <strong>${escapeHtml(origin || "this workspace")}</strong> as
-          <strong>${escapeHtml(me.email)}</strong>: it works as you, and everything it lands
-          carries your name.</p>
-       <p class="warn">Only approve a code from a terminal you started or an assistant you
-          are talking to right now. A code that arrives by mail, from a stranger, or out of
-          the blue is not yours — do not type it.</p>
-       <p>Where the code comes from: the terminal or assistant runs
-          <code>npx @augurworks/augur connect --origin ${escapeHtml(origin || "")}</code>, this
-          workspace's own command-line tool, and it shows the code. An assistant that has not
-          shown you one yet can be told to run that.</p>
+       <div class="who">
+         <span class="chip" title="${escapeHtml(me.email)}">
+           <span class="face">${face}<i class="dot" id="pairdot"></i></span>
+           <span class="name">${escapeHtml(name)}</span>
+         </span>
+         <span class="chip ws">
+           <span class="face">${brandMark(tctx)}</span>
+           <span class="name">${escapeHtml(wsName)}</span>
+         </span>
+       </div>
        <form id="pairf">
          <input id="pairc" autocomplete="off" autocapitalize="characters" spellcheck="false"
                 placeholder="ABCD-EFGH" aria-label="Pairing code" />
@@ -3837,23 +3849,48 @@ function connectPage(tctx, me, origin) {
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="robots" content="noindex, nofollow" />
-  <title>Connect a terminal · Augur</title>
+  <title>Connect a terminal · Augur</title>${def ? `\n  <link rel="icon" href="${escapeHtml(def.icon || "/space-icon.png")}" />` : ""}
+  <link rel="preload" href="/fonts/inter-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin />
   <style>
+    @font-face { font-family: "Inter"; font-style: normal; font-weight: 100 900; font-display: swap; src: url("/fonts/inter-latin-wght-normal.woff2") format("woff2"); }
     :root { --bg:#fbfbfd; --card:#fff; --fg:#16171a; --muted:#5b626e;
-            --line-2:rgba(16,17,26,0.15); --accent:#2c2150; color-scheme:light; }
+            --line:rgba(16,17,26,0.09); --line-2:rgba(16,17,26,0.15); --accent:#2c2150;
+            --off:#c3c8d1; --on:#12b76a; color-scheme:light; }
     * { box-sizing:border-box }
-    body { margin:0; min-height:100vh; display:grid; place-items:center; background:var(--bg);
-           color:var(--fg); font:15px/1.55 "Inter",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif; }
-    main { background:var(--card); border:1px solid var(--line-2); border-radius:14px;
-           padding:34px 32px; max-width:34rem; margin:24px; }
-    h1 { font-size:19px; margin:0 0 14px }
+    body { margin:0; min-height:100vh; min-height:100dvh; display:grid; place-items:center; padding:24px;
+           background:var(--bg); color:var(--fg); letter-spacing:-0.011em;
+           font:15px/1.55 "Inter",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+           -webkit-font-smoothing:antialiased; -moz-osx-font-smoothing:grayscale; }
+    main { background:var(--card); border:1px solid var(--line); border-radius:14px;
+           padding:30px 30px 22px; max-width:400px; width:100%;
+           box-shadow:0 1px 2px rgba(16,24,40,0.05), 0 10px 28px -22px rgba(16,24,40,0.22); }
+    h1 { font-size:19px; margin:0 0 16px }
     p { color:var(--muted); font-size:14px; margin:0 0 12px }
-    p.warn { color:var(--fg); font-weight:600 }
-    form { display:flex; gap:8px; align-items:center; margin:18px 0 12px }
+    /* Who, and where: the two chips a person checks before typing a code. */
+    .who { display:flex; flex-wrap:wrap; gap:8px; margin:0 0 20px }
+    .chip { display:inline-flex; align-items:center; gap:9px; max-width:100%;
+            padding:5px 13px 5px 5px; border:1px solid var(--line-2); border-radius:999px;
+            font-size:14px; font-weight:500; line-height:1.3 }
+    .chip .name { white-space:nowrap; overflow:hidden; text-overflow:ellipsis }
+    .face { position:relative; width:26px; height:26px; flex:none }
+    .face img, .face svg, .face .initials { display:block; width:26px; height:26px; border-radius:50%; object-fit:cover }
+    .face .initials { display:grid; place-items:center; color:#fff; font-size:11px; font-weight:600; letter-spacing:.02em }
+    .ws .face img, .ws .face svg { border-radius:7px }
+    /* The person's dot: grey until the terminal is theirs, green once it is. */
+    .dot { position:absolute; right:-2px; bottom:-2px; width:10px; height:10px; border-radius:50%;
+           background:var(--off); box-shadow:0 0 0 2px var(--card) }
+    .dot.on { background:var(--on) }
+    form { display:flex; gap:8px; align-items:center; margin:0 0 10px }
+    form[hidden] { display:none }
     input { font:600 16px ui-monospace,Menlo,monospace; letter-spacing:.12em; padding:10px 12px;
-            border:1px solid var(--line-2); border-radius:8px; width:11em }
+            border:1px solid var(--line-2); border-radius:8px; width:11em; color:var(--fg); background:#fff }
+    input:focus { outline:2px solid var(--accent); outline-offset:1px; border-color:transparent }
     button { font:600 14px inherit; color:#fff; background:var(--accent); border:0;
              border-radius:9px; padding:11px 18px; cursor:pointer }
+    button:hover { background:#38295e }
+    button:focus-visible { outline:2px solid var(--accent); outline-offset:2px }
+    #pairm { margin:0; min-height:1.4em }
+    #pairm.ok { color:var(--fg); font-weight:600 }
     a.home { display:inline-block; margin-top:10px; color:var(--accent) }
     @media (prefers-reduced-motion: reduce) { * { transition:none !important } }
   </style>
@@ -3863,7 +3900,7 @@ function connectPage(tctx, me, origin) {
   <script>
   (function(){
     var f=document.getElementById('pairf'); if(!f) return;
-    var i=document.getElementById('pairc'), m=document.getElementById('pairm');
+    var i=document.getElementById('pairc'), m=document.getElementById('pairm'), d=document.getElementById('pairdot');
     try{
       var q=new URLSearchParams(location.search).get('code')||'';
       var c=q.replace(/[^A-Za-z0-9]/g,'').toUpperCase();
@@ -3871,14 +3908,14 @@ function connectPage(tctx, me, origin) {
              var b=f.querySelector('button'); if(b) b.focus(); }
     }catch(e){}
     f.addEventListener('submit',function(e){
-      e.preventDefault(); m.textContent='Approving\u2026';
+      e.preventDefault(); m.className=''; m.textContent='Approving…';
       fetch('/__publish/_pair/approve',{method:'POST',headers:{'content-type':'application/json'},
         body:JSON.stringify({code:i.value})})
-      .then(function(r){return r.json().catch(function(){return {};}).then(function(d){
-        if(r.ok&&d.ok){ m.textContent='Approved. Your terminal has it \u2014 you can close this.'; i.value=''; return; }
+      .then(function(r){return r.json().catch(function(){return {};}).then(function(d2){
+        if(r.ok&&d2.ok){ f.hidden=true; if(d) d.className='dot on'; m.className='ok'; m.textContent='Connected'; return; }
         if(r.status===404){ m.textContent='That code is not valid. Check it, or start again in your terminal.'; return; }
         if(r.status===429){ m.textContent='Too many attempts. Wait a few minutes.'; return; }
-        m.textContent=(d&&d.message)||'Could not approve that code.';
+        m.textContent=(d2&&d2.message)||'Could not approve that code.';
       });})
       .catch(function(){ m.textContent='Could not reach the site. Try again.'; });
     });
@@ -9380,8 +9417,8 @@ function doorText(f) {
       + `printed it, to publish as that member; everything it lands carries their name.\n`
       + `Viewers cannot approve. A code lives five minutes. \`connect --no-wait\` prints the\n`
       + `line and exits; \`connect\` run again after the approval collects the token for the\n`
-      + `same code. Members see this same instruction, signed in, at ${f.origin}/__connect\n`
-      + `and under Help > Building.\n\n`
+      + `same code. The member approves it, signed in, at ${f.origin}/__connect; this\n`
+      + `same instruction is under Help > Building.\n\n`
       + `THE COMMAND-LINE TOOL\n\n`
       + `\`@augurworks/augur\` on npm is this engine: open source at ${f.source}, the same\n`
       + `engine that serves this page (${f.origin}/_build.json names the commit). Releases\n`
