@@ -72,3 +72,48 @@ export function isSeedSource(source) {
 export function seedSource(extra = {}) {
   return { ...extra, actor: SEED_ACTOR, seed: true };
 }
+
+// ── contributors: every editor a file has had ───────────────────────────────────────────
+//
+// A manifest entry's `by` answers "who last changed this file". A card built from `by` alone
+// shows the last editor of each file and nobody else, so a prototype one person made and a
+// colleague then touched end to end shows only the colleague. `contributors` is the additive
+// answer: every id ever recorded as `by` on the file, plus git's own list of past authors
+// when the build can send one (`SOURCE_STAMPS` in build.js), with `by` last. Optional —
+// omitted when it would only repeat `by` — and every reader unions it with `by`, so a
+// manifest that predates the field means exactly what it meant before. Ids only, never an
+// address: the same one-way `personId` hash `by` carries, resolved to a face at render time.
+
+/** A recorded person id: `personId`'s base36 of a 32-bit hash — short, lowercase, no `@`. */
+export const PERSON_ID_RE = /^[a-z0-9]{1,13}$/;
+
+/** The contributors a file entry carries, shape-checked: unique ids, nothing that is not one. */
+export function contributorsOf(entry) {
+  const out = [];
+  for (const id of entry && Array.isArray(entry.contributors) ? entry.contributors : []) {
+    if (typeof id === "string" && PERSON_ID_RE.test(id) && !out.includes(id)) out.push(id);
+  }
+  return out;
+}
+
+/**
+ * The list a file entry should carry after a write: the prior entry's list and its `by`,
+ * then what the body claims (git's past authors — the one claim a body may add to the
+ * record, since it can only put a name on a list of people who touched the file), then
+ * `by` last. `null` when the list would only repeat `by`, and the field is omitted then.
+ */
+export function mergeContributors(prior, claimed, by) {
+  const ids = [];
+  const add = (id) => { if (typeof id === "string" && PERSON_ID_RE.test(id) && !ids.includes(id)) ids.push(id); };
+  for (const id of contributorsOf(prior)) add(id);
+  if (prior) add(prior.by);
+  for (const id of Array.isArray(claimed) ? claimed : []) add(id);
+  if (typeof by === "string" && PERSON_ID_RE.test(by)) {
+    const i = ids.indexOf(by);
+    if (i >= 0) ids.splice(i, 1);
+    ids.push(by);
+  }
+  if (!ids.length || (ids.length === 1 && ids[0] === by)) return null;
+  return ids;
+}
+

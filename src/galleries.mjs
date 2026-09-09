@@ -14,6 +14,7 @@
 import { renderAppChrome, renderSpaceContextScript, CHROME_MARK_START, CHROME_MARK_END, UI_VERSION, escAttr, titleCase, fmtDate, relTime } from "./chrome/appchrome.mjs";
 import { authoredUnits } from "./publish-units.mjs";
 import { unitProvenance, unitKey, isGeneratedAsset, STATUS_LABELS } from "./currency.mjs";
+import { contributorsOf } from "./provenance.mjs";
 
 export const TIERS = Object.freeze(["base", "components", "patterns", "pages"]);
 const TIER_TITLE = Object.freeze({ base: "Base", components: "Components", patterns: "Patterns", pages: "Pages" });
@@ -80,8 +81,11 @@ function unitEntry(manifest, unit, home, { statuses, baseline, people, now }) {
   const status = (statuses && Object.prototype.hasOwnProperty.call(statuses, key) && statuses[key])
     || (baseline && baseline[key]) || null;
   // A poster is shot by a tool and stamped with whoever landed it; it is a picture of the
-  // work, not work — the same rule the date follows (unitProvenance).
-  const ids = [...new Set(inUnit.filter((p) => !isGeneratedAsset(p)).map((p) => files[p] && files[p].by).filter(Boolean))];
+  // work, not work — the same rule the date follows (unitProvenance). Every file's last
+  // editor first, then everyone else it records (`contributors`, src/provenance.mjs): a
+  // prototype somebody made and a colleague then touched end to end shows both.
+  const authored = inUnit.filter((p) => !isGeneratedAsset(p)).map((p) => files[p]).filter(Boolean);
+  const ids = [...new Set([...authored.map((f) => f.by), ...authored.flatMap(contributorsOf)].filter(Boolean))];
   // One face per PERSON: `people` answers a person's canonical id, so two stamps under two
   // of their addresses (a work and a personal git identity) fold into one chip.
   const seen = new Map();

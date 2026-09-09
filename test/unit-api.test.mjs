@@ -719,3 +719,24 @@ test("every folder a person edits is a unit: library demos may be created, gener
   assert.equal(now.routing.publicPrefixes.includes("/skills/starter-ui/"), false, "the skill folder is not a public prefix");
   assert.ok(now.routing.unitSources["/skills/starter-ui/"].landed, "but the landing is recorded");
 });
+
+test("a landing keeps the file's previous editor in `contributors`, with the lander last; an untouched file carries nothing new", async () => {
+  const t = tenant(), ctx = ctxFor(t);
+  const live = manifestOf(7, { [U]: { "index.html": INDEX, "a.css": CSS } });
+  live.files[`${U}index.html`].by = "p0old";
+  live.files[`${U}index.html`].editedAt = "2026-08-01T00:00:00.000Z";
+  const env = await makeEnv({ live });
+  W.__setTenantTestState({ memo: { at: Date.now(), tenantId: t } });
+  const o = (await json(await call(ctx, env, "open", { unit: U }))).body;
+  const body = "<h1>flow v3</h1>";
+  await env.BUNDLES.put(`blobs/${sha(body)}`, body);
+  await call(ctx, env, "save", { unit: U, draftId: o.draftId, draftRevision: 0,
+    changes: [{ path: `${U}index.html`, h: sha(body), ct: "text/html; charset=utf-8", s: body.length, baseHash: sha(INDEX) }] });
+  const l = await json(await call(ctx, env, "land", { unit: U, draftId: o.draftId, baseRevision: 1, note: "v3" }));
+  assert.equal(l.status, 200, JSON.stringify(l.body));
+  const after = liveNow(env).files;
+  assert.equal(after[`${U}index.html`].by, W.personId("ada@example.test"));
+  assert.deepEqual(after[`${U}index.html`].contributors, ["p0old", W.personId("ada@example.test")]);
+  assert.equal(after[`${U}a.css`].contributors, undefined, "an untouched file was given a list it did not have");
+});
+

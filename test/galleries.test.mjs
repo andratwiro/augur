@@ -267,3 +267,17 @@ test("two stamps under two of one person's addresses are ONE face on the card", 
   assert.deepEqual(flow.editors.map((e) => e.name), ["Ada", "Ben"]);
   assert.deepEqual(model.opportunities[0].people.map((e) => e.id), ["p1", "p2"]);
 });
+
+test("a card's faces are everyone recorded on the unit's files: `by` first, then `contributors`, never the poster's people", () => {
+  const m2 = { ...manifest, files: { ...manifest.files,
+    "/checkout/flow/index.html": f("a", { by: "p1", editedAt: "2026-09-05T10:00:00.000Z", contributors: ["p3", "p1"] }),
+    "/checkout/flow/preview.webp": f("b", { ct: "image/webp", by: "p4", contributors: ["p4"] }),
+  } };
+  const more = { p3: { id: "p3", name: "Cy", initials: "CY", color: "#333333" }, p4: { id: "p4", name: "Di", initials: "DI", color: "#444444" } };
+  const ppl = (id) => people(id) || more[id] || null;
+  const model = siteModel({ manifest: m2, people: ppl, now: NOW });
+  const flow = model.opportunities[0].prototypes[0];
+  assert.deepEqual(flow.editors.map((u) => u.id), ["p1", "p2", "p3"]);
+  assert.deepEqual(model.opportunities[0].people.map((u) => u.id).sort(), ["p1", "p2", "p3"]);
+});
+

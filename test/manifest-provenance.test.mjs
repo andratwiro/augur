@@ -158,3 +158,50 @@ test("⏳ BUILD.JS STILL DERIVES FROM GIT, and must until the render moves", () 
 
 import fs from "node:fs";
 function readSource(rel) { return fs.readFileSync(new URL(rel, import.meta.url), "utf8"); }
+
+// ── contributors: every editor a file has had, beside the last one ─────────────────────
+//
+// `by` answers "who last changed this file". A card built from `by` alone shows the last
+// editor of each file and nobody else — so a prototype one person made and a colleague
+// then touched end to end shows only the colleague. `contributors` is the additive fix: the
+// list of every id ever recorded as `by` on the file, plus git's own list of past authors
+// when the build can send one, with `by` last. Optional, omitted when it would only repeat
+// `by`, and the ONE body-carried field an unchanged file may take — a claim here can only
+// add a name to a list of people who touched the file, never move a stamp.
+
+test("A FILE ACCUMULATES EVERY EDITOR IT HAS HAD — `contributors`, with the last one (`by`) last", async () => {
+  const env = envWith(null);
+  await commit(env, manifest({ "/a/": "one" }));
+  const first = liveNow(env).files["/a/index.html"];
+  assert.equal(first.contributors, undefined, "one editor who is also `by` needs no list");
+  const m = manifest({ "/a/": "one changed" });
+  m.files["/a/index.html"] = { ...m.files["/a/index.html"], by: "p9zz", editedAt: "2026-09-01T10:00:00.000Z" };
+  assert.equal((await commit(env, m)).status, 200);
+  const after = liveNow(env).files["/a/index.html"];
+  assert.equal(after.by, "p9zz");
+  assert.deepEqual(after.contributors, [first.by, "p9zz"], "the previous editor is kept; `by` closes the list");
+});
+
+test("an UNCHANGED file takes git's list of past authors — the one claim a body may add to the record", async () => {
+  const env = envWith(null);
+  await commit(env, manifest({ "/a/": "one" }));
+  const first = liveNow(env).files["/a/index.html"];
+  const m = manifest({ "/a/": "one" });
+  m.files["/a/index.html"] = { ...m.files["/a/index.html"], by: "forged", editedAt: "2020-01-01T00:00:00.000Z", contributors: ["p7aa"] };
+  assert.equal((await commit(env, m)).status, 200);
+  const after = liveNow(env).files["/a/index.html"];
+  assert.equal(after.by, first.by, "an unchanged file's `by` is the record, whatever the body claims");
+  assert.equal(after.editedAt, first.editedAt);
+  assert.deepEqual(after.contributors, ["p7aa", first.by], "a past author joins; nothing is dropped, nothing repeats, `by` last");
+});
+
+test("a contributors claim is shape-checked: addresses, non-ids and junk never enter the manifest", async () => {
+  const env = envWith(null);
+  const m = manifest({ "/a/": "one" });
+  m.files["/a/index.html"] = { ...m.files["/a/index.html"], contributors: ["ok1", "someone@example.test", 42, "", "x".repeat(40), "ok1", null] };
+  assert.equal((await commit(env, m)).status, 200);
+  const f = liveNow(env).files["/a/index.html"];
+  assert.deepEqual(f.contributors, ["ok1", f.by]);
+  assert.ok(!env.BUNDLES.store.get("spaces/alpha/manifest.json").includes("@"), "an address leaked into the manifest");
+});
+

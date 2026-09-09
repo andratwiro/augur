@@ -283,3 +283,24 @@ test("BUILD.JS RECORDS GIT'S AUTHOR AND COMMIT TIME PER FILE, and nothing for an
   assert.equal(script.editedAt, undefined, "a file with uncommitted edits was stamped from a commit that predates them");
   assert.equal(script.by, undefined);
 });
+
+test("BUILD.JS RECORDS EVERY PAST AUTHOR OF A FILE as `contributors`, oldest first, the last editor last", () => {
+  const dir = makeSpace();
+  const at = (iso) => ({ ...process.env, GIT_AUTHOR_DATE: iso, GIT_COMMITTER_DATE: iso });
+  const git = (env, ...a) => execFileSync("git", ["-C", dir, ...a], { stdio: ["ignore", "pipe", "pipe"], env });
+  git(at("2026-08-30T09:15:00Z"), "init", "-q");
+  git(at("2026-08-30T09:15:00Z"), "-c", "user.email=someone@example.test", "-c", "user.name=Someone", "add", ".");
+  git(at("2026-08-30T09:15:00Z"), "-c", "user.email=someone@example.test", "-c", "user.name=Someone", "commit", "-q", "-m", "first");
+  writeFileSync(path.join(dir, "demo", "prototypes", "hello", "index.html"), "<!doctype html><title>Hello</title><p>edited</p>\n");
+  git(at("2026-09-02T09:15:00Z"), "-c", "user.email=other@example.test", "-c", "user.name=Other", "commit", "-q", "-am", "second");
+  const out = path.join(dir, "__dist");
+  execFileSync(process.execPath, ["build.js"], { cwd: ROOT, env: { ...process.env, GV_SPACES_ROOT: dir, GV_DIST: out }, stdio: ["ignore", "pipe", "pipe"] });
+  const m = JSON.parse(readFileSync(path.join(out, "__manifests", "acme.json"), "utf8"));
+  const page = m.files["/demo/hello/index.html"];
+  assert.equal(page.by, W.personId("other@example.test"));
+  assert.deepEqual(page.contributors, [W.personId("someone@example.test"), W.personId("other@example.test")]);
+  assert.ok(!JSON.stringify(m).includes("example.test"), "an address leaked into the manifest");
+  const only = Object.values(m.files).filter((e) => e.by && !e.contributors);
+  assert.ok(only.length > 0, "a file with a single author carries no list");
+});
+

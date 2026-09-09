@@ -117,7 +117,7 @@ import { composeFork, carriedLineage, assertedLineage } from "./publish-fork.mjs
 import { BOARD_PREFIX, boardKvKey, RT_WORKSPACE_HEADER } from "./board-key.mjs";
 import { signRoomTicket } from "./room-ticket.mjs";
 import { nameFromEmail, initialsFor, colorFor } from "./roster-chip.mjs";
-import { isSeedSource, seedSource, SEED_ACTOR } from "./provenance.mjs";
+import { isSeedSource, seedSource, SEED_ACTOR, mergeContributors } from "./provenance.mjs";
 import { welcomeUnitFor } from "./welcome-unit.mjs";
 import { renderWelcomePage } from "./welcome-page.mjs";
 import { AGENT_TOOL } from "./agent-tool.mjs";
@@ -5307,7 +5307,9 @@ async function writeUnitLanding(tctx, env, spaceId, unit, table, changed, who, n
       // edit they never made. Only a path this landing's `changed` names gets a fresh
       // `by`/`editedAt`; anything else in the table is here because it lives in the unit,
       // not because it moved.
-      files[p] = prior && !changedPaths.has(p) ? prior : { h: f.h, ct: f.ct, s: f.s, by: who.personId, editedAt: now };
+      if (prior && !changedPaths.has(p)) { files[p] = prior; continue; }
+      const list = mergeContributors(prior || null, null, who.personId);
+      files[p] = { h: f.h, ct: f.ct, s: f.s, by: who.personId, editedAt: now, ...(list ? { contributors: list } : {}) };
     }
     const routing = { ...(cur.routing || {}) };
     // A unit the manifest already declares keeps the entry it has, spelling and all: the
@@ -6423,10 +6425,14 @@ async function publishApi(tctx, request, url, env) {
       if (typeof f.editedAt !== "string" || !Number.isFinite(Date.parse(f.editedAt))) return null;
       return { by: f.by, editedAt: f.editedAt };
     };
+    // `contributors` is the ONE body-carried field an unchanged file takes: it is git's list
+    // of the file's past authors, and a claim there can only add a name to the list of people
+    // who touched the file — it moves no stamp. Shape-checked (ids only) and merged, never
+    // taken verbatim; see mergeContributors in src/provenance.mjs.
     const stampedFiles = {};
     for (const [p2, f] of Object.entries(m.files || {})) {
       const prior = priorFiles[p2];
-      const { by: _b, editedAt: _e, ...bytes } = f || {};
+      const { by: _b, editedAt: _e, contributors: claimed, ...bytes } = f || {};
       let unchanged = false;
       if (prior && f) {
         if (sameSource) unchanged = true;
@@ -6438,13 +6444,13 @@ async function publishApi(tctx, request, url, env) {
       // that predates this field. Absent is the honest answer for those, and the renderer's
       // fallback, not a stamp invented at the first publish that touches nothing.
       if (unchanged) {
-        stampedFiles[p2] = { ...bytes, ...(prior.by ? { by: prior.by } : {}), ...(prior.editedAt ? { editedAt: prior.editedAt } : {}) };
+        const list = mergeContributors(prior, claimed, prior.by || null);
+        stampedFiles[p2] = { ...bytes, ...(prior.by ? { by: prior.by } : {}), ...(prior.editedAt ? { editedAt: prior.editedAt } : {}), ...(list ? { contributors: list } : {}) };
         continue;
       }
-      const asserted = carriedStamp(f);
-      stampedFiles[p2] = asserted
-        ? { ...bytes, ...asserted }
-        : { ...bytes, ...(stampedBy ? { by: stampedBy } : {}), editedAt };
+      const stamp = carriedStamp(f) || { ...(stampedBy ? { by: stampedBy } : {}), editedAt };
+      const list = mergeContributors(prior || null, claimed, stamp.by || null);
+      stampedFiles[p2] = { ...bytes, ...stamp, ...(list ? { contributors: list } : {}) };
     }
     // ── unit lineage + ownership: carried by the server, never read from the body ───────
     //

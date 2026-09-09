@@ -784,7 +784,29 @@ function recordSourceStamp(srcPath, distRel) {
   if (!d || !d.email || !d.t) return;
   const rel = path.relative(WS_ROOT, srcPath).split(path.sep).join("/");
   if (dirtyPaths(WS_ROOT).has(rel)) return;
-  SOURCE_STAMPS.set(distRel, { by: personIdOf(d.email), editedAt: new Date(d.t).toISOString() });
+  const by = personIdOf(d.email);
+  // Every past author of the file too (`contributors`, src/provenance.mjs), oldest first
+  // and `by` last, from the same git pass and under the same guards — so a card can show
+  // everyone who worked on a prototype, not only whoever last saved each file. The commit
+  // handler merges this into what live already records; it never replaces a stamp.
+  const past = [];
+  for (const email of authorsFor(srcPath)) {
+    const id = personIdOf(email);
+    if (id !== by && !past.includes(id)) past.push(id);
+  }
+  SOURCE_STAMPS.set(distRel, { by, editedAt: new Date(d.t).toISOString(), ...(past.length ? { contributors: [...past, by] } : {}) });
+}
+// The addresses that have committed to a path, oldest most-recent-commit first — the
+// spaceDates tally, which already skips mechanical commits, shallow grafts and generated
+// assets. Empty outside the space, for an untracked path, or with no git at all.
+function authorsFor(absPath) {
+  const dates = WS_ROOT ? spaceDates(WS_ROOT) : null;
+  if (!dates) return [];
+  const rel = path.relative(WS_ROOT, absPath);
+  if (!rel || rel.startsWith("..")) return [];
+  const tally = dates.by.get(rel);
+  if (!tally) return [];
+  return [...tally.entries()].sort((a, b) => a[1].t - b[1].t).map(([email]) => email);
 }
 const SPACE_DATES = new Map(); // space root → parsed maps (one git pass per space per build)
 function spaceDates(repoRoot) {

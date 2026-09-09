@@ -339,6 +339,14 @@ the build that draws it — that line is the baseline, and `CURRENCY_JS` replace
 with the recorded one from `/__currency` on load. A file that predates the field
 stays UNSTAMPED — absent is the honest answer, and inventing one would tell the
 same lie the derivation told, so a unit with no record simply keeps the baked line.
+**`by` is the LAST editor of a file, and `contributors` is everyone it has had** — the
+additive list `mergeContributors` (`src/provenance.mjs`) keeps beside it: every id ever
+recorded as `by`, plus git's own past authors when build.js can send them, `by` last, omitted
+when it would only repeat `by`. It is the ONE body-carried field an unchanged file takes,
+because a claim there can only add a name to the list of people who touched the file and
+moves no stamp. A card's faces are the union (`unitEntry` in `src/galleries.mjs`), so a
+prototype one person made and a colleague then touched end to end shows both — which `by`
+alone never could. A landing accumulates the same way. Ids only, never an address.
 
 **What is current, and what has been left behind** (`src/currency.mjs`). The same
 read answers a gallery card and an agent, because two reads become two definitions
