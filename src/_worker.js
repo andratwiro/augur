@@ -3799,7 +3799,13 @@ async function mintPublishToken(kv, tctx, u, { label = null, env = null } = {}) 
  * code is for and where it came from (scripts/connect.mjs prints both, and warns "if you
  * did not just run this command, do not approve it"), so the page repeats none of it. It
  * shows the two facts a judgement needs — the person and the workspace — as chips, and
- * takes the code. Approving turns the person's dot green and the page says "Connected".
+ * takes the code. Approving turns the person's dot green and the title becomes "Connected".
+ *
+ * Built on the sign-in gate's skeleton (loginPage): the same 360px card, the same centred
+ * one-time-code field — ONE input, never segmented boxes, for the reasons written there —
+ * and the same full-width button, so the two code screens a person meets on this site
+ * read as one thing. The field formats as you type (upper-case, the dash after four) and
+ * the server normalises again, so what is typed and what is checked can never differ.
  *
  * The code is never APPROVED by the link. `?code=` fills the field in — which is what the
  * terminal on this machine does when it opens this page itself, so nobody has to read a
@@ -3822,12 +3828,7 @@ function connectPage(tctx, me, origin) {
   const face = photo
     ? `<img src="${escapeHtml(photo)}" alt="" width="26" height="26" />`
     : `<span class="initials" style="background:${escapeHtml(me.color || colorFor(me.email))}">${escapeHtml(me.initials || initialsFor(name))}</span>`;
-  const body = roleOf(me) === "viewer"
-    ? `<h1>Connect a terminal</h1>
-       <p>This account can look around but not publish, so it cannot approve a terminal.</p>
-       <a class="home" href="/">Back to Augur</a>`
-    : `<h1>Connect a terminal</h1>
-       <div class="who">
+  const chips = `<div class="who">
          <span class="chip" title="${escapeHtml(me.email)}">
            <span class="face">${face}<i class="dot" id="pairdot"></i></span>
            <span class="name">${escapeHtml(name)}</span>
@@ -3836,10 +3837,17 @@ function connectPage(tctx, me, origin) {
            <span class="face">${brandMark(tctx)}</span>
            <span class="name">${escapeHtml(wsName)}</span>
          </span>
-       </div>
+       </div>`;
+  const body = roleOf(me) === "viewer"
+    ? `<h1>Connect a terminal</h1>
+       ${chips}
+       <p>This account can look around but not publish, so it cannot approve a terminal.</p>
+       <a class="home" href="/">Back to Augur</a>`
+    : `<h1 id="pairh">Connect a terminal</h1>
+       ${chips}
        <form id="pairf">
-         <input id="pairc" autocomplete="off" autocapitalize="characters" spellcheck="false"
-                placeholder="ABCD-EFGH" aria-label="Pairing code" />
+         <input id="pairc" autocomplete="off" autocapitalize="characters" autocorrect="off"
+                spellcheck="false" maxlength="9" placeholder="ABCD-EFGH" aria-label="Pairing code" />
          <button type="submit">Approve</button>
        </form>
        <p id="pairm" role="status"></p>`;
@@ -3853,24 +3861,28 @@ function connectPage(tctx, me, origin) {
   <link rel="preload" href="/fonts/inter-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin />
   <style>
     @font-face { font-family: "Inter"; font-style: normal; font-weight: 100 900; font-display: swap; src: url("/fonts/inter-latin-wght-normal.woff2") format("woff2"); }
-    :root { --bg:#fbfbfd; --card:#fff; --fg:#16171a; --muted:#5b626e;
+    /* The gate's palette and card, so this reads as the same front door. */
+    :root { --bg:#fbfbfd; --card:#fff; --fg:#16171a; --muted:#5b626e; --faint:#9aa0ab;
             --line:rgba(16,17,26,0.09); --line-2:rgba(16,17,26,0.15); --accent:#2c2150;
-            --off:#c3c8d1; --on:#12b76a; color-scheme:light; }
+            --chip:#f2f3f6; --off:#c3c8d1; --on:#12b76a; --on-text:#027a48; --err:#b42318;
+            color-scheme:light; }
     * { box-sizing:border-box }
     body { margin:0; min-height:100vh; min-height:100dvh; display:grid; place-items:center; padding:24px;
            background:var(--bg); color:var(--fg); letter-spacing:-0.011em;
            font:15px/1.55 "Inter",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
            -webkit-font-smoothing:antialiased; -moz-osx-font-smoothing:grayscale; }
     main { background:var(--card); border:1px solid var(--line); border-radius:14px;
-           padding:30px 30px 22px; max-width:400px; width:100%;
+           padding:26px 28px 28px; max-width:360px; width:100%; text-align:center;
            box-shadow:0 1px 2px rgba(16,24,40,0.05), 0 10px 28px -22px rgba(16,24,40,0.22); }
-    h1 { font-size:19px; margin:0 0 16px }
+    h1 { font-size:18px; font-weight:600; letter-spacing:-0.01em; margin:0 0 14px }
+    h1.on { color:var(--on-text) }
     p { color:var(--muted); font-size:14px; margin:0 0 12px }
-    /* Who, and where: the two chips a person checks before typing a code. */
-    .who { display:flex; flex-wrap:wrap; gap:8px; margin:0 0 20px }
-    .chip { display:inline-flex; align-items:center; gap:9px; max-width:100%;
-            padding:5px 13px 5px 5px; border:1px solid var(--line-2); border-radius:999px;
-            font-size:14px; font-weight:500; line-height:1.3 }
+    /* Who, and where: the two facts a person checks before typing a code. Filled, not
+       outlined, so they read as facts and not as buttons. */
+    .who { display:flex; justify-content:center; flex-wrap:wrap; gap:8px; margin:0 0 22px }
+    .chip { display:inline-flex; align-items:center; gap:8px; max-width:100%;
+            padding:4px 12px 4px 4px; border-radius:999px; background:var(--chip);
+            font-size:14px; font-weight:500; line-height:1.3; color:var(--fg) }
     .chip .name { white-space:nowrap; overflow:hidden; text-overflow:ellipsis }
     .face { position:relative; width:26px; height:26px; flex:none }
     .face img, .face svg, .face .initials { display:block; width:26px; height:26px; border-radius:50%; object-fit:cover }
@@ -3878,20 +3890,29 @@ function connectPage(tctx, me, origin) {
     .ws .face img, .ws .face svg { border-radius:7px }
     /* The person's dot: grey until the terminal is theirs, green once it is. */
     .dot { position:absolute; right:-2px; bottom:-2px; width:10px; height:10px; border-radius:50%;
-           background:var(--off); box-shadow:0 0 0 2px var(--card) }
+           background:var(--off); box-shadow:0 0 0 2px var(--chip); transition:background .2s ease }
     .dot.on { background:var(--on) }
-    form { display:flex; gap:8px; align-items:center; margin:0 0 10px }
+    /* The code: the gate's one-time-code field, sized for eight letters and a dash. */
     form[hidden] { display:none }
-    input { font:600 16px ui-monospace,Menlo,monospace; letter-spacing:.12em; padding:10px 12px;
-            border:1px solid var(--line-2); border-radius:8px; width:11em; color:var(--fg); background:#fff }
-    input:focus { outline:2px solid var(--accent); outline-offset:1px; border-color:transparent }
-    button { font:600 14px inherit; color:#fff; background:var(--accent); border:0;
-             border-radius:9px; padding:11px 18px; cursor:pointer }
+    input { width:100%; font:inherit; font-weight:600; font-size:26px; line-height:1.2;
+            text-align:center; text-transform:uppercase; letter-spacing:.26em; text-indent:.26em;
+            font-variant-numeric:tabular-nums; font-feature-settings:"tnum" 1;
+            padding:13px 12px; border-radius:11px; border:1px solid var(--line-2);
+            background:#fff; color:var(--fg); transition:border-color .12s ease, box-shadow .12s ease }
+    input::placeholder { color:#d6d9df; font-weight:500 }
+    input:hover { border-color:rgba(16,17,26,0.28) }
+    input:focus { outline:none; border-color:var(--accent); box-shadow:0 0 0 3px rgba(44,33,80,0.14) }
+    button { width:100%; margin-top:12px; font:inherit; font-weight:600; font-size:15px; color:#fff;
+             background:var(--accent); border:1px solid transparent; border-radius:9px; padding:9px;
+             cursor:pointer; transition:background .12s ease }
     button:hover { background:#38295e }
     button:focus-visible { outline:2px solid var(--accent); outline-offset:2px }
-    #pairm { margin:0; min-height:1.4em }
-    #pairm.ok { color:var(--fg); font-weight:600 }
-    a.home { display:inline-block; margin-top:10px; color:var(--accent) }
+    /* Under the button: "Approving…", or why it did not. Takes no room until it speaks. */
+    #pairm { margin:12px 0 0; font-size:13.5px }
+    #pairm:empty { display:none }
+    #pairm.err { color:var(--err); font-weight:500 }
+    #pairm.sr { position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap; margin:0 }
+    a.home { display:inline-block; margin-top:4px; color:var(--accent) }
     @media (prefers-reduced-motion: reduce) { * { transition:none !important } }
   </style>
 </head>
@@ -3900,24 +3921,30 @@ function connectPage(tctx, me, origin) {
   <script>
   (function(){
     var f=document.getElementById('pairf'); if(!f) return;
-    var i=document.getElementById('pairc'), m=document.getElementById('pairm'), d=document.getElementById('pairdot');
+    var i=document.getElementById('pairc'), m=document.getElementById('pairm'),
+        d=document.getElementById('pairdot'), h=document.getElementById('pairh');
+    // Upper-case, letters and digits only, the dash after four: the shape the terminal
+    // printed, so the eye can compare. The server strips it all again before matching.
+    function fmt(v){ var c=String(v||'').toUpperCase().replace(/[^A-Z0-9]/g,'').slice(0,8);
+                     return c.length>4?c.slice(0,4)+'-'+c.slice(4):c; }
+    i.addEventListener('input',function(){ var v=fmt(i.value); if(v!==i.value) i.value=v; });
     try{
-      var q=new URLSearchParams(location.search).get('code')||'';
-      var c=q.replace(/[^A-Za-z0-9]/g,'').toUpperCase();
-      if(c){ i.value=c.length===8?c.slice(0,4)+'-'+c.slice(4):c;
-             var b=f.querySelector('button'); if(b) b.focus(); }
+      var c=fmt(new URLSearchParams(location.search).get('code')||'');
+      if(c){ i.value=c; var b=f.querySelector('button'); if(b) b.focus(); }
     }catch(e){}
     f.addEventListener('submit',function(e){
       e.preventDefault(); m.className=''; m.textContent='Approving…';
       fetch('/__publish/_pair/approve',{method:'POST',headers:{'content-type':'application/json'},
         body:JSON.stringify({code:i.value})})
-      .then(function(r){return r.json().catch(function(){return {};}).then(function(d2){
-        if(r.ok&&d2.ok){ f.hidden=true; if(d) d.className='dot on'; m.className='ok'; m.textContent='Connected'; return; }
+      .then(function(r){return r.json().catch(function(){return {};}).then(function(j){
+        if(r.ok&&j.ok){ f.hidden=true; if(d) d.className='dot on'; if(h){ h.textContent='Connected'; h.className='on'; }
+                        m.className='sr'; m.textContent='Connected'; return; }
+        m.className='err';
         if(r.status===404){ m.textContent='That code is not valid. Check it, or start again in your terminal.'; return; }
         if(r.status===429){ m.textContent='Too many attempts. Wait a few minutes.'; return; }
-        m.textContent=(d2&&d2.message)||'Could not approve that code.';
+        m.textContent=(j&&j.message)||'Could not approve that code.';
       });})
-      .catch(function(){ m.textContent='Could not reach the site. Try again.'; });
+      .catch(function(){ m.className='err'; m.textContent='Could not reach the site. Try again.'; });
     });
   })();
   </script>
