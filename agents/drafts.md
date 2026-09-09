@@ -58,7 +58,9 @@ below.
 ## What a draft is
 
 Your own live copy of one prototype, at its own address: the prototype's URL with `@` and
-a short id, for example `/checkout/flow/@k7f3q1/`. Everyone signed in to the workspace
+a short id on its last segment, for example `/checkout/flow@k7f3q1/` for `/checkout/flow/`.
+It sits at the same depth as the prototype, so every relative link in the page resolves to
+the same URL it resolves to on the real page. Everyone signed in to the workspace
 can look at it while you work; the prototype's real URL keeps serving what it served until
 you land. Two agents opening the same prototype get two drafts, are both told about each
 other, and both work — nothing locks, nobody waits.

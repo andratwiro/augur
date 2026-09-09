@@ -2,7 +2,8 @@
 //
 // A UNIT is a prototype folder, spelled as its URL prefix with a leading and a trailing
 // slash, exactly as `routing.publicPrefixes` spells it. A DRAFT is one session's live
-// working copy of a unit, addressed at `<unit>@<id>/`. Everything here is a decision over
+// working copy of a unit, addressed at the unit's own depth: `/checkout/flow@k7f3q1/` for
+// the unit `/checkout/flow/`. Everything here is a decision over
 // plain objects: the Durable Object, the worker and the CLI all import it, and none of them
 // re-derive what a unit, a draft or a stale save is. See docs/drafts-that-land.md.
 //
@@ -10,15 +11,24 @@
 
 export const ACTIVE_MS = 5 * 60_000;
 export const DRAFT_ID_RE = /^[a-z0-9]{6}$/;
-// A draft address: one or more path segments, then `@` + six chars, then the rest.
-const DRAFT_PATH_RE = /^(\/(?:[^/@][^/]*\/)+)@([a-z0-9]{6})(\/.*)?$/;
+// A draft address: the unit's path with `@` + six chars on its LAST segment, then the rest —
+// `/checkout/flow@k7f3q1/`. SAME DEPTH AS THE UNIT, on purpose: a page's relative links
+// (`../../skills/x.css`, `img/a.png`) resolve to the same URLs from the draft as from the real
+// page. The first cut hung the id one folder deeper (`/checkout/flow/@k7f3q1/`), and every
+// `../../` in a prototype then climbed one folder short — measured 9 Sep 2026: the whole
+// design system answered with the sign-in page, and nothing hydrated. That shape is still
+// READ, for drafts opened before the change and for links people kept; it is never written.
+const DRAFT_PATH_RE = /^(\/(?:[^/@][^/]*\/)*[^/@][^/]*)@([a-z0-9]{6})(\/.*)?$/;
+const DRAFT_PATH_DEEP_RE = /^(\/(?:[^/@][^/]*\/)+)@([a-z0-9]{6})(\/.*)?$/;
 
 /** `"checkout/flow"` → `"/checkout/flow/"`; null for anything that is not a unit path. */
 export function normUnit(s) {
   const raw = String(s == null ? "" : s).trim().replace(/\/{2,}/g, "/");
   const segs = raw.split("/").filter(Boolean);
   if (!segs.length) return null;
-  for (const seg of segs) if (seg === "." || seg === ".." || seg.startsWith("@")) return null;
+  // No `@` anywhere in a unit path: the draft address is `<unit>@<id>/`, and a unit that
+  // carried its own `@` would be read as somebody's draft.
+  for (const seg of segs) if (seg === "." || seg === ".." || seg.includes("@")) return null;
   return "/" + segs.join("/") + "/";
 }
 
@@ -29,12 +39,15 @@ export function newDraftId(random = Math.random) {
   return out;
 }
 
-export const draftAddress = (unit, id) => `${unit}@${id}/`;
+export const draftAddress = (unit, id) => `${String(unit).replace(/\/$/, "")}@${id}/`;
 
 export function splitDraftPath(pathname) {
-  const m = DRAFT_PATH_RE.exec(String(pathname || ""));
-  if (!m) return null;
-  return { unit: m[1], id: m[2], rest: m[3] || "/" };
+  const s = String(pathname || "");
+  let m = DRAFT_PATH_RE.exec(s);
+  if (m) return { unit: m[1] + "/", id: m[2], rest: m[3] || "/" };
+  m = DRAFT_PATH_DEEP_RE.exec(s);
+  if (m) return { unit: m[1], id: m[2], rest: m[3] || "/" };
+  return null;
 }
 
 /** The manifest's entries under `unit`, with only the fields a table carries. */

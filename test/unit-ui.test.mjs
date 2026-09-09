@@ -14,7 +14,7 @@ const tctx = () => ({ ...ctxFor("ui"), PUBLIC_PREFIXES: [U] });
 const bootOf = async (res) => JSON.parse(/window\.__augurDraft=(\{.*?\})<\/script>/.exec(await res.text())[1]);
 
 test("a member on a unit page gets the bar; the boot names the unit and the draft", async () => {
-  const out = await W.withDraftUi(tctx(), html(), new URL(`https://x.test${U}@k7f3q1/`), me, env);
+  const out = await W.withDraftUi(tctx(), html(), new URL(`https://x.test${U.replace(/\/$/, "")}@k7f3q1/`), me, env);
   const text = await out.clone().text();
   assert.match(text, /<script defer src="\/__drafts\/drafts\.js"><\/script><\/body>/);
   assert.match(text, /<h1>flow<\/h1>/, "the page is otherwise untouched");

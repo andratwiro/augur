@@ -49,7 +49,8 @@ async function draft() {
   const s = await api("save", { unit: U, draftId: o.draftId, draftRevision: 0,
     changes: [{ path: `${U}index.html`, h: sha(V2), ct: "text/html; charset=utf-8", s: V2.length, baseHash: sha(INDEX) }] });
   assert.equal(s.draftRevision, 1, JSON.stringify(s));
-  return { env, call, address: `${U}@${o.draftId}/` };
+  assert.equal(o.address, `/checkout/flow@${o.draftId}/`, "the address sits at the unit's depth");
+  return { env, call, address: o.address };
 }
 
 test("the paired terminal's token opens its draft address; nothing and nobody else does", async () => {
@@ -61,10 +62,15 @@ test("the paired terminal's token opens its draft address; nothing and nobody el
 
   const member = await call(address, { Cookie: await cookieFor(env, ADA_MEMBER) });
   assert.match(member.body, /flow v2/, "a signed-in member sees the draft (unchanged)");
+  assert.match(member.body, /__augurDraft/, "a member's page carries the draft bar");
 
   const bearer = await call(address, { Authorization: "Bearer tok" });
   assert.equal(bearer.status, 200);
   assert.match(bearer.body, /flow v2/, "the token's member sees the draft");
+  assert.doesNotMatch(bearer.body, /__augurDraft|__drafts\/drafts\.js/, "no draft bar: its calls have no session and would only fail");
+
+  const relative = new URL("../../skills/ui/a.css", `https://x.test${address}`).pathname;
+  assert.equal(relative, new URL("../../skills/ui/a.css", `https://x.test${U}`).pathname, "a relative link resolves as on the real page");
   assert.equal(bearer.headers.get("Cache-Control"), "no-store");
   assert.match(bearer.headers.get("Vary") || "", /Authorization/);
 
@@ -85,9 +91,12 @@ test("the header widens nothing else: /__me stays signed out and main stays gate
   const { call } = await draft();
   const me = await call("/__me", { Authorization: "Bearer tok" });
   assert.equal(JSON.parse(me.body).user, null, "identity from a bearer exists only for a draft-address read");
-  // The gallery at the root is gated content; a bearer there is the same stranger as none.
+  // The gallery at the root is gated content; a bearer there is a stranger — told so as a
+  // machine (401, JSON), where a browser would get the 200 card.
   const anonRoot = await call("/");
+  assert.equal(anonRoot.status, 200, "a browser-shaped stranger gets the card");
   const bearerRoot = await call("/", { Authorization: "Bearer tok" });
-  assert.equal(bearerRoot.status, anonRoot.status);
-  assert.equal(bearerRoot.body, anonRoot.body, "the root answers a bearer exactly as it answers nobody");
+  assert.equal(bearerRoot.status, 401);
+  assert.equal(JSON.parse(bearerRoot.body).error, "sign-in-required");
+  assert.doesNotMatch(bearerRoot.body, /flow/, "and nothing of the workspace's content");
 });

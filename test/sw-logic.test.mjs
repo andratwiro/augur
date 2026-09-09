@@ -54,7 +54,8 @@ test("cacheEligible: only a 200 without no-store may be cached", () => {
 });
 
 test("a draft address is network-only: every save must show on the next load", () => {
-  for (const p of ["/checkout/flow/@k7f3q1/", "/checkout/flow/@k7f3q1", "/checkout/flow/@k7f3q1/css/a.css"]) {
+  for (const p of ["/checkout/flow@k7f3q1/", "/checkout/flow@k7f3q1", "/checkout/flow@k7f3q1/css/a.css",
+                   "/checkout/flow/@k7f3q1/", "/checkout/flow/@k7f3q1", "/checkout/flow/@k7f3q1/css/a.css"]) {
     assert.equal(swDecision({ ...NAV, path: p }), "passthrough", p);
     assert.equal(swDecision({ ...NAV, mode: "no-cors", path: p }), "passthrough", p + " (asset)");
   }

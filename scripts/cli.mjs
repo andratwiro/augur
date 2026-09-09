@@ -32,6 +32,7 @@
 // with one sentence when the shell's own folder is gone — see lib/cli-args.mjs for both.
 
 import { spawn } from "node:child_process";
+import { readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { takeOrigin, cwdGone } from "./lib/cli-args.mjs";
@@ -40,6 +41,10 @@ const SCRIPTS = path.dirname(fileURLToPath(import.meta.url));
 const gone = cwdGone();
 if (gone) { console.error(`\x1b[31m[augur]\x1b[0m ${gone}`); process.exit(1); }
 const sub = process.argv[2];
+if (sub === "--version" || sub === "-v" || sub === "version") {
+  console.log(JSON.parse(readFileSync(path.join(SCRIPTS, "..", "package.json"), "utf8")).version);
+  process.exit(0);
+}
 const { rest, origin, error: originError } = takeOrigin(process.argv.slice(3));
 if (originError) { console.error(`\x1b[31m[augur]\x1b[0m ${originError}`); process.exit(1); }
 const map = {

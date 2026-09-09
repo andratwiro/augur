@@ -30,7 +30,9 @@ export function cacheEligible(status, cacheControl) {
 // DRAFT_ID_RE — changes on every save, and stale-while-revalidate would paint the previous
 // save first on exactly the reload the live socket just asked for. Network only. Spelled
 // inline because this file is concatenated into sw.js verbatim and cannot import.
-const DRAFT_SEGMENT_RE = /\/@[a-z0-9]{6}(?:\/|$)/;
+// A segment ending in `@` + six chars: `/checkout/flow@k7f3q1/`, or the earlier
+// `/checkout/flow/@k7f3q1/` (an empty segment before the `@`).
+const DRAFT_SEGMENT_RE = /\/[^/]*@[a-z0-9]{6}(?:\/|$)/;
 
 export function swDecision({ method, sameOrigin, mode, path }) {
   if (method !== "GET") return "passthrough";

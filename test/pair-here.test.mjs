@@ -123,7 +123,7 @@ test("`augur open` on an unpaired machine pairs it and opens the draft — the p
     assert.match(r.stderr, /the workspace member presses Approve/, "and what the person's part is");
     assert.match(r.stdout, /Waiting for Approve in that tab/, "the inline wait, not the standalone agent lecture");
     assert.doesNotMatch(r.stdout, /AGENTS: if your person reads your messages only after you finish/);
-    assert.match(r.stdout.trim().split("\n").pop(), /^http:\/\/127\.0\.0\.1:\d+\/checkout\/flow\/@/, "then the draft's address, last, as always");
+    assert.match(r.stdout.trim().split("\n").pop(), /^http:\/\/127\.0\.0\.1:\d+\/checkout\/flow@/, "then the draft's address, last, as always");
     assert.ok(fs.existsSync(path.join(work, "flow", "index.html")), "and the folder is there");
     assert.equal(savedTokenIn(home, ws.origin).token, "tok");
     assert.equal(ws.starts, 1);

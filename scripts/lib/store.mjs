@@ -83,6 +83,15 @@ export function resolveToken(origin, root = ENGINE_ROOT) {
   return pairedToken(origin) || readEnvFile(path.join(root, ".env.deploy")).AUGUR_TOKEN || "";
 }
 
+/** The whole record `augur connect` saved for this origin's host ({token, space, via, at, expiresAt?, email?}), or null. */
+export function pairedRecord(origin) {
+  if (!origin) return null;
+  try {
+    const saved = JSON.parse(readFileSync(path.join(os.homedir(), ".config", "augur", "tokens.json"), "utf8"));
+    return saved[new URL(origin).host] || null;
+  } catch (e) { return null; }
+}
+
 /** The token `augur connect` saved for this origin's host, or "". */
 export function pairedToken(origin) {
   if (!origin) return "";

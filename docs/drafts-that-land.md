@@ -163,8 +163,10 @@ revision only; per-file detail in the refusal is for the message, not the decisi
 
 ### 6.3 Serving
 
-The worker resolves `/<unit>/…` to main's table and `/<unit>/@<id>/…` to the draft's
-table, then fetches the body by hash through the existing cache. Tables are cached in the
+The worker resolves `/<unit>/…` to main's table and `/<unit>@<id>/…` (the id on the
+unit's last segment, so the draft sits at the unit's own depth and relative links resolve
+alike) to the draft's table, then fetches the body by hash through the existing cache. The
+first cut's deeper spelling, `/<unit>/@<id>/…`, is still read and never written. Tables are cached in the
 tenant cache keyed by `(unit, revision)`; the object bumps a workspace-level revision
 counter on every land, and the gallery cache keys on that.
 

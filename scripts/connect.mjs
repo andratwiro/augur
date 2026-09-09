@@ -227,10 +227,12 @@ try { all = JSON.parse(readFileSync(file, "utf8")); } catch (e) {}
 all[new URL(ORIGIN).host] = {
   token: saved.token, space: saved.space, via: "connect", at: new Date().toISOString(),
   ...(saved.expiresAt ? { expiresAt: saved.expiresAt } : {}),
+  // Whose name every landing from this machine carries (the approver's), when the instance says.
+  ...(saved.label ? { email: saved.label } : {}),
 };
 writeFileSync(file, JSON.stringify(all, null, 2), { mode: 0o600 });
 
-log(`${C.ok}paired — publish access: ${saved.space === "*" ? "all spaces" : saved.space}${C.off}`);
+log(`${C.ok}paired — publish access: ${saved.space === "*" ? "all spaces" : saved.space}${saved.label ? `; landings carry ${saved.label}` : ""}${C.off}`);
 // The next verb, spelled so it runs from THIS machine: `augur` after a global install, the
 // package's own `npx` line otherwise — and the verb this workspace takes, which the door
 // knows (drafts: open and land; a whole-tree instance: publish).

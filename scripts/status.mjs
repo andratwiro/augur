@@ -15,7 +15,7 @@
 import { execFileSync } from "node:child_process";
 import { existsSync, readFileSync, readdirSync } from "node:fs";
 import path from "node:path";
-import { resolveOrigin, resolveToken, apiClient, buildStamp, ENGINE_ROOT } from "./lib/store.mjs";
+import { resolveOrigin, resolveToken, apiClient, buildStamp, ENGINE_ROOT, pairedRecord } from "./lib/store.mjs";
 import { registryList, unitClient, draftsReport } from "./lib/draft.mjs";
 
 const args = process.argv.slice(2);
@@ -126,6 +126,12 @@ console.log(`  ${C.dim}engine chrome    ${eng.sha ? eng.sha.slice(0, 12) : "—"
 // The one thing a fresh agent needs to know and has no other way to learn: this machine
 // holds no token, and the way to get one is pairing, not a password. Same words as the
 // instance's own /llms.txt. Costs nothing here — status never needed the token.
+{
+  // Whose name a landing from this machine carries — saved by `connect` when the instance
+  // says so; an older pairing has no record of it and says nothing rather than guess.
+  const rec = pairedRecord(origin);
+  if (rec && rec.email) console.log(`  ${C.dim}paired with ${origin} — landings carry ${rec.email}${C.off}`);
+}
 if (!resolveToken(origin)) {
   console.log("");
   console.log(`  ${C.dim}not paired with ${origin}. Publishing from here needs a token; get one without a password:${C.off}`);

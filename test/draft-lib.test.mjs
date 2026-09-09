@@ -33,7 +33,7 @@ function fakeInstance(mainFiles) {
       mainRevision++;
     },
     client: {
-      async open() { const id = `d${drafts.size + 1}xxxx`.slice(0, 6); drafts.set(id, { table: { ...main }, revision: 0, base: mainRevision }); return { draftId: id, baseRevision: mainRevision, table: { ...main }, address: `${U}@${id}/`, presence: [] }; },
+      async open() { const id = `d${drafts.size + 1}xxxx`.slice(0, 6); drafts.set(id, { table: { ...main }, revision: 0, base: mainRevision }); return { draftId: id, baseRevision: mainRevision, table: { ...main }, address: `${U.replace(/\/$/, "")}@${id}/`, presence: [] }; },
       async save({ draftId, draftRevision, changes, baseRevision }) {
         const d = drafts.get(draftId);
         if (d.revision !== draftRevision) return { status: 409, error: "stale-draft-revision", draftRevision: d.revision };
@@ -102,7 +102,7 @@ test("open materialises the unit and writes state; save pushes only what changed
   const root = tmp();
   const dir = path.join(root, "flow");
   const opened = await doOpen({ client: inst.client, unit: U, dir, origin: "https://x.test", space: "alpha", session: "s1", now: "2026-09-04T12:00:00.000Z" });
-  assert.equal(opened.address, `https://x.test${U}@${opened.draftId}/`);
+  assert.equal(opened.address, `https://x.test${U.replace(/\/$/, "")}@${opened.draftId}/`);
   assert.equal(fs.readFileSync(path.join(dir, "index.html"), "utf8"), "<h1>flow</h1>");
   assert.equal(fs.readFileSync(path.join(dir, "a.css"), "utf8"), "h1{}");
   const st = readState(dir);

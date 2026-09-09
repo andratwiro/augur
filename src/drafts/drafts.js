@@ -152,7 +152,7 @@
     bar.appendChild(button("History", "is-quiet", history));
     state.drafts.forEach(function (d) {
       var row = el("a", "augur-draft__row" + (d.active ? "" : " is-idle"));
-      row.href = UNIT + "@" + d.id + "/";
+      row.href = UNIT.replace(/\/$/, "") + "@" + d.id + "/";
       row.appendChild(face(d));
       row.appendChild(el("span", "augur-draft__text", label(d)));
       row.appendChild(el("span", "augur-draft__dim", ago(d.lastSaveAt || d.openedAt, d.lastSaveAt ? "saved" : "opened")));

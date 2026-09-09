@@ -59,6 +59,16 @@ test("`augur ls --origin <url>` uses the URL as the origin and never as an oppor
   assert.match(bare.err, /--origin needs a URL/);
 });
 
+test("--version prints the package version and nothing else", () => {
+  const want = JSON.parse(fs.readFileSync(path.resolve("package.json"), "utf8")).version;
+  for (const flag of ["--version", "-v", "version"]) {
+    const r = spawnSync(process.execPath, [CLI, flag], { encoding: "utf8" });
+    assert.equal(r.status, 0, r.stderr);
+    assert.equal(r.stdout.trim(), want, flag);
+    assert.equal(r.stderr, "");
+  }
+});
+
 test("a verb run from a folder that no longer exists is told to cd .., with no stack", () => {
   const d = tmp("augur-gone-");
   const r = spawnSync("/bin/sh", ["-c", `cd "${d}" && rmdir "${d}" && "${process.execPath}" "${CLI}" status`],

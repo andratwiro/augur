@@ -216,6 +216,7 @@ test("a claim is ONE-SHOT: the record is gone before the token is returned", asy
   const first = await call(env, "/__publish/_pair/claim", { body: { code: start.code, deviceSecret: start.deviceSecret } });
   assert.equal(first.status, 200);
   assert.equal(first.json.token, "tok-abc");
+  assert.ok(first.json.label && first.json.label.includes("@"), "the claim names whose address the token lands as (for status: landings carry …)");
   assert.equal(kv.map.get("pair:" + start.code), undefined, "the record survived the claim");
   const second = await call(env, "/__publish/_pair/claim", { body: { code: start.code, deviceSecret: start.deviceSecret } });
   assert.notEqual(second.status, 200, "the claim replayed");

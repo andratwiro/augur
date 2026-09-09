@@ -3792,7 +3792,7 @@ async function mintPublishToken(kv, tctx, u, { label = null, env = null } = {}) 
     try { await ident.tokenMint({ tokenHash: hash, space, label: rec.label, createdAt: rec.createdAt, expiresAt: rec.expiresAt || null }); }
     catch (e) { /* the token is live in KV, which the read still falls back to */ }
   }
-  return { token, space, expiresAt: rec.expiresAt || null };
+  return { token, space, expiresAt: rec.expiresAt || null, label: rec.label };
 }
 
 /**
@@ -4030,7 +4030,10 @@ async function pairApi(tctx, request, url, env, me) {
     // response never reaches the caller. Losing a token to a dropped response is a
     // re-run of `augur connect`; a replayable claim is a second copy in somebody's logs.
     await kv.delete(PAIR_PREFIX + code);
-    return jsonResponse({ status: "approved", token: rec.token, space: rec.space, expiresAt: rec.expiresAt || null });
+    // `label`: whose address the token lands as — the approver's — so the terminal can say
+    // whose name its landings carry (`connect` saves it; `status` prints it). Older CLIs
+    // ignore the field.
+    return jsonResponse({ status: "approved", token: rec.token, space: rec.space, expiresAt: rec.expiresAt || null, label: rec.approvedBy || null });
   }
 
   return jsonResponse({ error: "not-found" }, 404);
@@ -5681,7 +5684,9 @@ async function publishApi(tctx, request, url, env) {
     if (!minted) return jsonResponse({ error: "no-default-space" }, 500);
     // `expiresAt` is in the response so the CLI can say when, rather than the holder
     // finding out from a 403 on the day it matters.
-    return jsonResponse({ token: minted.token, space: minted.space, expiresAt: minted.expiresAt });
+    // `label` is the address the token lands as — the approver's — so the terminal can say
+    // whose name its landings will carry (status: "lands as …"). Older CLIs ignore the field.
+    return jsonResponse({ token: minted.token, space: minted.space, expiresAt: minted.expiresAt, label: minted.label || null });
   }
 
   // Sanitized contributor profiles for identity-less builds (any valid publish
@@ -7523,9 +7528,15 @@ async function withDraftUi(tctx, res, url, me, env) {
   headers.delete("ETag");
   return new Response(html, { status: res.status, statusText: res.statusText, headers });
 }
-/** A content response, dressed: the live-reload poll, the current chrome, the draft bar, the cache policy. */
-async function serveContent(tctx, asset, url, me, env, request = null) {
-  return withAgentPreface(withDoorLink(withAssetCache(await withDraftUi(tctx, await composeChrome(tctx, withLiveReload(tctx, asset, url), url), url, me, env), url)), request, url, me);
+/**
+ * A content response, dressed: the live-reload poll, the current chrome, the draft bar, the
+ * cache policy. `draftUi: false` leaves the bar out — the page a bearer token opens has no
+ * session for the bar's own calls, so the bar would be one refused request per load.
+ */
+async function serveContent(tctx, asset, url, me, env, request = null, { draftUi = true } = {}) {
+  const composed = await composeChrome(tctx, withLiveReload(tctx, asset, url), url);
+  const dressed = draftUi ? await withDraftUi(tctx, composed, url, me, env) : composed;
+  return withAgentPreface(withDoorLink(withAssetCache(dressed, url)), request, url, me);
 }
 
 /**
@@ -7543,7 +7554,7 @@ function browserFetch(request) {
   return /^Mozilla\//.test(request.headers.get("User-Agent") || "");
 }
 
-/** A GET/HEAD of a draft address (`/<unit>/@<id>/…`) that carries a bearer token. */
+/** A GET/HEAD of a draft address (`/<unit>@<id>/…`) that carries a bearer token. */
 function isDraftAddressGet(request, url) {
   if (!request || (request.method !== "GET" && request.method !== "HEAD")) return false;
   if (!/^Bearer\s+\S/.test(request.headers.get("Authorization") || "")) return false;
@@ -9507,7 +9518,9 @@ function doorText(f) {
       + `prototype are both told and both work; a refused landing is \`augur sync\`, then\n`
       + `\`augur land\` again. \`augur ship\` is retired here. Every verb takes \`--origin <url>\`. The first \`open\` in a folder installs a\n`
       + `save hook in that folder's editor settings (.claude/settings.local.json; it says so),\n`
-      + `never account-wide; \`augur hook remove\` there takes it out. \`augur ls\` lists the\n`
+      + `never account-wide; \`augur hook remove\` there takes it out. An editor that runs no\n`
+      + `hooks — a scripted \`claude -p\` loop with its own settings, a plain text editor — saves\n`
+      + `with \`augur save\` in the folder, or \`augur watch\` on every change. \`augur ls\` lists the\n`
       + `opportunities and their prototypes. The contract: agents/drafts.md in the engine\n`
       + `repository.\n\n`
     : "";
@@ -9525,6 +9538,10 @@ function doorText(f) {
  */
 function wantsMachineDoor(request, url) {
   if (url.pathname.startsWith("/__")) return true;
+  // A bearer token is a script's credential; a request carrying one that still meets the
+  // gate (wrong scope, a path the token does not open) should hear 401, not a 200 card it
+  // has to read the body of to notice.
+  if (/^Bearer\s+\S/.test(request.headers.get("Authorization") || "")) return true;
   return /application\/json/i.test(request.headers.get("Accept") || "");
 }
 
@@ -13002,14 +13019,14 @@ async function handleRequest(request, env, ctx, url, trace) {
       // Where drafts are served, the gallery and its indexes are derived from the live
       // store rather than read from it — a landing is on them at once.
       const derived = await derivedPage(tctx, env, url);
-      if (derived) return stamp(derived.status === 308 ? derived : await serveContent(tctx, derived, url, me, env, request));
+      if (derived) return stamp(derived.status === 308 ? derived : await serveContent(tctx, derived, url, me, env, request, { draftUi: !viaBearer }));
       const asset = await assetFetch(tctx.tenantId, env, request, { dsDraft: ds.draft });
       if (asset.status === 404) {
         const virt = await virtualCanvas(tctx, request, env, url);
         if (virt) return stamp(virt);
         return stamp(notFoundResponse(tctx));
       }
-      return stamp(await serveContent(tctx, asset, url, me, env, request));
+      return stamp(await serveContent(tctx, asset, url, me, env, request, { draftUi: !viaBearer }));
     }
 
     // Created canvas boards are public like published prototypes — same obscure

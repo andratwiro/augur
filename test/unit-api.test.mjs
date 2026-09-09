@@ -55,7 +55,7 @@ test("open needs a token, answers the live table, and names the draft address", 
   assert.equal(o.status, 200, JSON.stringify(o.body));
   assert.equal(o.body.baseRevision, 1);
   assert.equal(o.body.table[`${U}index.html`].h, sha(INDEX));
-  assert.equal(o.body.address, `${U}@${o.body.draftId}/`);
+  assert.equal(o.body.address, `${U.replace(/\/$/, "")}@${o.body.draftId}/`, "the draft address sits at the unit's depth");
   const p = await json(await call(ctx, env, "presence", { unit: U }, { method: "GET" }));
   assert.deepEqual(p.body.drafts.map((d) => [d.session, d.active]), [["pass one", true]]);
 });

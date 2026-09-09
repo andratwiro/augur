@@ -18,10 +18,23 @@ test("normUnit spells a unit the way publicPrefixes does", () => {
 test("draft ids are six base-36 characters and addresses carry them", () => {
   const id = newDraftId(() => 0.5);
   assert.match(id, DRAFT_ID_RE);
-  assert.equal(draftAddress("/checkout/flow/", "k7f3q1"), "/checkout/flow/@k7f3q1/");
+  assert.equal(draftAddress("/checkout/flow/", "k7f3q1"), "/checkout/flow@k7f3q1/", "the id rides the unit's last segment: same depth as the unit");
+  assert.equal(draftAddress("/checkout/flow", "k7f3q1"), "/checkout/flow@k7f3q1/");
+  assert.equal(normUnit("/a/b@c/"), null, "no unit may carry an @ of its own");
 });
 
 test("splitDraftPath finds the unit, the id and the rest", () => {
+  // The spelling `open` prints now …
+  assert.deepEqual(splitDraftPath("/checkout/flow@k7f3q1/"), { unit: "/checkout/flow/", id: "k7f3q1", rest: "/" });
+  assert.deepEqual(splitDraftPath("/checkout/flow@k7f3q1/css/a.css"), { unit: "/checkout/flow/", id: "k7f3q1", rest: "/css/a.css" });
+  assert.deepEqual(splitDraftPath("/checkout/flow@k7f3q1"), { unit: "/checkout/flow/", id: "k7f3q1", rest: "/" });
+  assert.deepEqual(splitDraftPath("/flow@k7f3q1/"), { unit: "/flow/", id: "k7f3q1", rest: "/" });
+  // … resolves relative links exactly as the real page does — the reason for the depth.
+  for (const rel of ["../../skills/ui/a.css", "img/b.png", "./c.js", "../d.html"]) {
+    assert.equal(new URL(rel, "https://x.test/checkout/flow@k7f3q1/").pathname.replace("flow@k7f3q1", "flow"),
+      new URL(rel, "https://x.test/checkout/flow/").pathname, rel);
+  }
+  // … and the first cut's deeper spelling is still read, for drafts opened before the change.
   assert.deepEqual(splitDraftPath("/checkout/flow/@k7f3q1/"), { unit: "/checkout/flow/", id: "k7f3q1", rest: "/" });
   assert.deepEqual(splitDraftPath("/checkout/flow/@k7f3q1/css/a.css"), { unit: "/checkout/flow/", id: "k7f3q1", rest: "/css/a.css" });
   assert.deepEqual(splitDraftPath("/checkout/flow/@k7f3q1"), { unit: "/checkout/flow/", id: "k7f3q1", rest: "/" });

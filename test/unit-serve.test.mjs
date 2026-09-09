@@ -6,6 +6,7 @@ import { makeEnv, ctxFor, manifestOf, remember, sha } from "./fixtures/unit-env.
 
 let n = 0;
 const U = "/checkout/flow/";
+const A = (id) => U.replace(/\/$/, "") + "@" + id + "/";   // the draft address, at the unit's depth
 const INDEX = remember("<h1>flow</h1>");
 const CSS = remember("h1{color:red}");
 
@@ -26,15 +27,17 @@ async function draftWithEdit() {
 
 test("a draft address serves the draft's bytes while the real URL serves main", async () => {
   const { t, env, draftId, v2 } = await draftWithEdit();
-  const draft = await W.assetFetch(t, env, new Request(`https://x.test${U}@${draftId}/`));
+  const draft = await W.assetFetch(t, env, new Request(`https://x.test${A(draftId)}`));
   assert.equal(draft.status, 200);
   assert.equal(await draft.text(), v2);
+  const deep = await W.assetFetch(t, env, new Request(`https://x.test${U}@${draftId}/`));
+  assert.equal(await deep.text(), v2, "the first cut's deeper address still serves the same draft");
   assert.equal(draft.headers.get("Content-Type"), "text/html; charset=utf-8");
   const main = await W.assetFetch(t, env, new Request(`https://x.test${U}`));
   assert.equal(await main.text(), INDEX);
-  const css = await W.assetFetch(t, env, new Request(`https://x.test${U}@${draftId}/a.css`));
+  const css = await W.assetFetch(t, env, new Request(`https://x.test${A(draftId)}a.css`));
   assert.equal(await css.text(), CSS, "an untouched file resolves through the draft table too");
-  const missing = await W.assetFetch(t, env, new Request(`https://x.test${U}@zzzzzz/`));
+  const missing = await W.assetFetch(t, env, new Request(`https://x.test${A("zzzzzz")}`));
   assert.equal(missing.status, 404);
 });
 
@@ -42,8 +45,9 @@ test("a draft address is never public, whatever the unit's own gate says", async
   const { ctx, draftId } = await draftWithEdit();
   const tctx = { ...ctx, PUBLIC_PREFIXES: [U], PUBLIC_SKILL_PREFIXES: [] };
   assert.equal(W.isPublicPath(tctx, `${U}index.html`), true);
-  assert.equal(W.isPublicPath(tctx, `${U}@${draftId}/index.html`), false);
-  assert.equal(W.isPublicPath(tctx, `${U}@${draftId}/`), false);
+  assert.equal(W.isPublicPath(tctx, `${A(draftId)}index.html`), false);
+  assert.equal(W.isPublicPath(tctx, `${A(draftId)}`), false);
+  assert.equal(W.isPublicPath(tctx, `${U}@${draftId}/`), false, "nor is the deeper spelling");
   assert.equal(W.isPublicPath(tctx, `${U}%40${draftId}/index.html`), false,
     "a percent-encoded draft address must not sail past the gate on a literal @ check");
   assert.equal(W.isPublicPath(tctx, "/checkout/flow/%E0%A4%A"), false,
