@@ -1875,7 +1875,9 @@ const PAGE_CSS = `
       .card-opp.is-stale .preview :is(iframe, .preview-img, .preview-ph) { transition: none; }
     }
 
-    /* Draft chips — one per open draft on a prototype card, a count on a folder card.
+    /* Draft chips — who has a draft here: one per draft on a prototype card, one for
+       everything beneath a folder card, faces stacked, a green dot on a face that is
+       live (src/draft-chips-logic.mjs decides; green means live, as on the connect page).
        Bottom-left so they never fight the mark badge (top-right) or the status chip. */
     .draft-chips {
       position: absolute; left: 8px; bottom: 8px; z-index: 3;
@@ -1890,14 +1892,23 @@ const PAGE_CSS = `
     }
     .draft-chip:hover { box-shadow: 0 4px 12px -2px rgba(16,24,40,0.4); }
     .draft-chip.is-idle { opacity: .72; }
+    .draft-chip__faces { display: inline-flex; flex: none; align-items: center; }
+    /* Earlier faces sit on top: the first is the live one, and its dot must show. */
+    .draft-chip__faces .draft-chip__who + .draft-chip__who { margin-left: -4px; }
+    .draft-chip__faces .draft-chip__who:nth-child(1) { z-index: 3; }
+    .draft-chip__faces .draft-chip__who:nth-child(2) { z-index: 2; }
+    .draft-chip__faces .draft-chip__who:nth-child(3) { z-index: 1; }
     .draft-chip__who {
-      flex: none; width: 16px; height: 16px; border-radius: 50%;
-      display: inline-grid; place-items: center;
+      position: relative; flex: none; width: 16px; height: 16px; border-radius: 50%;
+      display: inline-grid; place-items: center; box-shadow: 0 0 0 1.5px #fff;
       font-size: 8px; font-weight: 700; letter-spacing: 0; color: #fff;
       background-color: var(--faint); background-position: center;
     }
+    .draft-chip__who.is-live::after {
+      content: ""; position: absolute; right: -2px; bottom: -2px; width: 7px; height: 7px;
+      border-radius: 50%; background: #12b76a; box-shadow: 0 0 0 1.5px #fff;
+    }
     .draft-chip__text { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .draft-chip--count { pointer-events: none; padding-left: 9px; }
     /* Status picker — opens on hover/click so a state is CHOSEN, not cycled into
        (each cycle step used to save and re-rank the card). Light, unlike the dark
        right-click menu: the state glyphs are the same ones on the cards, and they
@@ -3077,14 +3088,22 @@ const FACE_JS = `
 // Draft chips — the gallery's face of drafts that land (docs/drafts-that-land.md §5).
 //
 // One fetch per page with cards, answered by the unit objects through the open-drafts hint
-// (`GET /__unit/drafts`); then one chip per open draft on its prototype's card, and one
-// count on a folder card for the drafts beneath it. A CHIP IS A LINK to the draft address:
-// unlike a working mark, a draft is somewhere a person can go and look. Presence is derived
-// server-side (active within five minutes) — an idle chip is dimmed, never removed, because
-// the draft is still there. Re-wired on visibility and once a minute; the socket that makes
-// a unit's own page live is not on the gallery, and does not need to be.
+// (`GET /__unit/drafts`); then, per card, what src/draft-chips-logic.mjs decides — inlined
+// below minus its exports, the way sw-logic rides into sw.js, so the shipped chip and the
+// tested one are one source. A prototype card wears a chip per open draft; a folder card
+// wears one chip for everything beneath it: the people as faces, a green dot on a face whose
+// draft is live, `working` or the last save, and a tooltip written as a heads-up to whoever
+// might open a draft here too. A CHIP IS A LINK to the draft address (to the folder when
+// several sit beneath it): unlike a working mark, a draft is somewhere a person can go and
+// look. Presence is derived server-side (active within five minutes) — an idle chip is
+// dimmed, never removed, because the draft is still there. Re-wired on visibility and once a
+// minute; the socket that makes a unit's own page live is not on the gallery, and does not
+// need to be.
+const DRAFT_CHIPS_LOGIC_SRC = readFileSync(path.join(ROOT, "src", "draft-chips-logic.mjs"), "utf8")
+  .replace(/^export\s+/gm, "");
 const DRAFTS_JS = `
 (function(){
+${DRAFT_CHIPS_LOGIC_SRC}
   function norm(p){
     var s = String(p == null ? '' : p).trim();
     if(!s) return '';
@@ -3098,42 +3117,33 @@ const DRAFTS_JS = `
     if(!a) return '';
     try { return norm(new URL(a.getAttribute('href'), location.href).pathname); } catch(e){ return ''; }
   }
-  function when(iso){
-    var ms = Date.now() - Date.parse(iso || '');
-    if(!(ms >= 0)) return '';
-    var m = Math.round(ms / 60000);
-    return m < 1 ? 'saved just now' : m < 60 ? 'saved ' + m + ' min ago' : 'saved ' + Math.round(m / 60) + ' h ago';
-  }
   function hostOf(card){
     var pv = card.querySelector('.preview') || card;
     var host = pv.querySelector(':scope > .draft-chips');
     if(!host){ host = document.createElement('span'); host.className = 'draft-chips'; pv.appendChild(host); }
     return host;
   }
-  function chip(card, d, unit){
-    var a = document.createElement('a');
-    a.className = 'draft-chip' + (d.active ? '' : ' is-idle');
-    a.href = unit + '@' + d.id + '/';
-    a.title = (d.name || 'Someone') + (d.session ? ' \\u00b7 ' + d.session : '') + ' \\u2014 ' + when(d.lastSaveAt || d.openedAt);
+  function face(f){
     var who = document.createElement('span');
-    who.className = 'draft-chip__who';
-    who.textContent = d.initials || '?';
-    if(d.color) who.style.backgroundColor = d.color;
-    if(d.owner) who.setAttribute('data-person', d.owner);
-    var t = document.createElement('span');
-    t.className = 'draft-chip__text';
-    t.textContent = d.session || d.name || 'draft';
-    a.appendChild(who); a.appendChild(t);
-    hostOf(card).appendChild(a);
+    who.className = 'draft-chip__who' + (f.live ? ' is-live' : '');
+    who.textContent = f.initials || '?';
+    if(f.color) who.style.backgroundColor = f.color;
+    if(f.owner) who.setAttribute('data-person', f.owner);
+    return who;
   }
-  function count(card, n){
-    var s = document.createElement('span');
-    s.className = 'draft-chip draft-chip--count';
+  function paint(card, c){
+    var a = document.createElement('a');
+    a.className = 'draft-chip' + (c.live ? '' : ' is-idle');
+    a.href = c.href;
+    a.title = c.title;
+    var faces = document.createElement('span');
+    faces.className = 'draft-chip__faces';
+    c.faces.forEach(function(f){ faces.appendChild(face(f)); });
     var t = document.createElement('span');
     t.className = 'draft-chip__text';
-    t.textContent = n + (n === 1 ? ' draft open' : ' drafts open');
-    s.appendChild(t);
-    hostOf(card).appendChild(s);
+    t.textContent = c.text;
+    a.appendChild(faces); a.appendChild(t);
+    hostOf(card).appendChild(a);
   }
   function clear(){ [].forEach.call(document.querySelectorAll('.draft-chips'), function(h){ h.remove(); }); }
   function wire(){
@@ -3143,16 +3153,12 @@ const DRAFTS_JS = `
       .then(function(r){ return r.ok ? r.json() : null; })
       .then(function(d){
         clear();
-        if(!d || !d.units) return;
-        var units = Object.keys(d.units);
-        if(!units.length) return;
+        if(!d || !d.units || !Object.keys(d.units).length) return;
+        var now = Date.parse(d.now || '') || Date.now();
         cards.forEach(function(card){
           var p = pathOf(card);
           if(!p) return;
-          if(d.units[p]){ d.units[p].forEach(function(dr){ chip(card, dr, p); }); return; }
-          var n = 0;
-          units.forEach(function(u){ if(u.indexOf(p) === 0) n += d.units[u].length; });
-          if(n) count(card, n);
+          chipsFor(d.units, p, now).forEach(function(c){ paint(card, c); });
         });
         if(window.__gvFacesWire) window.__gvFacesWire();
       })

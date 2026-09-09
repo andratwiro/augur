@@ -95,8 +95,13 @@ Rules of the day:
 
 ## 5. What a person sees
 
-- **Gallery card.** Main's preview, plus one chip per open draft: face, session label,
-  time since last save. Clicking the chip opens the draft address.
+- **Gallery card.** Main's preview, plus a chip per open draft: the person's face, a green
+  dot on it while the draft is live, and `working` — or the time of the last save once it
+  is idle. Never the session label. A folder card wears one chip for everything beneath it
+  (the people as faces, `working on N` across N prototypes). Hovering reads as a heads-up
+  to whoever might open a draft here too: *Careful: Ada's agent is working on this right
+  now · saved 4 min ago*. Clicking the chip opens the draft address (the folder, when
+  several drafts sit beneath it). `src/draft-chips-logic.mjs` decides all of it.
 - **Prototype page.** Serves main. A thin bar lists open drafts. On a draft address the
   bar names whose draft it is and when it last saved, with **Land** and **Discard** for
   members, so a person can accept an agent's draft after looking at it.

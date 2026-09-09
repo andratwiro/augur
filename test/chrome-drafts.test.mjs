@@ -37,18 +37,25 @@ test("the bar script ships at /__drafts/drafts.js, byte-identical to its source,
   }
 });
 
-test("the chrome bundle carries the chips: one fetch of /__unit/drafts, a link per draft, a count per folder", () => {
+test("the chrome bundle carries the chips: one fetch of /__unit/drafts, the decision module inlined, faces with a live dot, never a bare count or the session label", () => {
   const js = chromeJs();
   assert.ok(js.includes("fetch('/__unit/drafts'"), "the chips ask the workspace-wide index");
   assert.ok(js.includes("window.__gvDraftsWire = wire"), "re-wirable like marks and faces");
   assert.ok(js.includes("'draft-chip'"), "the chip class");
-  assert.ok(js.includes("draft-chip--count"), "the folder count");
   assert.ok(js.includes("window.__gvFacesWire()"), "chips get faces through the shared resolver");
   assert.ok(js.indexOf("fetch('/__unit/drafts'") > js.indexOf("window.__gvFacesWire = wire"), "faces are defined before the chips call them");
+  // The decision rides along verbatim, minus its exports, so the shipped chip and the tested one are one source.
+  const logic = readFileSync(path.join(ROOT, "src", "draft-chips-logic.mjs"), "utf8").replace(/^export\s+/gm, "");
+  assert.ok(js.includes(logic), "src/draft-chips-logic.mjs is inlined as written");
+  assert.ok(js.includes("chipsFor("), "the wiring asks the module what to paint");
+  assert.ok(js.includes("draft-chip__faces") && js.includes("is-live"), "a face stack, a live dot");
+  assert.ok(!js.includes("draft-chip--count"), "a folder card never wears a bare count");
+  assert.ok(!js.includes("d.session || d.name"), "the session label is never the chip's text");
   const css = chromeCss();
-  for (const sel of [".draft-chips {", ".draft-chip {", ".draft-chip.is-idle", ".draft-chip__who", ".draft-chip__text", ".draft-chip--count"]) {
+  for (const sel of [".draft-chips {", ".draft-chip {", ".draft-chip.is-idle", ".draft-chip__who", ".draft-chip__faces", ".draft-chip__who.is-live::after", ".draft-chip__text"]) {
     assert.ok(css.includes(sel), `chrome css has ${sel}`);
   }
+  assert.ok(!css.includes(".draft-chip--count"), "the count style is gone with the count");
 });
 
 test("sw.js forgets a URL when a page asks, and never caches a draft address", () => {
