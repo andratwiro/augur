@@ -169,7 +169,11 @@ tenant cache keyed by `(unit, revision)`; the object bumps a workspace-level rev
 counter on every land, and the gallery cache keys on that.
 
 Engine routes stay under `/__*`. A draft address is a content path, so the gate applies
-to it exactly as to main: members see drafts, viewers with a share link see main.
+to it exactly as to main: members see drafts, viewers with a share link see main. One
+reader has no cookie and is still a member: the paired terminal. A GET of a draft address
+carrying `Authorization: Bearer <publish token>` is served as the member the token names
+(the unit API's own resolve — scope, expiry, roster, capability), marked `no-store`; the
+same header on main or a gallery changes nothing.
 
 ### 6.4 Derived pages
 

@@ -39,13 +39,21 @@ export function readEnvFile(p) {
   return out;
 }
 
+/** `--origin <url>` / `--origin=<url>` on this process's own argv (a verb run directly, not through the router). */
+export function argvOrigin(argv = process.argv) {
+  const i = argv.indexOf("--origin");
+  if (i >= 0 && argv[i + 1] && !argv[i + 1].startsWith("--")) return argv[i + 1];
+  const eq = argv.find((a) => a.startsWith("--origin="));
+  return eq ? eq.slice("--origin=".length) : "";
+}
+
 export function resolveOrigin(root = ENGINE_ROOT) {
   const env = readEnvFile(path.join(root, ".env.deploy"));
   let cwdSpaceOrigin = "";
   try {
     cwdSpaceOrigin = JSON.parse(readFileSync(path.join(process.cwd(), "space.json"), "utf8")).siteOrigin || "";
   } catch (e) {}
-  return (process.env.AUGUR_ORIGIN || env.AUGUR_ORIGIN ||
+  return (argvOrigin() || process.env.AUGUR_ORIGIN || env.AUGUR_ORIGIN ||
     deployConfig(root, originHost(cwdSpaceOrigin)).siteOrigin || cwdSpaceOrigin || pairedOrigin() || "")
     .replace(/\/+$/, "");
 }
@@ -65,7 +73,7 @@ export function pairedOrigin() {
     if (!hosts.length) return "";
     hosts.sort((a, b) => String(b[1].at || "").localeCompare(String(a[1].at || "")));
     const [host] = hosts[0];
-    if (hosts.length > 1) console.error(`[augur] no origin named — using the last pairing, https://${host} (set AUGUR_ORIGIN to pick another)`);
+    if (hosts.length > 1) console.error(`[augur] no origin named — using the last pairing, https://${host} (pass --origin, or set AUGUR_ORIGIN, to pick another)`);
     return `https://${host}`;
   } catch (e) { return ""; }
 }

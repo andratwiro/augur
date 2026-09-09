@@ -66,6 +66,12 @@ other, and both work — nothing locks, nobody waits.
 `augur open` prints who else has it open. That is the whole coordination step; there is
 nothing to leave and nothing to clear.
 
+The draft address answers to a signed-in browser, and to a request that carries this
+terminal's token as `Authorization: Bearer …` — so a headless browser given that header
+(the token is in `~/.config/augur/tokens.json`, under the host) loads the draft as its
+member would see it, cookie-free, for a DOM check before landing. Main and the galleries
+still want a session; the header opens the draft and nothing else.
+
 ## Editing
 
 Edit the files in the folder `open` created. That folder holds that prototype and
@@ -102,9 +108,14 @@ edits do not overlap. When they do overlap, your version stays in place, theirs 
 `.augur/theirs/<path>`, and the overlapping hunks are printed — fold them, then land.
 Nothing is guessed, on the server or here.
 
-`augur close` removes the folder once landed. `augur close --discard` abandons a draft
-you do not want (its saves stay on the instance for a while; nothing else is touched).
-`augur status` lists the drafts open on this machine and who else is on those prototypes.
+`augur close <folder>` removes the folder once landed — from the parent, so the shell is
+not left standing in a directory that no longer exists (run inside the folder, it works and
+ends with `cd ..`). `augur close --discard` abandons a draft you do not want (its saves stay
+on the instance for a while; nothing else is touched). `augur status` lists the drafts open
+on this machine and who else is on those prototypes.
+
+Every verb takes `--origin <url>`, the way `connect` does; without it a verb uses the
+origin this machine paired with last (or `AUGUR_ORIGIN`).
 
 ## When something is refused
 
