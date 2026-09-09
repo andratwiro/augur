@@ -11,14 +11,17 @@ import { authoredUnits } from "../src/publish-units.mjs";
 import { isWelcomeUnit } from "../src/galleries.mjs";
 
 const die = (m) => { console.error(`\x1b[31m[ls]\x1b[0m ${m}`); process.exit(1); };
-const want = process.argv.slice(2).find((a) => !a.startsWith("--")) || null;
+// The first positional — never a flag, and never the VALUE of one (`--origin <url>`,
+// `--session <label>`): the URL after `--origin` is not an opportunity.
+const argv = process.argv.slice(2);
+const want = argv.find((a, i) => !a.startsWith("--") && !(i > 0 && argv[i - 1].startsWith("--"))) || null;
 
 let origin, token;
 try { ({ origin, token } = await targetPaired({ needToken: true })); } catch (e) { die(e.message); }
 
 let space;
 try { space = Object.keys((await buildStamp(origin)).spaces || {})[0]; }
-catch (e) { die(`could not reach the instance (${e.message}).`); }
+catch (e) { die(`could not reach ${origin} (${e.message}).`); }
 if (!space) die("could not tell which space this instance serves.");
 
 const req = apiClient(origin, token);

@@ -14,7 +14,7 @@
 //   augur save      push every changed file in this draft folder
 //   augur land      replace the prototype's main with this draft
 //   augur sync      fold what landed on main since this draft opened into the draft
-//   augur close     remove this draft folder (see docs/drafts-that-land.md)
+//   augur close     remove a draft folder — the one named, or this one (see docs/drafts-that-land.md)
 //   augur read      a read-only copy of a prototype, for context
 //   augur watch     save this draft folder on every burst of changes
 //   augur hook      the agent tool's hooks: pre|post (stdin), install|remove|status
@@ -26,14 +26,22 @@
 //
 // Each subcommand is its own script with its own --help-worthy header; this
 // router only dispatches, so `node scripts/<name>.mjs` keeps working too.
+//
+// Two things the router does for every verb: it accepts `--origin <url>` (the flag the
+// front door teaches on `connect`) and hands it to the verb as AUGUR_ORIGIN, and it refuses
+// with one sentence when the shell's own folder is gone — see lib/cli-args.mjs for both.
 
 import { spawn } from "node:child_process";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { takeOrigin, cwdGone } from "./lib/cli-args.mjs";
 
 const SCRIPTS = path.dirname(fileURLToPath(import.meta.url));
+const gone = cwdGone();
+if (gone) { console.error(`\x1b[31m[augur]\x1b[0m ${gone}`); process.exit(1); }
 const sub = process.argv[2];
-const rest = process.argv.slice(3);
+const { rest, origin, error: originError } = takeOrigin(process.argv.slice(3));
+if (originError) { console.error(`\x1b[31m[augur]\x1b[0m ${originError}`); process.exit(1); }
 const map = {
   init: "init.mjs",
   dev: "dev.mjs",
@@ -94,7 +102,7 @@ if (sub === "mark") {
   process.exit(1);
 }
 if (!map[sub]) {
-  console.error("usage: augur <init|dev|offline|build|deploy|publish|fork|status|canon|refine|ls|open|save|land|sync|close|read|watch|hook|clone|pull|export|restore|migrate|bundle-rekey|identity-rekey|adopt|freeze|thaw|connect|login> [options]");
+  console.error("usage: augur <init|dev|offline|build|deploy|publish|fork|status|canon|refine|ls|open|save|land|sync|close|read|watch|hook|clone|pull|export|restore|migrate|bundle-rekey|identity-rekey|adopt|freeze|thaw|connect|login> [options] [--origin https://your.site]");
   process.exit(sub ? 1 : 0);
 }
 const child = spawn(process.execPath, [path.join(SCRIPTS, map[sub]), ...rest], {
@@ -102,6 +110,8 @@ const child = spawn(process.execPath, [path.join(SCRIPTS, map[sub]), ...rest], {
   // `clone` and `pull` share a script; the verb is how it knows which one was asked for.
   env: {
     ...process.env,
+    // An explicit `--origin` beats the environment, the pairing file and the space folder.
+    ...(origin ? { AUGUR_ORIGIN: origin } : {}),
     AUGUR_CLONE_MODE: sub === "pull" ? "pull" : "clone",
     // Which verb was typed, for the two scripts that serve two of them.
     AUGUR_CMD: sub,

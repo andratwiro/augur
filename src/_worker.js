@@ -342,7 +342,9 @@ function versionFor(tctx, pathname) {
 // prototype embeds. Everything else falls through to the password gate.
 function isPublicPath(tctx, pathname) {
   // A draft address (`<unit>@<id>/…`) is a member's working copy: never public, whatever
-  // the unit it hangs off is. See docs/drafts-that-land.md §6.3. assetFetch decodes the
+  // the unit it hangs off is. See docs/drafts-that-land.md §6.3. (The paired terminal reads
+  // it with its own token — `bearerMemberForDraft`, in the request handler — which is not
+  // "public" either: the token names a member.) assetFetch decodes the
   // pathname before running this same split (it has to, to resolve the draft's table),
   // so the gate has to decode it too — otherwise a percent-encoded `@` (`%40`) sails
   // past this check with no literal `@` in sight, then gets decoded and served as a
@@ -7477,6 +7479,39 @@ function browserFetch(request) {
   return /^Mozilla\//.test(request.headers.get("User-Agent") || "");
 }
 
+/** A GET/HEAD of a draft address (`/<unit>/@<id>/…`) that carries a bearer token. */
+function isDraftAddressGet(request, url) {
+  if (!request || (request.method !== "GET" && request.method !== "HEAD")) return false;
+  if (!/^Bearer\s+\S/.test(request.headers.get("Authorization") || "")) return false;
+  let decoded;
+  try { decoded = decodeURIComponent(url.pathname); } catch (e) { return false; }
+  return !!splitDraftPath(decoded);
+}
+/**
+ * The member a publish token names, for a draft-address read — or null. The same resolve
+ * `unitCaller` applies to a write (`publishAuthDetailed`: known, unexpired, in scope, still
+ * on the roster, not a viewer; then the commit capability), so a token that may not save a
+ * draft may not look at one either. A label with no `@` is a machine token an admin typed:
+ * there is no person to see the page as, so it opens nothing here.
+ */
+async function bearerMemberForDraft(tctx, request, env) {
+  const spaceId = defaultSpaceIdFromCtx(tctx);
+  if (!spaceId) return null;
+  const a = await publishAuthDetailed(tctx, request, env, spaceId, false);
+  if (!a.entry || capabilityRefusal(a.entry, spaceId, "commit")) return null;
+  const label = String(a.entry.label || "").trim();
+  if (!label.includes("@")) return null;
+  return userByEmail(label, tctx.USERS) || userByAliasEmail(label, tctx.USERS) || null;
+}
+/** A page served on the strength of a bearer header must never be cached for anyone else. */
+function bearerNoStore(res, viaBearer) {
+  if (!viaBearer || !res) return res;
+  const headers = new Headers(res.headers);
+  headers.set("Cache-Control", "no-store");
+  headers.set("Vary", [headers.get("Vary"), "Authorization"].filter(Boolean).join(", "));
+  return new Response(res.body, { status: res.status, statusText: res.statusText, headers });
+}
+
 /**
  * The one paragraph a non-browser fetch of a prototype is given, first in the body.
  *
@@ -9401,9 +9436,12 @@ function doorText(f) {
       + `  ${f.drafts.open}     # one prototype into a folder of its own, live at once at its draft address\n`
       + `  …edit; every save is live there…\n`
       + `  ${f.drafts.land}                               # the real URL moves; the last line printed is the live URL\n\n`
-      + `No source tree is needed and the workspace is not cloned. Two sessions on one\n`
+      + `No source tree is needed and the workspace is not cloned. The draft address answers to a\n`
+      + `signed-in browser, and to a request that carries the paired terminal's token as\n`
+      + `\`Authorization: Bearer …\` — a headless browser given that header loads the draft as its\n`
+      + `member would see it. Two sessions on one\n`
       + `prototype are both told and both work; a refused landing is \`augur sync\`, then\n`
-      + `\`augur land\` again. \`augur ship\` is retired here. The first \`open\` in a folder installs a\n`
+      + `\`augur land\` again. \`augur ship\` is retired here. Every verb takes \`--origin <url>\`. The first \`open\` in a folder installs a\n`
       + `save hook in that folder's editor settings (.claude/settings.local.json; it says so),\n`
       + `never account-wide; \`augur hook remove\` there takes it out. \`augur ls\` lists the\n`
       + `opportunities and their prototypes. The contract: agents/drafts.md in the engine\n`
@@ -12424,7 +12462,22 @@ async function handleRequest(request, env, ctx, url, trace) {
     const expected = env.SITE_PASSWORD;
     const usersActive = tctx.USERS.length > 0;
     // Resolve identity once (identity mode); null in legacy/open mode.
-    const me = usersActive ? await identify(request, env, tctx.USERS, { sessionKeys: tctx.SESSION_KEYS, tctx }) : null;
+    let me = usersActive ? await identify(request, env, tctx.USERS, { sessionKeys: tctx.SESSION_KEYS, tctx }) : null;
+    // A DRAFT ADDRESS ALSO ANSWERS TO THE PAIRED TERMINAL. The draft is that terminal's own
+    // work — `open`, `save` and `land` already act as the member the token names — and the
+    // one thing the terminal could not do was look at the page it was told is "live at
+    // once": a headless browser has no session cookie, so the gate met it with the sign-in
+    // card and the agent went and built a local server to see its own draft. A GET of a
+    // draft address carrying `Authorization: Bearer <publish token>` is read as that
+    // token's member, through the same resolve the unit API uses (scope, expiry, roster,
+    // capability). Nothing else widens: main, galleries and every other gated path still
+    // want a session, a machine token with no person behind it opens nothing, and the
+    // answer is marked no-store so an edge never hands one bearer's page to another.
+    let viaBearer = false;
+    if (!me && usersActive && isDraftAddressGet(request, url)) {
+      me = await bearerMemberForDraft(tctx, request, env);
+      viaBearer = !!me;
+    }
     // Is this request past the gate? identity mode → a known user; legacy → the
     // shared-password cookie; neither configured → open (raw/local build, no gate).
     let authed;
@@ -12881,7 +12934,7 @@ async function handleRequest(request, env, ctx, url, trace) {
     if (authed) {
       // A design-system draft to look through (`?ds=`), remembered in a cookie.
       const ds = dsOverlay(request, url);
-      const stamp = (res) => (ds.setCookie ? withSetCookie(res, ds.setCookie) : res);
+      const stamp = (res) => bearerNoStore(ds.setCookie ? withSetCookie(res, ds.setCookie) : res, viaBearer);
       // Where drafts are served, the gallery and its indexes are derived from the live
       // store rather than read from it — a landing is on them at once.
       const derived = await derivedPage(tctx, env, url);
