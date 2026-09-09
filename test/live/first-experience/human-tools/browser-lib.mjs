@@ -41,8 +41,8 @@ export function renderPageText(raw, contentType) {
  * What the welcome page's approve form says on a successful `--type`, by path. Both
  * `/__connect` and `/__welcome` post to the same `/__publish/_pair/approve` route (see
  * `canType`), but they are two different pages with two different next steps: `/__connect`
- * is a standalone page with nothing else to do (`connectPage` in src/_worker.js — "you can
- * close this tab"), while `/__welcome`'s own approve form (`renderWelcomePage` in
+ * is a standalone page with nothing else to do (`connectPage` in src/_worker.js, which
+ * ends on the one word "Connected"), while `/__welcome`'s own approve form (`renderWelcomePage` in
  * src/welcome-page.mjs) sits on a multi-step flow whose own Next button is what to press
  * next. Getting this backwards would tell an invitee stuck on `/__welcome` to close the
  * tab they still need.
