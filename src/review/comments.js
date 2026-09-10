@@ -351,7 +351,11 @@
     /* collapsed handle */
     '.tab{position:fixed;top:16px;right:16px;pointer-events:auto;display:flex;align-items:center;gap:7px;background:#2563eb;color:#fff;border:0;border-radius:999px;padding:9px 14px;font:600 13px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;cursor:pointer;box-shadow:0 4px 16px rgba(0,0,0,0.22);}' +
     /* cards */
-    '.card{position:fixed;pointer-events:auto;width:300px;max-width:calc(100vw - 24px);background:#fff;border:1px solid #e5e7eb;border-radius:14px;box-shadow:0 10px 40px rgba(0,0,0,0.22);padding:14px;font:14px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;color:#1a1a1a;}' +
+    /* A thread is as long as people made it; the card is a fixed box. Cap it at the
+       viewport and let the MESSAGES scroll, so the header (resolve, close) and the reply
+       bar stay put. Uncapped, a long thread grew past the screen and positionCard's clamp
+       went negative — the opening messages sat above the window with no way to reach them. */
+    '.card{position:fixed;pointer-events:auto;display:flex;flex-direction:column;width:300px;max-width:calc(100vw - 24px);max-height:min(560px,calc(100vh - 24px));background:#fff;border:1px solid #e5e7eb;border-radius:14px;box-shadow:0 10px 40px rgba(0,0,0,0.22);padding:14px;font:14px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;color:#1a1a1a;}' +
     '.card h4{margin:0 0 8px;font-size:13px;color:#6b7280;font-weight:600;}' +
     '.card .chead{display:flex;align-items:center;gap:8px;margin:0 0 8px;}' +
     '.card .chead h4{margin:0;flex:1;}' +
@@ -419,6 +423,14 @@
     '.msg .mhead .mdel:hover{background:#f0f1f3;color:#1a1a1a;}' +
     '.msg .mhead .mdel svg{width:16px;height:16px;}' +
     '.msg .body .mention{color:#2563eb;}' +
+    /* the only part of the card that scrolls; min-height:0 lets a flex child shrink */
+    '.msgs{flex:1 1 auto;min-height:0;overflow-y:auto;overscroll-behavior:contain;}' +
+    /* hairlines only when there IS more above/below — a two-line thread wears no chrome */
+    '.card.scrolls .thead{border-bottom:1px solid #f0f0f0;padding-bottom:8px;margin-bottom:8px;}' +
+    '.card.scrolls .replybar{border-top:1px solid #f0f0f0;padding-top:8px;margin-top:8px;}' +
+    '.msgs::-webkit-scrollbar{width:8px;}' +
+    '.msgs::-webkit-scrollbar-thumb{background:#e0e2e6;border-radius:999px;}' +
+    '.msgs::-webkit-scrollbar-thumb:hover{background:#c9ccd2;}' +
     /* override the legacy separators — stack messages cleanly, no rules */
     '.msgs .msg{border-top:0;padding:7px 0;}' +
     '.msgs .msg:first-of-type{padding-top:0;}' +
@@ -1247,7 +1259,7 @@
     mutate({ op: "delmsg", id: id, index: index }).then(function () { openThread(id); });
   }
 
-  function openThread(id) {
+  function openThread(id, toEnd) {
     var t = find(id); if (!t) return;
     dropPreview();
     state.mode = "browse"; state.openId = id;
@@ -1289,11 +1301,15 @@
       d.querySelector(".mdel").addEventListener("click", function () { delMsg(id, i); });
       msgs.appendChild(d);
     });
+    // A thread taller than its box says so — hairlines under the header and over the
+    // reply bar — and a fresh reply is scrolled to, since it landed below the fold.
+    if (msgs.scrollHeight - msgs.clientHeight > 1) card.classList.add("scrolls");
+    if (toEnd) msgs.scrollTop = msgs.scrollHeight;
     positionCard(xy);
     wireField(card.querySelector(".replybar .cfield"), function (text) {
       mutate({ op: "reply", id: id, message: { author: getName() || "Anonymous",
         by: ME && ME.id, verified: !!ME, body: text, at: nowIso() } })
-        .then(function () { openThread(id); });
+        .then(function () { openThread(id, true); });
     });
     card.querySelector(".res").addEventListener("click", function () {
       mutate({ op: "resolve", id: id, resolved: !t.resolved }).then(closeCard);
