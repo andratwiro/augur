@@ -137,7 +137,69 @@
   }
   function onThisView(t) { return t.view == null || normView(t.view) === curView(); }
   function safeQuery(sel) { try { return sel ? document.querySelector(sel) : null; } catch (e) { return null; } }
-  function anchorOf(t) { return safeQuery(t.sel); }
+
+  // ── RE-ANCHORING ────────────────────────────────────────────────────────────────────
+  // A comment is pinned by a CSS path, and editing the page is what a comment is FOR. Most
+  // edits move the thing that was pointed at without removing it: inserting one sibling
+  // shifts every :nth-of-type below it, and the path stops matching an element that is
+  // still on the screen. Treating "the path broke" as "the UI is gone" therefore deletes
+  // comments about UI that is still there — and it deletes them for everybody, because the
+  // threads are shared. So look for the anchor again, in three widening steps, and keep
+  // the pin as near as possible to where it was left. Only when NOTHING on the page can
+  // hold it is the comment an orphan.
+  var healed = {};      // ids already re-anchored this page, so healing writes once, not per render
+  function recoverAnchor(t) {
+    var el = safeQuery(t.sel);
+    if (el) return { el: el, sel: t.sel, healed: false };
+    // 1. The nearest surviving ancestor of the stored path. Dropping the deepest segment
+    //    first walks back exactly the way an edit reaches: the leaf moves before its parent
+    //    does, and the parent before ITS parent.
+    var parts = String(t.sel || "").split(">");
+    for (var n = parts.length - 1; n >= 1; n--) {
+      var anc = safeQuery(parts.slice(0, n).join(">"));
+      if (anc) return { el: anc, sel: parts.slice(0, n).join(">"), healed: true };
+    }
+    // 2. Whatever sits where the comment was left. The page point is the one thing an edit
+    //    above the anchor does not invalidate, so it recovers the "similar-ish position"
+    //    even when the path is unrecognisable.
+    if (t.px != null && t.py != null) {
+      var x = t.px - window.scrollX, y = t.py - window.scrollY;
+      if (x >= 0 && y >= 0 && x <= window.innerWidth && y <= window.innerHeight) {
+        var prev = host.style.display;
+        host.style.display = "none";
+        var hit = document.elementFromPoint(x, y);
+        host.style.display = prev;
+        if (hit && hit.nodeType === 1 && !host.contains(hit)) return { el: hit, sel: cssPath(hit), healed: true };
+      }
+    }
+    return null;
+  }
+  // Keep the pin where the person left it: the stored page point, expressed against
+  // whatever element we just recovered. If that point is no longer inside it, fall back to
+  // the fractions the comment was made with.
+  function healFractions(el, t) {
+    var r = el.getBoundingClientRect();
+    var fx = r.width ? (t.px - window.scrollX - r.left) / r.width : 0.5;
+    var fy = r.height ? (t.py - window.scrollY - r.top) / r.height : 0.5;
+    if (!(fx >= 0 && fx <= 1 && fy >= 0 && fy <= 1)) { fx = t.fx; fy = t.fy; }
+    return { fx: fx, fy: fy };
+  }
+  function anchorOf(t) {
+    var a = recoverAnchor(t);
+    if (!a) return null;
+    if (a.healed && !healed[t.id]) {
+      // Write the recovered anchor back, once, so the comment survives the NEXT edit from a
+      // position that still means something rather than re-deriving from a dead path.
+      healed[t.id] = 1;
+      var f = healFractions(a.el, t);
+      t.sel = a.sel; t.fx = f.fx; t.fy = f.fy;
+      mutate({ op: "move", id: t.id, sel: a.sel, fx: f.fx, fy: f.fy, px: t.px, py: t.py, cwx: t.cwx, cwy: t.cwy, view: t.view });
+    }
+    return a.el;
+  }
+  // Through anchorOf, so a thread the sweep decides to KEEP also heals: review mode starts
+  // off, nothing else calls anchorOf on a plain page view, and a recovery that is never
+  // written back is recomputed from a dead path on every load.
   function resolvesHere(t) { return !!anchorOf(t); }
 
   // Screen contract: SPA prototypes change "screens" without changing the URL, so
@@ -160,11 +222,19 @@
   // is fully hidden — not a pin, not in the list.
   function isListed(t) { return onThisScreen(t) && (resolvesHere(t) || !onThisView(t)); }
 
+  function cssEsc(v) {
+    try { return window.CSS && CSS.escape ? CSS.escape(v) : (/^[A-Za-z][\w-]*$/.test(v) ? v : ""); }
+    catch (e) { return ""; }
+  }
   function cssPath(el) {
     if (!el || el.nodeType !== 1) return "body";
     if (el === document.body || el === document.documentElement) return "body";
     var parts = [];
     while (el && el.nodeType === 1 && el !== document.body && parts.length < 12) {
+      // A unique id is already an address: stop there rather than counting siblings all the
+      // way to the body, which is what makes a path break on an unrelated insertion.
+      var id = el.id && cssEsc(el.id);
+      if (id && document.querySelectorAll("#" + id).length === 1) { parts.unshift("#" + id); return parts.join(">"); }
       var sel = el.nodeName.toLowerCase(), p = el.parentNode;
       if (p && p.children) {
         var same = [];
@@ -1704,6 +1774,8 @@
           orphanTimers[t.id] = setTimeout(function () {
             orphanTimers[t.id] = null;
             var cur = find(t.id);
+            // isOrphan is now "no element on this page can hold it", not "the path
+            // changed" — every recoverable anchor has already healed by here.
             if (cur && !deleted[cur.id] && isOrphan(cur)) {
               deleted[cur.id] = 1;
               mutate({ op: "delete", id: cur.id });
