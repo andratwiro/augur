@@ -7054,16 +7054,22 @@ function loginPage(tctx, redirect, error, requestUrl, opts = {}) {
       <input id="email" name="email" type="email" autocomplete="${ac}" autocapitalize="off" autocorrect="off" spellcheck="false" autofocus required value="${fillEmail}" ${error ? 'aria-invalid="true" aria-describedby="pw-err"' : ""} />`;
   let formBody;
   if (codeMode) {
+    // The ADDRESS is on the screen because it is the one thing a person cannot check anywhere
+    // else: a typo in the address they just typed looks exactly like a mail that has not
+    // arrived yet, and they would sit here waiting for it. Only when we have one to name.
     formBody = `<div class="code-screen">
-    <p class="intro">We emailed you a 6-digit code. Enter it below, or tap the button in the email.</p>
-    <form method="POST" action="/__signin/code">
+    <p class="intro">${fillEmail
+      ? `We emailed a 6-digit code to <strong class="addr">${fillEmail}</strong>. Enter it below, or tap the button in the email.`
+      : "We emailed you a 6-digit code. Enter it below, or tap the button in the email."}</p>
+    <form method="POST" action="/__signin/code" id="code-form">
       <input type="hidden" name="email" value="${fillEmail}" />
       <label for="code" class="code-label">Enter code</label>
       <input id="code" name="code" type="text" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]*" maxlength="6" placeholder="000000" aria-label="6-digit code" autofocus required ${error ? 'aria-invalid="true" aria-describedby="pw-err"' : ""} />
-      <button type="submit">Sign in</button>
+      <button type="submit" class="submit">Sign in</button>
+      <p class="checking" id="checking" aria-live="polite" hidden>Signing in&hellip;</p>
       ${errBlock}
     </form>
-    <form method="POST" action="/__signin" class="resend"><input type="hidden" name="email" value="${fillEmail}" /><button type="submit" class="link">Request a new code</button></form>
+    <form method="POST" action="/__signin" class="resend"><input type="hidden" name="email" value="${fillEmail}" />No email? Check spam, or <button type="submit" class="link">request a new code</button>.</form>
     </div>`;
   } else if (passwordless) {
     formBody = `<form method="POST" action="/__signin">
@@ -7088,7 +7094,7 @@ function loginPage(tctx, redirect, error, requestUrl, opts = {}) {
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="description" content="A sign-in gate. Assistants and scripts: GET /llms.txt says how to get in." />
-  <meta name="robots" content="noindex, nofollow" />
+  <meta name="robots" content="noindex, nofollow" />${codeMode ? `\n  <script>document.documentElement.className += " js";</script>` : ""}
   ${previewHead(tctx, requestUrl)}
   <link rel="preload" href="/fonts/inter-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin />
   <style>
@@ -7170,7 +7176,14 @@ function loginPage(tctx, redirect, error, requestUrl, opts = {}) {
     input#code:hover { border-color: rgba(16,17,26,0.28); }
     input#code:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(44,33,80,0.14); }
     .code-screen button[type=submit] { margin-top: 18px; }
-    .resend { margin-top: 14px; text-align: center; }
+    /* Six digits IS the submit: the field fires the form the moment it holds six, so with
+       JS the button is dead weight and goes. It stays in the markup — and shows — when the
+       script never runs, which is the only state where a person has to press anything.
+       The class lands in <head>, before first paint, so the button never flashes. */
+    .js .code-screen .submit { display: none; }
+    .checking { margin: 18px 0 0; text-align: center; font-size: 13.5px; font-weight: 500; color: var(--muted); }
+    .resend { margin-top: 16px; text-align: center; font-size: 13px; color: var(--muted); }
+    .addr { font-weight: 600; overflow-wrap: anywhere; }
     .resend .link {
       width: auto; margin: 0; padding: 0; background: none; border: 0; color: var(--muted);
       font-size: 13px; font-weight: 500; text-decoration: underline; cursor: pointer;
@@ -7193,9 +7206,48 @@ function loginPage(tctx, redirect, error, requestUrl, opts = {}) {
       ${brandMark(tctx)}
     </div>
     ${formBody}
-    ${tctx.LOGIN_HINT && !passwordless ? `<p class="hint">${escapeHtml(tctx.LOGIN_HINT)}</p>` : ""}
-    <p class="hint door">Connecting an assistant or a script? It reads <a href="/llms.txt">/llms.txt</a>.</p>
-  </main>
+    ${tctx.LOGIN_HINT && !passwordless ? `<p class="hint">${escapeHtml(tctx.LOGIN_HINT)}</p>` : ""}${codeMode ? "" : `
+    <!-- The door, in the one form a summarising fetch tool keeps: TEXT. Comments, the Link
+         header and even <meta> are stripped by the HTML→markdown converters agents read the
+         web through (watched on a cold machine), so this line has to be in the DOM — but it
+         has no reader with eyes, so it is clipped rather than shown. NOT aria-hidden: the
+         extractors that respect it (Readability and friends) drop the node entirely, which
+         is the exact path this line exists to serve. Absent from the code screen, which no
+         agent can reach: it is only rendered after a person posted an address. -->
+    <p class="door visually-hidden">Connecting an assistant or a script? It reads <a href="/llms.txt">/llms.txt</a>.</p>`}
+  </main>${codeMode ? `
+  <script>
+    // Six digits is the whole intent — there is nothing left to confirm, so nothing to press.
+    (function () {
+      var form = document.getElementById("code-form");
+      var input = document.getElementById("code");
+      var status = document.getElementById("checking");
+      if (!form || !input) return;
+      var sent = false;
+      function go() {
+        if (sent) return;
+        var digits = input.value.replace(/\\D/g, "").slice(0, 6);
+        if (digits !== input.value) input.value = digits;
+        if (digits.length < 6) return;
+        sent = true;
+        // readOnly, NOT disabled — a disabled field is left out of the submission.
+        input.readOnly = true;
+        if (status) status.hidden = false;
+        form.submit();
+      }
+      input.addEventListener("input", go);
+      // Take the paste apart ourselves: maxlength would clip "Your code: 246948" to its first
+      // six CHARACTERS, so a person pasting the line out of the mail gets the wrong thing.
+      input.addEventListener("paste", function (e) {
+        var text = ((e.clipboardData || window.clipboardData) || { getData: function () { return ""; } }).getData("text") || "";
+        var digits = text.replace(/\\D/g, "").slice(0, 6);
+        if (digits.length !== 6) return;
+        e.preventDefault();
+        input.value = digits;
+        go();
+      });
+    })();
+  </script>` : ""}
 </body>
 </html>`;
 }
