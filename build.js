@@ -5272,24 +5272,38 @@ const ADMIN_JS = `(function(){
     return new Date(t).toLocaleDateString();
   }
 
-  // The invite/reset link is the whole point of both flows, so it gets its own strip
-  // above the table rather than a cell that scrolls out of view. The link is shown
-  // whatever happened to the email — the note underneath is what changes.
+  // What an invite or a reset leaves behind gets its own strip above the table rather
+  // than a cell that scrolls out of view.
   //
-  // The mail argument is the verdict the API returns (see src/mail.mjs). Three shapes:
-  // an empty note means no provider is configured, and the strip reads exactly as it
-  // did before mail existed; a successful send says who it went to; anything else says
-  // what went wrong AND that the link in front of them still works. There is no state
-  // in which the admin is left without a way to get this person in.
+  // The mail argument is the verdict the API returns (see src/mail.mjs). When the mail
+  // WENT, that is the whole event: one line saying so, and no link — the person has it,
+  // and a link on screen beside "emailed" reads as a second thing to do. When it did not
+  // go — no provider configured (the strip reads exactly as it did before mail existed),
+  // or a send that failed and says why — the single-use link is shown, focused and
+  // selected, so there is no state in which the admin is left without a way to get this
+  // person in.
   function showLink(who, url, mail){
-    linkbox.querySelector('[data-link-who]').textContent = who;
     var m = mail || {};
+    linkbox.querySelector('[data-link-who]').textContent = who;
+    var hd = linkbox.querySelector('[data-link-hd]');
     var note = linkbox.querySelector('[data-link-note]');
-    note.textContent = m.note || 'Send it to them yourself.';
-    note.className = 'aulink__note' + (m.note && !m.ok ? ' is-warn' : '');
     var input = linkbox.querySelector('[data-link-url]');
-    input.value = url; linkbox.hidden = false;
+    var copy = linkbox.querySelector('[data-link-copy]');
     linkbox.querySelector('[data-link-msg]').textContent = '';
+    input.value = url;
+    if(m.ok){
+      hd.textContent = 'Emailed to';
+      note.textContent = ''; note.className = 'aulink__note'; note.hidden = true;
+      input.hidden = true; if(copy) copy.hidden = true;
+      linkbox.hidden = false;
+      return;
+    }
+    hd.textContent = 'Single-use link for';
+    note.textContent = m.note || 'Send it to them yourself.';
+    note.className = 'aulink__note' + (m.note ? ' is-warn' : '');
+    note.hidden = false;
+    input.hidden = false; if(copy) copy.hidden = false;
+    linkbox.hidden = false;
     input.focus(); input.select();
   }
 
@@ -5490,7 +5504,7 @@ const ADMIN_JS = `(function(){
       var who = current;
       if(!who) return;
       closeMenu();
-      if(!window.confirm('Reset ' + who + '?\\n\\nTheir password stops working immediately. Send them the link that appears.')) return;
+      if(!window.confirm('Reset ' + who + '?\\n\\nTheir password stops working immediately. A new link goes to them by email — or appears here for you to send.')) return;
       post({ op:'reset', email: who }).then(function(d){
         if(d && d.ok && d.url){ showLink(who, d.url, d.mail); load(); }
         else window.alert('Could not reset: ' + ((d && d.error) || 'error'));
@@ -5965,13 +5979,13 @@ function adminSections() {
     <input type="email" data-invite-email placeholder="name@example.org" aria-label="Email address" required />
     <input type="text" data-invite-name placeholder="Name (optional)" aria-label="Name" />
     <select data-invite-role aria-label="Role"><option value="editor">Editor</option><option value="viewer">Viewer</option><option value="admin">Admin</option></select>
-    <button type="submit" class="aubtn aubtn--primary">Create link</button>
+    <button type="submit" class="aubtn aubtn--primary">Invite</button>
     <button type="button" class="aubtn" data-invite-cancel>Cancel</button>
     <span class="auinvite__msg" data-invite-msg aria-live="polite"></span>
   </form>
 
   <div class="aulink" data-link hidden>
-    <p class="aulink__hd">Single-use link for <b data-link-who></b></p>
+    <p class="aulink__hd"><span data-link-hd>Single-use link for</span> <b data-link-who></b></p>
     <p class="aulink__note" data-link-note aria-live="polite">Send it to them yourself.</p>
     <input type="text" data-link-url readonly aria-label="Invite link" />
     <button type="button" class="aubtn" data-link-copy>Copy</button>

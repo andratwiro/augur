@@ -257,10 +257,10 @@ function liftBalanced(src, decl) {
 }
 
 function runShowLink(mail) {
-  const el = () => ({ textContent: "", className: "", value: "", focus() {}, select() {} });
+  const el = () => ({ textContent: "", className: "", value: "", hidden: false, focus() {}, select() {} });
   const nodes = {
-    "[data-link-who]": el(), "[data-link-note]": el(),
-    "[data-link-url]": el(), "[data-link-msg]": el(),
+    "[data-link-hd]": el(), "[data-link-who]": el(), "[data-link-note]": el(),
+    "[data-link-url]": el(), "[data-link-copy]": el(), "[data-link-msg]": el(),
   };
   const linkbox = { hidden: true, querySelector: (s) => nodes[s] };
   const fn = new Function("linkbox", `${liftBalanced(BUILD_SRC, "function showLink(")}\nreturn showLink;`)(linkbox);
@@ -270,17 +270,26 @@ function runShowLink(mail) {
 
 test("no provider: the strip reads exactly as it did before mail existed", () => {
   const seen = runShowLink({ ok: false, reason: "unconfigured", note: "" });
+  assert.equal(seen["[data-link-hd]"].textContent, "Single-use link for");
   assert.equal(seen["[data-link-note]"].textContent, "Send it to them yourself.");
   assert.equal(seen["[data-link-note]"].className, "aulink__note", "nothing is flagged");
   assert.equal(seen["[data-link-url]"].value, "https://x.test/__invite?t=abc");
+  assert.equal(seen["[data-link-url]"].hidden, false);
   assert.equal(seen.strip.hidden, false);
 });
 
-test("a send that worked says so, and still shows the link", () => {
+test("a send that worked is ONE line — emailed to whom — and no link to hand round", () => {
   const seen = runShowLink({ ok: true, reason: "sent", note: "Emailed to new@x.test." });
-  assert.equal(seen["[data-link-note]"].textContent, "Emailed to new@x.test.");
-  assert.equal(seen["[data-link-note]"].className, "aulink__note");
-  assert.equal(seen["[data-link-url]"].value, "https://x.test/__invite?t=abc");
+  assert.equal(seen["[data-link-hd]"].textContent, "Emailed to");
+  assert.equal(seen["[data-link-who]"].textContent, "new@x.test");
+  assert.equal(seen["[data-link-note]"].hidden, true, "the note would only repeat the heading");
+  assert.equal(seen["[data-link-url]"].hidden, true, "the person has the link; a second copy on screen is a second thing to do");
+  assert.equal(seen["[data-link-copy]"].hidden, true);
+  assert.equal(seen.strip.hidden, false);
+  // And the next, failed one shows the link again — the strip is reused, never stuck.
+  const again = runShowLink({ ok: false, reason: "rate-limited", note: "Not emailed. Send the link yourself." });
+  assert.equal(again["[data-link-url]"].hidden, false);
+  assert.equal(again["[data-link-hd]"].textContent, "Single-use link for");
 });
 
 test("a send that failed is flagged in the panel, with the link still in front of them", () => {
