@@ -260,3 +260,23 @@ test("the committed fixture passes the preflight", () => {
   const out = execFileSync(process.execPath, [SCRIPT, "-c", FIXTURE], { encoding: "utf8" });
   assert.match(out, /OK/);
 });
+
+// ── passwordless without pairing ─────────────────────────────────────────────────────
+
+test("⚠️ PASSWORDLESS WITH PAIRING OFF IS REFUSED — no publish token could ever be minted", () => {
+  // SESSION_KEYS retires `augur login`; a freshly provisioned workspace carries no config
+  // that could switch pairing on for itself; the admin panel has no token screen. The env
+  // default is the one-line fix, and this is where forgetting it is caught.
+  const out = rejects(GOOD + '\n[vars]\nSESSION_KEYS = "true"\n');
+  assert.match(out, /pairing-off-passwordless/);
+  assert.match(out, /DEVICE_PAIRING is not set/);
+  assert.match(out, /augur login/);
+  const off = rejects(GOOD + '\n[vars]\nSESSION_KEYS = "true"\nDEVICE_PAIRING = "false"\n');
+  assert.match(off, /DEVICE_PAIRING is "false"/);
+});
+
+test("passwordless WITH pairing passes, and a password deployment is not asked", () => {
+  accepts(GOOD + '\n[vars]\nSESSION_KEYS = "true"\nDEVICE_PAIRING = "true"\n');
+  accepts(GOOD + '\n[vars]\nDEVICE_PAIRING = "true"\n');
+  accepts(GOOD + '\n[vars]\nSESSION_KEYS = "false"\n');
+});

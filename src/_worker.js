@@ -622,6 +622,12 @@ function withEnvAuthDefaults(ctx, env) {
   const patch = {};
   if (!ctx.ACCOUNT_ORIGIN && env.ACCOUNT_ORIGIN) patch.ACCOUNT_ORIGIN = String(env.ACCOUNT_ORIGIN);
   if (!ctx.SESSION_KEYS && env.SESSION_KEYS === "true") patch.SESSION_KEYS = true;
+  // Pairing is the ONLY way a passwordless deployment mints a publish token — `augur login`
+  // has no password to take — so on a shared worker it is a platform property, not a
+  // per-workspace opt-in that every provisioning would have to remember. Same one-way ON
+  // as SESSION_KEYS: a workspace's own `devicePairing: true` still wins, and a deployment
+  // that sets no env var keeps the engine default, which is off.
+  if (!ctx.DEVICE_PAIRING && env.DEVICE_PAIRING === "true") patch.DEVICE_PAIRING = true;
   return Object.keys(patch).length ? withTenantFields(ctx, patch) : ctx;
 }
 
@@ -3703,6 +3709,10 @@ function bundlesFor(env, tenantId) {
 // a publish token and `start` is reachable without credentials, so an instance opts in
 // rather than discovers it. All three routes answer as if they do not exist when off —
 // not 403, which would tell a stranger the instance has a pairing flow to come back for.
+// On a shared multi-workspace worker the DEPLOYMENT is what opts in: `DEVICE_PAIRING =
+// "true"` in its env (`withEnvAuthDefaults`) turns it on for every workspace whose own
+// config is silent, because a passwordless platform has no other way to mint a token and
+// a freshly provisioned workspace has no config to say so in.
 //
 // THE THREE SECRETS, and which one does what, because conflating them is how these flows
 // break:
@@ -11735,6 +11745,10 @@ async function adminUsersApi(tctx, request, url, env, me, users = tctx.USERS, co
           // must describe that landing: promising "choose a password" above a link that
           // signs the person straight in reads as a phishing tell.
           passwordless: !!tctx.SESSION_KEYS,
+          // Whether opening the link walks them through connecting an agent. The welcome
+          // flow is an instance flag that is off on most deployments; a mail that promises
+          // it where it is off sends the person looking for a screen that never comes.
+          welcome: welcomeFlow(tctx),
           ...extra,
         },
       }, {

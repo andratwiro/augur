@@ -1132,7 +1132,7 @@ export class TenantStore {
       // on a workspace that already exists — re-provisioning keeps the first admin, and it
       // keeps the first content for the same reason.
       let furnished = null;
-      if (opts.seedPack === true && !this.isProvisioned()) furnished = await this.furnish(opts.workspaceId, at);
+      if (opts.seedPack === true && !this.isProvisioned()) furnished = await this.furnish(opts.workspaceId, at, opts.name);
       const body = () => applyProvisioning(this.sql, {
         ...opts, now: at,
         seed: furnished ? mergeSeed(opts.seed, furnished.overlay) : opts.seed,
@@ -1157,14 +1157,16 @@ export class TenantStore {
    * produced a bare workspace would be the failure Phase F was written to design out. The
    * store's own refusals (`seed-over-real-content`, `seed-pack-corrupt`) surface as they are.
    */
-  async furnish(workspaceId, at) {
+  async furnish(workspaceId, at, name = null) {
     // The id off the call: the `workspace` meta row is written by the commit this precedes.
+    // `name` is the one the person chose, if the provisioning carried one — it becomes the
+    // seeded manifest's `space.name` (see seed-pack.mjs, "TWO SUBSTITUTIONS").
     const store = bundleStore(this.env, workspaceId);
     const pack = await loadSeedPack(this.env);
     if (!pack) throw new SeedPackUnavailable("no pack in this deployment's asset bundle");
     if (!store) throw new SeedPackUnavailable("no bundle store binding");
     const written = await publishSeedPack({
-      store, pack, workspaceId, at, origin: workspaceOrigin(this.env, workspaceId),
+      store, pack, workspaceId, at, origin: workspaceOrigin(this.env, workspaceId), name,
     });
     return { ...written, overlay: seedOverlayFrom(pack, at) };
   }

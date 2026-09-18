@@ -159,6 +159,20 @@ if (suffix !== null && suffix.trim() !== "" && dos.includes("TENANTS") && assets
       `${assetsDir} is built but carries no __seed/pack.json. This deployment provisions workspaces (TENANT_HOST_SUFFIX + TENANTS), and every provisioning furnishes the new workspace from that pack — without it the workspace object refuses every create with seed-pack-unavailable. Build with GV_ENGINE_ONLY=1 (which emits it), or GV_SEED_PACK=1.`);
   }
 }
+// Passwordless sign-in retires `augur login` — there is no password for it to take — so
+// device pairing is the ONLY way a person on this deployment ever gets a publish token.
+// Pairing is a per-workspace config field that defaults OFF, a freshly provisioned
+// workspace has no config, and the admin panel has no token screen: what that leaves is a
+// workspace nobody can publish to and nothing anywhere that says why. Measured on a real
+// provisioning, 18 Sep 2026. `withEnvAuthDefaults` reads DEVICE_PAIRING as the platform's
+// answer, exactly as it reads SESSION_KEYS; this rule is what makes forgetting it a
+// deploy-time sentence instead of a customer's afternoon.
+const sessionKeys = valueOf("SESSION_KEYS", "vars");
+const devicePairing = valueOf("DEVICE_PAIRING", "vars");
+if (sessionKeys !== null && sessionKeys.trim() === "true" && (devicePairing === null || devicePairing.trim() !== "true")) {
+  fail("pairing-off-passwordless",
+    `SESSION_KEYS = "true" makes sign-in passwordless, which retires \`augur login\`, and DEVICE_PAIRING is ${devicePairing === null ? "not set" : `"${devicePairing.trim()}"`} — so no publish token can be minted on any workspace that does not switch pairing on in its own config, and a freshly provisioned workspace has no config. Add DEVICE_PAIRING = "true" under [vars].`);
+}
 if (suffix !== null && suffix.trim() === "") {
   fail("tenants-suffix-empty",
     'TENANT_HOST_SUFFIX is set to an empty string. That reads as "multi-workspace" to a person and as "single workspace" to the resolver. Delete the line, or give it the real suffix.');

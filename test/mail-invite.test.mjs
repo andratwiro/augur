@@ -148,11 +148,32 @@ test("an editor's invite names the inviter, says what the workspace is, and open
     const text = calls.at(-1).body.text;
     assert.match(text, /Ada Admin invited you to/);
     assert.match(text, /coding agent/);
-    assert.match(text, /Open it and it walks you through connecting your agent\./);
-    assert.match(text, /The first thing you make appears on your own page\./);
+    // This deployment has no first-run walkthrough switched on, so the mail must not
+    // promise one: it names what every workspace actually holds.
+    assert.match(text, /Inside, Start Here shows how to connect your agent\./);
+    assert.doesNotMatch(text, /walks you through/);
     assert.doesNotMatch(text, /connecting your agent;/, "two sentences, never one joined by a semicolon");
     await W.adminUsersApi(CTX, adminReq({ op: "invite", email: "v@x.test", role: "viewer" }), usersUrl, env, ME);
     assert.doesNotMatch(calls.at(-1).body.text, /coding agent/);
+  } finally { restore(); }
+});
+
+test("only a deployment whose welcome flow is ON promises the walkthrough", async () => {
+  const { calls, restore } = withStubbedFetch(() => ({ status: 200, body: { id: "m1" } }));
+  try {
+    const env = { ...MAIL_ENV, COMMENTS: memKV() };
+    // welcomeFlow(tctx) is pairing on AND the instance flag spelled true (and not first-run).
+    const welcoming = { ...CTX, DEVICE_PAIRING: true, WELCOME_FLOW: true };
+    await W.adminUsersApi(welcoming, adminReq({ op: "invite", email: THEM.email, role: "editor" }), usersUrl, env, ME);
+    const text = calls.at(-1).body.text;
+    assert.match(text, /Open it and it walks you through connecting your agent\./);
+    assert.match(text, /The first thing you make appears on your own page\./);
+    assert.doesNotMatch(text, /Inside, Start Here/);
+    // The flag alone, with pairing off, is not a walkthrough anybody can reach. (A fresh
+    // address: the per-address mail cap would otherwise swallow this second send.)
+    await W.adminUsersApi({ ...CTX, WELCOME_FLOW: true }, adminReq({ op: "invite", email: "other@x.test", role: "editor" }), usersUrl, env, ME);
+    assert.match(calls.at(-1).body.text, /other@x\.test|Inside, Start Here/);
+    assert.doesNotMatch(calls.at(-1).body.text, /walks you through/);
   } finally { restore(); }
 });
 

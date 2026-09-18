@@ -231,6 +231,9 @@ export const TEMPLATES = Object.freeze({
   // know what the thing even is before "open it" means anything, so their copy names
   // the workspace in the heading (no icon: mail stays image-free) and says what they'll
   // find there. A viewer's invite is unchanged: today's plain "you've been invited".
+  // `welcome` is whether the deployment's first-run walkthrough is switched on: only then
+  // may the mail promise one. Off, it says what IS there — the Start Here pages every
+  // workspace is seeded with, which include the connect-your-terminal page.
   "roster-invite": (v) => {
     const who = str(v.inviter);
     const gated = v.role === "editor" || v.role === "admin";
@@ -238,8 +241,10 @@ export const TEMPLATES = Object.freeze({
       ? [
           who ? `${who} invited you to ${v.workspace}.` : `You have been invited to ${v.workspace}.`,
           "It is where the team's prototypes live: pages your coding agent builds and shares as real links.",
-          "Open it and it walks you through connecting your agent.",
-          "The first thing you make appears on your own page.",
+          ...(v.welcome
+            ? ["Open it and it walks you through connecting your agent.",
+               "The first thing you make appears on your own page."]
+            : ["Inside, Start Here shows how to connect your agent."]),
           expiryLine(v.expiresHours),
         ]
       : [

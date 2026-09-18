@@ -42,11 +42,20 @@
 // instant, which is what keeps Start Here the first card (seed/README.md, "Start Here has
 // to be the first card").
 //
-// ONE SUBSTITUTION. connect-your-terminal ships with an empty `CONNECT_COMMAND` slot and
-// derives a command from the URL it is served on. Provisioning fills the slot with the
-// workspace's REAL command — `npx @augurworks/augur connect --origin https://<label><suffix>` — so the
-// page is exact rather than merely not wrong. The filled page hashes differently, so it is
-// the one blob that is per-workspace rather than shared; everything else dedups.
+// TWO SUBSTITUTIONS, and no third. connect-your-terminal ships with an empty
+// `CONNECT_COMMAND` slot and derives a command from the URL it is served on. Provisioning
+// fills the slot with the workspace's REAL command —
+// `npx @augurworks/augur connect --origin https://<label><suffix>` — so the page is exact
+// rather than merely not wrong. The filled page hashes differently, so it is the one blob
+// that is per-workspace rather than shared; everything else dedups.
+//
+// The second is the NAME. The pack's space.json says "Your workspace", and that string is
+// what the chrome titles the site, what an invitation mail puts in its subject line, and
+// what a signup's "ready" page announces — the one field every first impression reads.
+// A provisioning may carry the name the person chose, and it lands in the manifest's
+// `space.name` at the same instant as everything else, so nothing ever says "Your
+// workspace" to a team that told us theirs. It is metadata, not content: no blob changes,
+// no file is credited to anybody, and absent it the pack's own name stands.
 
 import { SEED_ACTOR, seedSource, isSeedSource } from "./provenance.mjs";
 
@@ -56,6 +65,15 @@ export const SEED_PACK_FORMAT = 1;
 
 /** The exact line the connect page ships with, and the one thing provisioning rewrites. */
 export const SEED_CONNECT_SLOT = 'var CONNECT_COMMAND = "";';
+
+/** A workspace name as the manifest may carry it: whitespace folded, trimmed, bounded.
+ *  Null for nothing usable, which is "keep the pack's own". The bound matches the widest
+ *  field any door collects it through. */
+export const SEED_NAME_MAX = 60;
+export function seedSpaceName(raw) {
+  const s = String(raw == null ? "" : raw).replace(/\s+/g, " ").trim().slice(0, SEED_NAME_MAX).trim();
+  return s || null;
+}
 
 /** The one-line command a person runs to pair a terminal with their workspace. */
 export function connectCommandFor(origin) {
@@ -190,7 +208,7 @@ class SeedPackError extends Error {
  * blob's bytes do not hash to the name the pack gave them, `seed-over-real-content` when a
  * live manifest with real provenance already sits here. Returns what was written.
  */
-export async function publishSeedPack({ store, pack, workspaceId, origin = null, at } = {}) {
+export async function publishSeedPack({ store, pack, workspaceId, origin = null, at, name = null } = {}) {
   if (!store || typeof store.put !== "function" || typeof store.get !== "function") throw new SeedPackError("no-store");
   const why = validateSeedPack(pack);
   if (why) throw new SeedPackError("seed-pack-invalid", why);
@@ -233,11 +251,12 @@ export async function publishSeedPack({ store, pack, workspaceId, origin = null,
   const routing = { ...(pack.routing || {}) };
   const units = Array.isArray(routing.publicPrefixes) ? routing.publicPrefixes : [];
   routing.unitSources = Object.fromEntries(units.map((u) => [u, seedSource({ sha: pack.engine || null, dirty: false })]));
+  const spaceName = seedSpaceName(name);
   const manifest = {
     id: space,
     format: 1,
     files,
-    space: { ...pack.space, id: space },
+    space: { ...pack.space, id: space, ...(spaceName ? { name: spaceName } : {}) },
     routing,
     ...(pack.builtWith ? { builtWith: pack.builtWith } : {}),
     source: seedSource({ sha: pack.engine || null, dirty: false, at: stamp }),
@@ -255,6 +274,7 @@ export async function publishSeedPack({ store, pack, workspaceId, origin = null,
     bytes: manifest.bytesReferenced,
     units: units.length,
     connectCommand: connectFilled ? command : null,
+    name: manifest.space.name || null,
   };
 }
 

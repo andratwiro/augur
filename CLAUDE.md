@@ -1108,7 +1108,10 @@ name, initials, colour and role. Passwords live in KV as PBKDF2 hashes under
     for a workspace whose memberships predate this existing at all; the account store's own
     CAS on `at` makes a repeat notify a no-op, so it is safe to re-run.
   - **Three flags, and all are unset/off on every deployment today — byte-for-byte prior
-    behavior.** `SESSION_KEYS` (this repo, `deploy.config.json` `sessionKeys`) is what lets
+    behavior.** (A fourth rides beside them since 18 Sep 2026: `DEVICE_PAIRING`, the same
+    one-way env default for `devicePairing`, because passwordless sign-in retires `augur
+    login` and pairing is then the only way a publish token is minted — the preflight
+    refuses `SESSION_KEYS = "true"` without it.) `SESSION_KEYS` (this repo, `deploy.config.json` `sessionKeys`) is what lets
     a session bind to a rotated per-person key instead of a password — required for
     `/__enter` to hold a session at all, since a hand-off proves an email, never a
     credential. `ACCOUNT_ORIGIN` (this repo, `deploy.config.json` `accountOrigin`) is the

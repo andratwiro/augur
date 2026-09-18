@@ -483,3 +483,37 @@ test("the seed source lands in the engine's dist as one sealed document, and now
   assert.ok(String(baseline["__seed/pack.json"]).startsWith("shape:"), "the pack carries a build stamp and must be compared by shape");
   assert.ok("bundle-keys.mjs" in baseline, "the key-shape module the worker imports is not emitted beside it");
 });
+
+// ── the second substitution: the name ────────────────────────────────────────────────
+
+test("THE NAME IS THIS WORKSPACE'S — carried by the provisioning, landed in the manifest, no blob touched", async () => {
+  const r2 = r2Stub();
+  const out = await publishSeedPack({
+    store: bundleStore({ BUNDLES: r2 }, WS), pack: PACK, workspaceId: WS, at: AT, name: "  Northlight   Design  ",
+  });
+  assert.equal(out.name, "Northlight Design", "folded and trimmed, and reported back");
+  const m = await manifestOf(r2);
+  assert.equal(m.space.name, "Northlight Design");
+  assert.equal(m.space.id, PACK.space.id, "the id is the pack's; only the name moved");
+  // Metadata, not content: every blob is still the pack's own (the connect page aside).
+  for (const [p, f] of Object.entries(m.files)) if (p !== SEED_CONNECT_FILE) assert.equal(f.h, PACK.files[p].h, p);
+  assert.ok(isSeedSource(m.source), "a named seed is still seed");
+  // Absent, blank, or unusable: the pack's own name stands.
+  for (const name of [undefined, null, "", "   "]) {
+    const r2b = r2Stub();
+    const plain = await publishSeedPack({ store: bundleStore({ BUNDLES: r2b }, WS), pack: PACK, workspaceId: WS, at: AT, name });
+    assert.equal((await manifestOf(r2b)).space.name, PACK.space.name, `name=${JSON.stringify(name)}`);
+    assert.equal(plain.name, PACK.space.name);
+  }
+  // Bounded: the widest field any door collects it through.
+  const r2c = r2Stub();
+  await publishSeedPack({ store: bundleStore({ BUNDLES: r2c }, WS), pack: PACK, workspaceId: WS, at: AT, name: "x".repeat(200) });
+  assert.equal((await manifestOf(r2c)).space.name.length, 60);
+  // And through `provision` itself, in the same instant as everything else.
+  const env = hostedEnv();
+  const { store } = workspace(env);
+  const prov = await store.provision({ workspaceId: WS, adminEmail: ADMIN, seedPack: true, now: AT, name: "Agora" });
+  assert.equal(prov.created, true);
+  assert.equal(prov.seedPack.name, "Agora");
+  assert.equal((await manifestOf(env.BUNDLES)).space.name, "Agora");
+});

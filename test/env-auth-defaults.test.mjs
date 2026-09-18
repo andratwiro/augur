@@ -60,3 +60,29 @@ test("no env vars: byte-for-byte the prior behaviour (a self-hosted instance is 
   assert.equal(ctx.ACCOUNT_ORIGIN, "", "no env, no config field: empty as before");
   assert.equal(ctx.SESSION_KEYS, false, "no env, no config field: off as before");
 });
+
+// ── device pairing ─────────────────────────────────────────────────────────────────
+//
+// On a passwordless deployment pairing is the ONLY way a publish token is ever minted —
+// `augur login` has nothing to take — so it is the third platform default, with the
+// same one-way ON: env turns it on for a workspace whose config is silent, a config that
+// sets it wins, no env is the engine default (off).
+
+test("env turns device pairing on for a workspace whose config does not set it", async () => {
+  cold();
+  const env = { ASSETS: assetsWith(BARE), DEVICE_PAIRING: "true" };
+  const ctx = await W.loadConfig(T, env);
+  assert.equal(ctx.DEVICE_PAIRING, true, "the Worker env turns pairing on");
+});
+
+test("device pairing: a config that sets it wins; no env at all is off, as before", async () => {
+  cold();
+  const on = await W.loadConfig(T, { ASSETS: assetsWith({ ...BARE, devicePairing: true }) });
+  assert.equal(on.DEVICE_PAIRING, true, "a workspace's own config still switches it on with no env");
+  cold();
+  const off = await W.loadConfig(T, { ASSETS: assetsWith(BARE) });
+  assert.equal(off.DEVICE_PAIRING, false, "no env, no config field: off as before");
+  cold();
+  const notTrue = await W.loadConfig(T, { ASSETS: assetsWith(BARE), DEVICE_PAIRING: "yes" });
+  assert.equal(notTrue.DEVICE_PAIRING, false, "only the exact string \"true\" moves it, like SESSION_KEYS");
+});
