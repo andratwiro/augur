@@ -71,7 +71,7 @@ describe("the review overlay re-anchors a comment before it will delete one", { 
     const app = await serve(
       `<main><div>inserted by the edit</div><div>one</div><div id="target">two</div></main>`,
       [{ id: "t1", sel: "main>div:nth-of-type(3)>span", view: "/", screen: "", px: 40, py: 40,
-         messages: [{ author: "Rob", body: "this bit" }] }],
+         messages: [{ author: "Ada", body: "this bit" }] }],
     );
     try {
       await view(app);
@@ -86,12 +86,12 @@ describe("the review overlay re-anchors a comment before it will delete one", { 
   });
 
   test("a thread whose page has nothing left to hold it is still removed", async () => {
-    // Rob's rule: keep it in a similar-ish position if you can, otherwise remove it. Here
+    // The rule: keep it in a similar-ish position if you can, otherwise remove it. Here
     // the path is unrecognisable AND the stored point is off-screen, so nothing can hold it.
     const app = await serve(
       `<main><p>only this</p></main>`,
       [{ id: "gone", sel: "section>article>span:nth-of-type(9)", view: "/", screen: "", px: 99999, py: 99999,
-         messages: [{ author: "Rob", body: "about something deleted" }] }],
+         messages: [{ author: "Ada", body: "about something deleted" }] }],
     );
     try {
       await view(app);
