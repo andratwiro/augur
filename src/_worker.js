@@ -3811,7 +3811,10 @@ async function mintPublishToken(kv, tctx, u, { label = null, env = null } = {}) 
  * code is for and where it came from (scripts/connect.mjs prints both, and warns "if you
  * did not just run this command, do not approve it"), so the page repeats none of it. It
  * shows the two facts a judgement needs — the person and the workspace — as chips, and
- * takes the code. Approving turns the person's dot green and the title becomes "Connected".
+ * takes the code. Approving turns the person's dot green, the title becomes "Connected" —
+ * in the same ink, the dot is the colour — and ONE link appears: the workspace. The terminal
+ * has already said what to run next; the browser's next step is the site, and it says so
+ * rather than leaving the person on a card with nowhere to go.
  *
  * Built on the sign-in gate's skeleton (loginPage): the same 360px card, the same centred
  * one-time-code field — ONE input, never segmented boxes, for the reasons written there —
@@ -3862,7 +3865,8 @@ function connectPage(tctx, me, origin) {
                 spellcheck="false" maxlength="9" placeholder="ABCD-EFGH" aria-label="Pairing code" />
          <button type="submit">Approve</button>
        </form>
-       <p id="pairm" role="status"></p>`;
+       <p id="pairm" role="status"></p>
+       <a class="home" id="pairnext" href="/" hidden>Open ${escapeHtml(wsName)}</a>`;
   return `<!doctype html>
 <html lang="en">
 <head>
@@ -3876,7 +3880,7 @@ function connectPage(tctx, me, origin) {
     /* The gate's palette and card, so this reads as the same front door. */
     :root { --bg:#fbfbfd; --card:#fff; --fg:#16171a; --muted:#5b626e; --faint:#9aa0ab;
             --line:rgba(16,17,26,0.09); --line-2:rgba(16,17,26,0.15); --accent:#2c2150;
-            --chip:#f2f3f6; --off:#c3c8d1; --on:#12b76a; --on-text:#027a48; --err:#b42318;
+            --chip:#f2f3f6; --off:#c3c8d1; --on:#12b76a; --err:#b42318;
             color-scheme:light; }
     * { box-sizing:border-box }
     body { margin:0; min-height:100vh; min-height:100dvh; display:grid; place-items:center; padding:24px;
@@ -3887,7 +3891,6 @@ function connectPage(tctx, me, origin) {
            padding:26px 28px 28px; max-width:360px; width:100%; text-align:center;
            box-shadow:0 1px 2px rgba(16,24,40,0.05), 0 10px 28px -22px rgba(16,24,40,0.22); }
     h1 { font-size:18px; font-weight:600; letter-spacing:-0.01em; margin:0 0 14px }
-    h1.on { color:var(--on-text) }
     p { color:var(--muted); font-size:14px; margin:0 0 12px }
     /* Who, and where: the two facts a person checks before typing a code. Filled, not
        outlined, so they read as facts and not as buttons. */
@@ -3934,7 +3937,8 @@ function connectPage(tctx, me, origin) {
   (function(){
     var f=document.getElementById('pairf'); if(!f) return;
     var i=document.getElementById('pairc'), m=document.getElementById('pairm'),
-        d=document.getElementById('pairdot'), h=document.getElementById('pairh');
+        d=document.getElementById('pairdot'), h=document.getElementById('pairh'),
+        n=document.getElementById('pairnext');
     // Upper-case, letters and digits only, the dash after four: the shape the terminal
     // printed, so the eye can compare. The server strips it all again before matching.
     function fmt(v){ var c=String(v||'').toUpperCase().replace(/[^A-Z0-9]/g,'').slice(0,8);
@@ -3949,7 +3953,8 @@ function connectPage(tctx, me, origin) {
       fetch('/__publish/_pair/approve',{method:'POST',headers:{'content-type':'application/json'},
         body:JSON.stringify({code:i.value})})
       .then(function(r){return r.json().catch(function(){return {};}).then(function(j){
-        if(r.ok&&j.ok){ f.hidden=true; if(d) d.className='dot on'; if(h){ h.textContent='Connected'; h.className='on'; }
+        if(r.ok&&j.ok){ f.hidden=true; if(d) d.className='dot on'; if(h) h.textContent='Connected';
+                        if(n){ n.hidden=false; n.focus(); }
                         m.className='sr'; m.textContent='Connected'; return; }
         m.className='err';
         if(r.status===404){ m.textContent='That code is not valid. Check it, or start again in your terminal.'; return; }
