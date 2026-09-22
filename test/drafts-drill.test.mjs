@@ -71,7 +71,9 @@ test("a killed session resumes from its folder: the draft is on the server with 
     const again = unitClient({ origin: srv.origin, token: "tok", space: "alpha", session: "s" });
     const st = readState(dir);
     const r = await fetch(`${srv.origin}${st.address}`);
-    assert.equal(await r.text(), "<h1>half done</h1>\n");
+    // The saved bytes, first and unaltered; what follows them is the serve-time overlay
+    // every prototype page carries (test/review-overlay-serve.test.mjs).
+    assert.ok((await r.text()).startsWith("<h1>half done</h1>\n"), "the save is live at the draft address");
     const landed = await doLand({ client: again, dir, note: "" });
     assert.equal(landed.ok, true, JSON.stringify(landed));
   } finally { await srv.close(); }

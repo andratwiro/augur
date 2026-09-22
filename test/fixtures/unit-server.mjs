@@ -1,7 +1,7 @@
 // test/fixtures/unit-server.mjs — the real worker, over a socket, on the drafts env.
-// Content goes through assetFetch and then the draft bar's injection, with whatever the
-// cookie says about who is asking — the same two steps the request handler takes for a
-// unit page, minus the chrome recomposition (RUNTIME_CHROME is off here) and the
+// Content goes through assetFetch and then the review overlay and the draft bar, with
+// whatever the cookie says about who is asking — the same steps the request handler takes
+// for a unit page, minus the chrome recomposition (RUNTIME_CHROME is off here) and the
 // live-reload poll (HTMLRewriter does not exist in Node).
 import http from "node:http";
 import { __testables as W } from "../../src/_worker.js";
@@ -34,7 +34,7 @@ export async function startUnitServer({ live, tenantId, users }) {
       const me = req.headers.cookie && ctx.USERS.length
         ? await W.identify(request, env, ctx.USERS, { sessionKeys: ctx.SESSION_KEYS, tctx: ctx })
         : null;
-      out = await W.withDraftUi(ctx, asset, url, me, env);
+      out = await W.withDraftUi(ctx, await W.withReviewOverlay(ctx, asset, url), url, me, env);
     }
     res.writeHead(out.status, Object.fromEntries(out.headers));
     res.end(Buffer.from(await out.arrayBuffer()));

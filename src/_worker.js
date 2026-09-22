@@ -7601,14 +7601,55 @@ async function withDraftUi(tctx, res, url, me, env) {
   headers.delete("ETag");
   return new Response(html, { status: res.status, statusText: res.statusText, headers });
 }
+// ---- The review overlay (Shift+C) --------------------------------------------
+// The overlay is engine chrome that lives on a SPACE's pages, so like the draft bar it is
+// appended here rather than baked in. build.js still injects it into everything it copies
+// (injectReview), and that was the only path a prototype had while `ship`/`publish` built
+// the dist a page served from. `augur land` uploads the draft folder's bytes verbatim —
+// there is no build between the editor's file and the served page — so a landed prototype
+// carried no overlay at all and Shift+C did nothing on it. One definition at serve time
+// covers landed pages, built pages, derived pages and every tenant at once, which is also
+// why the canvas loader has always pasted the same tag in (CANVAS_LOADER_EXTRAS).
+//
+// Pages the build DID inject are left alone: the markers are the test, so a page keeps the
+// single copy it came with instead of loading comments.js twice and mounting two overlays.
+// ?raw=1 (the Download HTML button) is skipped here as everywhere, and the markers are the
+// button's fallback strip.
+const REVIEW_UI_SRC = "/__review/comments.js";
+const REVIEW_MARK = "gv-review-start";
+function reviewOverlayTag(tctx) {
+  // Cache-busted by the ENGINE's version, not the workspace's: comments.js is engine
+  // chrome, and it changes when the engine is deployed, not when a space publishes. The
+  // chrome pointer carries that version whether or not runtime chrome is switched on;
+  // BUILD_ID is the fallback for a manifest too old to name one.
+  const v = (tctx && tctx.CHROME_POINTER && tctx.CHROME_POINTER.ui) || (tctx && tctx.BUILD_ID) || "0";
+  return `<!--${REVIEW_MARK}--><script src="${REVIEW_UI_SRC}?v=${encodeURIComponent(v)}" defer></script><!--gv-review-end-->`;
+}
+async function withReviewOverlay(tctx, res, url) {
+  if (!res || res.status !== 200) return res;
+  const ct = res.headers.get("Content-Type") || "";
+  if (!ct.includes("text/html") || url.searchParams.has("raw")) return res;
+  const html = await res.text();
+  const headers = new Headers(res.headers);
+  if (html.includes(REVIEW_MARK)) return new Response(html, { status: res.status, statusText: res.statusText, headers });
+  const tag = reviewOverlayTag(tctx);
+  const out = /<\/body>/i.test(html) ? html.replace(/<\/body>/i, tag + "</body>") : html + tag;
+  // The body is no longer the stored blob, so its ETag/Content-Length must not ride along.
+  headers.delete("Content-Length");
+  headers.delete("ETag");
+  return new Response(out, { status: res.status, statusText: res.statusText, headers });
+}
+
 /**
- * A content response, dressed: the live-reload poll, the current chrome, the draft bar, the
- * cache policy. `draftUi: false` leaves the bar out — the page a bearer token opens has no
- * session for the bar's own calls, so the bar would be one refused request per load.
+ * A content response, dressed: the live-reload poll, the current chrome, the review
+ * overlay, the draft bar, the cache policy. `draftUi: false` leaves the bar out — the page
+ * a bearer token opens has no session for the bar's own calls, so the bar would be one
+ * refused request per load.
  */
 async function serveContent(tctx, asset, url, me, env, request = null, { draftUi = true } = {}) {
   const composed = await composeChrome(tctx, withLiveReload(tctx, asset, url), url);
-  const dressed = draftUi ? await withDraftUi(tctx, composed, url, me, env) : composed;
+  const reviewed = await withReviewOverlay(tctx, composed, url);
+  const dressed = draftUi ? await withDraftUi(tctx, reviewed, url, me, env) : reviewed;
   return withAgentPreface(withDoorLink(withAssetCache(dressed, url)), request, url, me);
 }
 
@@ -13185,7 +13226,7 @@ export const __testables = Object.freeze({
   doorFacts, doorText, wantsMachineDoor, gateResponse, DOOR_DOCS, DOOR_WELL_KNOWN,
   resumeAfterDormancy,
   PITI_VIEW_KEY, PITI_REMARKS_KEY,
-  publishAuthDetailed, unitApi, unitCaller, personFace, withDoorLink, withAgentPreface, browserFetch, withDraftUi, draftUiBoot, derivedPage, dsOverlay, isEngineChrome, publishRefusalBody, splitDraftPath,
+  publishAuthDetailed, unitApi, unitCaller, personFace, withDoorLink, withAgentPreface, browserFetch, withDraftUi, draftUiBoot, withReviewOverlay, reviewOverlayTag, derivedPage, dsOverlay, isEngineChrome, publishRefusalBody, splitDraftPath,
   adminStorageApi,
   adminCustomDomainApi,
   isPrefixBacked, backedPublicPrefixes,

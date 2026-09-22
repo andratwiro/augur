@@ -64,7 +64,8 @@ test("post: an edit inside a draft folder is live at the draft address when the 
     assert.equal(r.code, 0, r.err);
     assert.equal(r.err, "", "a successful save is silent");
     const live = await (await fetch(`${srv.origin}${readState(dir).address}`)).text();
-    assert.equal(live, "<h1>Flow, from the hook</h1>\n");
+    // Byte-identical up to the serve-time overlay appended to every prototype page.
+    assert.ok(live.startsWith("<h1>Flow, from the hook</h1>\n"), "the hook's write is live at the draft address");
     // A write INSIDE the draft folder passes the pre hook too.
     assert.equal((await hook("pre", { tool_input: { file_path: file }, cwd: dir })).code, 0);
     // Without a token the hook says so, and says how, rather than pretending it saved.
