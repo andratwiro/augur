@@ -382,6 +382,9 @@ function isPublicPath(tctx, pathname) {
   // only — never a blanket prefix; the board DATA API (/__board) has its own public route below.
   if (pathname.startsWith("/__canvas/") &&
       /\.(css|js|mjs|json|map|svg|png|webp|woff2?)$/i.test(pathname)) return true;
+  // The criteria page's code, for the same reason: a prototype's oracle/ loader embeds it by
+  // absolute path. Its two files only; the criteria themselves are /__board documents.
+  if (pathname === "/__oracle/oracle.js" || pathname === "/__oracle/oracle.css") return true;
   // Canvas session music is NOT here on purpose. A tracks/ folder is somebody's music
   // library, and serving it publicly would republish audio nobody licensed us to hand out
   // — so it is admin-only (isTrackPath, enforced in fetch) rather than public. A public
@@ -4325,7 +4328,7 @@ function applyDerivedRouting(manifests) {
 // code in another space's prototypes — which is what this guard is for.
 // Mirrors ENGINE_CHROME in build.js; keep the two in step.
 const ENGINE_CHROME_PATHS = Object.freeze([
-  "/fonts/", "/pitis/", "/__review/", "/__canvas/", "/__drafts/", "/admin", "/changelog",
+  "/fonts/", "/pitis/", "/__review/", "/__canvas/", "/__oracle/", "/__drafts/", "/admin", "/changelog",
   "/piti.js", "/404.html", "/manifest.webmanifest", "/sw.js",
   "/augur-eye.svg", "/augur-icon-192.png", "/augur-icon-512.png", "/augur-mark.png",
 ]);
@@ -7403,7 +7406,8 @@ function withAssetCache(res, url) {
   // still checks) but lets the browser answer with its cached copy on the 304, so a
   // repeat open costs ~1KB of conditional requests instead of ~110KB of engine
   // re-download (was `no-store` until 2026-08-07, which disabled caching entirely).
-  if (url.pathname.startsWith("/__canvas/") && /\.(js|css|json)$/i.test(url.pathname)) {
+  if ((url.pathname.startsWith("/__canvas/") || url.pathname.startsWith("/__oracle/"))
+      && /\.(js|css|json)$/i.test(url.pathname)) {
     const out = new Response(res.body, res);
     out.headers.set("Cache-Control", "no-cache");
     return out;

@@ -105,6 +105,12 @@ augur sync     # takes main's changes into your folder; a real overlap is left f
 augur land     # again
 ```
 
+A prototype that carries **criteria** (an `oracle/` folder) is checked before it lands,
+when this machine has their runner: `land` refuses while a criterion that held at the last
+landing fails now, and says which. That is the prototype's owner speaking, not a fault to
+work around — fix what broke it, or tell the person it conflicts. See
+[criteria.md](./criteria.md).
+
 `sync` writes one-sided changes outright and merges a file you both touched when the
 edits do not overlap. When they do overlap, your version stays in place, theirs is put at
 `.augur/theirs/<path>`, and the overlapping hunks are printed — fold them, then land.

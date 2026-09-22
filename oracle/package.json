@@ -1,0 +1,24 @@
+{
+  "name": "augur-oracle-page",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "The criteria page (oracle) served at /__oracle/. Source here; `npm run build` writes ../src/oracle/.",
+  "scripts": {
+    "build": "vite build",
+    "watch": "vite build --watch"
+  },
+  "dependencies": {
+    "@blocknote/core": "^0.54.2",
+    "@blocknote/mantine": "^0.54.2",
+    "@blocknote/react": "^0.54.2",
+    "@mantine/core": "^9.6.1",
+    "@mantine/hooks": "^9.6.1",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "latest",
+    "vite": "latest"
+  }
+}

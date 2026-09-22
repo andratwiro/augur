@@ -1,5 +1,6 @@
 #!/usr/bin/env node
-// augur land [-m "note"] [--no-poster] — replace the prototype's main with this draft. The
+// augur land [-m "note"] [--no-poster] — replace the prototype's main with this draft. A
+// prototype carrying criteria (oracle/) is checked by their runner first, when present. The
 // real URL moves; its address is the last line of stdout. Refused when main moved since the
 // draft opened: then `augur sync`, check the draft address, and land again. On the way up
 // the folder's card picture (preview.webp) is shot when this machine has the tools for it
@@ -8,6 +9,7 @@
 import { resolveOrigin, tokenOrPair } from "./lib/store.mjs";
 import { readState, unitClient, doLand, reportSkipped } from "./lib/draft.mjs";
 import { posterFor } from "./lib/poster.mjs";
+import { criteriaGate } from "./lib/criteria-gate.mjs";
 
 const log = (m) => console.error(`\x1b[35m[land]\x1b[0m ${m}`);
 const die = (m) => { console.error(`\x1b[31m[land]\x1b[0m ${m}`); process.exit(1); };
@@ -21,6 +23,8 @@ const origin = st.origin || resolveOrigin();
 let token;
 try { token = await tokenOrPair(origin); } catch (e) { die(e.message); }
 let client = unitClient({ origin, token, space: st.space, session: st.session });
+// The prototype's own criteria, when it carries them and this machine has their runner.
+if (!criteriaGate(dir, { log }).ok) die("landing refused: a criterion that held at the last landing fails now (above). Fix it, or ask the person, and land again.");
 // The picture first, so the save inside `land` carries it. A skip is said and never fatal.
 const poster = await posterFor(dir, { log, enabled: !argv.includes("--no-poster") });
 if (poster.shot) log("poster shot — preview.webp goes up with the landing");

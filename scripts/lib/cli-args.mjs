@@ -36,3 +36,21 @@ export function cwdGone() {
     return "the folder this shell is in no longer exists (a draft folder was closed here, most likely). `cd ..` and run the command again.";
   }
 }
+
+/**
+ * The positional arguments, skipping only the values of flags that take one. A bare flag
+ * (`--new`) takes nothing, so the word after it is a positional: `augur open --new a/b`
+ * and `augur open a/b --new` are the same command. Treating every flag as one that takes
+ * a value read `--new a/b` as a flag and its value, and refused with "name a prototype"
+ * while the docs taught exactly that order.
+ */
+export function positionals(args, valueFlags = []) {
+  const takes = new Set(valueFlags);
+  const out = [];
+  for (let i = 0; i < args.length; i++) {
+    const a = args[i];
+    if (a.startsWith("--")) { if (takes.has(a) && !a.includes("=")) i++; continue; }
+    out.push(a);
+  }
+  return out;
+}

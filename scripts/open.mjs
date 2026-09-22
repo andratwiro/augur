@@ -11,12 +11,14 @@ import { targetPaired, tokenOrPair, buildStamp } from "./lib/store.mjs";
 import { unitClient, doOpen, unitPathFor } from "./lib/draft.mjs";
 import { installAdapters, augurOnPath } from "./lib/adapters.mjs";
 import { normUnit } from "../src/unit-core.mjs";
+import { positionals } from "./lib/cli-args.mjs";
 
 const log = (m) => console.error(`\x1b[35m[open]\x1b[0m ${m}`);
 const die = (m) => { console.error(`\x1b[31m[open]\x1b[0m ${m}`); process.exit(1); };
 const argv = process.argv.slice(2);
 const opt = (n) => { const i = argv.indexOf(n); return i > -1 ? argv[i + 1] : null; };
-const positional = argv.filter((a, i) => !a.startsWith("--") && !(i > 0 && argv[i - 1].startsWith("--")));
+// `--new` and `--new-opportunity` take no value, so the unit may stand on either side of them.
+const positional = positionals(argv, ["--dir", "--session", "--origin"]);
 
 const raw = positional[0];
 if (!raw) die("name a prototype: `augur open <opportunity>/<prototype>` (a folder path works too).");

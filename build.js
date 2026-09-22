@@ -158,6 +158,10 @@ const SRC_REVIEW_CAT = path.join(ROOT, "src", "review", "cat.png");
 const SRC_REVIEW_CURSOR = path.join(ROOT, "src", "review", "comment-cursor.svg");
 const SRC_CANVAS_JS = path.join(ROOT, "src", "canvas", "canvas.js");
 const SRC_CANVAS_CSS = path.join(ROOT, "src", "canvas", "canvas.css");
+// The criteria page ("oracle"): a prototype's oracle/index.html loads it by absolute
+// /__oracle/ path, the way a canvas loads /__canvas/. Built from oracle/ (see its README).
+const SRC_ORACLE_JS = path.join(ROOT, "src", "oracle", "oracle.js");
+const SRC_ORACLE_CSS = path.join(ROOT, "src", "oracle", "oracle.css");
 const SRC_CANVAS_CAPTURE = path.join(ROOT, "src", "canvas", "capture.js");
 const SRC_CANVAS_7SEG = path.join(ROOT, "src", "canvas", "DSEG7Classic-Bold.woff2");
 const SRC_CANVAS_7SEG_LICENSE = path.join(ROOT, "src", "canvas", "DSEG-LICENSE.txt");
@@ -8030,6 +8034,12 @@ async function main() {
   // seven-segment display font for the session clock (SIL OFL — its license ships beside it)
   await fs.copyFile(SRC_CANVAS_7SEG, path.join(DIST, "__canvas", "DSEG7Classic-Bold.woff2"));
   await fs.copyFile(SRC_CANVAS_7SEG_LICENSE, path.join(DIST, "__canvas", "DSEG-LICENSE.txt"));
+
+  // Criteria pages (shared; a prototype's oracle/ loader mounts it by absolute /__oracle/
+  // path). The criteria and the results persist to KV via /__board, keyed by the page.
+  await fs.mkdir(path.join(DIST, "__oracle"), { recursive: true });
+  await fs.copyFile(SRC_ORACLE_JS, path.join(DIST, "__oracle", "oracle.js"));
+  await fs.copyFile(SRC_ORACLE_CSS, path.join(DIST, "__oracle", "oracle.css"));
   // catalog.json + tracks.json are NOT written here. They are the two site-wide
   // aggregates — every embeddable thing, and every track, across ALL spaces — and
   // a single file can only be produced by a build that saw every space. Direct
@@ -8160,6 +8170,7 @@ async function main() {
     "__drafts/drafts.js",
     "__canvas/canvas.js", "__canvas/canvas.css", "__canvas/capture.js",
     "__canvas/DSEG7Classic-Bold.woff2", "__canvas/DSEG-LICENSE.txt",
+    "__oracle/oracle.js", "__oracle/oracle.css",
     "piti.js", "404.html", "manifest.webmanifest", "sw.js", "_chrome.",
     "augur-eye.svg", "augur-icon-192.png", "augur-icon-512.png", "augur-mark.png",
     // Every module `_worker.js` imports, walked from the worker itself rather than listed.

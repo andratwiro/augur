@@ -44,10 +44,13 @@ const ROOT = process.argv[2] || path.resolve(path.dirname(fileURLToPath(import.m
 
 // The SHIPPED engine: what a pin bump pushes into every instance. Vendored trees, build
 // output and the repo's own git data are not ours to lint.
-const SCAN_DIRS = ["src", "scripts", "agents"];
+const SCAN_DIRS = ["src", "scripts", "agents", "oracle/src"];
 const SCAN_FILES = ["build.js"];
 const SKIP_DIRS = new Set([".git", "node_modules", "dist", "coverage"]);
-const EXT = new Set([".js", ".mjs", ".cjs"]);
+const EXT = new Set([".js", ".mjs", ".cjs", ".jsx"]);
+// Built bundles that ship inside src/: their SOURCE is scanned (oracle/src above), the
+// minified output is a third-party editor's code and not ours to lint.
+const BUILT = new Set(["src/oracle/oracle.js"]);
 // This file necessarily writes down the shapes it forbids.
 const SELF = "scripts/no-foreign-vocabulary.mjs";
 
@@ -64,7 +67,7 @@ function sources() {
   const out = [];
   for (const f of SCAN_FILES) { const p = path.join(ROOT, f); if (fs.existsSync(p)) out.push(p); }
   for (const d of SCAN_DIRS) out.push(...walk(path.join(ROOT, d)));
-  return out.filter((p) => path.relative(ROOT, p) !== SELF);
+  return out.filter((p) => path.relative(ROOT, p) !== SELF && !BUILT.has(path.relative(ROOT, p)));
 }
 
 const findings = [];

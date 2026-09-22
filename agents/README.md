@@ -66,6 +66,7 @@ Read them by trigger, not up front:
 | asked to copy a design system out of a live product | [canon-extract.md](./canon-extract.md) |
 | adding users / avatars / login questions | [identity.md](./identity.md) |
 | a board-shaped ask (brainstorm, compare, map a flow) or canvas work | [canvas.md](./canvas.md) — includes WHEN to suggest a canvas |
+| a prototype with an `oracle/` folder, or a person asking for criteria it must keep | [criteria.md](./criteria.md) — the page, the checks, what blocks you |
 
 Engine *development* (build.js, worker, overlays) is a different audience:
 see [../CLAUDE.md](../CLAUDE.md) and [../CONTRIBUTING.md](../CONTRIBUTING.md).
