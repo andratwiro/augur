@@ -332,3 +332,50 @@ test("open refuses a unit that does not exist unless told it is new, and refuses
   assert.equal(twice.error, "unit-exists");
   assert.equal(full.drafts.size, 0);
 });
+
+test("scanFolder leaves out what a working folder carries and never publishes", () => {
+  const dir = tmp();
+  fs.writeFileSync(path.join(dir, "index.html"), "<h1/>");
+  // A file of credentials, copied in with everything else when the draft was seeded.
+  fs.writeFileSync(path.join(dir, ".env.local.json"), '{"password":"x"}');
+  // The one shape of dotted env file that IS content: the example beside it.
+  fs.writeFileSync(path.join(dir, ".env.example"), "PASSWORD=");
+  // A build cache and an editor's dropping.
+  fs.mkdirSync(path.join(dir, "__pycache__"));
+  fs.writeFileSync(path.join(dir, "__pycache__", "a.cpython-314.pyc"), "x");
+  fs.writeFileSync(path.join(dir, ".DS_Store"), "x");
+  const skipped = [];
+  assert.deepEqual(scanFolder(dir, skipped), {
+    "index.html": { h: sha("<h1/>"), ct: "text/html; charset=utf-8", s: 5 },
+    ".env.example": { h: sha("PASSWORD="), ct: "application/octet-stream", s: 9 },
+  });
+  assert.deepEqual(skipped.map((s) => s.path).sort(),
+    [".DS_Store", ".env.local.json", "__pycache__"]);
+  assert.equal(skipped.find((s) => s.path === ".env.local.json").why, "looks like a secret");
+});
+
+test("scanFolder honours .augurignore for what only this folder knows is local", () => {
+  const dir = tmp();
+  fs.writeFileSync(path.join(dir, "index.html"), "<h1/>");
+  fs.writeFileSync(path.join(dir, ".augurignore"), "# the working data, real names in it\ndata/\n*.sqlite\n");
+  fs.mkdirSync(path.join(dir, "data"));
+  fs.writeFileSync(path.join(dir, "data", "people.sqlite"), "x");
+  fs.writeFileSync(path.join(dir, "scratch.sqlite"), "x");
+  const skipped = [];
+  const out = scanFolder(dir, skipped);
+  assert.deepEqual(Object.keys(out).sort(), [".augurignore", "index.html"]);
+  assert.deepEqual(skipped.map((s) => s.path).sort(), ["data", "scratch.sqlite"]);
+});
+
+test("a save reports what it left out, and unpublishes a local file that had travelled", async () => {
+  const inst = fakeInstance({ "index.html": "<h1/>", "lab/.env.json": '{"password":"x"}' });
+  const dir = tmp();
+  await doOpen({ client: inst.client, unit: U, dir, origin: "https://x", now: "t" });
+  assert.ok(fs.existsSync(path.join(dir, "lab", ".env.json")), "open writes what main holds");
+  const r = await doSave({ client: inst.client, dir });
+  assert.ok(r.ok);
+  assert.deepEqual(r.skipped.map((s) => s.path), ["lab/.env.json"]);
+  assert.deepEqual(r.changed, ["lab/.env.json"]);
+  const st = readState(dir);
+  assert.ok(!(`${U}lab/.env.json` in st.table), "the draft no longer publishes it");
+});

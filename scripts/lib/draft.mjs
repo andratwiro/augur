@@ -46,14 +46,69 @@ export function unitPathFor(input) {
 }
 export const urlOf = (unit, rel) => unit + rel;
 
-export function scanFolder(dir) {
+// What a folder holds that is never what it publishes. A draft folder is filled by copying
+// a working folder, and a working folder carries things the copy has no way to know are
+// local: a build cache, a virtualenv, an editor's dropping, a file of credentials, the data
+// someone is working from. None of it is content, all of it travels if nothing stops it, and
+// a published address is readable by anyone with the link. The names below are never
+// content anywhere; anything else a particular folder knows is local goes in `.augurignore`
+// beside it. Nothing here is silent: every walk can report what it dropped, and the verbs do.
+const NEVER = new Set([".git", ".hg", ".svn", "node_modules", "__pycache__", ".venv", "venv",
+  ".mypy_cache", ".pytest_cache", ".ruff_cache", ".wrangler", ".drafts", ".DS_Store", "Thumbs.db"]);
+// A file whose name says it holds a key. `.env.example` is the shape that is content: the
+// empty one committed beside the real one to say which names it wants.
+const SECRET = /^\.env($|\.)|^id_(rsa|ecdsa|ed25519)$|\.(pem|p12|pfx|key|keystore|jks)$|^credentials\.json$/i;
+const SECRET_OK = /^\.env\.(example|sample|template)$/i;
+const looksSecret = (name) => SECRET.test(name) && !SECRET_OK.test(name);
+
+/**
+ * `.augurignore` at the folder root: one path per line, `#` for a comment, `*` matching
+ * within a name and a trailing `/` reading as "this folder and everything under it".
+ * Deliberately smaller than gitignore — a draft folder is not a repository and has no
+ * index to ask, so what it skips has to be readable at a glance.
+ */
+export function ignoreRules(dir) {
+  let txt;
+  try { txt = fs.readFileSync(path.join(dir, ".augurignore"), "utf8"); } catch (e) { return []; }
+  return txt.split("\n").map((l) => l.trim()).filter((l) => l && !l.startsWith("#")).map((l) => {
+    const body = l.replace(/\/+$/, "").replace(/^\.?\/+/, "");
+    const src = body.split("/").map((seg) => seg.replace(/[.+^${}()|[\]\\]/g, "\\$&").replace(/\*/g, "[^/]*")).join("/");
+    return new RegExp(`^${src}(/|$)`);
+  });
+}
+
+/**
+ * What a walk left out, as the line a verb prints. Said out loud every time, because a
+ * file that quietly does not publish is as confusing as one that quietly does.
+ */
+export function reportSkipped(verb, skipped) {
+  if (!skipped || !skipped.length) return;
+  const by = {};
+  for (const s of skipped) (by[s.why] = by[s.why] || []).push(s.path);
+  for (const [why, paths] of Object.entries(by)) {
+    const shown = paths.slice(0, 6).join(", ");
+    console.error(`\x1b[35m[${verb}]\x1b[0m not published, ${why}: ${shown}${paths.length > 6 ? ` and ${paths.length - 6} more` : ""}`);
+  }
+  if (by["looks like a secret"]) console.error(`\x1b[35m[${verb}]\x1b[0m if one of those is content, rename it; a published address is readable by anyone with the link.`);
+}
+
+/**
+ * Every file the folder publishes, as `rel → {h, ct, s}`. `skipped` is an array to fill,
+ * for a caller that wants to print what was left out; pass nothing to not care.
+ */
+export function scanFolder(dir, skipped) {
   const out = {};
+  const rules = ignoreRules(dir);
+  const drop = (r, why) => { if (skipped) skipped.push({ path: r, why }); };
   const walk = (d, rel) => {
     for (const e of fs.readdirSync(d, { withFileTypes: true })) {
       if (rel === "" && e.name === ".augur") continue;
       const r = rel ? `${rel}/${e.name}` : e.name;
+      if (NEVER.has(e.name)) { drop(r, "not content"); continue; }
+      if (rules.some((rx) => rx.test(r))) { drop(r, "in .augurignore"); continue; }
       if (e.isDirectory()) walk(path.join(d, e.name), r);
       else if (e.isFile()) {
+        if (looksSecret(e.name)) { drop(r, "looks like a secret"); continue; }
         const buf = fs.readFileSync(path.join(d, e.name));
         out[r] = { h: hashBytes(buf), ct: mimeOf(e.name), s: buf.length };
       }
@@ -288,9 +343,10 @@ async function doOpenImpl({ client, unit, dir, origin, space, session, now, isNe
 async function doSaveImpl({ client, dir, baseRevision, baseTable }) {
   const st = readState(dir);
   if (!st) return { ok: false, error: "not-a-draft", dir };
-  const local = scanFolder(dir);
+  const skipped = [];
+  const local = scanFolder(dir, skipped);
   const changes = changesBetween(st.unit, st.table, local);
-  if (!changes.length && baseRevision === undefined) return { ok: true, changed: [], draftRevision: st.draftRevision };
+  if (!changes.length && baseRevision === undefined) return { ok: true, changed: [], skipped, draftRevision: st.draftRevision };
   for (const c of changes) if (!c.delete) await client.blobPut(c.h, fs.readFileSync(path.join(dir, relOf(st.unit, c.path))));
   const r = await client.save({ unit: st.unit, draftId: st.draftId, draftRevision: st.draftRevision, changes, ...(baseRevision !== undefined ? { baseRevision } : {}) });
   if (r.status) return { ok: false, ...r };
@@ -303,7 +359,7 @@ async function doSaveImpl({ client, dir, baseRevision, baseTable }) {
   if (baseRevision !== undefined) st.baseRevision = baseRevision;
   if (baseTable !== undefined) st.baseTable = baseTable;
   writeState(dir, st);
-  return { ok: true, changed: changes.map((c) => relOf(st.unit, c.path)), draftRevision: r.draftRevision };
+  return { ok: true, changed: changes.map((c) => relOf(st.unit, c.path)), skipped, draftRevision: r.draftRevision };
 }
 
 async function doLandImpl({ client, dir, note }) {
@@ -329,7 +385,7 @@ async function doLandImpl({ client, dir, note }) {
   // `recorded: false` means the bytes are live and the history entry is not — the server
   // wrote the manifest and could not tell the unit's object about it. Carried through so
   // the command can say so; the landing itself happened either way.
-  return { ok: true, url: r.url, revision: r.revision, version: r.version,
+  return { ok: true, url: r.url, revision: r.revision, version: r.version, skipped: saved.skipped || [],
     recorded: r.recorded !== false, warning: r.warning || null };
 }
 

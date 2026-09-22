@@ -6,7 +6,7 @@
 // and the source is newer than the poster — the gallery renders nothing for a prototype
 // without one. See docs/drafts-that-land.md.
 import { resolveOrigin, tokenOrPair } from "./lib/store.mjs";
-import { readState, unitClient, doLand } from "./lib/draft.mjs";
+import { readState, unitClient, doLand, reportSkipped } from "./lib/draft.mjs";
 import { posterFor } from "./lib/poster.mjs";
 
 const log = (m) => console.error(`\x1b[35m[land]\x1b[0m ${m}`);
@@ -44,6 +44,7 @@ if (!r.ok) {
   if (r.error === "network") die(`could not reach the instance (${r.message}). Nothing is lost — run augur land again.`);
   die(`land refused: ${r.error || r.status}${r.message ? ` — ${r.message}` : ""}`);
 }
+reportSkipped("land", r.skipped);
 // The bytes are live; when `recorded` is false only the history entry is missing. Said out
 // loud because the next call adopts that landing as the instance's own, and nobody would
 // otherwise know a landing of theirs is not in the record.
