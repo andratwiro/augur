@@ -233,8 +233,14 @@ function Verdict({ editor }){
   );
 }
 
-/* How this works: a button beside the title opens it in a dialog, so the page itself is
-   only the criteria. Escape, the close button or a click outside closes it. */
+/* The guide: a button beside the title opens how this works in a dialog, so the page itself
+   is only the criteria. Escape, the close button or a click outside closes it. The icon is
+   Lucide's book-open (lucide.dev, ISC), the set Augur already uses. */
+const BookIcon = () => (
+  <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <path d="M12 7v14" /><path d="M3 18a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3z" />
+  </svg>
+);
 function About(){
   const [open, setOpen] = useState(false);
   useEffect(() => {
@@ -245,7 +251,7 @@ function About(){
   }, [open]);
   return (
     <>
-      <button className="or-btn or-about__btn" onClick={() => setOpen(true)}>How this works</button>
+      <button className="or-btn or-about__btn" onClick={() => setOpen(true)} title="How this works"><BookIcon />Guide</button>
       {open ? (
         <div className="or-modal" onClick={e => { if(e.target === e.currentTarget) setOpen(false); }}>
           <div className="or-modal__box" role="dialog" aria-modal="true" aria-labelledby="or-about-title">

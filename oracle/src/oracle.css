@@ -51,7 +51,8 @@ body{ font-family: var(--or-font); -webkit-font-smoothing: antialiased; }
 .or-verdict__parts{ margin: 6px 0 0 20px; font-size: 14px; color: var(--or-ink); }
 .or-verdict__run{ margin: 4px 0 0 20px; font-size: 13px; color: var(--or-muted); }
 
-.or-about__btn{ font-size: 14px; padding: 6px 12px; flex: none; }
+.or-about__btn{ display: inline-flex; align-items: center; gap: 7px; box-sizing: border-box; height: 34px; padding: 0 14px; font-size: 14px; font-weight: 600; border-radius: 8px; flex: none; }
+.or-about__btn svg{ flex: none; }
 .or-modal{ position: fixed; inset: 0; z-index: 50; display: grid; place-items: center; padding: 16px; background: rgba(0, 0, 0, .4); }
 .or-modal__box{ box-sizing: border-box; width: min(560px, 100%); max-height: calc(100vh - 32px); overflow: auto; padding: 24px;
   background: var(--or-bg); color: var(--or-ink); border: 1px solid var(--or-line); border-radius: 14px; box-shadow: 0 12px 40px rgba(0, 0, 0, .25); }
