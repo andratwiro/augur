@@ -12,7 +12,7 @@
 
    Every criteria page on every workspace loads this one file, so a change here changes all
    of them with the next engine deploy. */
-import React, { useEffect, useSyncExternalStore } from 'react';
+import React, { useEffect, useState, useSyncExternalStore } from 'react';
 import { createRoot } from 'react-dom/client';
 import { BlockNoteEditor, BlockNoteSchema, defaultBlockSpecs, filterSuggestionItems } from '@blocknote/core';
 import { createReactBlockSpec, SuggestionMenuController, getDefaultReactSlashMenuItems } from '@blocknote/react';
@@ -233,18 +233,35 @@ function Verdict({ editor }){
   );
 }
 
+/* How this works: a button beside the title opens it in a dialog, so the page itself is
+   only the criteria. Escape, the close button or a click outside closes it. */
 function About(){
+  const [open, setOpen] = useState(false);
+  useEffect(() => {
+    if(!open) return;
+    const key = e => { if(e.key === 'Escape') setOpen(false); };
+    addEventListener('keydown', key);
+    return () => removeEventListener('keydown', key);
+  }, [open]);
   return (
-    <details className="or-about">
-      <summary>How this works</summary>
-      <p>Each criterion is something this prototype must keep true. You write the sentence. An agent writes
+    <>
+      <button className="or-btn or-about__btn" onClick={() => setOpen(true)}>How this works</button>
+      {open ? (
+        <div className="or-modal" onClick={e => { if(e.target === e.currentTarget) setOpen(false); }}>
+          <div className="or-modal__box" role="dialog" aria-modal="true" aria-labelledby="or-about-title">
+            <h2 id="or-about-title">How this works</h2>
+            <p>Each criterion is something this prototype must keep true. You write the sentence. An agent writes
         the check behind it, and proves the check can fail before it counts.</p>
       <p>The prototype holds when every criterion passes. An agent working on it cannot finish, or land,
         while it has turned a passing criterion red. Taste criteria pass when you sign them off, and stay
         signed until you withdraw them.</p>
       <p>Reword a criterion and its check has to be written again. Type <kbd>/</kbd> to add one. When you correct
         an agent, it may propose the rule behind the correction here; it counts once you accept it.</p>
-    </details>
+            <div className="or-modal__acts"><button className="or-btn" autoFocus onClick={() => setOpen(false)}>Close</button></div>
+          </div>
+        </div>
+      ) : null}
+    </>
   );
 }
 
@@ -318,9 +335,8 @@ function App({ editor }){
   return (
     <div className="or-page">
       <nav className="or-crumb"><a href="../">{CFG.prototype || 'Prototype'}</a><span>/</span><span>Oracle</span></nav>
-      <h1 className="or-title">{CFG.title || 'Oracle'}</h1>
+      <div className="or-head"><h1 className="or-title">{CFG.title || 'Oracle'}</h1><About /></div>
       <Verdict editor={editor} />
-      <About />
       <div className="or-doc">
         <BlockNoteView editor={editor} theme="light" slashMenu={false} filePanel={false} emojiPicker={false}>
           <SuggestionMenuController triggerCharacter="/" getItems={getItems} />
