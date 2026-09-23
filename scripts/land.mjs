@@ -7,7 +7,7 @@
 // and the source is newer than the poster — the gallery renders nothing for a prototype
 // without one. See docs/drafts-that-land.md.
 import { resolveOrigin, tokenOrPair } from "./lib/store.mjs";
-import { readState, unitClient, doLand, reportSkipped } from "./lib/draft.mjs";
+import { readState, unitClient, doLand, reportSkipped, THEIRS_DIR } from "./lib/draft.mjs";
 import { posterFor } from "./lib/poster.mjs";
 import { criteriaGate } from "./lib/criteria-gate.mjs";
 
@@ -36,6 +36,11 @@ if (!r.ok && r.error === "forbidden") {
   catch (e) { die(e.message); }
 }
 if (!r.ok) {
+  if (r.error === "overlaps-open") {
+    log("the last sync left these where both sides changed the same lines — landing now would drop the other side's:");
+    for (const f of r.overlaps) log(`  ${f}   (theirs: ${THEIRS_DIR}/${f})`);
+    die(`fold each one into your file, delete its ${THEIRS_DIR}/ copy (that is how you say it is folded), check the draft address, then \`augur land\` again.`);
+  }
   if (r.error === "main-moved") {
     log(`main moved since this draft opened (now revision ${r.mainRevision}):`);
     for (const c of r.changed || []) log(`  changed  ${c.path}${c.by ? `  by ${c.by}` : ""}`);
@@ -44,7 +49,7 @@ if (!r.ok) {
   }
   if (r.error === "landing-in-progress") die("somebody is landing this prototype right now — try again in a few seconds.");
   if (r.error === "manifest-contended") die("the workspace was busy landing other prototypes — nothing changed; run augur land again.");
-  if (r.error === "draft-closed") die(`this draft was ${r.landed ? `landed by ${r.name || r.by || "someone"}${r.session ? ` (${r.session})` : ""} at ${r.at}` : "discarded"} — the folder is no longer a draft. Your edits are still here; run augur open on the prototype again and copy them in.`);
+  if (r.error === "draft-closed") die(`this draft was ${r.landed ? `landed by ${r.name || r.by || "someone"}${r.session ? ` (${r.session})` : ""} at ${r.at}` : "discarded"} — the folder is no longer a draft. Your edits are still here; run augur open on the prototype again and redo in it only what you had not saved by then — copying whole files over would undo anything landed since.`);
   if (r.error === "network") die(`could not reach the instance (${r.message}). Nothing is lost — run augur land again.`);
   die(`land refused: ${r.error || r.status}${r.message ? ` — ${r.message}` : ""}`);
 }

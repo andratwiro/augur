@@ -85,7 +85,17 @@ Rules of the day:
   with a three-way merge against the base bytes, fetched by hash. A clean merge is written
   and saved. An overlap keeps the agent's version in place, writes main's version to
   `.augur/theirs/<path>`, prints the overlapping hunks, and leaves the folding to the
-  agent. Nothing is guessed on the server.
+  agent. Nothing is guessed on the server. While any overlap is open the draft keeps its
+  OLD base on the server (only what was taken and merged is saved), so no landing — the
+  CLI's or the site's Land button — can publish past it; `land` refuses `overlaps-open`
+  locally too. Deleting a theirs file is how the agent says it is folded; `land` then
+  moves the draft onto the synced revision and lands. Measured 23 Sep 2026 before this:
+  a plain `land` after a conflicted sync published "mine" and dropped the other side's
+  lines with no trace in history.
+- An open draft can be picked up into a fresh folder (`open --draft <id>`): its saved
+  table, its revision and its base table come from `GET /__unit/draft?…&tables=1`, so the
+  next sync merges from the true base. A new draft with an old folder's files copied over
+  it would silently undo every landing since.
 - A session may open several units; each gets its own folder and draft.
 - Writes outside opened folders are refused by the agent tool's hook. Read-only copies
   are also file-mode read-only.

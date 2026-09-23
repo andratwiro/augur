@@ -334,7 +334,15 @@ export class UnitObject {
       if (m) {
         const d = this.draft(m[1]);
         if (!d || d.discarded) return json({ error: "unknown-draft" }, 404);
-        return json({ draftId: d.id, table: d.table, owner: d.owner, session: d.session, openedAt: d.openedAt, lastSaveAt: d.lastSaveAt, baseRevision: d.baseRevision, revision: d.revision, closedAt: d.closedAt });
+        // `?base=1` adds what main held at the draft's base — what a folder that picks the
+        // draft up (`augur open --draft`) needs for its next sync to merge from the right place.
+        const wantBase = url.searchParams.get("base") === "1";
+        const base = wantBase ? this.landing(d.baseRevision) : null;
+        return json({
+          draftId: d.id, table: d.table, owner: d.owner, session: d.session, openedAt: d.openedAt, lastSaveAt: d.lastSaveAt,
+          baseRevision: d.baseRevision, revision: d.revision, closedAt: d.closedAt,
+          ...(wantBase ? { baseTable: base ? JSON.parse(base.tbl) : {} } : {}),
+        });
       }
       return json({ error: "unknown-route" }, 404);
     }

@@ -627,6 +627,26 @@ test("presence, history and a draft's card carry the face behind each id", async
   assert.equal(h.landings[1].name, null, "no face answers to it");
 });
 
+test("a draft's card hands its table and its base table over only when asked (open --draft)", async () => {
+  const { ctx, env } = await setup();
+  const o = (await json(await call(ctx, env, "open", { unit: U }))).body;
+  const body = "<h1>picked up</h1>";
+  await env.BUNDLES.put(`blobs/${sha(body)}`, body);
+  await call(ctx, env, "save", { unit: U, draftId: o.draftId, draftRevision: 0,
+    changes: [{ path: `${U}index.html`, h: sha(body), ct: "text/html; charset=utf-8", s: body.length, baseHash: sha(INDEX) }] });
+  const lean = (await json(await call(ctx, env, "draft", { unit: U, draft: o.draftId }, { method: "GET" }))).body;
+  assert.equal(lean.table, undefined, "the bar's card stays a count");
+  assert.equal(lean.baseTable, undefined);
+  const full = (await json(await call(ctx, env, "draft", { unit: U, draft: o.draftId, tables: "1" }, { method: "GET" }))).body;
+  assert.equal(full.revision, 1);
+  assert.equal(full.baseRevision, 1);
+  assert.equal(full.files, 2);
+  assert.equal(full.table[`${U}index.html`].h, sha(body), "the draft's own saved file");
+  assert.equal(full.baseTable[`${U}index.html`].h, sha(INDEX), "what main held at the draft's base");
+  assert.equal(full.baseTable[`${U}a.css`].h, sha(CSS));
+  assert.equal(full.name, "Ada");
+});
+
 test("the gallery's index names every unit with an open draft, and only those", async () => {
   const V = "/checkout/other/";
   const t = tenant(), ctx = ctxFor(t);

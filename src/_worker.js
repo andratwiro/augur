@@ -5550,12 +5550,19 @@ async function unitApi(tctx, request, url, env) {
     if (verb === "draft") {
       // One draft's card, for the bar: who, which session, where it stands. The TABLE stays
       // in the object — a bar needs a file count, and a table can be thousands of rows.
+      // `tables=1` is the one caller that needs them: a terminal picking an open draft up
+      // into a fresh folder (`augur open --draft <id>`), which writes the draft's files and
+      // must know what main held at its base for the next sync.
       const id = url.searchParams.get("draft") || "";
       if (!DRAFT_ID_RE.test(id)) return jsonResponse({ error: "bad-draft" }, 400);
-      const r = await unitCall(stub, `/draft/${id}`, null, "GET");
+      const withTables = url.searchParams.get("tables") === "1";
+      const r = await unitCall(stub, `/draft/${id}${withTables ? "?base=1" : ""}`, null, "GET");
       if (r.status !== 200) return jsonResponse(r.body, r.status);
-      const { table, ...rest } = r.body;
-      return jsonResponse({ ...rest, ...personFace(tctx.USERS, rest.owner), files: Object.keys(table || {}).length });
+      const { table, baseTable, ...rest } = r.body;
+      return jsonResponse({
+        ...rest, ...personFace(tctx.USERS, rest.owner), files: Object.keys(table || {}).length,
+        ...(withTables ? { table: table || {}, baseTable: baseTable || {} } : {}),
+      });
     }
     if (verb === "main") return jsonResponse((await unitCall(stub, "/main", null, "GET")).body);
     return jsonResponse({ error: "unknown-verb" }, 404);

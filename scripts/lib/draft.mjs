@@ -11,6 +11,7 @@ import { createHash } from "node:crypto";
 import { merge3 } from "./merge3.mjs";
 import { connectLine } from "./store.mjs";
 import { authoredUnits } from "../../src/publish-units.mjs";
+import { draftAddress } from "../../src/unit-core.mjs";
 
 export const STATE_FILE = ".augur/draft.json";
 /** How many times `land` tries again when the space's manifest is contended. */
@@ -198,8 +199,8 @@ export function unitClient({ origin, token, space, session }) {
     const out = await r.json().catch(() => ({}));
     return r.ok ? out : { status: r.status, ...explainRefusal(out, r.status, origin) };
   };
-  const get = async (verb, unit) => {
-    const r = await fetch(`${origin}/__unit/${verb}?unit=${encodeURIComponent(unit)}`, { headers });
+  const get = async (verb, unit, extra = "") => {
+    const r = await fetch(`${origin}/__unit/${verb}?unit=${encodeURIComponent(unit)}${extra}`, { headers });
     const out = await r.json().catch(() => ({}));
     return r.ok ? out : { status: r.status, ...explainRefusal(out, r.status, origin) };
   };
@@ -207,6 +208,8 @@ export function unitClient({ origin, token, space, session }) {
     open: (b) => post("open", b), save: (b) => post("save", b), land: (b) => post("land", b),
     sync: (b) => post("sync", b), discard: (b) => post("discard", b), presence: (unit) => get("presence", unit),
     main: (unit) => get("main", unit),
+    // One open draft with its files and what main held at its base — for `open --draft`.
+    draft: (unit, id) => get("draft", unit, `&draft=${encodeURIComponent(id)}&tables=1`),
     // The live manifest, for the one check that needs to see every unit at once rather
     // than one at a time: `open --new` naming an opportunity that does not exist yet.
     // Same bearer this client already holds, over the read side of the publish API
@@ -340,7 +343,40 @@ async function doOpenImpl({ client, unit, dir, origin, space, session, now, isNe
   return { ok: true, draftId: o.draftId, address: `${origin}${o.address}`, files: Object.keys(o.table).length, others, isNew: !exists };
 }
 
-async function doSaveImpl({ client, dir, baseRevision, baseTable }) {
+/**
+ * Pick an OPEN draft up into a fresh folder — the folder it was opened in is gone, or on
+ * another machine. The draft keeps its id, its saves and its base; this folder becomes one
+ * more place that saves into it (two folders on one draft are kept honest by the draft's
+ * own revision: the second to save is told to sync). Nothing is copied over anything, so
+ * no landing made since is overwritten — `sync` folds those in, from the draft's real base.
+ */
+async function doAdoptImpl({ client, unit, draftId, dir, origin, space, session, now }) {
+  if (fs.existsSync(dir) && fs.readdirSync(dir).length) return { ok: false, error: "folder-not-empty", dir };
+  const d = await client.draft(unit, draftId);
+  if (d.status) return { ok: false, ...d };
+  if (d.closedAt) return { ok: false, error: "draft-closed", draftId, landed: true, at: d.closedAt };
+  if (!d.table || !d.baseTable) return { ok: false, error: "adopt-unsupported" };
+  const createdFolder = !fs.existsSync(dir);
+  try {
+    fs.mkdirSync(dir, { recursive: true });
+    await materialise(client, unit, d.table, dir);
+    writeState(dir, {
+      origin, space, unit, address: draftAddress(unit, draftId), draftId, session, adopted: true,
+      baseRevision: d.baseRevision, draftRevision: d.revision, table: d.table, baseTable: d.baseTable, openedAt: now,
+    });
+    registryAdd({ dir, unit, draftId, origin, openedAt: now });
+  } catch (err) {
+    if (createdFolder) fs.rmSync(dir, { recursive: true, force: true });
+    else for (const e of fs.readdirSync(dir)) fs.rmSync(path.join(dir, e), { recursive: true, force: true });
+    throw err;
+  }
+  return {
+    ok: true, draftId, address: `${origin}${draftAddress(unit, draftId)}`, files: Object.keys(d.table).length,
+    owner: d.owner, name: d.name || null, baseRevision: d.baseRevision, lastSaveAt: d.lastSaveAt || null,
+  };
+}
+
+async function doSaveImpl({ client, dir, baseRevision, baseTable, pending }) {
   const st = readState(dir);
   if (!st) return { ok: false, error: "not-a-draft", dir };
   const skipped = [];
@@ -358,6 +394,10 @@ async function doSaveImpl({ client, dir, baseRevision, baseTable }) {
   st.draftRevision = r.draftRevision; st.table = r.table;
   if (baseRevision !== undefined) st.baseRevision = baseRevision;
   if (baseTable !== undefined) st.baseTable = baseTable;
+  // A save that moves the base finishes whatever sync was pending; a sync that stopped on
+  // an overlap hands its pending record in instead.
+  if (pending !== undefined) st.pending = pending;
+  else if (baseRevision !== undefined) delete st.pending;
   writeState(dir, st);
   return { ok: true, changed: changes.map((c) => relOf(st.unit, c.path)), skipped, draftRevision: r.draftRevision };
 }
@@ -365,6 +405,21 @@ async function doSaveImpl({ client, dir, baseRevision, baseTable }) {
 async function doLandImpl({ client, dir, note }) {
   const st = readState(dir);
   if (!st) return { ok: false, error: "not-a-draft", dir };
+  // AN OVERLAP IS NOT A LANDING'S TO DECIDE. A sync that met one kept yours in place and put
+  // theirs under `.augur/theirs/`; landing now would publish yours and drop their lines
+  // without a word, and nothing in the history would show it. So while any theirs is still
+  // there, the landing is refused and names them — deleting one is how you say it is folded.
+  const open = openOverlaps(dir);
+  if (open.length) return { ok: false, error: "overlaps-open", overlaps: open };
+  // The sync that stopped on overlaps left the draft on its OLD base (so nothing — not this
+  // terminal, not the Land button on the site — could land past them). They are folded now:
+  // move the draft onto the revision that sync merged, with everything saved.
+  if (st.pending) {
+    const done = await doSave({ client, dir, baseRevision: st.pending.mainRevision, baseTable: st.pending.baseTable });
+    if (!done.ok) return done;
+    Object.assign(st, readState(dir));
+    delete st.pending;
+  }
   const saved = await doSave({ client, dir });
   if (!saved.ok) return saved;
   // Every landing in a space writes the one manifest by compare-and-set, so eight agents
@@ -398,13 +453,24 @@ async function doSyncImpl({ client, dir }) {
   const baseTable = st.baseTable || {};
   const nextBase = { ...baseTable };
   const taken = [], merged = [], conflicts = [], kept = [];
+  const theirsOf = new Map(); // overlap → the main version it was left against
+  // Overlaps an earlier sync left and you have since folded (their theirs file deleted): if
+  // main still holds the version you folded, yours IS the resolution — do not merge it again.
+  const stillOpen = new Set(openOverlaps(dir));
+  const folded = new Map(((st.pending && st.pending.overlaps) || [])
+    .filter((o) => !stillOpen.has(o.rel)).map((o) => [o.rel, o.theirs]));
   const isText = (ct) => /^text\//.test(ct) || /javascript|json|svg/.test(ct);
   for (const c of r.changed) {
     const rel = relOf(st.unit, c.path);
-    const base = baseTable[c.path] || null;             // what main held when this draft was based
+    let base = baseTable[c.path] || null;               // what main held when this draft was based
     nextBase[c.path] = { h: c.h, ct: c.ct, s: c.s };
     if (base && base.h === c.h) continue;                // main's file is what my base already had
     const mine = local[rel] || null;
+    if (folded.has(rel)) {
+      if (folded.get(rel) === c.h) { kept.push(rel); continue; }
+      // main moved that file again after you folded it: merge from the version you folded
+      base = { h: folded.get(rel) };
+    }
     const theirBytes = await client.blobGet(c.h);
     const dest = path.join(dir, rel);
     if (!mine && base) {                                  // absent locally but the base had it: I deleted it.
@@ -412,7 +478,7 @@ async function doSyncImpl({ client, dir }) {
       // conflict, not a resurrection: leave the file gone, drop theirs beside it.
       // `nextBase[c.path]` above already advanced to main's version despite the conflict staying open, so a later land is possible once the agent has decided; landing without deciding lands the draft's table (this file absent) as it stands.
       writeTheirs(dir, rel, theirBytes);
-      conflicts.push({ rel, hunks: [], deleted: true });
+      conflicts.push({ rel, hunks: [], deleted: true }); theirsOf.set(rel, c.h);
       continue;
     }
     if (!mine || (base && mine.h === base.h)) {          // new on main, or I did not touch it: take theirs
@@ -423,12 +489,12 @@ async function doSyncImpl({ client, dir }) {
     }
     if (mine.h === c.h) { kept.push(rel); continue; }    // we made the same change
     if (!base || !isText(c.ct)) {                        // no common base, or binary: theirs beside, mine stays
-      writeTheirs(dir, rel, theirBytes); conflicts.push({ rel, hunks: [] }); continue;
+      writeTheirs(dir, rel, theirBytes); conflicts.push({ rel, hunks: [] }); theirsOf.set(rel, c.h); continue;
     }
     const baseBytes = await client.blobGet(base.h);
     const m = merge3(baseBytes.toString("utf8"), fs.readFileSync(dest, "utf8"), theirBytes.toString("utf8"));
     if (m.ok) { fs.writeFileSync(dest, m.text); merged.push(rel); }
-    else { writeTheirs(dir, rel, theirBytes); conflicts.push({ rel, hunks: m.conflicts }); }
+    else { writeTheirs(dir, rel, theirBytes); conflicts.push({ rel, hunks: m.conflicts }); theirsOf.set(rel, c.h); }
   }
   for (const p of r.removed) {
     const rel = relOf(st.unit, p);
@@ -442,9 +508,38 @@ async function doSyncImpl({ client, dir }) {
   // already does after the server accepts it — a save that fails on the network must
   // leave `.augur/draft.json` exactly as it was before this sync, not holding an advanced
   // `baseTable` alongside a stale `table`/`baseRevision`.
+  //
+  // WITH OVERLAPS, THE BASE STAYS WHERE IT WAS. What was taken and merged is saved, but the
+  // draft keeps its old base on the server, so every landing — this terminal's, or a member
+  // pressing Land on the site — is refused as `main-moved` until the overlaps are folded.
+  // The move is recorded as pending and made by `land` (or the next clean sync) once each
+  // `.augur/theirs/<file>` is gone. A later sync still merges from the true common base.
+  if (conflicts.length) {
+    const pending = { mainRevision: r.mainRevision, baseTable: nextBase, overlaps: conflicts.map((c) => ({ rel: c.rel, theirs: theirsOf.get(c.rel) })) };
+    const saved = await doSave({ client, dir, pending });
+    if (!saved.ok) return saved;
+    return { ok: true, mainRevision: r.mainRevision, taken, merged, kept, conflicts, pending: true };
+  }
   const saved = await doSave({ client, dir, baseRevision: r.mainRevision, baseTable: nextBase });
   if (!saved.ok) return saved;
   return { ok: true, mainRevision: r.mainRevision, taken, merged, kept, conflicts };
+}
+
+/** Every file still waiting under `.augur/theirs/`, as folder-relative paths. */
+export function openOverlaps(dir) {
+  const root = path.join(dir, THEIRS_DIR);
+  const out = [];
+  const walk = (d, rel) => {
+    let entries;
+    try { entries = fs.readdirSync(d, { withFileTypes: true }); } catch (e) { return; }
+    for (const e of entries) {
+      const r = rel ? `${rel}/${e.name}` : e.name;
+      if (e.isDirectory()) walk(path.join(d, e.name), r);
+      else if (e.name !== ".DS_Store") out.push(r);
+    }
+  };
+  walk(root, "");
+  return out.sort();
 }
 
 function writeTheirs(dir, rel, bytes) {
@@ -541,6 +636,7 @@ export function draftsReport(entries, presenceByUnit = {}) {
 // through the same wrapped export, so a blob failure partway through a land or a sync comes
 // back as the same `{ok: false, error: "network"}` shape a bare save would return.
 export const doOpen = guarded(doOpenImpl);
+export const doAdopt = guarded(doAdoptImpl);
 export const doSave = guarded(doSaveImpl);
 export const doLand = guarded(doLandImpl);
 export const doSync = guarded(doSyncImpl);

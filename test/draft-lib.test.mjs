@@ -6,7 +6,7 @@ import path from "node:path";
 import { createHash } from "node:crypto";
 import {
   mimeOf, hashBytes, scanFolder, readState, writeState, relOf, urlOf, changesBetween,
-  doOpen, doSave, doLand, doSync, doClose, STATE_FILE, THEIRS_DIR,
+  doOpen, doSave, doLand, doSync, doClose, doAdopt, openOverlaps, STATE_FILE, THEIRS_DIR,
 } from "../scripts/lib/draft.mjs";
 
 const sha = (s) => createHash("sha256").update(s).digest("hex");
@@ -24,6 +24,8 @@ function fakeInstance(mainFiles) {
   const drafts = new Map();
   const removedEver = new Set(); // paths landMain has ever dropped from main, for sync's `removed`
   let mainRevision = 1;
+  const revisions = new Map(); // revision -> main's table then, for `draft(…, tables)`
+  const snap = () => revisions.set(1, { ...main });
   const inst = {
     blobs, drafts, get mainRevision() { return mainRevision; }, main,
     landMain(table) {
@@ -31,6 +33,7 @@ function fakeInstance(mainFiles) {
       Object.keys(main).forEach((k) => delete main[k]);
       Object.assign(main, table);
       mainRevision++;
+      revisions.set(mainRevision, { ...main });
     },
     client: {
       async open() { const id = `d${drafts.size + 1}xxxx`.slice(0, 6); drafts.set(id, { table: { ...main }, revision: 0, base: mainRevision }); return { draftId: id, baseRevision: mainRevision, table: { ...main }, address: `${U.replace(/\/$/, "")}@${id}/`, presence: [] }; },
@@ -56,10 +59,16 @@ function fakeInstance(mainFiles) {
       },
       async discard({ draftId }) { drafts.delete(draftId); return { closed: true }; },
       async presence() { return { drafts: [] }; },
+      async draft(unit, id) {
+        const d = drafts.get(id);
+        if (!d) return { status: 404, error: "unknown-draft" };
+        return { draftId: id, table: { ...d.table }, baseTable: { ...(revisions.get(d.base) || {}) }, baseRevision: d.base, revision: d.revision, owner: "p1", name: "Ada", closedAt: d.closedAt || null };
+      },
       async blobPut(h, body) { blobs.set(h, Buffer.from(body).toString()); },
       async blobGet(h) { return Buffer.from(blobs.get(h)); },
     },
   };
+  snap();
   return inst;
 }
 
@@ -378,4 +387,169 @@ test("a save reports what it left out, and unpublishes a local file that had tra
   assert.deepEqual(r.changed, ["lab/.env.json"]);
   const st = readState(dir);
   assert.ok(!(`${U}lab/.env.json` in st.table), "the draft no longer publishes it");
+});
+
+// ── an overlap left by sync is not a landing's to decide ─────────────────────
+// Measured on a live workspace (23 Sep 2026): sync met an overlap and exited 2, but it had
+// already moved the draft onto main, so a plain `land` next published "mine" and dropped the
+// other person's line in that file — no warning, nothing in the history.
+async function overlapPair() {
+  const inst = fakeInstance({ "app.js": "a\nb\nc\n", "other.js": "x\n" });
+  const root = tmp();
+  const ada = path.join(root, "ada"), bea = path.join(root, "bea");
+  await doOpen({ client: inst.client, unit: U, dir: ada, origin: "https://x.test", space: "s", session: "i", now: "2026-09-23T00:00:00.000Z" });
+  await doOpen({ client: inst.client, unit: U, dir: bea, origin: "https://x.test", space: "s", session: "w", now: "2026-09-23T00:00:00.000Z" });
+  fs.writeFileSync(path.join(bea, "app.js"), "a\nBEA\nc\n");
+  fs.writeFileSync(path.join(bea, "other.js"), "x\ny\n");
+  await doSave({ client: inst.client, dir: bea });
+  fs.writeFileSync(path.join(ada, "app.js"), "a\nADA\nc\n");
+  await doSave({ client: inst.client, dir: ada });
+  assert.equal((await doLand({ client: inst.client, dir: bea })).ok, true);
+  assert.equal((await doLand({ client: inst.client, dir: ada })).error, "main-moved");
+  const s = await doSync({ client: inst.client, dir: ada });
+  assert.equal(s.ok, true);
+  assert.deepEqual(s.conflicts.map((c) => c.rel), ["app.js"]);
+  assert.equal(s.pending, true);
+  const live = () => inst.blobs.get(inst.main[`${U}app.js`].h);
+  return { inst, ada, live };
+}
+
+test("land refuses while a sync's overlap is still open, and names it", async () => {
+  const { inst, ada, live } = await overlapPair();
+  const before = inst.mainRevision;
+  const l = await doLand({ client: inst.client, dir: ada });
+  assert.equal(l.ok, false);
+  assert.equal(l.error, "overlaps-open");
+  assert.deepEqual(l.overlaps, ["app.js"]);
+  assert.equal(inst.mainRevision, before, "nothing landed");
+  assert.match(live(), /BEA/, "the other side's line is still live");
+});
+
+test("an open overlap keeps the draft on its old base, so the site's Land button is refused too", async () => {
+  const { inst, ada } = await overlapPair();
+  const st = readState(ada);
+  const d = inst.drafts.get(st.draftId);
+  assert.equal(d.base, 1, "the server-side base did not move");
+  assert.equal(st.baseRevision, 1);
+  // what was taken cleanly IS saved into the draft
+  assert.equal(fs.readFileSync(path.join(ada, "other.js"), "utf8"), "x\ny\n");
+  assert.equal(d.table[`${U}other.js`].h, sha("x\ny\n"));
+  // a member pressing Land lands at the draft's own base: refused
+  const bar = await inst.client.land({ draftId: st.draftId, baseRevision: d.base });
+  assert.equal(bar.error, "main-moved");
+  // an edit saved meanwhile (the hook) keeps it pending
+  fs.writeFileSync(path.join(ada, "note.txt"), "n");
+  await doSave({ client: inst.client, dir: ada });
+  assert.equal(readState(ada).pending.mainRevision, 2);
+  assert.equal(inst.drafts.get(st.draftId).base, 1);
+});
+
+test("folding an overlap and deleting its theirs copy lets land move the base and land both sides", async () => {
+  const { inst, ada, live } = await overlapPair();
+  fs.writeFileSync(path.join(ada, "app.js"), "a\nADA\nBEA\nc\n");
+  fs.rmSync(path.join(ada, THEIRS_DIR, "app.js"));
+  assert.deepEqual(openOverlaps(ada), []);
+  const l = await doLand({ client: inst.client, dir: ada });
+  assert.equal(l.ok, true, JSON.stringify(l));
+  assert.equal(live(), "a\nADA\nBEA\nc\n");
+  assert.equal(inst.blobs.get(inst.main[`${U}other.js`].h), "x\ny\n", "the one-sided change from the sync is kept");
+  assert.equal(readState(ada).pending, undefined);
+});
+
+test("a sync run again does not flag an overlap that was folded, and merges a newer landing from the folded version", async () => {
+  const { inst, ada } = await overlapPair();
+  fs.writeFileSync(path.join(ada, "app.js"), "a\nADA\nBEA\nc\n");
+  fs.rmSync(path.join(ada, THEIRS_DIR, "app.js"));
+  const again = await doSync({ client: inst.client, dir: ada });
+  assert.deepEqual(again.conflicts, [], "the folded file is not an overlap any more");
+  assert.equal(again.pending, undefined);
+  assert.equal(readState(ada).baseRevision, inst.mainRevision, "a clean sync moves the base");
+
+  // same shape, but main moves the folded file again before the second sync
+  const p = await overlapPair();
+  fs.writeFileSync(path.join(p.ada, "app.js"), "a\nADA\nBEA\nc\n");
+  fs.rmSync(path.join(p.ada, THEIRS_DIR, "app.js"));
+  const newer = "a\nBEA\nc\nd\n";
+  p.inst.blobs.set(sha(newer), newer);
+  p.inst.landMain({ ...p.inst.main, [`${U}app.js`]: { h: sha(newer), ct: mimeOf("app.js"), s: newer.length } });
+  const s2 = await doSync({ client: p.inst.client, dir: p.ada });
+  assert.deepEqual(s2.conflicts, []);
+  assert.equal(fs.readFileSync(path.join(p.ada, "app.js"), "utf8"), "a\nADA\nBEA\nc\nd\n");
+});
+
+test("a theirs file with no pending sync (an older CLI's) still blocks the landing", async () => {
+  const inst = fakeInstance({ "index.html": "<h1>flow</h1>" });
+  const dir = path.join(tmp(), "flow");
+  await doOpen({ client: inst.client, unit: U, dir, origin: "https://x.test", space: "s", session: "s1", now: "2026-09-23T00:00:00.000Z" });
+  fs.mkdirSync(path.join(dir, THEIRS_DIR, "js"), { recursive: true });
+  fs.writeFileSync(path.join(dir, THEIRS_DIR, "js", "a.js"), "theirs");
+  const l = await doLand({ client: inst.client, dir });
+  assert.equal(l.error, "overlaps-open");
+  assert.deepEqual(l.overlaps, ["js/a.js"]);
+});
+
+// ── picking an open draft up into a fresh folder ─────────────────────────────
+test("open --draft puts the draft's saved files in a new folder on its own base, and a later landing is synced, not overwritten", async () => {
+  const inst = fakeInstance({ "app.js": "a\nb\nc\n", "i18n.js": "k\n" });
+  const root = tmp();
+  const old = path.join(root, "old");
+  await doOpen({ client: inst.client, unit: U, dir: old, origin: "https://x.test", space: "s", session: "i1", now: "2026-09-22T00:00:00.000Z" });
+  fs.writeFileSync(path.join(old, "app.js"), "a\nNEW WORK\nb\nc\n");
+  await doSave({ client: inst.client, dir: old });
+  const draftId = readState(old).draftId;
+  fs.rmSync(old, { recursive: true, force: true });          // the session's folder is gone
+
+  // somebody lands on both files meanwhile
+  const w = "a\nb\nc\nSHARED\n", k = "k\nl\n";
+  inst.blobs.set(sha(w), w); inst.blobs.set(sha(k), k);
+  inst.landMain({ ...inst.main, [`${U}app.js`]: { h: sha(w), ct: mimeOf("app.js"), s: w.length }, [`${U}i18n.js`]: { h: sha(k), ct: mimeOf("i18n.js"), s: k.length } });
+
+  const dir = path.join(root, "new");
+  const r = await doAdopt({ client: inst.client, unit: U, draftId, dir, origin: "https://x.test", space: "s", session: "i2", now: "2026-09-23T00:00:00.000Z" });
+  assert.equal(r.ok, true, JSON.stringify(r));
+  assert.equal(r.address, `https://x.test${U.replace(/\/$/, "")}@${draftId}/`);
+  assert.equal(fs.readFileSync(path.join(dir, "app.js"), "utf8"), "a\nNEW WORK\nb\nc\n");
+  assert.equal(fs.readFileSync(path.join(dir, "i18n.js"), "utf8"), "k\n");
+  const st = readState(dir);
+  assert.equal(st.draftId, draftId);
+  assert.equal(st.baseRevision, 1);
+  assert.equal(st.draftRevision, 1);
+
+  // an edit here saves into the same draft
+  fs.writeFileSync(path.join(dir, "extra.css"), "x{}");
+  assert.equal((await doSave({ client: inst.client, dir })).ok, true);
+
+  assert.equal((await doLand({ client: inst.client, dir })).error, "main-moved");
+  const s = await doSync({ client: inst.client, dir });
+  assert.deepEqual(s.conflicts, []);
+  assert.equal((await doLand({ client: inst.client, dir })).ok, true);
+  assert.equal(inst.blobs.get(inst.main[`${U}app.js`].h), "a\nNEW WORK\nb\nc\nSHARED\n", "both the draft's work and the landing since are live");
+  assert.equal(inst.blobs.get(inst.main[`${U}i18n.js`].h), "k\nl\n");
+});
+
+test("open --draft refuses a non-empty folder, an unknown draft and a landed one", async () => {
+  const inst = fakeInstance({ "app.js": "a\n" });
+  const root = tmp();
+  const busy = path.join(root, "busy");
+  fs.mkdirSync(busy); fs.writeFileSync(path.join(busy, "x"), "x");
+  assert.equal((await doAdopt({ client: inst.client, unit: U, draftId: "abcdef", dir: busy, origin: "o", space: "s", session: "s", now: "n" })).error, "folder-not-empty");
+  assert.equal((await doAdopt({ client: inst.client, unit: U, draftId: "zzzzzz", dir: path.join(root, "a"), origin: "o", space: "s", session: "s", now: "n" })).error, "unknown-draft");
+  const d1 = path.join(root, "d1");
+  await doOpen({ client: inst.client, unit: U, dir: d1, origin: "o", space: "s", session: "s", now: "n" });
+  inst.drafts.get(readState(d1).draftId).closedAt = "2026-09-23T00:00:00.000Z";
+  const r = await doAdopt({ client: inst.client, unit: U, draftId: readState(d1).draftId, dir: path.join(root, "b"), origin: "o", space: "s", session: "s", now: "n" });
+  assert.equal(r.error, "draft-closed");
+  assert.equal(fs.existsSync(path.join(root, "b")), false);
+});
+
+test("open --draft against an engine that cannot hand the tables over says so and writes nothing", async () => {
+  const inst = fakeInstance({ "app.js": "a\n" });
+  const root = tmp();
+  const d1 = path.join(root, "d1");
+  await doOpen({ client: inst.client, unit: U, dir: d1, origin: "o", space: "s", session: "s", now: "n" });
+  const client = { ...inst.client, async draft() { return { draftId: "x", files: 1, baseRevision: 1, revision: 0 }; } };
+  const dir = path.join(root, "b");
+  const r = await doAdopt({ client, unit: U, draftId: readState(d1).draftId, dir, origin: "o", space: "s", session: "s", now: "n" });
+  assert.equal(r.error, "adopt-unsupported");
+  assert.equal(fs.existsSync(dir), false);
 });

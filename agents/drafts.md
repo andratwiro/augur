@@ -113,8 +113,19 @@ work around — fix what broke it, or tell the person it conflicts. See
 
 `sync` writes one-sided changes outright and merges a file you both touched when the
 edits do not overlap. When they do overlap, your version stays in place, theirs is put at
-`.augur/theirs/<path>`, and the overlapping hunks are printed — fold them, then land.
-Nothing is guessed, on the server or here.
+`.augur/theirs/<path>`, and the overlapping hunks are printed. Fold their lines into your
+file, then DELETE `.augur/theirs/<path>` — that is how you say it is folded — and land.
+Until every one is gone the draft cannot land, from the terminal or from the site: `land`
+answers `overlaps-open` and names them. Nothing is guessed, on the server or here.
+
+**Picking a draft up again.** A draft outlives the folder it was opened in. When that
+folder is gone — a new session, another machine — `augur open <opportunity>/<prototype>
+--draft <id>` (the id is the part after `@` in the draft's address; the gallery card and
+`augur status` show the drafts that are open) puts that draft's saved files in a fresh
+folder, on the base it was opened on. Then `augur land`, and `augur sync` if it says main
+moved. Never start a new draft and copy an old folder's files over it: the new draft is
+based on what is live now, so every file copied over quietly undoes whatever landed since,
+and nothing can tell.
 
 `augur close <folder>` removes the folder once landed — from the parent, so the shell is
 not left standing in a directory that no longer exists (run inside the folder, it works and
@@ -131,7 +142,8 @@ origin this machine paired with last (or `AUGUR_ORIGIN`).
 |---|---|---|
 | `main-moved` / "sync first" | somebody landed since you opened | `augur sync`, then `augur land` |
 | `stale-draft` | another process saved to this same draft | `augur sync`, then `augur save` |
-| `draft-closed` | somebody landed or discarded this draft from the site (it says who and when) | your edits are still in the folder; `augur open` the prototype again and copy them in |
+| `overlaps-open` | the last `sync` left files where both sides changed the same lines (it names them) | fold each into yours, delete its `.augur/theirs/` copy, `augur land` again |
+| `draft-closed` | somebody landed or discarded this draft from the site (it says who and when) | what you saved is in that landing; `augur open` the prototype again and redo in it only what you had not saved — copying whole files over undoes anything landed since |
 | `manifest-contended` | many landings hit the workspace in the same second; `land` already tried again | `augur land` once more |
 | `forbidden` with "run `augur connect` again" | this machine's token was revoked (a role change or a removal) or belongs to another workspace | nothing: `open` and `land` pair afresh on the spot — a tab opens for the person, they press Approve. Only where that cannot happen (CI, a machine token) does the refusal print what to run |
 | `would-unpublish` | the draft has no files (the folder is empty) | check the folder; a deletion is its own verb |
@@ -146,4 +158,7 @@ origin this machine paired with last (or `AUGUR_ORIGIN`).
 
 - Publish a whole tree to a drafts workspace. `publish` refuses there, and `ship` is gone.
 - Wait for, or refuse over, somebody else's draft. Both work; the second landing syncs.
+- Delete a `.augur/theirs/` file you have not folded, to get a landing through. It is the
+  other person's work.
+- Copy an old folder's files into a new draft. Pick the old draft up with `--draft`.
 - Hand over a path on disk as "done". Done is the URL `land` printed.
