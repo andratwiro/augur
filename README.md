@@ -18,7 +18,7 @@ out of and no export to negotiate: a prototype is a folder of static HTML in a
 git repository you already own.
 
 **See it running: [demo.augur.works](https://demo.augur.works)**, sign in with
-`visita@fulla.demo` / `regadora`. It resets every night, so scribble away.
+`visita@fulla.demo` / `regadora`. Scribble away.
 
 ![The projects gallery](docs/shots/gallery.png)
 
