@@ -242,7 +242,6 @@ const ALLOWLIST = {
       "IMAGES_OFF",           // the refusal body when an instance has user images switched off
       "OVERLAY_KV_KEYS",      // family -> the KV document name it lives under; the same for every workspace
       "STATE_KV_PREFIXED",    // which inventory entries are one document per key when exported
-      "NEVER_CLEARED",        // families a reset may never empty; a fact about credentials, not a workspace
       "KV_CUTOVER",           // which identity families read from the workspace object; a deploy-wide fact, and one word per family is the revert
       "IDENTITY_TENANCY",     // which identity KV documents carry a workspace segment; the same shape, the same revert, and the same deploy-wide fact
       "IDENTITY_KV_FAMILIES", // which KV documents each identity family owns; the worker's own copy of the fact src/kv-identity.mjs also lists

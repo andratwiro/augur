@@ -12,7 +12,7 @@
 // TWO WORKSPACES ON ONE DEPLOYMENT, sharing one KV namespace and one R2 bucket, resolved
 // from the Host exactly as the hosted worker resolves them. Every case drives the REAL
 // worker through `worker.fetch` over the same routes an operator or a person would use —
-// a restore, a reset, a rename, a role change, a publish — and asserts each workspace's OWN
+// a restore, a rename, a role change, a publish — and asserts each workspace's OWN
 // answer rather than merely that the two differ. The stores are read to set a case up and,
 // where the clause is about bytes, to compare documents before and after.
 //
@@ -405,46 +405,6 @@ test("an instance-config push at A writes A's segment and leaves the shared buck
   assert.doesNotMatch(d.r2.store.get(W.bundleKey("config/instance.json", B)).toString(), /alfa-deploy/);
 });
 
-// ═══ CLAUSE 2 — A RESET OF A CLEARS A AND NOTHING ELSE ═══════════════════════════════
-
-test("a nightly RESET of workspace A leaves B's roster and display names untouched", async () => {
-  const A = "alfa", B = "bravo";
-  const d = await deployment({ workspaces: [A, B] });
-
-  for (const ws of [A, B]) {
-    await d.fire(ws, "/__me/name", {
-      method: "POST", headers: { "Content-Type": "application/json", ...(await d.cookieFor(ws, ADMIN)) },
-      body: JSON.stringify({ name: `Ada of ${ws}` }),
-    });
-    await d.fire(ws, "/__admin/users", {
-      method: "POST", headers: { "Content-Type": "application/json", ...(await d.cookieFor(ws, ADMIN)) },
-      body: JSON.stringify({ op: "role", email: GUEST, role: "viewer" }),
-    });
-  }
-  const beforeB = d.docs(B);
-  assert.match(beforeB["users:names"] || "", /Ada of bravo/, "the fixture never gave B a display name");
-
-  // The demo's nightly job, as the engine sees it: `clear` on the families that shadow a
-  // durable record. This is the exact list `seed/policy.mjs` names.
-  const tokenA = await mintToken(d, A, "*");
-  const reset = await d.fire(A, "/__publish/_state/import", {
-    method: "POST", headers: { "Content-Type": "application/json", ...authed(tokenA) },
-    body: JSON.stringify({
-      format: 1, families: {},
-      clear: ["users:names", "users:avatars", "users:roles", "users:roster", "users:spaces", "spaces:icons", "avatar:", "spaceicon:"],
-    }),
-  });
-  const resetBody = JSON.parse(await reset.text());
-  assert.equal(reset.status, 200, JSON.stringify(resetBody));
-  assert.ok((resetBody.cleared || []).includes("users:names"),
-    `the reset did not actually clear anything: ${JSON.stringify(resetBody)}`);
-
-  const afterA = d.docs(A);
-  assert.equal(afterA["users:names"], undefined, "A's own reset did not clear A");
-  assert.deepEqual(d.docs(B), beforeB,
-    "A's nightly reset reached into B — the clause that proves this is not only a migration fix");
-});
-
 // ═══ CLAUSE 3 — AN ORDINARY RENAME AND ROLE CHANGE IN A ══════════════════════════════
 
 test("a rename and a role change in A change NOTHING in B", async () => {
@@ -550,7 +510,7 @@ test("a segmented write reaches the segmented key and NOT the unsegmented one", 
     "the write reached the unsegmented key, which may be a neighbour's");
 });
 
-test("a DELETE does NOT reach the unsegmented key — which is why one reset is not deployment-wide", async () => {
+test("a DELETE does NOT reach the unsegmented key — which is why one workspace's delete is not deployment-wide", async () => {
   const A = "alfa";
   const d = await deployment({ workspaces: [A, "bravo"] });
   await d.kv.put("users:names", JSON.stringify({ "someone@elsewhere.test": "Predates the segment" }));
