@@ -64,11 +64,19 @@ jobs:
       - run: set -o pipefail; npm publish --provenance --access public --loglevel verbose 2>&1 | grep -viE "^npm (verb|http) (fetch|cache)"
       - if: always()
         run: rm -f ~/.npmrc
+      # Ask the attestations endpoint itself, not `npm view`: the package document is served
+      # through a cache that took over two minutes to show `dist.attestations` on 0.16.9 and
+      # 0.16.10, so both cuts failed here although both were published and signed. The
+      # endpoint answers as soon as the publish lands; the provenance statement is the one
+      # agents check, so the step passes only when it is there.
       - name: the registry shows the attestation
         run: |
           v="$(node -p "require('./package.json').version")"
-          for i in 1 2 3 4 5 6; do
-            if npm view "@augurworks/augur@$v" dist.attestations.url 2>/dev/null | grep -q .; then npm view "@augurworks/augur@$v" dist.attestations; exit 0; fi
-            sleep 20
+          url="https://registry.npmjs.org/-/npm/v1/attestations/@augurworks%2faugur@$v"
+          for i in $(seq 1 20); do
+            if curl -fsS "$url" -o att.json 2>/dev/null && node -e "const a=require('./att.json').attestations||[];process.exit(a.some(x=>x.predicateType==='https://slsa.dev/provenance/v1')?0:1)"; then
+              node -e "for(const a of require('./att.json').attestations)console.log(a.predicateType)"; exit 0
+            fi
+            sleep 15
           done
-          echo "no attestation visible yet for $v"; exit 1
+          echo "no provenance attestation for $v at $url after 5 minutes"; exit 1
