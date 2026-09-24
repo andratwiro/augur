@@ -2,15 +2,8 @@
 /**
  * check-local — run every gate `.github/workflows/check.yml` runs, here, before pushing.
  *
- * WHY. `check` gates the deploy: `deploy-trigger.yml` only dispatches when it is green,
- * so a red check does not break a live instance — it silently STOPS the engine reaching
- * one. A push whose check fails looks exactly like a push that shipped, from this side,
- * and the instance that auto-bumps within a minute simply never bumps.
- *
- * That already happened once. A commit landed on main naming a person in a comment, the
- * repo-wide word scan caught it in CI, the deploy trigger skipped, and the engine sat one
- * commit behind on every instance until someone looked at the run list. Every check runs
- * locally in seconds; there was no reason not to have run them.
+ * WHY. A red `check` on main is a commit no instance should pin. Every check runs locally
+ * in seconds, so there is no reason to find out from the run list after pushing.
  *
  * THE WORD SCAN IS THE ONE THAT NEEDED THIS. The other five gates are node scripts anyone
  * would think to run. The word scan is a shell grep that only exists inside the workflow

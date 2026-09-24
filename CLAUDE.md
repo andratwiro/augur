@@ -261,11 +261,10 @@ what it writes (indexes, graph, search) does not, research never does.
 
 ## Deploys — this repo ships nothing
 
-**Engine pushes auto-deploy; space content publishes directly.** A push here fires
-`.github/workflows/deploy-trigger.yml` (an `engine-updated` dispatch); the shell
-moves the engine pin and its `deploy.yml` ships worker code + engine chrome
-(~1 min). **Space content does NOT ship on push, and cannot** — spaces publish via
-`augur publish` (seconds, atomic; token from `augur connect` or `augur login`).
+**A push here deploys nothing.** Each instance takes the engine by moving its own
+pin, in its own deploy shell, when its operator chooses. Space content does not ship
+with the engine either: it goes live from `augur land` (or `augur publish` on an
+instance that does not serve drafts).
 
 **One source of content, structurally.** A shell builds with `GV_ENGINE_ONLY=1`:
 space discovery is skipped, no space is on disk, and the manifest writer THROWS if
