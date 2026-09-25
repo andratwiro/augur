@@ -15,7 +15,7 @@ const log = (m) => console.error(`\x1b[35m[land]\x1b[0m ${m}`);
 const die = (m) => { console.error(`\x1b[31m[land]\x1b[0m ${m}`); process.exit(1); };
 const argv = process.argv.slice(2);
 const i = argv.indexOf("-m");
-const note = i > -1 ? argv[i + 1] || "" : "";
+let note = i > -1 ? argv[i + 1] || "" : "";
 const dir = process.cwd();
 const st = readState(dir);
 if (!st) die("not a draft folder — run `augur open <prototype>` first.");
@@ -24,7 +24,12 @@ let token;
 try { token = await tokenOrPair(origin); } catch (e) { die(e.message); }
 let client = unitClient({ origin, token, space: st.space, session: st.session });
 // The prototype's own criteria, when it carries them and this machine has their runner.
-if (!criteriaGate(dir, { log }).ok) die("landing refused: a criterion that held at the last landing fails now (above). Fix it, or ask the person, and land again.");
+const gate = criteriaGate(dir, { log });
+if (!gate.ok && gate.why === "runner-failed") die("landing refused: the criteria runner broke before it could answer (above), so nothing was checked. Fix what broke it and land again. Only a person may land past it, with AUGUR_SKIP_CRITERIA=1.");
+if (!gate.ok) die("landing refused: a criterion that held at the last landing fails now (above). Fix it, or ask the person, and land again.");
+// An unchecked landing says so in its own history entry, where the person reading the
+// prototype's history will see it — not only in this terminal.
+if (gate.unchecked) note = note ? `${note} — ${gate.unchecked}` : gate.unchecked;
 // The picture first, so the save inside `land` carries it. A skip is said and never fatal.
 const poster = await posterFor(dir, { log, enabled: !argv.includes("--no-poster") });
 if (poster.shot) log("poster shot — preview.webp goes up with the landing");
