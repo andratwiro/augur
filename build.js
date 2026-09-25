@@ -3676,8 +3676,25 @@ function injectPrimitives(html) {
 // removes the card from view; the real file removal is a repo edit — see CLAUDE.md).
 // KV-frugal like STATUS_JS: the name map is read once per session (sessionStorage),
 // written only on an actual rename.
+// A failed card action says so. Status, rename, pins and canvas removal used to paint the
+// new state first and swallow the answer, so a refused write looked done until a reload
+// quietly undid it. Each IIFE ships this local copy (they share no scope); it reuses the
+// .gv-toast style and raises augur:action-failed for the failure reporter.
+const FAIL_NOTE_JS = `
+  var gvFailToast;
+  function failNote(msg, action, st){
+    var why = st === 401 ? 'you are signed out' : st === 403 ? 'you can\u2019t change this' :
+      st === 429 ? 'too many changes, wait a minute' : 'the server didn\u2019t answer';
+    if(!gvFailToast){ gvFailToast=document.createElement('div'); gvFailToast.className='gv-toast'; gvFailToast.setAttribute('role','alert'); document.body.appendChild(gvFailToast); }
+    gvFailToast.textContent = msg + ': ' + why; gvFailToast.classList.add('show');
+    clearTimeout(gvFailToast._t); gvFailToast._t=setTimeout(function(){ gvFailToast.classList.remove('show'); }, 5000);
+    try { window.dispatchEvent(new CustomEvent('augur:action-failed', { detail: { action: action, status: typeof st === 'number' ? st : 0 } })); } catch(e){}
+  }
+  function okOrThrow(r){ if(!r.ok) throw r.status; return r; }
+`;
 const CARD_MENU_JS = `
 (function(){
+${FAIL_NOTE_JS}
   var cards = Array.prototype.slice.call(document.querySelectorAll('[data-rename-key]'));
   if(!cards.length) return;
   var NCACHE='gv_names_map';
@@ -3707,20 +3724,23 @@ const CARD_MENU_JS = `
   else fetch('/__name',{headers:{'Accept':'application/json'}}).then(function(r){return r.json();})
     .then(function(d){ var m=(d&&d.map)||{}; try{sessionStorage.setItem(NCACHE,JSON.stringify(m));}catch(e){} applyNames(m); }).catch(function(){});
   function persistName(key,name){
-    fetch('/__name',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({key:key,name:name})})
-      .then(function(r){return r.json();}).then(function(d){ if(d&&d.map){ try{sessionStorage.setItem(NCACHE,JSON.stringify(d.map));}catch(e){} } }).catch(function(){});
+    return fetch('/__name',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({key:key,name:name})})
+      .then(okOrThrow).then(function(r){return r.json();}).then(function(d){ if(d&&d.map){ try{sessionStorage.setItem(NCACHE,JSON.stringify(d.map));}catch(e){} } });
   }
   // Created-canvas cards store their name in the /__canvases registry (their only
   // name store), not the /__name override map; empty (= revert) is a no-op there.
-  function persistFor(c,key,name){
-    var cp=c.getAttribute('data-canvas-path');
+  // A refused rename puts the old name back and says so.
+  function persistFor(c,key,name,prev){
+    var cp=c.getAttribute('data-canvas-path'), req;
     if(cp){
       if(!name) return;
       var clean=name.replace(/^\\uD83D\\uDDFA\\uFE0F\\s*/,'');
-      fetch('/__canvases',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({path:cp,rename:true,name:clean})}).catch(function(){});
-      return;
-    }
-    persistName(key,name);
+      req=fetch('/__canvases',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({path:cp,rename:true,name:clean})}).then(okOrThrow);
+    } else req=persistName(key,name);
+    req.catch(function(st){
+      var el=nameEl(c); if(el && prev!=null){ el.textContent=prev; c.setAttribute('data-fkey',prev); }
+      failNote('Name not saved','card.rename',st);
+    });
   }
 
   // ---- toast ----
@@ -3767,8 +3787,9 @@ const CARD_MENU_JS = `
     del.addEventListener('click',function(){
       del.disabled=true; cancel.disabled=true;
       fetch('/__canvases',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({path:p,remove:true})})
+        .then(okOrThrow)
         .then(function(){ close(); c.style.transition='opacity .2s ease'; c.style.opacity='0'; setTimeout(function(){ c.remove(); },210); showToast('Canvas removed'); })
-        .catch(function(){ close(); showToast('Remove failed'); });
+        .catch(function(st){ close(); failNote('Canvas not removed','canvas.remove',st); });
     });
   }
   function deleteCard(c){
@@ -3822,8 +3843,8 @@ const CARD_MENU_JS = `
       el.removeEventListener('keydown',onKey); el.removeEventListener('blur',onBlur); el.removeAttribute('contenteditable');
       var val=(el.textContent||'').replace(/\\s+/g,' ').trim().slice(0,80);
       if(!commit){ el.textContent=prev; }
-      else if(!val||val===def){ el.textContent=def; c.setAttribute('data-fkey',def); if(prev!==def) persistFor(c,key,''); }
-      else { el.textContent=val; c.setAttribute('data-fkey',val); persistFor(c,key,val); }
+      else if(!val||val===def){ el.textContent=def; c.setAttribute('data-fkey',def); if(prev!==def) persistFor(c,key,'',prev); }
+      else { el.textContent=val; c.setAttribute('data-fkey',val); persistFor(c,key,val,prev); }
       var s=getSelection(); if(s) s.removeAllRanges();
     }
     el.addEventListener('keydown',onKey); el.addEventListener('blur',onBlur);
@@ -3910,6 +3931,7 @@ const CARD_MENU_JS = `
 // state is "ignore"; clicking cycles ignore → in-progress → dev-ready → ignore.
 const STATUS_JS = `
 (function(){
+${FAIL_NOTE_JS}
   var chips = []; // filled by __gvStatusWire at boot + when cards arrive late
   var ORDER = ['ignore','in-progress','dev-ready'];
   var META = {
@@ -4014,15 +4036,14 @@ const STATUS_JS = `
       method:'POST',
       headers:{'Content-Type':'application/json'},
       body: JSON.stringify({ key: chip.getAttribute('data-status-key'), status: next })
-    }).then(function(r){ return r.json(); }).then(function(d){
-      if(d && d.map){
-        try { sessionStorage.setItem(CACHE, JSON.stringify(d.map)); } catch(e){}
-        mapP = Promise.resolve(d.map); // chips wired after this write paint fresh
-        var k = chip.getAttribute('data-status-key');
-        paint(chip, d.map[k] || 'ignore');
-        laterResort();
-      }
-    }).catch(function(){ paint(chip, prev); laterResort(); });
+    }).then(okOrThrow).then(function(r){ return r.json(); }).then(function(d){
+      if(!d || !d.map) throw 0; // a 200 without the map is not a saved status either
+      try { sessionStorage.setItem(CACHE, JSON.stringify(d.map)); } catch(e){}
+      mapP = Promise.resolve(d.map); // chips wired after this write paint fresh
+      var k = chip.getAttribute('data-status-key');
+      paint(chip, d.map[k] || 'ignore');
+      laterResort();
+    }).catch(function(st){ paint(chip, prev); laterResort(); failNote('Status not saved','card.status',st); });
   }
 
   // Hover/click picker: pick the state you want directly instead of cycling through
@@ -4339,6 +4360,7 @@ const COMP_STATUS_JS = `
 
 const PINS_JS = `
 (function(){
+${FAIL_NOTE_JS}
   var listEls = [].slice.call(document.querySelectorAll('[data-pinned-list]'));
   var emptyEls = [].slice.call(document.querySelectorAll('[data-pinned-empty]'));
   var btns = Array.prototype.slice.call(document.querySelectorAll('[data-pin-key]'));
@@ -4419,7 +4441,13 @@ const PINS_JS = `
     cacheSave();
     fetch('/__pins', { method:'POST', headers:{'Content-Type':'application/json'},
       body: JSON.stringify({ set: map, allowEmpty: !!allowEmpty }) })
-      .then(function(r){ return r.json(); }).then(function(d){ if(d && !d.skipped) adopt(d.map); }).catch(function(){});
+      .then(okOrThrow).then(function(r){ return r.json(); }).then(function(d){ if(d && !d.skipped) adopt(d.map); })
+      .catch(function(st){
+        // Put the sidebar back to what the server holds, then say the change didn't stick.
+        failNote('Pin not saved','pins.save',st);
+        fetch('/__pins', {headers:{'Accept':'application/json'}}).then(okOrThrow).then(function(r){ return r.json(); })
+          .then(function(d){ if(d && d.map && typeof d.map === 'object'){ map = d.map; cacheSave(); renderList(); paintBtns(); } }).catch(function(){});
+      });
   }
   // Auto-prune dead pins: a moved/deleted prototype 404s for a signed-in user (an
   // unauthed request would get the 200 login page instead, but in-app you're always
