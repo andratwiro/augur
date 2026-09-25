@@ -29,8 +29,9 @@
  * comments are transient feedback, annotations are persistent always-on spec.
  * The avatar ships as a sibling file (cat.png), copied to /__review/ by build.js.
  *
- * Shared via the worker's KV API (/__review/api); falls back to localStorage if
- * the API is unreachable. Completely inert inside the index-page preview iframes.
+ * Shared via the worker's KV API (/__review/api). Only a page with no server behind
+ * it (the API has never answered) keeps comments in localStorage; once the server
+ * has answered, a failed write says so and keeps the text. Completely inert inside the index-page preview iframes.
  */
 (function () {
   "use strict";
@@ -74,31 +75,61 @@
       body: body ? JSON.stringify(body) : undefined,
       credentials: "same-origin",
     });
-    if (!res.ok) throw new Error("api " + res.status);
+    if (!res.ok) { var err = new Error("api " + res.status); err.status = res.status; throw err; }
     return res.json();
+  }
+  // Local-only mode is for a page served with no worker behind it (a static preview):
+  // the API is simply not there (404 or no answer at all) and never has been. Once the
+  // server has answered once, a failed write is a FAILURE, not a reason to pretend —
+  // writing it to this browser's storage and saying "Comment added" left comments
+  // that nobody else could ever see.
+  var serverSeen = false;
+  function noServer(e) { return !serverSeen && (!e.status || e.status === 404); }
+  function failWhy(e) {
+    if (e.status === 401) return "you are signed out. Sign in and try again";
+    if (e.status === 403) return "you can't change this one";
+    if (e.status === 413) return "it's too long";
+    if (e.status === 429) return "too many changes at once. Wait a minute and try again";
+    return "the server didn't answer. Try again";
   }
   async function refresh() {
     try {
       var data = await apiCall("GET");
+      serverSeen = true;
       state.threads = (data && data.threads) || [];
       saveLocal();
     } catch (e) {
+      if (e.status && e.status !== 404) serverSeen = true;
       state.threads = loadLocal();
     }
     render();
     tryOpenPending();
     loadPeople();
   }
+  // Resolves true when the change is stored, false when it is not (and the person has
+  // been told why). Callers only claim success on true.
   async function mutate(op) {
+    var ok = true;
     try {
       var data = await apiCall("POST", op);
+      serverSeen = true;
       state.threads = (data && data.threads) || [];
       saveLocal();
     } catch (e) {
-      applyLocal(op); saveLocal();
+      if (noServer(e)) { applyLocal(op); saveLocal(); }
+      else {
+        ok = false;
+        if (op.op === "delete" || op.op === "delmsg") delete deleted[op.id];
+        toast("Not saved: " + failWhy(e), true);
+        try {
+          window.dispatchEvent(new CustomEvent("augur:action-failed",
+            { detail: { action: "comment." + op.op, status: e.status || 0 } }));
+        } catch (x) {}
+      }
     }
     render();
     loadPeople();
+    return ok;
   }
   function applyLocal(op) {
     var t;
@@ -451,6 +482,7 @@
     '.card button.danger{border:0;background:0;color:#dc2626;padding:8px 4px;}' +
     '.toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);pointer-events:none;background:#1a1a1a;color:#fff;padding:8px 14px;border-radius:999px;font:13px -apple-system,BlinkMacSystemFont,sans-serif;opacity:0;transition:opacity .2s;}' +
     '.toast.show{opacity:0.95;}' +
+    '.toast.err{background:#b3261e;}' +
     /* ===== compose + thread (see src/review/COMMENTING-UX.md) ===== */
     /* progressive compose: a pin glyph + a field that reads as a grey pill when
        idle and a white box once focused/typed-in. one textarea throughout so the
@@ -1311,9 +1343,12 @@
         cwx: loc.cwx, cwy: loc.cwy,
         view: loc.view, screen: loc.screen, resolved: false, annotation: false,
         messages: [{ author: name, by: ME && ME.id, verified: !!ME, body: text, at: nowIso() }] };
-      closeCard();
-      mutate({ op: "add", thread: thread });
-      toast("Comment added");
+      // The card (and the text in it) stays until the store has it.
+      mutate({ op: "add", thread: thread }).then(function (ok) {
+        if (!ok) return;
+        closeCard();
+        toast("Comment added");
+      });
     });
     api.focus();
   }
@@ -1321,12 +1356,12 @@
   function delThread(id) {
     if (!confirm("Delete this comment thread?")) return;
     deleted[id] = 1;
-    mutate({ op: "delete", id: id }).then(closeCard);
+    mutate({ op: "delete", id: id }).then(function (ok) { if (ok) closeCard(); });
   }
   function delMsg(id, index) {
     if (index === 0) { delThread(id); return; }   // root message = whole thread
     if (!confirm("Delete this reply?")) return;
-    mutate({ op: "delmsg", id: id, index: index }).then(function () { openThread(id); });
+    mutate({ op: "delmsg", id: id, index: index }).then(function (ok) { if (ok) openThread(id); });
   }
 
   function openThread(id, toEnd) {
@@ -1379,15 +1414,16 @@
     wireField(card.querySelector(".replybar .cfield"), function (text) {
       mutate({ op: "reply", id: id, message: { author: getName() || "Anonymous",
         by: ME && ME.id, verified: !!ME, body: text, at: nowIso() } })
-        .then(function () { openThread(id, true); });
+        .then(function (ok) { if (ok) openThread(id, true); });
     });
     card.querySelector(".res").addEventListener("click", function () {
-      mutate({ op: "resolve", id: id, resolved: !t.resolved }).then(closeCard);
+      mutate({ op: "resolve", id: id, resolved: !t.resolved }).then(function (ok) { if (ok) closeCard(); });
     });
     card.querySelector(".close").addEventListener("click", closeCard);
     card.querySelector(".cat").addEventListener("click", function () {
       var willBe = !t.annotation;
-      mutate({ op: "annotate", id: id, annotation: willBe }).then(function () {
+      mutate({ op: "annotate", id: id, annotation: willBe }).then(function (ok) {
+        if (!ok) return;
         toast(willBe ? "Now an annotation · always-on for devs" : "Back to a comment");
         openThread(id);
       });
@@ -1728,9 +1764,11 @@
   }
 
   var toastT;
-  function toast(msg) {
+  function toast(msg, isError) {
     toastEl.textContent = msg; toastEl.classList.add("show");
-    clearTimeout(toastT); toastT = setTimeout(function () { toastEl.classList.remove("show"); }, 1900);
+    toastEl.classList.toggle("err", !!isError);
+    // An error stays long enough to be read; a confirmation can be glanced at.
+    clearTimeout(toastT); toastT = setTimeout(function () { toastEl.classList.remove("show"); }, isError ? 6000 : 1900);
   }
 
   function isTyping(el) {
@@ -1778,8 +1816,9 @@
             // changed" — every recoverable anchor has already healed by here.
             if (cur && !deleted[cur.id] && isOrphan(cur)) {
               deleted[cur.id] = 1;
-              mutate({ op: "delete", id: cur.id });
-              toast("Comment removed (its UI is gone)");
+              mutate({ op: "delete", id: cur.id }).then(function (ok) {
+                if (ok) toast("Comment removed (its UI is gone)");
+              });
             }
           }, 700);
         }
