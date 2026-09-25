@@ -56,6 +56,12 @@ jobs:
           have="$(node -p "require('./package.json').version")"
           [ "$want" = "$have" ] || { echo "tag says $want, package.json says $have"; exit 1; }
       - run: npm run check
+      # THE SUITE GATES THE CUT. Until 25 Sep 2026 a publish ran `check` only, so a red test
+      # could ship to every agent's `npx`. The browser tests need Chromium; installing it
+      # here makes them run instead of failing (or being skipped) on a bare runner.
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium-headless-shell
+      - run: npm test
       - name: a token only while no trusted-publisher entry exists
         env:
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}

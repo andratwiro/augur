@@ -20,6 +20,15 @@ The date is the day the update went live. The page works out "Today / 3 days ago
 
 ---
 
+## 2026-09-26 — When something doesn't save, you're told
+A comment, a status, a new name or a pin that the server refused used to look saved
+until you reloaded. Now it says it wasn't saved and why, and keeps what you typed so
+you can try again. Sign-in says so too when a code couldn't be sent.
+
+## 2026-09-26 — Undo a landing
+`augur revert` puts a prototype back the way it was before its last landing, or
+any earlier one. The history keeps both, so nothing is lost.
+
 ## 2026-09-07 — Your agent connects itself
 The first time an agent works on a workspace from a new machine, it no longer stops to ask
 you to run anything. A tab opens in your browser with the code already typed; you press
