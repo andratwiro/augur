@@ -184,6 +184,71 @@ test("POST /__signin/code re-renders the code screen with an error when the code
   } finally { stub.restore(); }
 });
 
+// ── a control plane that could not be asked is not a sent code, nor a wrong one ─────
+// The code screen used to render whatever happened to the outbound call, so a dead control
+// plane, a missing key or a 5xx showed "we emailed you" to a person no mail was coming to.
+
+for (const [label, responder] of [
+  ["answers 500", async () => new Response("{}", { status: 500 })],
+  ["answers 401 (this workspace's key is unknown)", async () => new Response("{}", { status: 401 })],
+  ["is unreachable", async () => { throw new TypeError("fetch failed"); }],
+]) {
+  test(`POST /__signin says it could not send when the control plane ${label}`, async () => {
+    const { fetch_ } = await deployment();
+    const stub = withStubbedFetch(responder);
+    const logs = [];
+    const realLog = console.log; console.log = (l) => logs.push(String(l));
+    try {
+      const res = await fetch_("/__signin", post({ email: "member@example.test" }));
+      assert.equal(res.status, 503);
+      const html = await res.text();
+      assert.doesNotMatch(html, /We emailed/, "must not claim a mail was sent");
+      assert.doesNotMatch(html, /name="code"/, "no code screen: there is no code to type");
+      assert.match(html, /couldn.t send a code just now/);
+      assert.match(html, /value="member@example.test"/, "the address stays filled in for the retry");
+      assert.ok(logs.some((l) => /"event":"signin-request-failed"/.test(l)), "the failure is logged");
+      assert.ok(!logs.some((l) => l.includes("member@example.test")), "the log line carries no address");
+    } finally { stub.restore(); console.log = realLog; }
+  });
+}
+
+test("POST /__signin with no account key never shows the code screen", async () => {
+  const { fetch_ } = await deployment({ withAccountKey: false });
+  const stub = withStubbedFetch(async () => { throw new Error("must not be called without a key"); });
+  const realLog = console.log; console.log = () => {};
+  try {
+    const res = await fetch_("/__signin", post({ email: "member@example.test" }));
+    assert.equal(res.status, 503);
+    assert.doesNotMatch(await res.text(), /We emailed/);
+    assert.equal(stub.calls.length, 0);
+  } finally { stub.restore(); console.log = realLog; }
+});
+
+test("the code screen says a new code comes at most every 15 minutes, for every address", async () => {
+  const { fetch_ } = await deployment();
+  const stub = withStubbedFetch(async () => new Response(JSON.stringify({ ok: true }), { status: 200 }));
+  try {
+    for (const email of ["member@example.test", "stranger@example.test"]) {
+      const html = await (await fetch_("/__signin", post({ email }))).text();
+      assert.match(html, /every 15 minutes at most/, `shown for ${email}: the resend limit is not a membership signal`);
+    }
+  } finally { stub.restore(); }
+});
+
+test("POST /__signin/code does not call a right code wrong when the control plane is down", async () => {
+  const { fetch_ } = await deployment();
+  const stub = withStubbedFetch(async () => new Response("{}", { status: 502 }));
+  const realLog = console.log; console.log = () => {};
+  try {
+    const res = await fetch_("/__signin/code", post({ email: "member@example.test", code: "123456" }));
+    assert.equal(res.status, 503);
+    const html = await res.text();
+    assert.doesNotMatch(html, /didn.t work/, "the code was never checked");
+    assert.match(html, /couldn.t check your code just now/);
+    assert.match(html, /name="code"/, "still the code screen, to retry");
+  } finally { stub.restore(); console.log = realLog; }
+});
+
 test("the sign-in doors are POST-only", async () => {
   const { fetch_ } = await deployment();
   assert.equal((await fetch_("/__signin")).status, 405);

@@ -3190,20 +3190,29 @@ async function signinFromSpace(tctx, request, env) {
   const email = (form.get("email") || "").toString();
   const key = await tenantAccountKey(tctx.tenantId, env);
   const origin = tctx.ACCOUNT_ORIGIN;
-  if (key && origin) {
-    // Neutral and fire-and-report: the code screen renders whatever the control plane says, so
-    // nothing here tells the visitor whether the address is a member. A dead control plane
-    // costs the mail, not the screen.
+  // Neutral about MEMBERSHIP: the code screen renders whatever the control plane decided about
+  // the address, so nothing here tells the visitor whether it is a member. Not neutral about the
+  // SYSTEM: if the request never reached the control plane, or it answered with a failure, no
+  // mail is coming for anyone, and the code screen would leave the person waiting for one.
+  let failure = !origin ? "no-account-origin" : !key ? "no-account-key" : "";
+  if (!failure) {
     try {
-      await fetch(`${origin}/__account/signin-link`, {
+      const res = await fetch(`${origin}/__account/signin-link`, {
         method: "POST",
         headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
         body: JSON.stringify({ email }),
       });
-    } catch (e) { /* the code screen still renders; the person just gets no mail */ }
+      if (!res.ok) failure = `control-plane-${res.status}`;
+    } catch (e) { failure = "control-plane-unreachable"; }
+  }
+  if (failure) {
+    console.log(JSON.stringify({ level: "error", event: "signin-request-failed", tenant: tctx.tenantId || "-", reason: failure }));
+    return htmlResponse(loginPage(tctx, "/", SIGNIN_UNAVAILABLE, request.url, { email }), 503);
   }
   return htmlResponse(loginPage(tctx, "/", false, request.url, { code: true, email }), 200);
 }
+const SIGNIN_UNAVAILABLE = "We couldn’t send a code just now. Try again in a minute.";
+const SIGNIN_CHECK_UNAVAILABLE = "We couldn’t check your code just now. Try again in a minute.";
 
 /** POST /__signin/code {email, code} — verify the code, bounce to /enter-by-code on success. */
 async function signinCodeSubmit(tctx, request, env) {
@@ -3212,7 +3221,10 @@ async function signinCodeSubmit(tctx, request, env) {
   const code = (form.get("code") || "").toString();
   const key = await tenantAccountKey(tctx.tenantId, env);
   const origin = tctx.ACCOUNT_ORIGIN;
-  if (key && origin) {
+  // "That code didn't work" is only said when the control plane looked at the code and said
+  // no. A control plane that could not be asked says so instead: a right code is not wrong.
+  let failure = !origin ? "no-account-origin" : !key ? "no-account-key" : "";
+  if (!failure) {
     try {
       const res = await fetch(`${origin}/__account/verify-code`, {
         method: "POST",
@@ -3230,8 +3242,14 @@ async function signinCodeSubmit(tctx, request, env) {
             },
           });
         }
+      } else if (res.status >= 500 || res.status === 404) {
+        failure = `control-plane-${res.status}`;
       }
-    } catch (e) { /* fall through to the error re-render */ }
+    } catch (e) { failure = "control-plane-unreachable"; }
+  }
+  if (failure) {
+    console.log(JSON.stringify({ level: "error", event: "signin-verify-failed", tenant: tctx.tenantId || "-", reason: failure }));
+    return htmlResponse(loginPage(tctx, "/", SIGNIN_CHECK_UNAVAILABLE, request.url, { code: true, email }), 503);
   }
   return htmlResponse(loginPage(tctx, "/", true, request.url, { code: true, email }), 401);
 }
@@ -7094,7 +7112,7 @@ function loginPage(tctx, redirect, error, requestUrl, opts = {}) {
       <p class="checking" id="checking" aria-live="polite" hidden>Signing in&hellip;</p>
       ${errBlock}
     </form>
-    <form method="POST" action="/__signin" class="resend"><input type="hidden" name="email" value="${fillEmail}" />No email? Check spam, or <button type="submit" class="link">request a new code</button>.</form>
+    <form method="POST" action="/__signin" class="resend"><input type="hidden" name="email" value="${fillEmail}" />No email? Check spam, or <button type="submit" class="link">request a new code</button>. We send one every 15 minutes at most, so the latest code still works.</form>
     </div>`;
   } else if (passwordless) {
     formBody = `<form method="POST" action="/__signin">
