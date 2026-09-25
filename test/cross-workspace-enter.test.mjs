@@ -232,15 +232,43 @@ test("MEMBER + valid hand-off → 303, a session cookie, and a follow-up request
 
 // ── the boundary this task exists for ───────────────────────────────────────────────────
 
-test("NON-MEMBER — a valid hand-off for an email not on this workspace's roster is a stranger", async () => {
+test("NON-MEMBER — a valid hand-off for an email not on this workspace's roster gets no session, and is told why", async () => {
+  // Changed 25 Sep 2026. This used to be the stranger's byte-identical 404, which left a
+  // real member who signed in with an alias (21 Sep) looking at "Not found" with no way to
+  // tell a broken workspace from a wrong address. Past the proof the answer goes to the
+  // account the hand-off was minted for, so saying "not a member" tells nobody anything —
+  // but the page still names no address (a leaked hand-off URL must not reveal whose it
+  // was) and no member. Strangers, bad and expired hand-offs keep the 404, below.
   const { enter, drain } = await deployment();
   const { restore } = withStubbedFetch(handoffResponder(HANDOFF_TOKEN, STRANGER_EMAIL));
+  const logs = []; const realLog = console.log; console.log = (l) => logs.push(String(l));
   try {
     const res = await enter(HANDOFF_TOKEN);
     await drain();
     assert.equal(res.headers.get("Set-Cookie"), null, "a non-member was handed a session cookie");
-    await assertStrangerAnswer(res, "a non-member's hand-off did not get the stranger's exact answer");
-  } finally { restore(); }
+    assert.equal(res.status, 403);
+    const html = await res.text();
+    assert.match(html, /not a member of this workspace/);
+    assert.match(html, /invited with a different address/);
+    assert.ok(!html.includes(STRANGER_EMAIL), "the page must not name the address");
+    assert.ok(!html.includes(MEMBER_EMAIL), "nor anyone on the roster");
+    const line = logs.map((l) => { try { return JSON.parse(l); } catch (e) { return {}; } }).find((l) => l.event === "enter-refused");
+    assert.equal(line && line.reason, "not-a-member");
+    assert.ok(!logs.join("\n").includes(STRANGER_EMAIL), "the log carries no address");
+  } finally { restore(); console.log = realLog; }
+});
+
+test("every stranger-shaped refusal logs its reason, and still answers the bare 404", async () => {
+  const { enter, drain } = await deployment();
+  const { restore } = withStubbedFetch(async () => Response.json({ error: "expired" }, { status: 404 }));
+  const logs = []; const realLog = console.log; console.log = (l) => logs.push(String(l));
+  try {
+    const res = await enter("whatever-token");
+    await drain();
+    console.log = realLog;
+    await assertStrangerAnswer(res);
+    assert.ok(logs.some((l) => /"reason":"handoff-refused-404"/.test(l)), logs.join(" | "));
+  } finally { restore(); console.log = realLog; }
 });
 
 // ── every other non-success is the same answer ──────────────────────────────────────────

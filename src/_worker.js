@@ -790,6 +790,26 @@ function configSealedResponse() {
 // which names the operator kept, and one for an unprovisioned name would let a stranger
 // enumerate which workspaces exist. Nobody legitimate is here: a workspace's own links all
 // carry its own hostname.
+/**
+ * The signed-in owner of an address reached a workspace whose roster does not have it.
+ * The address is NOT printed: a hand-off rides in a URL, and whoever spends a leaked one
+ * must not learn whose it was. The person it belongs to knows which address they used.
+ */
+function notMemberResponse() {
+  const body = `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex"><title>Not a member here</title>
+<style>body{font:16px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;max-width:32rem;margin:15vh auto;padding:0 16px;color:#1a1a1a;background:#fff}@media (prefers-color-scheme:dark){body{color:#eee;background:#161616}}h1{font-size:1.25rem;margin:0 0 .5rem}</style></head>
+<body><h1>You’re not a member of this workspace</h1>
+<p>The address you signed in with isn’t on this workspace’s member list. If you were invited with a different address, sign in with that one. Otherwise, ask an admin of this workspace to add you.</p></body></html>`;
+  return new Response(body, {
+    status: 403,
+    headers: {
+      "Content-Type": "text/html; charset=utf-8",
+      "Cache-Control": "no-store",
+      "X-Robots-Tag": "noindex, nofollow, noarchive",
+    },
+  });
+}
+
 function unknownHostResponse() {
   return new Response("Not found\n", {
     status: 404,
@@ -3105,19 +3125,27 @@ async function invitePost(tctx, request, url, env, users = tctx.USERS) {
 const WORKSPACE_ENTER_PATH = "/__enter";
 
 async function enterHandoff(tctx, request, url, env) {
+  // Every refusal before the proof is the same bare 404 a stranger gets, so a probe learns
+  // nothing — but each one logs its REASON (never the address), because five causes behind
+  // one "Not found" made a real member's failed sign-in undiagnosable (21 Sep 2026).
+  const refuse = (reason, extra) => {
+    console.log(JSON.stringify({ level: "warn", event: "enter-refused", tenant: tctx.tenantId || "-", reason, ...(extra || {}) }));
+    return unknownHostResponse();
+  };
   // No key delivered yet (or no TENANTS binding at all) → this route is inert on this
   // deployment. The refusal is the same one a stranger gets everywhere else on this path,
   // so a probe here learns nothing about whether central sign-in is even wired up.
   const key = await tenantAccountKey(tctx.tenantId, env);
-  if (!key) return unknownHostResponse();
+  if (!key) return refuse("no-account-key");
   const handoff = url.searchParams.get("handoff") || "";
-  if (!handoff) return unknownHostResponse();
+  if (!handoff) return refuse("no-handoff");
   // Unset → inert, same refusal as no key: a deployment that names no central sign-in
   // origin cannot reach one, and answering differently from "no key" would tell a caller
   // WHICH half of the wiring is missing.
   const origin = tctx.ACCOUNT_ORIGIN;
-  if (!origin) return unknownHostResponse();
+  if (!origin) return refuse("no-account-origin");
   let email = "";
+  let why = "";
   try {
     const res = await fetch(`${origin}/__account/handoff`, {
       method: "POST",
@@ -3130,15 +3158,24 @@ async function enterHandoff(tctx, request, url, env) {
     if (res.ok) {
       const body = await res.json();
       if (body && typeof body.email === "string" && body.email) email = body.email;
-    }
-  } catch (e) { /* a network error to the account store is a "no" like any other */ }
-  if (!email) return unknownHostResponse();
+      else why = "handoff-no-email";
+    } else why = `handoff-refused-${res.status}`;
+  } catch (e) { why = "account-store-unreachable"; /* a "no" like any other, to the caller */ }
+  if (!email) return refuse(why || "handoff-no-email");
   // THE membership check, and the whole point of this route. The control plane proved
-  // WHO; this workspace's OWN roster decides WHAT. A non-member is byte-identical to a
-  // stranger — there is no answer here that distinguishes "that email exists elsewhere"
-  // from "no such email at all".
+  // WHO; this workspace's OWN roster decides WHAT.
   const u = userByEmail(email, tctx.USERS);
-  if (!u) return unknownHostResponse();
+  if (!u) {
+    // PAST THE PROOF, the hand-off was minted for a signed-in account and is now spent, so
+    // this answer goes to that account's owner. The bare 404 they used to get read as "this
+    // workspace is broken" when the fix was one sentence ("sign in with the address you
+    // were invited with"). The page names no address and no member (see notMemberResponse).
+    // Whether the address is an ALIAS of a member goes to the log only: aliases are
+    // attribution, never credentials, and saying so would confirm a roster entry.
+    const alias = !!userByAliasEmail(email, tctx.USERS);
+    console.log(JSON.stringify({ level: "warn", event: "enter-refused", tenant: tctx.tenantId || "-", reason: "not-a-member", alias }));
+    return notMemberResponse();
+  }
   // From here `u` is a PROVEN member, and the hand-off is already spent — the account
   // store redeemed it inside the POST above, unlike an invite link (which THIS workspace
   // consumes, and only after rotating). So a rotate failure below cannot un-spend
