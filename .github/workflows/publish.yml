@@ -74,15 +74,17 @@ jobs:
       # through a cache that took over two minutes to show `dist.attestations` on 0.16.9 and
       # 0.16.10, so both cuts failed here although both were published and signed. The
       # endpoint answers as soon as the publish lands; the provenance statement is the one
-      # agents check, so the step passes only when it is there.
+      # agents check, so the step passes only when it is there. Since Sep 2026 npm also
+      # processes a publish asynchronously ("may take a few minutes to become available"):
+      # 0.16.11 took over 5 minutes, so the wait is 15.
       - name: the registry shows the attestation
         run: |
           v="$(node -p "require('./package.json').version")"
           url="https://registry.npmjs.org/-/npm/v1/attestations/@augurworks%2faugur@$v"
-          for i in $(seq 1 20); do
+          for i in $(seq 1 60); do
             if curl -fsS "$url" -o att.json 2>/dev/null && node -e "const a=require('./att.json').attestations||[];process.exit(a.some(x=>x.predicateType==='https://slsa.dev/provenance/v1')?0:1)"; then
               node -e "for(const a of require('./att.json').attestations)console.log(a.predicateType)"; exit 0
             fi
             sleep 15
           done
-          echo "no provenance attestation for $v at $url after 5 minutes"; exit 1
+          echo "no provenance attestation for $v at $url after 15 minutes"; exit 1
