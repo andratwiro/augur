@@ -14,6 +14,7 @@
 //   augur save      push every changed file in this draft folder
 //   augur land      replace the prototype's main with this draft
 //   augur sync      fold what landed on main since this draft opened into the draft
+//   augur revert    put a prototype back to an earlier landing (see revert.mjs)
 //   augur close     remove a draft folder — the one named, or this one (see docs/drafts-that-land.md)
 //   augur read      a read-only copy of a prototype, for context
 //   augur watch     save this draft folder on every burst of changes
@@ -66,6 +67,7 @@ const map = {
   land: "land.mjs",
   sync: "sync.mjs",
   close: "close.mjs",
+  revert: "revert.mjs",
   read: "read.mjs",
   watch: "watch.mjs",
   // The agent tool's hooks (deny outside a draft, save after an edit) and their install.

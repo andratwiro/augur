@@ -22,6 +22,17 @@ library demo (`components/<name>`, `base/…`, `patterns/…`, `pages/…`) and 
 workspace's design system (`skills/<prefix>-ui`), which is one unit like any other.
 Without `--new`, a name that does not exist is refused rather than guessed at.
 
+## Undoing a landing
+
+```
+augur revert <opportunity>/<prototype> --list     # its landings, newest first
+augur revert <opportunity>/<prototype>            # put back the landing before the newest
+augur revert <opportunity>/<prototype> --to 12    # or a named one
+```
+
+A revert is itself a landing: the history keeps the one you undid and says what put it
+back. Tell the person which landing you reverted and why.
+
 ## What is already here
 
 ```

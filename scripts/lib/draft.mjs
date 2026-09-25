@@ -208,6 +208,10 @@ export function unitClient({ origin, token, space, session }) {
     open: (b) => post("open", b), save: (b) => post("save", b), land: (b) => post("land", b),
     sync: (b) => post("sync", b), discard: (b) => post("discard", b), presence: (unit) => get("presence", unit),
     main: (unit) => get("main", unit),
+    // Every landing of one unit, newest first — and putting an older one back as a new
+    // landing (append-only: history is never rewritten). For `augur revert`.
+    history: (unit) => get("history", unit),
+    restore: (b) => post("restore", b),
     // One open draft with its files and what main held at its base — for `open --draft`.
     draft: (unit, id) => get("draft", unit, `&draft=${encodeURIComponent(id)}&tables=1`),
     // The live manifest, for the one check that needs to see every unit at once rather
