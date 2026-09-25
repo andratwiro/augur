@@ -182,6 +182,10 @@
 
   // ── the verbs ────────────────────────────────────────────────────────────────
   var busy = false;
+  // For the failure reporter: only the failures that are not a normal answer (moved, busy).
+  function failed(action, status) {
+    try { window.dispatchEvent(new CustomEvent("augur:action-failed", { detail: { action: action, status: status } })); } catch (e) {}
+  }
   function land() {
     if (busy || !state.card) return;
     busy = true;
@@ -198,9 +202,10 @@
       } else if (r.__status === 403) {
         note(r.message || "This account cannot land drafts.");
       } else {
+        failed("draft.land", r.__status);
         note("The landing was refused: " + (r.error || r.__status) + ".");
       }
-    }).catch(function () { busy = false; note("The landing could not be sent. Check the connection and try again."); });
+    }).catch(function () { busy = false; failed("draft.land", 0); note("The landing could not be sent. Check the connection and try again."); });
   }
   function discard() {
     if (busy) return;

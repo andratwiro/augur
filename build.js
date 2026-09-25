@@ -156,6 +156,7 @@ const SRC_REVIEW = path.join(ROOT, "src", "review", "comments.js");
 const SRC_DRAFTS_UI = path.join(ROOT, "src", "drafts", "drafts.js");
 const SRC_REVIEW_CAT = path.join(ROOT, "src", "review", "cat.png");
 const SRC_REVIEW_CURSOR = path.join(ROOT, "src", "review", "comment-cursor.svg");
+const SRC_REPORTER = path.join(ROOT, "src", "review", "reporter.js");
 const SRC_CANVAS_JS = path.join(ROOT, "src", "canvas", "canvas.js");
 const SRC_CANVAS_CSS = path.join(ROOT, "src", "canvas", "canvas.css");
 // The criteria page ("oracle"): a prototype's oracle/index.html loads it by absolute
@@ -249,7 +250,8 @@ function reviewTag() {
   const graph = DS.dirName
     ? '<script src="' + S("/skills/" + DS.dirName + "/graph.js") + "?v=" + UI_VERSION + '" defer></script>'
     : "";
-  return '<!--gv-review-start-->' + graph + '<script src="/__review/comments.js?v=' + UI_VERSION +
+  return '<!--gv-review-start-->' + graph + '<script src="/__review/reporter.js?v=' + UI_VERSION +
+    '" defer></script><script src="/__review/comments.js?v=' + UI_VERSION +
     '" defer></script><!--gv-review-end-->';
 }
 
@@ -3616,7 +3618,7 @@ function injectNav(html, active) {
   if (!m) return html;
   return html.replace(
     m[0],
-    `${m[0]}\n  <style>${NAV_CSS}${TABBAR_CSS}</style>\n  ${CHROME_MARK_START(NAV_STATE.activeSpace || "", active, NAV_STATE.hasPlayground)}${renderAppChrome(active, NAV_STATE)}${CHROME_MARK_END}\n  <script>${chromeScript()}</script>\n  <script>${renderSpaceContextScript(NAV_STATE)}</script>\n  <script>${PINS_JS}</script>\n  <script>${PROFILE_JS}</script>\n  <script>${SETTINGS_JS}</script>\n  <script>${SPACE_JS}</script>\n  <script>${WORKSPACES_JS}</script>\n  <script>${TABBAR_JS()}</script>`
+    `${m[0]}\n  <style>${NAV_CSS}${TABBAR_CSS}</style>\n  ${CHROME_MARK_START(NAV_STATE.activeSpace || "", active, NAV_STATE.hasPlayground)}${renderAppChrome(active, NAV_STATE)}${CHROME_MARK_END}\n  <script src="/__review/reporter.js?v=${UI_VERSION}" defer></script>\n  <script>${chromeScript()}</script>\n  <script>${renderSpaceContextScript(NAV_STATE)}</script>\n  <script>${PINS_JS}</script>\n  <script>${PROFILE_JS}</script>\n  <script>${SETTINGS_JS}</script>\n  <script>${SPACE_JS}</script>\n  <script>${WORKSPACES_JS}</script>\n  <script>${TABBAR_JS()}</script>`
   );
 }
 
@@ -8042,6 +8044,7 @@ async function main() {
   await fs.copyFile(SRC_DRAFTS_UI, path.join(DIST, "__drafts", "drafts.js"));
   await fs.copyFile(SRC_REVIEW_CAT, path.join(DIST, "__review", "cat.png"));
   await fs.copyFile(SRC_REVIEW_CURSOR, path.join(DIST, "__review", "comment-cursor.svg"));
+  await fs.copyFile(SRC_REPORTER, path.join(DIST, "__review", "reporter.js"));
 
   // Shared chrome bundle (P1) + service worker (P0). Content-hashed names → the
   // worker serves /_chrome.* immutable; sw.js stays revalidated (SW update check).
@@ -8194,7 +8197,7 @@ async function main() {
   // build asserts this list is exhaustive — see the purity check below.
   const ENGINE_CHROME = [
     "fonts/", "admin/", "changelog/", "pitis/",
-    "__review/comments.js", "__review/cat.png", "__review/comment-cursor.svg",
+    "__review/comments.js", "__review/cat.png", "__review/comment-cursor.svg", "__review/reporter.js",
     "__drafts/drafts.js",
     "__canvas/canvas.js", "__canvas/canvas.css", "__canvas/capture.js",
     "__canvas/DSEG7Classic-Bold.woff2", "__canvas/DSEG-LICENSE.txt",

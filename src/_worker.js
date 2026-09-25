@@ -365,6 +365,8 @@ function isPublicPath(tctx, pathname) {
   // The dormant review overlay + its avatar asset — both embedded into public
   // prototypes, so both must bypass the gate (else the <img> gets the login page).
   if (pathname === "/__review/comments.js" || pathname === "/__review/cat.png") return true;
+  // The failure reporter rides with the overlay on public prototypes too.
+  if (pathname === "/__review/reporter.js") return true;
   // …and the cursor it paints while you place a comment. A gated cursor image does not
   // fail loudly — the browser silently falls back to the keyword after it (crosshair),
   // so review mode on a public prototype just quietly stops looking like review mode.
@@ -7682,6 +7684,7 @@ async function withDraftUi(tctx, res, url, me, env) {
 // ?raw=1 (the Download HTML button) is skipped here as everywhere, and the markers are the
 // button's fallback strip.
 const REVIEW_UI_SRC = "/__review/comments.js";
+const REPORTER_SRC = "/__review/reporter.js";
 const REVIEW_MARK = "gv-review-start";
 function reviewOverlayTag(tctx) {
   // Cache-busted by the ENGINE's version, not the workspace's: comments.js is engine
@@ -7689,7 +7692,7 @@ function reviewOverlayTag(tctx) {
   // chrome pointer carries that version whether or not runtime chrome is switched on;
   // BUILD_ID is the fallback for a manifest too old to name one.
   const v = (tctx && tctx.CHROME_POINTER && tctx.CHROME_POINTER.ui) || (tctx && tctx.BUILD_ID) || "0";
-  return `<!--${REVIEW_MARK}--><script src="${REVIEW_UI_SRC}?v=${encodeURIComponent(v)}" defer></script><!--gv-review-end-->`;
+  return `<!--${REVIEW_MARK}--><script src="${REPORTER_SRC}?v=${encodeURIComponent(v)}" defer></script><script src="${REVIEW_UI_SRC}?v=${encodeURIComponent(v)}" defer></script><!--gv-review-end-->`;
 }
 async function withReviewOverlay(tctx, res, url) {
   if (!res || res.status !== 200) return res;
@@ -12297,6 +12300,43 @@ async function pitiApi(tctx, request, url, env) {
 // It never throws. A logger that can fail the request it is describing is a worse
 // availability risk than having no logs, so the whole thing sits inside a try/catch that
 // discards its own errors.
+// ── /__report: anonymous failure reports from the browser ─────────────────────────────
+// One log line per report, for the on-call to read. Anonymous by construction: the line is
+// built field by field from a closed vocabulary, so a cookie, the address or anything else the
+// request carried cannot reach it, and any address inside the free text is replaced. A
+// cross-site post is dropped (a browser sends Origin on every POST), and a body past 4 KB or
+// 10 reports is refused, so the sink cannot be used to write arbitrary volume into the log.
+const CLIENT_REPORT_PATH = "/__report";
+async function clientReport(tctx, request, url) {
+  // Built per request, not at module scope: a /g regex carries lastIndex, and nothing an
+  // isolate keeps may be shared between workspaces (scripts/no-tenant-globals.mjs).
+  const KINDS = ["action-failed", "js-error", "rejection"];
+  const ADDRESS_RE = /[^\s@<>"'(),;:]+@[^\s@<>"'(),;:]+\.[a-z]{2,}/gi;
+  if (request.method !== "POST") return new Response("Method Not Allowed", { status: 405 });
+  const origin = request.headers.get("Origin");
+  if (origin && origin !== url.origin) return new Response(null, { status: 204 });
+  let text = "";
+  try { text = await request.text(); } catch (e) { return new Response(null, { status: 400 }); }
+  if (text.length > 4096) return new Response(null, { status: 413 });
+  let items;
+  try { items = JSON.parse(text); } catch (e) { return new Response(null, { status: 400 }); }
+  if (!Array.isArray(items)) items = [items];
+  const clean = (s, n) => String(s == null ? "" : s).replace(ADDRESS_RE, "<address>").replace(/[\u0000-\u001f]/g, " ").slice(0, n);
+  for (const it of items.slice(0, 10)) {
+    if (!it || typeof it !== "object" || !KINDS.includes(it.kind)) continue;
+    const line = { level: "warn", event: "client-report", tenant: (tctx && tctx.tenantId) || "-", kind: it.kind };
+    if (it.action) line.action = clean(it.action, 60).replace(/[^a-z0-9._-]/gi, "");
+    if (it.status != null) line.status = Number(it.status) || 0;
+    if (it.msg) line.msg = clean(it.msg, 200);
+    if (it.src) line.src = clean(String(it.src).split("?")[0], 120);
+    if (it.line) line.line = Number(it.line) || 0;
+    if (it.path) line.path = clean(String(it.path).split("?")[0], 200);
+    if (it.tab) line.tab = clean(it.tab, 16).replace(/[^a-z0-9]/gi, "");
+    console.log(JSON.stringify(line));
+  }
+  return new Response(null, { status: 204, headers: { "Cache-Control": "no-store" } });
+}
+
 function logRequest(trace, request, url, status, ms, err) {
   try {
     const line = {
@@ -12644,6 +12684,10 @@ async function handleRequest(request, env, ctx, url, trace) {
     if (url.pathname === DOOR_WELL_KNOWN) {
       return jsonResponse(doorFacts(tctx, url, env), 200, { "Cache-Control": "no-store" });
     }
+    // The failure reporter's sink (/__review/reporter.js). Public like the overlay it rides
+    // with: a signed-out visitor on a public prototype fails too. Writes a log line, nothing
+    // else — see clientReport.
+    if (url.pathname === CLIENT_REPORT_PATH) return clientReport(tctx, request, url);
 
     // Live-reload version probe — every page polls this with its own ?path=, and
     // gets back that path's version (versionFor); no ?path → BUILD_ID. Public (before

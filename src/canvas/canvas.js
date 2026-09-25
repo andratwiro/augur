@@ -4341,6 +4341,7 @@
     }
     if (on) {
       if (saveWarnOkTimer) { clearTimeout(saveWarnOkTimer); saveWarnOkTimer = null; }
+      if (!saveWarnEl.classList.contains("show") || saveWarnEl.classList.contains("ok")) augurFailed("board.save", navigator.onLine === false ? -1 : 0);
       saveWarnEl.classList.remove("ok");
       saveWarnEl.textContent = navigator.onLine === false ? "Offline — changes not saved" : "Changes not saved — retrying";
       saveWarnEl.classList.add("show");
@@ -4453,7 +4454,7 @@
         // the unload beacon stay off, because an empty stand-in must never overwrite the
         // real board just because a load 500'd (that was audit finding #9).
         if (!board.tombs) board.tombs = {};
-        if (!mpAdopted) { histSeed(); loadFailSig = docSig(); toast("Couldn't load the board — editing won't save until it reloads"); }
+        if (!mpAdopted) { histSeed(); loadFailSig = docSig(); augurFailed("board.load", 0); toast("Couldn't load the board — editing won't save until it reloads"); }
         loadSettled = true;
         done();
       });
@@ -5648,7 +5649,16 @@
       .then(function (t) {
         mpOpenSocket(qs + (t && t.ticket ? "&ticket=" + encodeURIComponent(t.ticket) : ""));
       })
-      .catch(function () { mpRetryLater(); });
+      .catch(function (e) {
+        var st = Number(String((e && e.message) || "").replace("mint-", "")) || 0;
+        if (!mpMintReported) { mpMintReported = true; augurFailed("board.realtime", st); }
+        mpRetryLater();
+      });
+  }
+  var mpMintReported = false;
+  // The failure reporter (/__review/reporter.js) listens for this; nothing else does.
+  function augurFailed(action, status) {
+    try { window.dispatchEvent(new CustomEvent("augur:action-failed", { detail: { action: action, status: status } })); } catch (e) {}
   }
   function mpOpenSocket(qs) {
     var ws;
