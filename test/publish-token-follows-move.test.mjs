@@ -14,11 +14,16 @@ import http from "node:http";
 import { execFile } from "node:child_process";
 import { fileURLToPath } from "node:url";
 
+// A CI runner sets CI, and publish never self-pairs under CI (there is no browser to
+// approve in). These tests are ABOUT pairing, so the child runs as a person's terminal
+// would; tests that want CI's behaviour pass CI explicitly in `env`.
+const withoutCI = (e) => { const { CI, GITHUB_ACTIONS, ...rest } = e; return rest; };
+
 const ROOT = fileURLToPath(new URL("..", import.meta.url));
 const PUBLISH = path.join(ROOT, "scripts", "publish.mjs");
 
 const run = (argv, env) => new Promise((resolve) => {
-  execFile(process.execPath, [PUBLISH, ...argv], { cwd: ROOT, env: { ...process.env, AUGUR_NO_SELF_UPDATE: "1", AUGUR_NO_OPEN: "1", ...env } },
+  execFile(process.execPath, [PUBLISH, ...argv], { cwd: ROOT, env: { ...withoutCI(process.env), AUGUR_NO_SELF_UPDATE: "1", AUGUR_NO_OPEN: "1", ...env } },
     (err, stdout, stderr) => resolve({ code: err ? err.code || 1 : 0, out: `${stdout}${stderr}` }));
 });
 
