@@ -103,6 +103,7 @@
     ".augur-draft__dim{opacity:.7;font-weight:500}",
     ".augur-draftbar button{font:inherit;border:0;border-radius:999px;padding:5px 10px;cursor:pointer;color:#101828;background:#fff}",
     ".augur-draftbar button.is-quiet{background:transparent;color:#fff;opacity:.85}",
+    ".augur-draftbar button.augur-draft__close{padding:4px 8px;font-size:16px;line-height:1}",
     ".augur-draftbar button:disabled{opacity:.5;cursor:default}",
     ".augur-draft__list{position:fixed;left:12px;bottom:56px;z-index:2147483000;display:flex;flex-direction:column;gap:6px}",
     ".augur-draft__row{display:flex;align-items:center;gap:8px;padding:6px 10px 6px 6px;border-radius:999px;background:#101828;color:#fff;text-decoration:none;",
@@ -129,6 +130,10 @@
   document.body.appendChild(bar); document.body.appendChild(list);
   document.body.appendChild(panel); document.body.appendChild(noteBox);
 
+  // Closed with the ×: stays closed on this screen (live updates don't bring it back); a reload does.
+  var dismissed = false;
+  function close() { dismissed = true; bar.hidden = true; list.hidden = true; panel.hidden = true; }
+
   var noteTimer = null;
   function note(text) {
     noteBox.textContent = text; noteBox.hidden = false;
@@ -140,16 +145,23 @@
     var b = el("button", cls, text); b.type = "button"; b.addEventListener("click", onClick); return b;
   }
 
+  function closeButton() {
+    var x = button("\u00d7", "is-quiet augur-draft__close", close);
+    x.setAttribute("aria-label", "Close"); x.title = "Close (comes back on reload)";
+    bar.appendChild(x);
+  }
+
   function renderMain(drafts) {
     clear(bar); clear(list);
     state.drafts = drafts || [];
-    if (!state.drafts.length) { bar.hidden = true; list.hidden = true; return; }
+    if (!state.drafts.length || dismissed) { bar.hidden = true; list.hidden = true; return; }
     var n = state.drafts.length;
     bar.appendChild(el("span", "augur-draft__text", n === 1 ? "1 draft open" : n + " drafts open"));
     bar.appendChild(button(list.hidden ? "Show" : "Hide", "is-quiet", function () {
       list.hidden = !list.hidden; this.textContent = list.hidden ? "Show" : "Hide";
     }));
     bar.appendChild(button("History", "is-quiet", history));
+    closeButton();
     state.drafts.forEach(function (d) {
       var row = el("a", "augur-draft__row" + (d.active ? "" : " is-idle"));
       row.href = UNIT.replace(/\/$/, "") + "@" + d.id + "/";
@@ -165,6 +177,7 @@
   function renderDraft(card) {
     clear(bar); list.hidden = true;
     state.card = card;
+    if (dismissed) { bar.hidden = true; return; }
     bar.appendChild(face(card));
     bar.appendChild(el("span", "augur-draft__text", label(card)));
     bar.appendChild(el("span", "augur-draft__dim", card.closedAt
@@ -176,6 +189,7 @@
     }
     bar.appendChild(button("History", "is-quiet", history));
     var main = el("a", "augur-draft__dim", "Main"); main.href = UNIT; bar.appendChild(main);
+    closeButton();
     bar.hidden = false;
     faces(bar);
   }
