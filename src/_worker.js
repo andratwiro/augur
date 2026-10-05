@@ -125,7 +125,7 @@ import { macInstallerScript, installerFileNames } from "./installer-mac.mjs";
 import { zipSingleFile } from "./zip-store.mjs";
 
 const COOKIE = "gv_auth";
-const MAX_AGE = 60 * 60 * 24 * 7; // 7 days
+const MAX_AGE = 60 * 60 * 24 * 30; // 30 days
 
 // ---- Users / identity -------------------------------------------------------
 // Augur is a private internal tool — the only real risk is impersonation, and the
@@ -182,9 +182,9 @@ const USER_COOKIE = "__Host-augur_user";
 // engine must keep answering to it or that person is signed out mid-sentence. They are
 // READ by identify() (after USER_COOKIE, never before it) and CLEARED by /__logout, and
 // NEVER issued — every login from here on lands on USER_COOKIE, so each old name drains
-// away as the sessions holding it expire (MAX_AGE, one week).
+// away as the sessions holding it expire (MAX_AGE, 30 days).
 //
-// WHAT DELETES EACH ENTRY — an entry goes one week after the LAST instance still issuing
+// WHAT DELETES EACH ENTRY — an entry goes 30 days after the LAST instance still issuing
 // it has taken an engine that no longer does, which is a fact about deployed pins, not
 // about this repo:
 //   "__Host-gv_user"  the name every instance issued before this rename. It stops being

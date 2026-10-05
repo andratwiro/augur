@@ -220,7 +220,7 @@ test("MEMBER + valid hand-off → 303, a session cookie, and a follow-up request
 
     const setCookie = res.headers.get("Set-Cookie") || "";
     assert.match(setCookie, /^__Host-augur_user=member@example\.test\.[0-9a-f]+;/, "the cookie does not name the member");
-    assert.match(setCookie, /Path=\/; HttpOnly; Secure; SameSite=Lax; Max-Age=604800/);
+    assert.match(setCookie, /Path=\/; HttpOnly; Secure; SameSite=Lax; Max-Age=2592000/);
     assert.ok(!/Domain=/.test(setCookie), "the cookie carries a Domain attribute — __Host- requires none");
 
     const cookie = setCookie.split(";")[0];
