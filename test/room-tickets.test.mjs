@@ -81,9 +81,25 @@ const mintReq = (path) =>
 const mintUrl = (path) => new URL(`https://acme.example.test/__rt?mint=1&path=${encodeURIComponent(path)}`);
 const tctx = { tenantId: "acme" };
 
-test("mint returns 501 when ROOM_TICKET_SECRET is unconfigured", async () => {
+test("mint with no ROOM_TICKET_SECRET is a 200 with no ticket, not a server error", async () => {
+  // Production ran for weeks with rooms folded in and no secret: every board open logged a
+  // 501 for a mint the client treats as "no ticket needed". The answer is an empty hand.
   const res = await W.rtProxy(tctx, mintReq("/p/b"), mintUrl("/p/b"), {}, null);
-  assert.equal(res.status, 501);
+  assert.equal(res.status, 200);
+  const body = await res.json();
+  assert.equal(body.ticket, null);
+  assert.equal(body.reason, "tickets-unconfigured");
+});
+
+test("the SOCKET path's 501s are untouched: migration tooling reads them as a discriminator", async () => {
+  const sock = (u) => new Request(u, { method: "GET", headers: { Upgrade: "websocket" } });
+  const u = new URL("https://acme.example.test/__rt?path=%2Fp%2Fb");
+  const none = await W.rtProxy(tctx, sock(u), u, {}, null);
+  assert.equal(none.status, 501, "no ROOMS, no RT_ORIGIN: a KV-only deployment still says so");
+  assert.equal((await none.json()).error, "realtime-not-configured");
+  const off = await W.rtProxy(tctx, sock(u), u, { GV_RT_DISABLE: "1" }, null);
+  assert.equal(off.status, 501);
+  assert.equal((await off.json()).error, "realtime-disabled");
 });
 
 test("mint returns a ticket that verifies for the resolved workspace+path", async () => {

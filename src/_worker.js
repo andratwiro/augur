@@ -11681,13 +11681,16 @@ function rtProxy(tctx, request, url, env, me) {
   // short-lived signed ticket to carry on the socket open. It rides the SAME authenticated
   // request the page did and is dispatched only AFTER the restricted-space gate above (which
   // 403s a non-admin naming a restricted path), so a ticket is minted only for a board this
-  // caller may already reach. No secret ⇒ 501, and the client opens the socket directly
-  // (legacy realtime) or drops to solo — see canvas.js mpConnect. `who` is the caller's
-  // signed-in email or "anon"; it is bound into the ticket, not asserted by the socket.
+  // caller may already reach. No secret ⇒ 200 with no ticket, and the client opens the socket
+  // directly (legacy realtime) or drops to solo — see canvas.js mpConnect, which reads
+  // `t && t.ticket` and also still accepts the 501 older engines answered. A deployment that
+  // mints nothing is a configured state, not a fault: as a 501 it was the largest class of
+  // 5xx in the logs (543 in 14 days on one workspace) for boards that opened fine. `who` is
+  // the caller's signed-in email or "anon"; it is bound into the ticket, not asserted by the socket.
   if (request.headers.get("Upgrade") !== "websocket"
       && request.method === "GET" && url.searchParams.get("mint")) {
     const secret = env && env.ROOM_TICKET_SECRET;
-    if (!secret) return jsonResponse({ error: "tickets-unconfigured" }, 501);
+    if (!secret) return jsonResponse({ ticket: null, reason: "tickets-unconfigured" });
     const path = clamp(url.searchParams.get("path"), 600);
     if (!path) return jsonResponse({ error: "bad-input" }, 400);
     const who = (me && me.email) ? me.email : "anon";
