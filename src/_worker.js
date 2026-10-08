@@ -3220,10 +3220,30 @@ async function enterHandoff(tctx, request, url, env) {
 const SIGNIN_FROM_SPACE_PATH = "/__signin";
 const SIGNIN_CODE_PATH = "/__signin/code";
 
+/**
+ * The sign-in form, or null when the body is not one. A POST without a form content type (a
+ * scanner, a stray client) used to throw out of `formData()` and surface as a 500.
+ */
+async function signinForm(request) {
+  try { return await request.formData(); } catch (e) { return null; }
+}
+/**
+ * The address a sign-in form carries, trimmed, or "" when it is missing or not email-shaped.
+ * The code screen's "request a new code" form posts a hidden `email` that is empty when the
+ * screen was reached without one; forwarding "" asked the control plane to mail nobody.
+ */
+function signinEmail(form) {
+  const email = (form.get("email") || "").toString().trim();
+  return isEmailish(email) ? email : "";
+}
+const SIGNIN_NEED_EMAIL = "Enter your email address to sign in.";
+
 /** POST /__signin {email} — mail a code + link for this workspace, render the code screen. */
 async function signinFromSpace(tctx, request, env) {
-  const form = await request.formData();
-  const email = (form.get("email") || "").toString();
+  const form = await signinForm(request);
+  if (!form) return new Response("Bad Request", { status: 400 });
+  const email = signinEmail(form);
+  if (!email) return htmlResponse(loginPage(tctx, "/", SIGNIN_NEED_EMAIL, request.url), 400);
   const key = await tenantAccountKey(tctx.tenantId, env);
   const origin = tctx.ACCOUNT_ORIGIN;
   // Neutral about MEMBERSHIP: the code screen renders whatever the control plane decided about
@@ -3252,8 +3272,10 @@ const SIGNIN_CHECK_UNAVAILABLE = "We couldn’t check your code just now. Try ag
 
 /** POST /__signin/code {email, code} — verify the code, bounce to /enter-by-code on success. */
 async function signinCodeSubmit(tctx, request, env) {
-  const form = await request.formData();
-  const email = (form.get("email") || "").toString();
+  const form = await signinForm(request);
+  if (!form) return new Response("Bad Request", { status: 400 });
+  const email = signinEmail(form);
+  if (!email) return htmlResponse(loginPage(tctx, "/", SIGNIN_NEED_EMAIL, request.url), 400);
   const code = (form.get("code") || "").toString();
   const key = await tenantAccountKey(tctx.tenantId, env);
   const origin = tctx.ACCOUNT_ORIGIN;
