@@ -8398,8 +8398,19 @@ const OVERLAY_KV_KEYS = Object.freeze({
   drafts: Object.freeze({ doc: "drafts", layout: "map" }),
 });
 
-/** How many times a compare-and-swap retries before giving up. */
-const OVERLAY_CAS_ATTEMPTS = 5;
+/**
+ * How many times a compare-and-swap retries before giving up, and how long a loser waits
+ * before its next try. N writers racing on ONE key need up to N rounds, because exactly one
+ * wins each round and every loser re-reads and tries again: five bare retries failed a burst
+ * of seven comment moves on one page (govocal, 5 Oct 2026, two of seven answered 500 "kept
+ * changing"). The wait is short and jittered so the losers of a round stop re-colliding in
+ * lockstep; the cap keeps the worst case under a few seconds of wall time, no CPU.
+ */
+const OVERLAY_CAS_ATTEMPTS = 16;
+const OVERLAY_CAS_BACKOFF_MS = 8;
+const OVERLAY_CAS_BACKOFF_CAP_MS = 200;
+const overlayCasWait = (lost) =>
+  new Promise((r) => setTimeout(r, Math.random() * Math.min(OVERLAY_CAS_BACKOFF_CAP_MS, OVERLAY_CAS_BACKOFF_MS * 2 ** lost)));
 
 /**
  * The KV key a family+scope+key lives under, exactly as every live instance already
@@ -8627,6 +8638,7 @@ function doOverlay(stub, tenantId) {
      */
     async mutate(family, scope, k, fn) {
       for (let attempt = 0; attempt < OVERLAY_CAS_ATTEMPTS; attempt++) {
+        if (attempt) await overlayCasWait(attempt - 1);
         const { v, rev } = await call("read-rev", { family, scope, k });
         const after = fn(v);
         if (after === undefined) return v;
