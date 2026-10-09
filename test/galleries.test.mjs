@@ -63,6 +63,34 @@ test("the site model groups units, orders by status then recency, and resolves f
   assert.deepEqual(m.tiers.pages, []);
 });
 
+test("a library page a whole-tree publish shipped is listed: it has a versionMap entry and no publicPrefixes entry", () => {
+  const treePublished = {
+    files: {
+      "/checkout/flow/index.html": f("a"),
+      "/base/icon/index.html": f("b"), "/base/icon/preview.webp": f("c"),
+      "/components/card/index.html": f("d"),
+      "/patterns/feed/index.html": f("e"),
+      "/pages/home/index.html": f("g"),
+      "/tokens/index.html": f("h"),
+    },
+    routing: {
+      publicPrefixes: ["/checkout/flow/"],
+      versionMap: { "/checkout/flow/": "1", "/base/icon/": "2", "/components/card/": "3", "/patterns/feed/": "4", "/pages/home/": "5", "/base/gone/": "6", "/skills/starter-ui/": "7" },
+    },
+  };
+  const m = siteModel({ manifest: treePublished, people, now: NOW });
+  assert.deepEqual(m.tiers.base.map((p) => p.name), ["icon"], "listed, and a versionMap entry with no file left is not");
+  assert.equal(m.tiers.base[0].href, "/base/icon/");
+  assert.equal(m.tiers.base[0].poster, true);
+  assert.deepEqual(m.tiers.components.map((p) => p.name), ["card"]);
+  assert.deepEqual(m.tiers.patterns.map((p) => p.name), ["feed"]);
+  assert.deepEqual(m.tiers.pages.map((p) => p.name), ["home"]);
+  assert.deepEqual(m.opportunities.map((o) => o.name), ["checkout"], "versionMap adds library pages only, never a project");
+  assert.match(renderTierIndex(m, "base", ctx), /href="\/base\/icon\/"/);
+  const both = { files: treePublished.files, routing: { ...treePublished.routing, publicPrefixes: ["/checkout/flow/", "/base/icon/"] } };
+  assert.equal(siteModel({ manifest: both, people, now: NOW }).tiers.base.length, 1, "in both lists: one card");
+});
+
 test("the folder card's cover is the first prototype in order that HAS a poster, not the first prototype", () => {
   // A unit landed from a machine without the shooting tools has no poster. It sorts first
   // (newest), and it must not blank a folder whose other prototypes were all shot.

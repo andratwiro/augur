@@ -108,6 +108,26 @@ const byStatusThenRecency = (a, b) => {
 };
 
 /**
+ * The units the galleries list: every authored unit, plus the library pages a whole-tree
+ * publish shipped. That publish gives a base/components/patterns/pages page a `versionMap`
+ * entry and NO `publicPrefixes` entry, so a workspace published that way and then switched
+ * to drafts had its files served and all four library lists empty. A `versionMap` entry
+ * with no file left under it (a page since removed) lists nothing.
+ */
+function listedUnits(manifest) {
+  const out = authoredUnits(manifest);
+  const paths = Object.keys(manifest.files || {}).map(dec);
+  for (const key of Object.keys((manifest.routing || {}).versionMap || {})) {
+    const unit = String(key).replace(/\/?$/, "/");
+    const home = unitHome(unit);
+    if (!home || home.kind !== "tier" || out.has(unit)) continue;
+    const prefix = dec(unit);
+    if (paths.some((p) => p.startsWith(prefix))) out.add(unit);
+  }
+  return out;
+}
+
+/**
  * Everything the derived pages need, from the live manifest and the overlays.
  * `people(id) → {id, name, initials, color} | null` resolves a recorded author id.
  */
@@ -115,7 +135,7 @@ export function siteModel({ manifest, statuses = {}, baseline = {}, people = () 
   const opps = new Map(), playground = [], tiers = { base: [], components: [], patterns: [], pages: [] };
   const units = [];
   const sources = (manifest && manifest.routing && manifest.routing.unitSources) || {};
-  for (const unit of authoredUnits(manifest || {})) {
+  for (const unit of listedUnits(manifest || {})) {
     const home = unitHome(unit);
     if (!home) continue;
     // A member's own welcome page is one unit PER PERSON, landed by the platform and named
