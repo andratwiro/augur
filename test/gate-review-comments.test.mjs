@@ -34,6 +34,9 @@ const ROUTING_JSON = {
   defaultSpace: "delta",
 };
 
+// What this workspace publishes. A stranger may start a thread only where a page is.
+const PAGES = new Set(["/prototypes/garden/", "/prototypes/garden/index.html", "/prototypes/garden/og.jpg", "/prototypes/secret/"]);
+
 function memKV(initial = {}) {
   const store = new Map(Object.entries(initial));
   return { store, async get(k) { return store.has(k) ? store.get(k) : null; }, async put(k, v) { store.set(k, v); }, async delete(k) { store.delete(k); } };
@@ -44,6 +47,7 @@ const assetsStub = (instance) => ({
     const p = new URL(typeof req === "string" ? req : req.url).pathname;
     if (p === "/__config/instance.json") return new Response(JSON.stringify(instance), { status: 200, headers: { "Content-Type": "application/json; charset=utf-8" } });
     if (p === "/__config/routing.json") return new Response(JSON.stringify(ROUTING_JSON), { status: 200, headers: { "Content-Type": "application/json; charset=utf-8" } });
+    if (PAGES.has(p)) return new Response("<h1>page</h1>", { status: 200, headers: { "Content-Type": "text/html; charset=utf-8" } });
     return new Response("Not Found", { status: 404 });
   },
 });
@@ -133,6 +137,40 @@ test("signed-out on a created canvas board is allowed; the same folder without a
   assert.equal((await get(e, "/playground/sketch/index.html")).status, 200);
   assert.equal((await get(e, "/playground/other/")).status, 401);
   assert.equal((await get(e, "/playground/")).status, 401);
+});
+
+// ── A stranger may add to a page's threads, not open a document where no page is ──
+
+test("signed-out FIRST thread at a public-looking address with no page behind it is 404, and stores nothing", async () => {
+  const e = env();
+  const before = e.COMMENTS.store.size;
+  for (const p of [
+    "/prototypes/garden/nothing-here/",   // under the public prefix, never published
+    "/prototypes/garden/../x/",           // folds to somewhere else
+    "/prototypes/garden/%2e%2e/x/",
+    "/prototypes/garden//",
+    "/prototypes/garden/og.jpg",          // a real file, not a page
+    "/prototypes/garden/nothing/og.jpg",
+    "/fonts/../x",
+    "/pages/made-up/",
+  ]) {
+    const res = await add(e, p);
+    assert.ok(res.status === 404 || res.status === 401, `${p} answered ${res.status}`);
+  }
+  assert.equal(e.COMMENTS.store.size, before, "a refused write left a document behind");
+});
+
+test("signed-out reply at an odd address that ALREADY holds a thread still works (a conversation in progress)", async () => {
+  const e = env();
+  const odd = "/prototypes/garden/nothing-here/";
+  assert.equal((await add(e, odd, await cookieFor(e, VIEWER), "m1")).status, 200); // a member may start anywhere
+  assert.equal((await add(e, odd, null, "s1")).status, 200);
+  assert.equal((await threadsOf(await get(e, odd))).length, 2);
+});
+
+test("signed-out first thread on the page's index.html spelling is allowed", async () => {
+  const e = env();
+  assert.equal((await add(e, "/prototypes/garden/index.html")).status, 200);
 });
 
 // ── A member is answered everywhere, as before ──────────────────────────────────

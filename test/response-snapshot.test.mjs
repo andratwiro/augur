@@ -268,7 +268,9 @@ async function collectWarm() {
     // stranger with a share link makes. A change to how the key is spelled turns this into
     // `{doc:null}` and moves the body hash.
     ["board-open", { path: "/__board?path=%2Fprototypes%2Fgarden%2F" }],
-    ["board-open-unsaved", { path: "/__board?path=%2Fprototypes%2Fnothing%2F" }], // the never-saved answer
+    // The never-saved answer. Asked under the PUBLIC prefix since E-28: a signed-out read of
+    // a path nobody made public is 401 now, which is a different fact from "no board yet".
+    ["board-open-unsaved", { path: "/__board?path=%2Fprototypes%2Fgarden%2Fnothing%2F" }],
   ];
   for (const [name, opts] of cases) snap[name] = await record(worker.fetch, env, ctx, opts);
   // The corpus must not have MOVED the board it read. A GET is a read, and the one thing

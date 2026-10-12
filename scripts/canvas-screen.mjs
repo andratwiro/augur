@@ -77,9 +77,12 @@ function resolve(canvasUrl) {
 // per-node ops, let the room fold them into the live doc and persist. When the room is empty
 // this still works — the one-shot client seeds it from KV, ops apply, and the room flushes to
 // KV when the client (last one out) disconnects.
-import { ClawdCanvas } from "./clawd-canvas.mjs";
+import { ClawdCanvas, siteAuth } from "./clawd-canvas.mjs";
 async function getBoard(canvasUrl) {
-  const r = await fetch(`${SITE}/__board?path=${encodeURIComponent(canvasUrl)}`);
+  const r = await fetch(`${SITE}/__board?path=${encodeURIComponent(canvasUrl)}`, { headers: siteAuth(SITE) });
+  // A refusal is not an empty board: mutating from "empty" would write one over the real
+  // canvas the moment the save went through some other way.
+  if (r.status === 401) throw new Error(`${SITE} did not let this terminal read ${canvasUrl}: the canvas is behind the sign-in. Pair first: augur connect --origin ${SITE}`);
   const j = await r.json().catch(() => ({}));
   return j.doc || { v: 1, name: "Untitled canvas", view: { x: 0, y: 0, scale: 1 }, nodes: [] };
 }

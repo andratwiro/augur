@@ -59,6 +59,24 @@
 
 import { readFileSync } from 'node:fs';
 import { deployConfig } from './lib/instance.mjs';
+import { pairedToken } from './lib/store.mjs';
+
+// A canvas behind the workspace's sign-in keeps its board behind it too, so /__board and
+// /__rt answer a terminal only as the member its pairing names (`augur connect`). The
+// token is the one saved FOR THIS SITE'S HOST and is sent to that host alone — never to a
+// separate realtime origin. No pairing, no header: a public canvas needs none.
+//
+// And only over https. A token on plain http is a token anyone on the path can read, so an
+// http (or ws) site gets no header at all — except this machine talking to itself
+// (localhost / 127.0.0.1), which is the offline engine and leaves no wire.
+export const siteAuth = (site, token = pairedToken) => {
+  let u;
+  try { u = new URL(String(site).replace(/^ws/, 'http')); } catch { return {}; }
+  const local = u.hostname === 'localhost' || u.hostname === '127.0.0.1';
+  if (u.protocol !== 'https:' && !(u.protocol === 'http:' && local)) return {};
+  const t = token(site);
+  return t ? { authorization: `Bearer ${t}` } : {};
+};
 
 // This instance's room server and site — resolved from the shell's deploy.config.json
 // (the same source the built worker's /__rt proxy reads), never hardcoded: the engine is
@@ -142,7 +160,11 @@ export class ClawdCanvas {
   _dial() {
     const url = `${this.rtOrigin}${this._roomPath}?path=${encodeURIComponent(this.boardPath)}` +
       `&name=${encodeURIComponent(this.name)}&kind=agent&color=${encodeURIComponent(this.color)}`;
-    const ws = new WebSocket(url);
+    // Through the site's own proxy the socket says whose it is, like the two fetches do.
+    // Only then, and only with a pairing: the plain one-argument call is what every
+    // public canvas has always made.
+    const auth = this._roomPath === '/__rt' ? siteAuth(this.site) : {};
+    const ws = auth.authorization ? new WebSocket(url, { headers: auth }) : new WebSocket(url);
     this._ws = ws;
     ws.addEventListener('message', (ev) => this._onMessage(ev));
     // keepalive: the room reaps sockets that stop pinging (~75s) — ping every 25s so a
@@ -223,7 +245,7 @@ export class ClawdCanvas {
 
   async _getKv() {
     try {
-      const r = await fetch(`${this.site}/__board?path=${encodeURIComponent(this.boardPath)}`);
+      const r = await fetch(`${this.site}/__board?path=${encodeURIComponent(this.boardPath)}`, { headers: siteAuth(this.site) });
       if (!r.ok) return null;
       const j = await r.json();
       const d = j.doc || j;
@@ -426,7 +448,7 @@ export class ClawdCanvas {
     if (this._ws && this._ws.readyState === 1) return true; // the room owns the write
     try {
       const r = await fetch(`${this.site}/__board?path=${encodeURIComponent(this.boardPath)}`, {
-        method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ doc: this.doc }),
+        method: 'POST', headers: { 'content-type': 'application/json', ...siteAuth(this.site) }, body: JSON.stringify({ doc: this.doc }),
       });
       return r.ok;
     } catch { return false; }

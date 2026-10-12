@@ -7764,6 +7764,11 @@ function isDraftAddressGet(request, url) {
   try { decoded = decodeURIComponent(url.pathname); } catch (e) { return false; }
   return !!splitDraftPath(decoded);
 }
+/** `/__board` or `/__rt` carrying a bearer token: a canvas tool saying whose it is. */
+function isBearerBoardCall(request, url) {
+  if (url.pathname !== "/__board" && url.pathname !== "/__rt") return false;
+  return /^Bearer\s+\S/.test((request && request.headers.get("Authorization")) || "");
+}
 /**
  * The member a publish token names, for a draft-address read — or null. The same resolve
  * `unitCaller` applies to a write (`publishAuthDetailed`: known, unexpired, in scope, still
@@ -8311,7 +8316,7 @@ function mayRemoveThread(thread, me) {
 // OPEN, reads AND writes, for a page a signed-out visitor can open (the router asks
 // strangerMayReachPage before it gets here): reviewers with only a public
 // prototype link must be able to comment. applyOp clamps/caps every field.
-async function reviewApi(tctx, request, url, env, authed) {
+async function reviewApi(tctx, request, url, env, authed, mayStart = null) {
   const store = overlayFor(env, tctx);
   const path = clamp(url.searchParams.get("path") || "/", 600);
   if (!store) return jsonResponse({ threads: [], warning: "no-kv-binding" });
@@ -8349,6 +8354,11 @@ async function reviewApi(tctx, request, url, env, authed) {
     if (authed !== undefined && removesThread(op)) {
       const t = threads.find((x) => x.id === op.id);
       if (t && !mayRemoveThread(t, me)) return jsonResponse({ error: "forbidden" }, 403);
+    }
+    // A stranger starting the first thread at an address where no page is published
+    // (see strangerStart). 404: there is no such page to comment on.
+    if (mayStart && !threads.length && !(await mayStart())) {
+      return jsonResponse({ error: "no-such-page" }, 404);
     }
     // Read, apply, write back — retrying if somebody else wrote in between, which is the
     // whole reason a page's threads live in a row with a revision. Two reviewers on one
@@ -11399,6 +11409,35 @@ async function strangerMayReachPage(tctx, env, pathname) {
   return !!(map && map[normalized]);
 }
 
+// A stranger may ADD to a page's threads or board; may a stranger START one? Only where a
+// page is actually published (or a board was created). isPublicPath answers for a string,
+// not for a page: `/fonts/../x`, `<public prefix>/../x`, `<public prefix>/anything/og.jpg`
+// all class as public, and each was a fresh document a signed-out caller could create and
+// fill, without end. Nothing gated was reachable that way; it was free storage. So the
+// first write by a stranger asks one more question, and only the first: a key that already
+// holds something is a conversation in progress and is left alone, whatever its spelling.
+//
+// Returns null for a member (nothing to ask) or a thunk the API calls only when it is
+// about to create — a read, or a reply on an existing thread, never pays for the lookup.
+function strangerStart(tctx, env, url, stranger, pathname) {
+  if (!stranger) return null;
+  return async () => {
+    if (typeof pathname !== "string" || pathname[0] !== "/") return false;
+    // The key must be the address a browser would be at: what `location.pathname` can say.
+    // The URL parser folds `.`/`..` (encoded too) and a backslash, so a key that survives
+    // it unchanged names itself and nothing else.
+    let parsed;
+    try { parsed = new URL(pathname, url.origin); } catch (e) { return false; }
+    if (parsed.pathname !== pathname || pathname.includes("//")) return false;
+    if (!(pathname.endsWith("/") || pathname.endsWith(".html"))) return false;
+    if (await assetPathExists(tctx.tenantId, env, parsed)) return true;
+    const dir = pathname.endsWith("/index.html") ? pathname.slice(0, -"index.html".length) : pathname;
+    if (!CANVAS_DIR_RE.test(dir)) return false;
+    const map = await readCanvasRegistry(tctx, env);
+    return !!(map && map[dir]);
+  };
+}
+
 // Past the gate AND of this workspace. `authed` alone is "somebody signed in"; the page
 // gate additionally answers a signed-in non-member 404 (see the membership gate in fetch),
 // so a data API that stands in for the page must not treat that person better than the
@@ -11439,7 +11478,7 @@ function boardStores(env, tctx) {
   const mirror = kv ? kvOverlay(kv, kvWorkspaceSegment(env, tctx)) : null;
   return { store, mirror };
 }
-async function boardApi(tctx, request, url, env, me) {
+async function boardApi(tctx, request, url, env, me, mayStart = null) {
   const { store, mirror } = boardStores(env, tctx);
   if (!store) return jsonResponse({ doc: null, warning: "no-kv-binding" });
   const path = clamp(url.searchParams.get("path"), 600);
@@ -11464,6 +11503,11 @@ async function boardApi(tctx, request, url, env, me) {
       key: "board-writes", field: "boardWritesPerMinute", window: quotaMinute(),
     });
     if (!verdict.allowed) return quotaRefusal("board write", verdict);
+    // A stranger saving the first document at an address where no canvas is published
+    // or created (see strangerStart). After the meter, so the lookup is rate-limited too.
+    if (mayStart && !(await store.readKey("boards", "", path)) && !(await mayStart())) {
+      return jsonResponse({ error: "no-such-page" }, 404);
+    }
     // LAST WRITE WINS, deliberately and unchanged. A board document is the client's whole
     // canvas, reconciled in the realtime room before it ever gets here; two PUTs merged
     // server-side would produce a canvas neither person drew. The revision machinery the
@@ -12794,6 +12838,16 @@ async function handleRequest(request, env, ctx, url, trace) {
       me = await bearerMemberForDraft(tctx, request, env);
       viaBearer = !!me;
     }
+    // THE BOARD ROUTES ANSWER TO IT TOO. The canvas tools (`clawd-canvas`, `canvas-screen`,
+    // `board-snapshot`) are terminals, not browsers: they hold a pairing, never a cookie.
+    // While `/__board` and `/__rt` answered anyone that did not matter; now that a board
+    // behind the gate is behind it for these routes as well, the tool has to be able to say
+    // whose it is. Same resolve, same refusals (a viewer's token, a machine token, an
+    // expired one: nobody). Not `viaBearer`: that flag re-wraps a PAGE as no-store, and the
+    // socket upgrade this also covers must be handed back untouched.
+    if (!me && usersActive && isBearerBoardCall(request, url)) {
+      me = await bearerMemberForDraft(tctx, request, env);
+    }
     // Is this request past the gate? identity mode → a known user; legacy → the
     // shared-password cookie; neither configured → open (raw/local build, no gate).
     let authed;
@@ -13089,11 +13143,11 @@ async function handleRequest(request, env, ctx, url, trace) {
     // the same word the other gated APIs here use; the page itself answers the sign-in card.
     if (url.pathname === "/__review/api") {
       const reviewPath = dataPath || "/"; // reviewApi's own default
-      if (!isWorkspaceMember(tctx, usersActive, authed, me)
-          && !(await strangerMayReachPage(tctx, env, reviewPath))) {
+      const stranger = !isWorkspaceMember(tctx, usersActive, authed, me);
+      if (stranger && !(await strangerMayReachPage(tctx, env, reviewPath))) {
         return jsonResponse({ error: "unauthorized" }, 401);
       }
-      return reviewApi(tctx, request, url, env, authed);
+      return reviewApi(tctx, request, url, env, authed, strangerStart(tctx, env, url, stranger, reviewPath));
     }
 
     // Overlay APIs — gated by the same rule as the site (open in legacy no-gate mode
@@ -13155,7 +13209,18 @@ async function handleRequest(request, env, ctx, url, trace) {
     // Canvas board docs follow the COMMENTS model, not the status/pins model: a canvas is a
     // PUBLISHED prototype (public, obscure share link), so its board must load & save without a
     // login, exactly like /__review/api. Writes are full-state but size-capped in boardApi.
-    if (url.pathname === "/__board") return boardApi(tctx, request, url, env, me);
+    //
+    // ...WHERE THE CANVAS IS. A canvas behind the gate keeps its board behind it: the same
+    // question /__review/api asks, for the same reason (a caller-supplied ?path=, dispatched
+    // before the gate). A canvas tool passes as the member its pairing names (see
+    // isBearerBoardCall).
+    if (url.pathname === "/__board") {
+      const stranger = !isWorkspaceMember(tctx, usersActive, authed, me);
+      if (stranger && !(await strangerMayReachPage(tctx, env, dataPath))) {
+        return jsonResponse({ error: "unauthorized" }, 401);
+      }
+      return boardApi(tctx, request, url, env, me, strangerStart(tctx, env, url, stranger, dataPath));
+    }
     // Board images live OUTSIDE the doc (content-hashed, immutable) — same public model as
     // /__board: the hash is the credential. Reads stay public (a public board renders its
     // images for anyone); UPLOADS require a signed-in user in identity mode, so the KV
@@ -13177,7 +13242,20 @@ async function handleRequest(request, env, ctx, url, trace) {
     // Canvas multiplayer: same-origin WebSocket proxied to the augur-realtime worker (one
     // BoardRoom Durable Object per board path — cursors/presence/live ops). Public like
     // /__board: the board is the credential. The engine degrades to solo if this fails.
-    if (url.pathname === "/__rt") return rtProxy(tctx, request, url, env, me);
+    //
+    // Gated like /__board, at the two requests that touch a room: the ticket mint and the
+    // socket itself. A plain GET is answered as before (501 / 426, facts about the
+    // deployment and not about any board) — `migrate` probes exactly that to learn whether
+    // an instance has rooms, and it is asked with no session.
+    if (url.pathname === "/__rt") {
+      const touchesRoom = request.headers.get("Upgrade") === "websocket"
+        || (request.method === "GET" && !!url.searchParams.get("mint"));
+      if (touchesRoom && !isWorkspaceMember(tctx, usersActive, authed, me)
+          && !(await strangerMayReachPage(tctx, env, dataPath))) {
+        return jsonResponse({ error: "unauthorized" }, 401);
+      }
+      return rtProxy(tctx, request, url, env, me);
+    }
 
     // Admin-only spaces: seal the whole base path BEFORE the public-prototype
     // door, so nothing under it — not even an og.jpg — leaks. Only an admin
@@ -13363,7 +13441,7 @@ export const __testables = Object.freeze({
   composeFork, carriedLineage, assertedLineage, manifestCeiling, bytesReferencedOf,
   isPublicPath, isTrackPath, isRestrictedPath, versionFor, brandMark,
   boardApi, canvasesApi, virtualCanvas, rtProxy, roomName, kvWorkspaceSegment,
-  strangerMayReachPage, isWorkspaceMember,
+  strangerMayReachPage, isWorkspaceMember, strangerStart, isBearerBoardCall,
   OVERLAY_KV_KEYS, overlayKvKey,
   CANVASES_KEY, BOARD_PREFIX, BOARD_MAX_BYTES,
   assetApi, ASSET_PREFIX, ASSET_R2_PREFIX, ASSET_MAX_BYTES, assetGc, ASSET_GC_GRACE_MS,
