@@ -106,7 +106,7 @@ import { composePublish, forkLanded } from "./publish-compose.mjs";
 import { normUnit, splitDraftPath, unitTable, draftAddress, DRAFT_ID_RE } from "./unit-core.mjs";
 import {
   siteModel, derivedPathKind, renderRootIndex, renderOpportunityIndex, renderPlaygroundIndex,
-  renderTierIndex, renderComponentsIndex, searchIndex, catalogFrom, isWelcomeUnit,
+  renderTierIndex, renderComponentsIndex, searchIndex, catalogFrom, isWelcomeUnit, unitHome,
 } from "./galleries.mjs";
 // `F-fork-verb`. Fork as a deliberate verb — one unit aliased to a new path, zero bytes
 // moved — plus the rule that keeps a fork's lineage and owner alive across every later
@@ -11180,6 +11180,15 @@ async function shellDispatch(env, eventType, payload) {
 
 async function deleteApi(tctx, request, env, me) {
   if (request.method !== "POST") return jsonResponse({ error: "method-not-allowed" }, 405);
+  // Only this site's own pages may ask. The session cookie is SameSite=Lax, and workspaces
+  // that share an apex are the SAME site to a browser, so a page on a sibling workspace
+  // could otherwise post here as the admin who opened it. A browser sends Origin on every
+  // POST; a JSON content type is what a cross-origin form or no-cors fetch cannot send.
+  const reqUrl = new URL(request.url);
+  if (request.headers.get("Origin") !== reqUrl.origin) return jsonResponse({ error: "cross-origin" }, 403);
+  if (!/^application\/json\s*(;|$)/i.test(request.headers.get("Content-Type") || "")) {
+    return jsonResponse({ error: "bad-content-type" }, 415);
+  }
   let op;
   try { op = await request.json(); } catch (e) { return jsonResponse({ error: "bad-json" }, 400); }
   const space = clamp(op && op.space, 60);
@@ -11187,6 +11196,14 @@ async function deleteApi(tctx, request, env, me) {
   const project = DELETE_PROJECT_RE.test(path);
   if (!/^[a-z0-9][a-z0-9-]*$/.test(space) || !(project || DELETE_PATH_RE.test(path)) || path.includes("..")) {
     return jsonResponse({ error: "bad-input" }, 400);
+  }
+  // DELETE_PATH_RE is a shape, and "base/prototypes/button" has it. A prototype lives in a
+  // project folder or the playground; a library tier, `skills` and an engine folder do not
+  // hold one, whatever the path says.
+  if (!project) {
+    const seg = path.split("/");
+    const home = unitHome(seg[0] === "playground" ? `/playground/${seg[1]}/` : `/${seg[0]}/${seg[2]}/`);
+    if (!home || (home.kind !== "opportunity" && home.kind !== "playground")) return jsonResponse({ error: "bad-input" }, 400);
   }
   // Where drafts land the store is the record of what is published; no repo holds it.
   const storeIsRecord = bundleMode(env) && draftsServedHere(env);
@@ -11198,6 +11215,14 @@ async function deleteApi(tctx, request, env, me) {
     if (!storeIsRecord) return jsonResponse({ error: "not-configured" }, 501);
     const prefix = await storeDeletePrefix(tctx, env, space, path);
     if (!prefix) return jsonResponse({ error: "unknown-space", space }, 400);
+    // Only a prototype the gallery lists, as the project path asks: a member's welcome
+    // page is a unit the gallery hides, and nothing on a card names it.
+    const live = (await loadManifests(tctx.tenantId, env, true))[space] || null;
+    const meta = (tctx.SPACES || []).find((sp) => sp.id === space);
+    const unit = meta && !meta.default ? prefix.slice(space.length + 1) : prefix;
+    if (!live || !siteModel({ manifest: live }).units.some((u) => u.unit === unit && u.home.kind !== "tier")) {
+      return jsonResponse({ error: "not-found" }, 404);
+    }
     let store;
     try { store = await removeFromStore(tctx, env, space, prefix, me ? me.email : ""); }
     catch (e) { store = { error: "store-write-failed" }; }

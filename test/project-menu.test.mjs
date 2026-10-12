@@ -43,7 +43,7 @@ function serve(dist, deleteStatus) {
       let body = "";
       req.on("data", (c) => { body += c; });
       req.on("end", () => {
-        deletes.push(JSON.parse(body));
+        deletes.push({ ...JSON.parse(body), origin: req.headers.origin, type: req.headers["content-type"] });
         res.writeHead(deleteStatus, { "content-type": "application/json" });
         res.end(JSON.stringify(deleteStatus === 202 ? { ok: true, prototypes: 1, store: { removed: 1, version: 2 } } : { error: "no" }));
       });
@@ -51,6 +51,7 @@ function serve(dist, deleteStatus) {
     }
     if (p.startsWith("/__")) { res.writeHead(req.method === "GET" ? 200 : 404, { "content-type": "application/json" }); return res.end(JSON.stringify({ map: {} })); }
     let f = path.join(dist, decodeURIComponent(p));
+    if (f !== dist && !f.startsWith(dist + path.sep)) { res.writeHead(403); return res.end("no"); }
     if (existsSync(f) && statSync(f).isDirectory()) f = path.join(f, "index.html");
     if (!existsSync(f)) { res.writeHead(404); return res.end("nf"); }
     const type = f.endsWith(".html") ? "text/html" : f.endsWith(".js") ? "text/javascript" : f.endsWith(".css") ? "text/css" : "application/octet-stream";
@@ -58,11 +59,11 @@ function serve(dist, deleteStatus) {
     if (p === "/") return res.end(readFileSync(f, "utf8").replace('<div class="card-opp"', HOOKS));
     res.end(readFileSync(f));
   });
-  return new Promise((r) => server.listen(0, () => r({ port: server.address().port, deletes, close: () => server.close() })));
+  return new Promise((r) => server.listen(0, "127.0.0.1", () => r({ port: server.address().port, deletes, close: () => server.close() })));
 }
 
 async function openRoot(app, role) {
-  const browser = await chromium.launch();
+  const browser = await chromium.launch({ chromiumSandbox: true });
   const page = await browser.newPage();
   await page.addInitScript(() => { try { delete navigator.serviceWorker; } catch (e) {} });
   await page.goto(`http://127.0.0.1:${app.port}/`, { waitUntil: "load" });
@@ -92,7 +93,7 @@ describe("the project card's right-click menu", { skip: !chromium && "playwright
       assert.equal(app.deletes.length, 0, "nothing is sent before the confirm");
       await page.locator('.gv-modal [data-m="del"]').click();
       await page.waitForTimeout(600);
-      assert.deepEqual(app.deletes, [{ space: "acme", path: "demo" }]);
+      assert.deepEqual(app.deletes, [{ space: "acme", path: "demo", origin: `http://127.0.0.1:${app.port}`, type: "application/json" }], "what the server's guard asks for is what the menu sends");
       assert.equal(await card.count(), 0, "the card is gone");
       assert.match(await page.locator(".gv-toast.show").last().textContent(), /^Deleted “Demo”$/);
     } finally { await browser.close(); app.close(); }

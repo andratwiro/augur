@@ -23,8 +23,8 @@ async function setup() {
   W.__setConfigTestState({ manifests: null });
   return { ctx, env };
 }
-const del = (ctx, env, body, me = ADMIN, method = "POST") => W.deleteApi(ctx, new Request("https://x.test/__delete", {
-  method, ...(method === "POST" ? { headers: { "content-type": "application/json" }, body: JSON.stringify(body) } : {}),
+const del = (ctx, env, body, me = ADMIN, method = "POST", headers = { "content-type": "application/json", origin: "https://x.test" }) => W.deleteApi(ctx, new Request("https://x.test/__delete", {
+  method, ...(method === "POST" ? { headers, body: JSON.stringify(body) } : {}),
 }), env, me);
 const paths = (env) => Object.keys(liveNow(env).files);
 
@@ -93,4 +93,41 @@ test("where drafts are not served, the store is not the record: 501 as before", 
   const wired = { ...plain, DELETE_DISPATCH_URL: "https://dispatch.test/x", DELETE_DISPATCH_TOKEN: "t" };
   assert.equal((await del(ctx, wired, { space: "alpha", path: "checkout" })).status, 501);
   assert.equal(liveNow(env).version, 7);
+});
+
+test("only this site's own page may ask: another origin, no origin and a form body are refused before anything is read", async () => {
+  const { ctx, env } = await setup();
+  const body = { space: "alpha", path: "checkout" };
+  const json = "application/json";
+  for (const [headers, status] of [
+    [{ "content-type": json, origin: "https://demo.x.test" }, 403],
+    [{ "content-type": json, origin: "https://x.test.evil.example" }, 403],
+    [{ "content-type": json, origin: "http://x.test" }, 403],
+    [{ "content-type": json, origin: "null" }, 403],
+    [{ "content-type": json }, 403],
+    [{ "content-type": "text/plain", origin: "https://x.test" }, 415],
+    [{ "content-type": "application/x-www-form-urlencoded", origin: "https://x.test" }, 415],
+    [{ "content-type": "application/jsonp", origin: "https://x.test" }, 415],
+    [{ origin: "https://x.test" }, 415],
+  ]) {
+    const r = await del(ctx, env, body, ADMIN, "POST", headers);
+    assert.equal(r.status, status, JSON.stringify(headers));
+  }
+  assert.equal(liveNow(env).version, 7, "nothing was deleted");
+  assert.equal((await del(ctx, env, body, ADMIN, "POST", { "content-type": "application/json; charset=utf-8", origin: "https://x.test" })).status, 202);
+});
+
+test("one prototype: a library page, a skill and a welcome page are not prototypes, whatever the path says", async () => {
+  const { ctx, env } = await setup();
+  for (const path of ["base/prototypes/button", "components/prototypes/x", "skills/prototypes/x"]) {
+    assert.equal((await del(ctx, env, { space: "alpha", path })).status, 400, path);
+  }
+  assert.equal((await del(ctx, env, { space: "alpha", path: "checkout/prototypes/hello-ada" })).status, 404, "a welcome page is not listed, so not deletable");
+  assert.equal((await del(ctx, env, { space: "alpha", path: "checkout/prototypes/nowhere" })).status, 404);
+  assert.equal(liveNow(env).version, 7);
+  assert.equal(paths(env).length, 7);
+  assert.equal((await del(ctx, env, { space: "alpha", path: "playground/scratch" })).status, 202, "the playground still is");
+  // With a repo channel the shape check runs before the dispatch.
+  const wired = { ...env, DELETE_DISPATCH_URL: "https://dispatch.test/x", DELETE_DISPATCH_TOKEN: "t" };
+  assert.equal((await del(ctx, wired, { space: "alpha", path: "base/prototypes/button" })).status, 400);
 });
