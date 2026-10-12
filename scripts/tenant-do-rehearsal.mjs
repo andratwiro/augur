@@ -425,7 +425,9 @@ async function shutdown(dep) {
  * is correct behaviour, and looks exactly like a broken fixture.
  */
 function req(pathname, { method = "GET", headers = {}, body, cookie } = {}) {
-  const h = { Host: HOST, ...headers };
+  // A write to /__admin/ and to the signed-in write routes answers only its own page:
+  // the Origin a browser would send from this workspace (`wrangler dev` serves plain http).
+  const h = { Host: HOST, ...(method === "GET" ? {} : { Origin: `http://${HOST}` }), ...headers };
   if (cookie) h.Cookie = cookie;
   if (body != null) h["content-length"] = String(Buffer.byteLength(body));
   return new Promise((resolve, reject) => {

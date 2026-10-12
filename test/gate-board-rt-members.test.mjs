@@ -138,7 +138,7 @@ test("/__board: a stranger saves the FIRST document only where a canvas is publi
   // A published page with no board yet: the first save is the canvas being used.
   assert.equal((await save(e, "/prototypes/garden/second/")).status, 200);
   // A created board: public by the registry, and its first save is a stranger's to make.
-  const made = await hit(e, "/__canvases", { cookie: await cookieFor(e, ADMIN), method: "POST", body: JSON.stringify({ dir: "/playground/", name: "Sketch" }) });
+  const made = await hit(e, "/__canvases", { cookie: await cookieFor(e, ADMIN), headers: { Origin: "https://example.test" }, method: "POST", body: JSON.stringify({ dir: "/playground/", name: "Sketch" }) });
   assert.equal(made.status, 200);
   assert.equal((await save(e, "/playground/sketch/")).status, 200);
   assert.equal((await hit(e, boardUrl("/playground/other/"))).status, 401);

@@ -169,7 +169,7 @@ test("/ sends an OWED editor to /__welcome and leaves a viewer alone", async () 
   const v = await fetchAs(env, VERA, "/");
   assert.notEqual(v.status, 303, "a viewer is never gated");
   const later = await fetchAs(env, ADA_MEMBER, "/__onboarding/me", {
-    method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ later: true }),
+    method: "POST", headers: { "content-type": "application/json", origin: ORIGIN }, body: JSON.stringify({ later: true }),
   });
   assert.equal(later.status, 200);
   assert.notEqual((await fetchAs(env, ADA_MEMBER, "/")).status, 303, "later lifts the gate");

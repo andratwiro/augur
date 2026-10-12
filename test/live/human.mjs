@@ -146,7 +146,7 @@ export class Human {
   }
   async json(pathname, body, method = "POST") {
     const r = await fetch(`${this.origin}${pathname}`, {
-      method, headers: this.headers({ "content-type": "application/json" }), body: body ? JSON.stringify(body) : undefined, redirect: "manual",
+      method, headers: this.headers({ "content-type": "application/json", origin: this.origin }), body: body ? JSON.stringify(body) : undefined, redirect: "manual",
     });
     const out = await r.json().catch(() => ({}));
     return { status: r.status, ...out };

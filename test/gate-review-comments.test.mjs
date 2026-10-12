@@ -127,7 +127,7 @@ test("signed-out on a created canvas board is allowed; the same folder without a
   const e = env();
   const made = await worker.fetch(new Request("https://example.test/__canvases", {
     method: "POST",
-    headers: { "Content-Type": "application/json", Cookie: await cookieFor(e, ADMIN) },
+    headers: { "Content-Type": "application/json", Origin: "https://example.test", Cookie: await cookieFor(e, ADMIN) },
     body: JSON.stringify({ dir: "/playground/", name: "Sketch" }),
   }), e, ctx);
   assert.equal(made.status, 200);

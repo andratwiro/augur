@@ -11178,6 +11178,22 @@ async function shellDispatch(env, eventType, payload) {
   } catch (e) { return "failed"; }
 }
 
+// The half of ownPageOnly a browser cannot be talked out of: where the request came from.
+// For the signed-in writes whose callers do not all send a JSON body (the welcome page's
+// "make my page" posts nothing at all), the Origin alone is the answer.
+function ownOriginOnly(request) {
+  if (request.headers.get("Origin") !== new URL(request.url).origin) return jsonResponse({ error: "cross-origin" }, 403);
+  return null;
+}
+// The signed-in writes outside /__admin/ that the session cookie alone would let a page on
+// a sibling workspace make: a member's own name and photo, their onboarding row, and the
+// content everyone shares (status, pins, names, canvases). NOT here, on purpose: comments,
+// boards and rooms (open to a signed-out visitor by design), and everything a token
+// authenticates (/__publish/, units), which a CLI calls with no Origin at all.
+function ownPageWrite(pathname) {
+  return ["/__me/avatar", "/__me/name", "/__onboarding/me", "/__onboarding/me/unit",
+    "/__status", "/__pins", "/__name", "/__canvases"].includes(pathname);
+}
 // Only this site's own pages may ask: the refusal, or null to carry on. The session cookie
 // is SameSite=Lax, and workspaces that share an apex are the SAME site to a browser, so a
 // page on a sibling workspace could otherwise write here as the admin who opened it. A
@@ -11185,7 +11201,8 @@ async function shellDispatch(env, eventType, payload) {
 // a JSON content type is what a cross-origin form or no-cors fetch cannot send. Every
 // caller of the routes this guards is the workspace's own chrome, which sends both.
 function ownPageOnly(request) {
-  if (request.headers.get("Origin") !== new URL(request.url).origin) return jsonResponse({ error: "cross-origin" }, 403);
+  const refused = ownOriginOnly(request);
+  if (refused) return refused;
   if (!/^application\/json\s*(;|$)/i.test(request.headers.get("Content-Type") || "")) {
     return jsonResponse({ error: "bad-content-type" }, 415);
   }
@@ -12994,6 +13011,10 @@ async function handleRequest(request, env, ctx, url, trace) {
     // ahead of each route's own session and role check. Reads stay as they were.
     if (url.pathname.startsWith("/__admin/") && request.method !== "GET" && request.method !== "HEAD") {
       const refused = ownPageOnly(request);
+      if (refused) return refused;
+    }
+    if (ownPageWrite(url.pathname) && request.method !== "GET" && request.method !== "HEAD") {
+      const refused = ownOriginOnly(request);
       if (refused) return refused;
     }
     if (url.pathname.startsWith("/__space-icon/")) {
