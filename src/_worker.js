@@ -11178,17 +11178,23 @@ async function shellDispatch(env, eventType, payload) {
   } catch (e) { return "failed"; }
 }
 
-async function deleteApi(tctx, request, env, me) {
-  if (request.method !== "POST") return jsonResponse({ error: "method-not-allowed" }, 405);
-  // Only this site's own pages may ask. The session cookie is SameSite=Lax, and workspaces
-  // that share an apex are the SAME site to a browser, so a page on a sibling workspace
-  // could otherwise post here as the admin who opened it. A browser sends Origin on every
-  // POST; a JSON content type is what a cross-origin form or no-cors fetch cannot send.
-  const reqUrl = new URL(request.url);
-  if (request.headers.get("Origin") !== reqUrl.origin) return jsonResponse({ error: "cross-origin" }, 403);
+// Only this site's own pages may ask: the refusal, or null to carry on. The session cookie
+// is SameSite=Lax, and workspaces that share an apex are the SAME site to a browser, so a
+// page on a sibling workspace could otherwise write here as the admin who opened it. A
+// browser sends Origin on every request that is not a GET or HEAD and a page cannot set it;
+// a JSON content type is what a cross-origin form or no-cors fetch cannot send. Every
+// caller of the routes this guards is the workspace's own chrome, which sends both.
+function ownPageOnly(request) {
+  if (request.headers.get("Origin") !== new URL(request.url).origin) return jsonResponse({ error: "cross-origin" }, 403);
   if (!/^application\/json\s*(;|$)/i.test(request.headers.get("Content-Type") || "")) {
     return jsonResponse({ error: "bad-content-type" }, 415);
   }
+  return null;
+}
+async function deleteApi(tctx, request, env, me) {
+  if (request.method !== "POST") return jsonResponse({ error: "method-not-allowed" }, 405);
+  const refused = ownPageOnly(request);
+  if (refused) return refused;
   let op;
   try { op = await request.json(); } catch (e) { return jsonResponse({ error: "bad-json" }, 400); }
   const space = clamp(op && op.space, 60);
@@ -11219,10 +11225,12 @@ async function deleteApi(tctx, request, env, me) {
     // page is a unit the gallery hides, and nothing on a card names it.
     const live = (await loadManifests(tctx.tenantId, env, true))[space] || null;
     const meta = (tctx.SPACES || []).find((sp) => sp.id === space);
-    const unit = meta && !meta.default ? prefix.slice(space.length + 1) : prefix;
-    if (!live || !siteModel({ manifest: live }).units.some((u) => u.unit === unit && u.home.kind !== "tier")) {
-      return jsonResponse({ error: "not-found" }, 404);
-    }
+    // The gallery models the default space. Another space's units sit under `/<space>/`,
+    // which siteModel does not list, so there the manifest's own files and stamp answer.
+    const listed = !live ? false : meta && !meta.default
+      ? Object.keys(live.files || {}).some((f) => f.startsWith(prefix)) && !isWelcomeUnit(((live.routing || {}).unitSources || {})[prefix])
+      : siteModel({ manifest: live }).units.some((u) => u.unit === prefix && u.home.kind !== "tier");
+    if (!listed) return jsonResponse({ error: "not-found" }, 404);
     let store;
     try { store = await removeFromStore(tctx, env, space, prefix, me ? me.email : ""); }
     catch (e) { store = { error: "store-write-failed" }; }
@@ -12982,6 +12990,12 @@ async function handleRequest(request, env, ctx, url, trace) {
     // A workspace's icon. Serving is ungated like /__avatar/ (the rail renders it on
     // the login page too, and the allowlist check inside stops hash-guessing); setting
     // it is admin-of-that-workspace only, re-checked inside spaceIconApi.
+    // Every write under /__admin/ answers only this workspace's own page (ownPageOnly),
+    // ahead of each route's own session and role check. Reads stay as they were.
+    if (url.pathname.startsWith("/__admin/") && request.method !== "GET" && request.method !== "HEAD") {
+      const refused = ownPageOnly(request);
+      if (refused) return refused;
+    }
     if (url.pathname.startsWith("/__space-icon/")) {
       return serveSpaceIcon(tctx, env, url.pathname.slice("/__space-icon/".length));
     }

@@ -181,7 +181,8 @@ async function deployment({ withConfig = false } = {}) {
     T.__setConfigTestState({ cfgAt: 0, cfgGoodAt: 0, roster: null, manifests: null, storage: null });
     const req = new Request(`https://${ws}${SUFFIX}${p}`, {
       ...(init || {}),
-      headers: { ...((init && init.headers) || {}), host: `${ws}${SUFFIX}` },
+      // `origin`: what a browser puts on every write from the workspace's own page; /__admin/ asks for it.
+      headers: { origin: `https://${ws}${SUFFIX}`, ...((init && init.headers) || {}), host: `${ws}${SUFFIX}` },
     });
     const res = await WORKER.default.fetch(req, env, { waitUntil: (x) => pending.push(x) });
     await Promise.all(pending.splice(0));

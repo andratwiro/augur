@@ -131,3 +131,22 @@ test("one prototype: a library page, a skill and a welcome page are not prototyp
   const wired = { ...env, DELETE_DISPATCH_URL: "https://dispatch.test/x", DELETE_DISPATCH_TOKEN: "t" };
   assert.equal((await del(ctx, wired, { space: "alpha", path: "base/prototypes/button" })).status, 400);
 });
+
+test("one prototype in a space that is not the default: its own unit goes, by the path the space serves it under", async () => {
+  const t = `project-delete-${++n}`, ctx = { ...ctxFor(t), SPACES: [{ id: "main", default: true }, { id: "alpha" }] };
+  const SA = "/alpha/checkout/flow/", SB = "/alpha/checkout/other/", SH = "/alpha/checkout/hello-ada/";
+  const live = manifestOf(7, { [SA]: { "index.html": PAGE }, [SB]: { "index.html": PAGE }, [SH]: { "index.html": PAGE } });
+  live.space.default = false;
+  live.routing.unitSources = { [SH]: { kind: "welcome" } };
+  const env = await makeEnv({ live });
+  W.__setTenantTestState({ memo: { at: Date.now(), tenantId: t } });
+  W.__setConfigTestState({ manifests: null });
+  assert.equal((await del(ctx, env, { space: "alpha", path: "checkout/prototypes/nowhere" })).status, 404);
+  assert.equal((await del(ctx, env, { space: "alpha", path: "checkout/prototypes/hello-ada" })).status, 404, "a welcome page stays");
+  assert.equal(liveNow(env).version, 7);
+  const r = await del(ctx, env, { space: "alpha", path: "checkout/prototypes/flow" });
+  assert.equal(r.status, 202);
+  assert.equal((await r.json()).store.removed, 1);
+  assert.deepEqual(paths(env).sort(), [`${SB}index.html`, `${SH}index.html`].sort());
+  assert.equal((await del(ctx, env, { space: "beta", path: "checkout/prototypes/other" })).status, 400, "a space nobody declared");
+});

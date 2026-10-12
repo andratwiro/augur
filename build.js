@@ -3828,6 +3828,7 @@ ${FAIL_NOTE_JS}
             else showToast('Deleting \\u201c'+nm+'\\u201d \\u2014 gone from the live site in ~2 minutes');
           }
           else if(res.status===501) showToast('Deletion is not configured on this instance');
+          else if(res.status===403&&res.d&&res.d.error==='cross-origin') showToast('Delete was refused: open this page on the workspace\\u2019s own address');
           else if(res.status===403) showToast(project?'Only admins can delete projects':'Only admins can delete prototypes');
           else showToast('Delete failed \\u2014 nothing was removed');
         })

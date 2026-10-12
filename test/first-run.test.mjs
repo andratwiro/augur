@@ -107,7 +107,8 @@ async function deployment({ firstRun = true, sessionKeys = true, devicePairing =
   const fire = async (p, init) => {
     W.__setTenantTestState({ memo: { at: Date.now(), tenantId: WS } });
     W.__setConfigTestState({ cfgAt: 0, cfgGoodAt: 0, roster: null, manifests: null, storage: null });
-    const res = await WORKER.default.fetch(new Request(ORIGIN + p, init), env, { waitUntil: (x) => pending.push(x) });
+    // `origin`: what a browser puts on every write from the workspace's own page; /__admin/ asks for it.
+    const res = await WORKER.default.fetch(new Request(ORIGIN + p, { ...init, headers: { origin: ORIGIN, ...((init && init.headers) || {}) } }), env, { waitUntil: (x) => pending.push(x) });
     await Promise.all(pending.splice(0));
     return res;
   };

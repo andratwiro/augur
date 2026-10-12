@@ -166,11 +166,12 @@ test("the THIRD door — the admin token page — refuses a viewer as well", asy
     const orig = console.log; console.log = () => {};
     const res = await worker.fetch(new Request("https://acme.example/__admin/tokens", {
       method: "POST",
-      headers: { "content-type": "application/json", cookie: await session(env, u) },
+      headers: { "content-type": "application/json", origin: "https://acme.example", cookie: await session(env, u) },
       body: JSON.stringify({ space: "acme", label: "x" }),
     }), env, {});
     console.log = orig;
     assert.equal(res.status, 403, `${u.role} could reach the admin token page`);
+    assert.equal((await res.json()).error, "forbidden", "refused for the role, not for where the request came from");
   }
 });
 

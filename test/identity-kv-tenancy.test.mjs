@@ -194,7 +194,8 @@ async function deployment({ workspaces, workerModule = WORKER, broken = () => fa
     // as a broken change rather than as a broken fixture.
     const req = new Request(`https://${ws}${SUFFIX}${p}`, {
       ...(init || {}),
-      headers: { ...((init && init.headers) || {}), host: `${ws}${SUFFIX}` },
+      // `origin`: what a browser puts on every write from the workspace's own page; /__admin/ asks for it.
+      headers: { origin: `https://${ws}${SUFFIX}`, ...((init && init.headers) || {}), host: `${ws}${SUFFIX}` },
     });
     const res = await workerModule.default.fetch(req, env, { waitUntil: (x) => pending.push(x) });
     await Promise.all(pending.splice(0));

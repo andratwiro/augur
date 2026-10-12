@@ -167,7 +167,8 @@ async function deployment({ tenants = true, kv: seed = {}, workerModule = WORKER
   const fire = async (path, init) => {
     T.__setTenantTestState({ memo: { at: Date.now(), tenantId: id } });
     T.__setConfigTestState({ cfgAt: 0, cfgGoodAt: 0, roster: null, manifests: null, storage: null });
-    const res = await workerModule.default.fetch(new Request(ORIGIN + path, init), env, {
+    // `origin`: what a browser puts on every write from the workspace's own page; /__admin/ asks for it.
+    const res = await workerModule.default.fetch(new Request(ORIGIN + path, { ...init, headers: { origin: ORIGIN, ...((init && init.headers) || {}) } }), env, {
       waitUntil: (p) => pending.push(p),
     });
     await Promise.all(pending.splice(0));
