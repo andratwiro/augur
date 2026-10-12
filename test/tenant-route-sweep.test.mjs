@@ -571,7 +571,14 @@ const ROUTES = [
     own: (n) => [`${n} comment`],
     witness: (n) => ["c:" + proto(n)],
     cached: () => [],
-    neighbour: () => [],
+    // E-28. The neighbour's prototype is public THERE; here it is a path nobody made
+    // public, so a signed-out caller is refused before any thread is read — a stronger
+    // answer than the empty list it used to get, and still never the neighbour's words.
+    neighbour: () => "401 unauthorized no-threads",
+    neighbourRead: async (res) => {
+      const j = await asJson(res);
+      return `${res.status} ${j.error} ${j.threads === undefined ? "no-threads" : "threads"}`;
+    },
   }),
 
   route("board-doc", {

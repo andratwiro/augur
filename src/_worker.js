@@ -8308,7 +8308,8 @@ function mayRemoveThread(thread, me) {
 }
 
 // GET/POST /__review/api?path=<page> — read or mutate one page's threads.
-// Fully OPEN, reads AND writes (see router): reviewers with only a public
+// OPEN, reads AND writes, for a page a signed-out visitor can open (the router asks
+// strangerMayReachPage before it gets here): reviewers with only a public
 // prototype link must be able to comment. applyOp clamps/caps every field.
 async function reviewApi(tctx, request, url, env, authed) {
   const store = overlayFor(env, tctx);
@@ -11380,6 +11381,35 @@ async function virtualCanvas(tctx, request, env, url) {
   });
 }
 
+// May a caller with no session reach this page? The one question the comment API asks
+// before it answers for a path somebody else typed into ?path=. Two doors, the same two
+// the page itself has past the gate: a published public path (isPublicPath, which already
+// refuses every draft address), or a created canvas board (virtualCanvas's registry —
+// public by the same share-link model, and commented on like any prototype). Everything
+// else — the workspace home, the galleries, a prototype nobody made public — is not a
+// stranger's to read. The registry is read only when the first door said no.
+async function strangerMayReachPage(tctx, env, pathname) {
+  if (typeof pathname !== "string" || pathname[0] !== "/") return false;
+  if (isPublicPath(tctx, pathname)) return true;
+  let p = pathname;
+  if (p.endsWith("/index.html")) p = p.slice(0, -"index.html".length);
+  const normalized = p.endsWith("/") ? p : p + "/";
+  if (!CANVAS_DIR_RE.test(normalized)) return false;
+  const map = await readCanvasRegistry(tctx, env);
+  return !!(map && map[normalized]);
+}
+
+// Past the gate AND of this workspace. `authed` alone is "somebody signed in"; the page
+// gate additionally answers a signed-in non-member 404 (see the membership gate in fetch),
+// so a data API that stands in for the page must not treat that person better than the
+// page does. Legacy/open modes have no roster: there `authed` is the whole answer.
+function isWorkspaceMember(tctx, usersActive, authed, me) {
+  if (!authed) return false;
+  if (!usersActive || !me) return true;
+  const sid = (tctx.SPACES.find((s) => s.default) || {}).id || null;
+  return !(sid && !isMemberOf(me, sid));
+}
+
 // ---- Canvas board documents (KV-backed, one key per canvas URL) -------------
 // Each canvas (a prototype that mounts the shared /__canvas/ engine) owns ONE board
 // document — nodes + view + name — keyed by its URL path, the same per-URL rail comments
@@ -13047,11 +13077,24 @@ async function handleRequest(request, env, ctx, url, trace) {
       return jsonResponse({ error: "forbidden" }, 403);
     }
 
-    // Comments: fully OPEN (reads and writes) so devs who only have the public
+    // Comments: OPEN (reads and writes) WHERE THE PAGE IS, so devs who only have the public
     // prototype link — no login — can leave feedback that syncs to KV. Obscure
     // share links, not public discovery; applyOp already clamps/caps every field.
     // Destructive ops (delete a thread/message) require a signed-in user (see reviewApi).
-    if (url.pathname === "/__review/api") return reviewApi(tctx, request, url, env, authed);
+    //
+    // A page behind the gate keeps its threads behind it too. This route keys off a
+    // caller-supplied ?path= and is dispatched before the gate, so until it asked "may this
+    // caller see that page?" anyone who knew a hostname and guessed a path (`/`, `/base/`)
+    // could read every comment on a gated page, authors included, and add their own. 401,
+    // the same word the other gated APIs here use; the page itself answers the sign-in card.
+    if (url.pathname === "/__review/api") {
+      const reviewPath = dataPath || "/"; // reviewApi's own default
+      if (!isWorkspaceMember(tctx, usersActive, authed, me)
+          && !(await strangerMayReachPage(tctx, env, reviewPath))) {
+        return jsonResponse({ error: "unauthorized" }, 401);
+      }
+      return reviewApi(tctx, request, url, env, authed);
+    }
 
     // Overlay APIs — gated by the same rule as the site (open in legacy no-gate mode
     // so raw/local builds keep working). Pins are scoped to the signed-in user.
@@ -13320,6 +13363,7 @@ export const __testables = Object.freeze({
   composeFork, carriedLineage, assertedLineage, manifestCeiling, bytesReferencedOf,
   isPublicPath, isTrackPath, isRestrictedPath, versionFor, brandMark,
   boardApi, canvasesApi, virtualCanvas, rtProxy, roomName, kvWorkspaceSegment,
+  strangerMayReachPage, isWorkspaceMember,
   OVERLAY_KV_KEYS, overlayKvKey,
   CANVASES_KEY, BOARD_PREFIX, BOARD_MAX_BYTES,
   assetApi, ASSET_PREFIX, ASSET_R2_PREFIX, ASSET_MAX_BYTES, assetGc, ASSET_GC_GRACE_MS,
