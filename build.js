@@ -3694,7 +3694,10 @@ const CARD_MENU_JS = `
 (function(){
 ${FAIL_NOTE_JS}
   var cards = Array.prototype.slice.call(document.querySelectorAll('[data-rename-key]'));
-  if(!cards.length) return;
+  // Project cards (the root gallery, where the server can delete one) join the menu
+  // through data-del-kind; they have no rename key, so they get no Rename item.
+  var MENU_SEL='[data-rename-key],[data-del-kind]';
+  if(!cards.length && !document.querySelector('[data-del-kind]')) return;
   var NCACHE='gv_names_map';
   function linkOf(c){ return c.querySelector('a.preview-link, a.card-cover-link, a[href]'); }
   function nameEl(c){ return c.querySelector('.proto-name'); }
@@ -3719,7 +3722,7 @@ ${FAIL_NOTE_JS}
   cards.forEach(function(c){ var de=descEl(c); if(de && de._defDesc==null) de._defDesc=de.textContent; });
   var cached=null; try{ cached=JSON.parse(sessionStorage.getItem(NCACHE)||'null'); }catch(e){}
   if(cached) applyNames(cached);
-  else fetch('/__name',{headers:{'Accept':'application/json'}}).then(function(r){return r.json();})
+  else if(cards.length) fetch('/__name',{headers:{'Accept':'application/json'}}).then(function(r){return r.json();})
     .then(function(d){ var m=(d&&d.map)||{}; try{sessionStorage.setItem(NCACHE,JSON.stringify(m));}catch(e){} applyNames(m); }).catch(function(){});
   function persistName(key,name){
     return fetch('/__name',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({key:key,name:name})})
@@ -3792,7 +3795,8 @@ ${FAIL_NOTE_JS}
   }
   function deleteCard(c){
     if(c.hasAttribute('data-canvas-path')) return removeCanvas(c);
-    var nm=((nameEl(c)&&nameEl(c).textContent)||'this prototype').trim();
+    var project=c.getAttribute('data-del-kind')==='project', count=+c.getAttribute('data-del-count')||0;
+    var nm=((nameEl(c)&&nameEl(c).textContent)||(project?'this project':'this prototype')).trim();
     var veil=document.createElement('div'); veil.className='gv-modal-veil';
     veil.innerHTML='<div class="gv-modal" role="alertdialog" aria-modal="true" aria-labelledby="gv-del-title">'+
       '<h2 class="gv-modal__title" id="gv-del-title"></h2>'+
@@ -3800,6 +3804,7 @@ ${FAIL_NOTE_JS}
       '<div class="gv-modal__row"><button type="button" class="gv-modal__btn" data-m="cancel">Cancel</button>'+
       '<button type="button" class="gv-modal__btn gv-modal__btn--danger" data-m="del">Delete forever</button></div></div>';
     veil.querySelector('.gv-modal__title').textContent='Delete \\u201c'+nm+'\\u201d forever?';
+    if(project) veil.querySelector('.gv-modal__body').textContent='This deletes the project and '+(count===1?'its 1 prototype':'all '+count+' of its prototypes')+' from the live site for everyone.';
     document.body.appendChild(veil);
     var cancel=veil.querySelector('[data-m="cancel"]'), del=veil.querySelector('[data-m="del"]');
     function close(){ veil.remove(); document.removeEventListener('keydown',onKey,true); }
@@ -3818,10 +3823,12 @@ ${FAIL_NOTE_JS}
           if(res.status===202){
             c.style.transition='opacity .2s ease'; c.style.opacity='0';
             setTimeout(function(){ c.remove(); },210);
-            showToast('Deleting \\u201c'+nm+'\\u201d \\u2014 gone from the live site in ~2 minutes');
+            // A store answer means it is already off the live site; without one a deploy follows.
+            if(project||(res.d&&res.d.store&&res.d.store.removed)) showToast('Deleted \\u201c'+nm+'\\u201d');
+            else showToast('Deleting \\u201c'+nm+'\\u201d \\u2014 gone from the live site in ~2 minutes');
           }
           else if(res.status===501) showToast('Deletion is not configured on this instance');
-          else if(res.status===403) showToast('Only admins can delete prototypes');
+          else if(res.status===403) showToast(project?'Only admins can delete projects':'Only admins can delete prototypes');
           else showToast('Delete failed \\u2014 nothing was removed');
         })
         .catch(function(){ close(); showToast('Delete failed \\u2014 nothing was removed'); });
@@ -3893,7 +3900,7 @@ ${FAIL_NOTE_JS}
     var html=item('open','Open',ICON.open);
     html+='<hr>'+item('copy','Copy link',ICON.copy);
     if(dlBtn(c)) html+=item('download','Download HTML',ICON.dl);
-    html+='<hr>'+item('rename','Rename',ICON.rename);
+    if(c.hasAttribute('data-rename-key')) html+='<hr>'+item('rename','Rename',ICON.rename);
     if(descEl(c)) html+=item('editdesc','Edit description',ICON.desc);
     // Delete = REAL repo deletion, admins only (see deleteCard). Non-admins never
     // see the item; the worker re-checks the role server-side regardless.
@@ -3913,7 +3920,7 @@ ${FAIL_NOTE_JS}
     document.addEventListener('keydown',onMenuKey,true);
   }
   document.addEventListener('contextmenu',function(e){
-    var c=e.target.closest&&e.target.closest('[data-rename-key]'); if(!c) return;
+    var c=e.target.closest&&e.target.closest(MENU_SEL); if(!c) return;
     if(e.target.isContentEditable) return;
     e.preventDefault(); openMenu(e.clientX,e.clientY,c);
   });

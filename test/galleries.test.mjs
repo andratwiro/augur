@@ -168,6 +168,8 @@ test("the root page: one folder card per opportunity, with the cover, the faces 
   assert.match(html, /data-person="p1"/);
   assert.match(html, /2 prototypes/);
   assert.match(html, /data-currency-folder="checkout"/);
+  assert.match(html, /class="card-opp" data-del-kind="project" data-del-space="alpha" data-del-path="checkout" data-del-count="2" data-fitem/, "the right-click menu's hooks");
+  assert.doesNotMatch(html, /class="card-opp"[^>]*data-rename-key/, "a project has no rename key");
   assert.match(html, /window\.__GV_SPACE=/);
   const empty = renderRootIndex(siteModel({ manifest: { files: {}, routing: { publicPrefixes: [] } } }), ctx);
   assert.match(empty, /class="ghosts"/);

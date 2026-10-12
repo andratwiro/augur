@@ -106,7 +106,7 @@ import { composePublish, forkLanded } from "./publish-compose.mjs";
 import { normUnit, splitDraftPath, unitTable, draftAddress, DRAFT_ID_RE } from "./unit-core.mjs";
 import {
   siteModel, derivedPathKind, renderRootIndex, renderOpportunityIndex, renderPlaygroundIndex,
-  renderTierIndex, renderComponentsIndex, searchIndex, catalogFrom,
+  renderTierIndex, renderComponentsIndex, searchIndex, catalogFrom, isWelcomeUnit,
 } from "./galleries.mjs";
 // `F-fork-verb`. Fork as a deliberate verb — one unit aliased to a new path, zero bytes
 // moved — plus the rule that keeps a fork's lineage and owner alive across every later
@@ -6773,7 +6773,7 @@ async function publishApi(tctx, request, url, env) {
 // the deploy canary already watches for — it will ask for a republish, and the
 // republish reconciles the two. Inventing a second flag for it would just be
 // another number to reconcile.
-async function removeFromStore(tctx, env, spaceId, urlPrefix, by) {
+async function removeFromStore(tctx, env, spaceId, urlPrefix, by, spare = []) {
   if (!env.BUNDLES) return { skipped: "no-store" };
   const bundles = bundlesFor(env, tctx && tctx.tenantId);
   const obj = await bundles.get(`spaces/${spaceId}/manifest.json`);
@@ -6782,7 +6782,7 @@ async function removeFromStore(tctx, env, spaceId, urlPrefix, by) {
   const files = {};
   let removed = 0;
   for (const [p, f] of Object.entries(cur.files || {})) {
-    if (p.startsWith(urlPrefix)) { removed++; continue; }
+    if (p.startsWith(urlPrefix) && !spare.some((k) => p.startsWith(k))) { removed++; continue; }
     files[p] = f;
   }
   if (!removed) return { removed: 0 };
@@ -6793,16 +6793,17 @@ async function removeFromStore(tctx, env, spaceId, urlPrefix, by) {
   // Drop the dead path from the routing fragment too, or the gate keeps advertising
   // a public prefix that now resolves to nothing.
   const routing = { ...(cur.routing || {}) };
+  const gone = (u) => u.startsWith(urlPrefix) && !spare.some((k) => u.startsWith(k));
   if (Array.isArray(routing.publicPrefixes)) {
-    routing.publicPrefixes = routing.publicPrefixes.filter((u) => !u.startsWith(urlPrefix));
+    routing.publicPrefixes = routing.publicPrefixes.filter((u) => !gone(u));
   }
   if (routing.versionMap) {
     routing.versionMap = Object.fromEntries(
-      Object.entries(routing.versionMap).filter(([u]) => !u.startsWith(urlPrefix)));
+      Object.entries(routing.versionMap).filter(([u]) => !gone(u)));
   }
   if (Array.isArray(routing.canvasCatalog)) {
     routing.canvasCatalog = routing.canvasCatalog.filter(
-      (e) => !String((e && e.url) || "").startsWith(urlPrefix));
+      (e) => !gone(String((e && e.url) || "")));
   }
   // The unit-keyed maps go the same way. A deleted unit that kept its `unitOwners` row would
   // leave an owner behind for a resource that no longer exists — and the next thing published
@@ -6810,7 +6811,7 @@ async function removeFromStore(tctx, env, spaceId, urlPrefix, by) {
   for (const field of ["forkedFrom", "unitOwners"]) {
     if (!routing[field]) continue;
     routing[field] = Object.fromEntries(
-      Object.entries(routing[field]).filter(([u]) => !u.startsWith(urlPrefix)));
+      Object.entries(routing[field]).filter(([u]) => !gone(u)));
   }
   // The third mint, and the same counter. A delete commits as a normal new version so a
   // rollback undoes it like any other publish — which means it can collide with a publish
@@ -6835,7 +6836,9 @@ async function removeFromStore(tctx, env, spaceId, urlPrefix, by) {
 // space but the default.
 function deleteUrlPrefix(tctx, space, repoPath) {
   const parts = repoPath.split("/");
-  const tail = parts[0] === "playground"
+  // A bare folder name is a whole project (see deleteProject): every unit under it.
+  const tail = parts.length === 1 ? `/${encodeURIComponent(parts[0])}/`
+    : parts[0] === "playground"
     ? `/playground/${encodeURIComponent(parts[1])}/`
     : `/${encodeURIComponent(parts[0])}/${encodeURIComponent(parts[2])}/`;
   // An unknown space must NOT fall back to the root form: that would aim the
@@ -6843,6 +6846,16 @@ function deleteUrlPrefix(tctx, space, repoPath) {
   const meta = tctx.SPACES.find((s) => s.id === space);
   if (!meta) return null;
   return meta.default ? tail : `/${space}${tail}`;
+}
+
+// The same prefix where the store is the record. A workspace that declares no spaces
+// serves its one manifest as the default (derivedPage resolves it the same way), so the
+// space the gallery stamped on the card is that manifest or it is nothing.
+async function storeDeletePrefix(tctx, env, space, repoPath) {
+  if ((tctx.SPACES || []).length) return deleteUrlPrefix(tctx, space, repoPath);
+  const manifests = await loadManifests(tctx.tenantId, env, true);
+  if (!manifests[space] || defaultSpaceIdFromManifests(manifests) !== space) return null;
+  return deleteUrlPrefix({ SPACES: [{ id: space, default: true }] }, space, repoPath);
 }
 
 // ---- Admin: engine version + update nudge -----------------------------------
@@ -11114,6 +11127,33 @@ async function nameApi(tctx, request, url, env) {
 // DELETE_DISPATCH_TOKEN (a token with write access to fire it).
 // Path shapes are the two prototype homes only — never galleries, never skills.
 const DELETE_PATH_RE = /^(?:[a-z0-9][a-z0-9._-]*\/prototypes\/[a-z0-9][a-z0-9._-]*|playground\/[a-z0-9][a-z0-9._-]*)$/;
+// A whole project: one top-level folder, named as the gallery lists it.
+const DELETE_PROJECT_RE = /^[a-z0-9][a-z0-9._-]*$/;
+
+// Delete a project: every prototype the gallery lists under one folder, in ONE new
+// version of the space, so a space rollback brings the whole project back. Only where
+// the store is the record (see deleteApi), and only a folder the gallery shows as a
+// project: never the playground, a library tier or an engine folder. A member's welcome
+// page filed under the folder is not listed there (siteModel) and is left in place.
+async function deleteProject(tctx, env, space, folder, me) {
+  const prefix = await storeDeletePrefix(tctx, env, space, folder);
+  if (!prefix) return jsonResponse({ error: "unknown-space", space }, 400);
+  const manifests = await loadManifests(tctx.tenantId, env, true);
+  const live = manifests[space] || null;
+  const opp = live && siteModel({ manifest: live }).opportunities.find((o) => o.name === folder);
+  if (!opp) return jsonResponse({ error: "not-found" }, 404);
+  const sources = (live.routing && live.routing.unitSources) || {};
+  const spare = [...authoredUnits(live)].filter((u) => u.startsWith(prefix) && isWelcomeUnit(sources[u]));
+  const by = me ? me.email : "";
+  let store;
+  try { store = await removeFromStore(tctx, env, space, prefix, by, spare); }
+  catch (e) { store = { error: "store-write-failed" }; }
+  if (!store || store.error || store.skipped || !store.removed) {
+    return jsonResponse({ error: "store-write-failed", store }, 502);
+  }
+  console.log(JSON.stringify({ level: "info", event: "project-deleted", tenant: tctx.tenantId || "-", space, folder, prototypes: opp.prototypes.length, removed: store.removed, version: store.version }));
+  return jsonResponse({ ok: true, prototypes: opp.prototypes.length, store }, 202);
+}
 
 // Fire a typed repository_dispatch at the deploy shell — the one channel a worker
 // action has for changing a REPO (the durable record) rather than only live state.
@@ -11140,15 +11180,31 @@ async function shellDispatch(env, eventType, payload) {
 
 async function deleteApi(tctx, request, env, me) {
   if (request.method !== "POST") return jsonResponse({ error: "method-not-allowed" }, 405);
-  if (!env.DELETE_DISPATCH_URL || !env.DELETE_DISPATCH_TOKEN) {
-    return jsonResponse({ error: "not-configured" }, 501);
-  }
   let op;
   try { op = await request.json(); } catch (e) { return jsonResponse({ error: "bad-json" }, 400); }
   const space = clamp(op && op.space, 60);
   const path = clamp(op && op.path, 200);
-  if (!/^[a-z0-9][a-z0-9-]*$/.test(space) || !DELETE_PATH_RE.test(path) || path.includes("..")) {
+  const project = DELETE_PROJECT_RE.test(path);
+  if (!/^[a-z0-9][a-z0-9-]*$/.test(space) || !(project || DELETE_PATH_RE.test(path)) || path.includes("..")) {
     return jsonResponse({ error: "bad-input" }, 400);
+  }
+  // Where drafts land the store is the record of what is published; no repo holds it.
+  const storeIsRecord = bundleMode(env) && draftsServedHere(env);
+  if (project) {
+    if (!storeIsRecord) return jsonResponse({ error: "not-configured" }, 501);
+    return deleteProject(tctx, env, space, path, me);
+  }
+  if (!env.DELETE_DISPATCH_URL || !env.DELETE_DISPATCH_TOKEN) {
+    if (!storeIsRecord) return jsonResponse({ error: "not-configured" }, 501);
+    const prefix = await storeDeletePrefix(tctx, env, space, path);
+    if (!prefix) return jsonResponse({ error: "unknown-space", space }, 400);
+    let store;
+    try { store = await removeFromStore(tctx, env, space, prefix, me ? me.email : ""); }
+    catch (e) { store = { error: "store-write-failed" }; }
+    if (!store || store.error || store.skipped) return jsonResponse({ error: "store-write-failed", store }, 502);
+    if (!store.removed) return jsonResponse({ error: "not-found" }, 404);
+    console.log(JSON.stringify({ level: "info", event: "prototype-deleted", tenant: tctx.tenantId || "-", space, path, removed: store.removed, version: store.version }));
+    return jsonResponse({ ok: true, store }, 202);
   }
   const d = await shellDispatch(env, "prototype-delete", { space, path, by: me ? me.email : "" });
   if (d !== "dispatched") return jsonResponse({ error: "dispatch-failed" }, 502);
@@ -13434,7 +13490,7 @@ export const __testables = Object.freeze({
   doorFacts, doorText, wantsMachineDoor, gateResponse, DOOR_DOCS, DOOR_WELL_KNOWN,
   resumeAfterDormancy,
   PITI_VIEW_KEY, PITI_REMARKS_KEY,
-  publishAuthDetailed, unitApi, unitCaller, personFace, withDoorLink, withAgentPreface, browserFetch, withDraftUi, draftUiBoot, withReviewOverlay, reviewOverlayTag, derivedPage, dsOverlay, isEngineChrome, publishRefusalBody, splitDraftPath,
+  publishAuthDetailed, unitApi, unitCaller, personFace, withDoorLink, withAgentPreface, browserFetch, withDraftUi, draftUiBoot, withReviewOverlay, reviewOverlayTag, derivedPage, deleteApi, dsOverlay, isEngineChrome, publishRefusalBody, splitDraftPath,
   adminStorageApi,
   adminCustomDomainApi,
   isPrefixBacked, backedPublicPrefixes,

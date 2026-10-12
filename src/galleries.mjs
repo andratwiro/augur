@@ -277,7 +277,7 @@ export function renderRootIndex(model, ctx) {
     const cover = opp.prototypes.find((p) => p.poster) || opp.prototypes[0];
     const coverSrc = cover ? cover.href : "";
     return `
-        <div class="card-opp" data-fitem data-fkey="${titleCase(opp.name)}">
+        <div class="card-opp" data-del-kind="project" data-del-space="${escAttr(ctx.activeSpace || "")}" data-del-path="${escAttr(opp.name)}" data-del-count="${opp.prototypes.length}" data-fitem data-fkey="${titleCase(opp.name)}">
           <a class="card-cover-link" href="${oppPath}" aria-label="Open ${titleCase(opp.name)}"></a>
           ${preview(coverSrc, cover && cover.poster)}
           <div class="opp-meta">

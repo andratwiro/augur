@@ -683,7 +683,11 @@ state. Two event types ride it: `prototype-delete` (the admin-only `/__delete` r
 the shell workflow `git rm`s the folder in the space repo) and `roster-update` (Admin
 invite/remove; the shell's `roster-update.yml` — see `templates/shell/` — commits the
 person to `identity.json`, so the file stays the one durable roster record). Unset →
-`/__delete` answers 501 and reports deletion unconfigured; invites still work but
+`/__delete` answers 501 and reports deletion unconfigured, except where drafts are served
+(bundle mode with a `UNITS` binding): there the store is the record, so `/__delete` removes
+the prototype from the live manifest as one new space version and needs no channel. The
+same holds for a whole project (`path` = the bare folder name, the root gallery's
+right-click menu), which is deletable only there and never dispatches. Invites still work but
 answer `fileSync: "unconfigured"` and the person lives in the KV overlay only.
 `BACKUP_RETENTION_DAYS` — how long this deployment's off-site backup copies live after the
 day they are taken, in whole days. Read ONLY by the delete confirmation, which adds the
