@@ -74,7 +74,7 @@ pins all of it.
 
 **What can be done TO a workspace from outside it is one list**: `CONTROL_VERBS` in
 `src/tenant-do.js` — `provision`, `status`, `suspend`, `resume`, `rotate`, `delete`,
-`purge`, `rename`, `claim` — served
+`purge`, `rename`, `claim`, `chrome`, `account-key`, `people` — served
 under `/__control/<verb>` on the workspace object and reachable only by code holding the
 namespace binding. Two properties hold across all of them. **Only `provision` may create
 anything**: every other verb reads `meta` and refuses `not-provisioned` before `init()`,

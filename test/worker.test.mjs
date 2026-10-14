@@ -735,7 +735,9 @@ test("invite adds the address to the overlay and returns its single-use link", a
 });
 
 test("invite refuses a malformed address and an existing user", async () => {
-  const env = envWith(memKV());
+  // An existing user who has SIGNED IN — one who never did is sent a fresh link instead
+  // (test/operator-people.test.mjs).
+  const env = envWith(memKV({ "users:secrets": JSON.stringify({ [ADMIN.email]: "hash" }) }));
   assert.equal((await callAdmin(adminPost({ op: "invite", email: "nope" }), env, [ADMIN], [ADMIN])).status, 400);
   assert.equal((await callAdmin(adminPost({ op: "invite", email: ADMIN.email }), env, [ADMIN], [ADMIN])).status, 409);
   assert.equal(await env.COMMENTS.get("users:roster"), null, "nothing written on a rejected invite");

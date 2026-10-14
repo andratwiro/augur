@@ -555,6 +555,31 @@ test("chrome is on CONTROL_VERBS", () => {
   assert.ok(CONTROL_VERBS.includes("chrome"));
 });
 
+// ── people ──────────────────────────────────────────────────────────────────────────
+
+test("people mints a fifteen-minute, people-capped star token", async () => {
+  const w = await provisioned();
+  const res = await control(w.store, "people");
+  assert.equal(res.status, 200);
+  const body = await res.json();
+  assert.match(body.token, /^[0-9a-f]{64}$/);
+  assert.ok(body.expiresAt > Date.now() && body.expiresAt <= Date.now() + 15 * 60 * 1000);
+  const rows = w.db.prepare("SELECT scope, caps, label, expires_at FROM publish_tokens").all();
+  assert.equal(rows.length, 1);
+  assert.equal(rows[0].scope, "*");
+  assert.equal(rows[0].label, "operator-people");
+  assert.deepEqual(JSON.parse(rows[0].caps), ["people"]);
+  assert.match(rows[0].expires_at ?? "", /^\d{4}-\d{2}-\d{2}T/);
+});
+
+test("people refuses a workspace nobody provisioned, and creates nothing", async () => {
+  const { db, store } = workspace();
+  const res = await control(store, "people");
+  assert.equal(res.status, 404);
+  const tables = db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'").all();
+  assert.deepEqual(tables, []);
+});
+
 // ── account-key ─────────────────────────────────────────────────────────────────────
 //
 // The control plane delivers a workspace's account-store bearer here (Task 4's

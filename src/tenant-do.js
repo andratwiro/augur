@@ -556,7 +556,7 @@ export const DELETE_GRACE_MS = 30 * 24 * 60 * 60 * 1000;
  */
 export const CONTROL_VERBS = Object.freeze([
   "provision", "status", "suspend", "resume", "rotate", "delete", "purge", "rename", "claim", "chrome",
-  "account-key",
+  "account-key", "people",
 ]);
 
 /**
@@ -631,6 +631,12 @@ export function newSigningKey(random = (b) => crypto.getRandomValues(b)) {
  * operator `chrome` verb and used once from a laptop; it is not a machine token.
  */
 export const CHROME_TOKEN_TTL_MS = 60 * 60 * 1000;
+
+/**
+ * How long a people token lives. One invitation or one removal is a single request, so this
+ * is the time it takes an operator to run it, not a session: a quarter of an hour.
+ */
+export const PEOPLE_TOKEN_TTL_MS = 15 * 60 * 1000;
 
 async function sha256Hex(s) {
   const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(String(s)));
@@ -2846,6 +2852,25 @@ export class TenantStore {
           // numeric epoch-ms: the operator/CLI reading this wants a number, not a re-parse.
           this.publishTokenMint(
             { tokenHash, space: "*", caps: ["chrome"], label: "chrome-refresh", expiresAt: new Date(expiresAt).toISOString() },
+            Date.now(),
+          );
+          return Response.json({ ok: true, token: bearer, expiresAt });
+        }
+        // Mint the ONE credential an operator may act on this workspace's MEMBERS with: a
+        // star-scope token capped to `people`, which `/__admin/users` reads as the platform
+        // operator — invite (the real invitation mail), resend to somebody who never signed
+        // in, change a role, remove. It publishes nothing: `people` names no publish route,
+        // so every `/__publish` op refuses it. It exists because a workspace provisioned for
+        // somebody else otherwise has exactly one way in — its admin's own session — and an
+        // operator setting a workspace up on a person's behalf holds no session there.
+        case "people": {
+          const s = this.status();
+          if (!s.provisioned) return Response.json({ ok: false, error: "not-provisioned" }, { status: 404 });
+          const bearer = newSigningKey();
+          const tokenHash = await sha256Hex("gv:pub:" + bearer);
+          const expiresAt = Date.now() + PEOPLE_TOKEN_TTL_MS;
+          this.publishTokenMint(
+            { tokenHash, space: "*", caps: ["people"], label: "operator-people", expiresAt: new Date(expiresAt).toISOString() },
             Date.now(),
           );
           return Response.json({ ok: true, token: bearer, expiresAt });

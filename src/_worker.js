@@ -5182,6 +5182,10 @@ const CAP_ROUTES = Object.freeze({
     ["_engine", "check"], ["_engine", "blob"], ["_engine", "commit"],
     ["_engine", "manifest"], ["_engine", "versions"], ["_engine", "version"],
   ]),
+  // The members API (`/__admin/users`) as the platform operator — and NOTHING under
+  // `/__publish`, which is what the empty list says. Minted only by the control plane's
+  // `people` operator verb; read only by `operatorForPeople`.
+  people: Object.freeze([]),
 });
 
 function capabilityRefusal(entry, spaceId, op) {
@@ -7797,6 +7801,26 @@ async function bearerMemberForDraft(tctx, request, env) {
   const label = String(a.entry.label || "").trim();
   if (!label.includes("@")) return null;
   return userByEmail(label, tctx.USERS) || userByAliasEmail(label, tctx.USERS) || null;
+}
+/**
+ * THE PLATFORM OPERATOR, at the members API and nowhere else.
+ *
+ * A workspace provisioned on somebody's behalf has one way to invite anyone: its admin's
+ * own session. The operator setting it up holds none, so before this the operator had to
+ * become a member to send the invitation and then could not leave (`cannot-remove-self`).
+ * A bearer carrying the `people` capability — minted for fifteen minutes by the control
+ * plane's `people` verb, star-scope so it names this workspace and no space — is read here
+ * as an admin who is not a person: no roster row, no face, no last-seen stamp, and an
+ * invitation that says "You have been invited" rather than naming an inviter. ONLY the
+ * capability opens this: an ordinary star token, an admin's own pairing, a chrome token,
+ * all resolve to nobody, and `people` itself opens no publish route (`CAP_ROUTES.people`).
+ */
+const OPERATOR_PEOPLE = Object.freeze({ email: "operator", name: "", role: "admin", operator: true });
+async function operatorForPeople(tctx, request, env) {
+  const a = await publishAuthDetailed(tctx, request, env, "_people", true);
+  if (!a.entry || a.entry.space !== "*") return null;
+  const caps = a.entry.caps;
+  return Array.isArray(caps) && caps.includes("people") ? OPERATOR_PEOPLE : null;
 }
 /** A page served on the strength of a bearer header must never be cached for anyone else. */
 function bearerNoStore(res, viaBearer) {
@@ -11995,7 +12019,16 @@ async function adminUsersApi(tctx, request, url, env, me, users = tctx.USERS, co
     try { op = await request.json(); } catch (e) { return jsonResponse({ error: "bad-json" }, 400); }
     const kind = op && op.op;
     if (!kv) return jsonResponse({ error: "no-kv-binding" }, 500);
+    // The platform operator (operatorForPeople) invites, re-invites, changes a role and
+    // removes. It resets nobody — a reset hands over an account — and it touches no
+    // per-space membership: that is the workspace's own admins' business once they are in.
+    if (me.operator && !["invite", "role", "remove"].includes(kind)) {
+      return jsonResponse({ error: "operator-not-allowed", op: kind || null }, 403);
+    }
     const link = (token) => `${url.origin}/__invite?t=${encodeURIComponent(token)}`;
+    // Who the invitation says it is from. The operator is nobody the invitee knows, so its
+    // mail names no inviter ("You have been invited to …").
+    const inviterName = me.operator ? "" : (me.name || me.email);
     // The workspace's own display name for the account-store notify — same source mailLink
     // uses for its "workspace" mail var, so a switcher row and an invite mail agree.
     const workspaceLabel = (spaces.find((s) => s.default) || {}).name || url.host;
@@ -12060,7 +12093,22 @@ async function adminUsersApi(tctx, request, url, env, me, users = tctx.USERS, co
     if (kind === "invite") {
       const email = lcEmail(op.email);
       if (!isEmailish(email)) return jsonResponse({ error: "bad-email" }, 400);
-      if (userByEmail(email, users)) return jsonResponse({ error: "already-a-user" }, 409);
+      const existing = userByEmail(email, users);
+      if (existing) {
+        // SOMEBODY WHO NEVER CAME IN IS INVITED AGAIN, not refused. The first admin of a
+        // workspace provisioned on their behalf is on the roster from the first instant and
+        // was never sent anything; an invitee whose link expired is on it too. Either way the
+        // honest answer to "invite them" is a fresh link in their inbox, at the role they
+        // already hold — the old link dies as this one is minted. Somebody who HAS signed in
+        // (a credential, or the session key a link redemption leaves) is a member, and
+        // inviting a member is still the refusal it always was.
+        const signedIn = !!(await effectiveSecret(env, existing))
+          || (tctx.SESSION_KEYS && (await sessionKeyHolders(kv, [existing.email])).has(existing.email));
+        if (signedIn) return jsonResponse({ error: "already-a-user" }, 409);
+        const token = await mintInvite(tctx, env, existing.email);
+        const mail = await mailLink(existing.email, "roster-invite", token, { inviter: inviterName, role: roleOf(existing) });
+        return jsonResponse({ ok: true, email: existing.email, resent: true, url: link(token), mail });
+      }
       // All three roles, not the old admin-or-nothing coercion. `editor` is written
       // out in full — the legacy `user` spelling still READS as editor, but nothing
       // new should be created wearing it.
@@ -12097,7 +12145,7 @@ async function adminUsersApi(tctx, request, url, env, me, users = tctx.USERS, co
         user: { email, name, initials: roster.add[email].initials, color: roster.add[email].color, role },
         by: me.email,
       });
-      const mail = await mailLink(email, "roster-invite", token, { inviter: me.name || me.email, role });
+      const mail = await mailLink(email, "roster-invite", token, { inviter: inviterName, role });
       return jsonResponse({ ok: true, email, url: link(token), fileSync, mail });
     }
 
@@ -12954,6 +13002,11 @@ async function handleRequest(request, env, ctx, url, trace) {
     if (!me && usersActive && isBearerBoardCall(request, url)) {
       me = await bearerMemberForDraft(tctx, request, env);
     }
+    // The operator's people token, at the members API only. See operatorForPeople.
+    if (!me && usersActive && url.pathname === "/__admin/users"
+      && /^Bearer\s+\S/.test(request.headers.get("Authorization") || "")) {
+      me = await operatorForPeople(tctx, request, env);
+    }
     // Is this request past the gate? identity mode → a known user; legacy → the
     // shared-password cookie; neither configured → open (raw/local build, no gate).
     let authed;
@@ -13550,7 +13603,7 @@ export const __testables = Object.freeze({
   doorFacts, doorText, wantsMachineDoor, gateResponse, DOOR_DOCS, DOOR_WELL_KNOWN,
   resumeAfterDormancy,
   PITI_VIEW_KEY, PITI_REMARKS_KEY,
-  publishAuthDetailed, unitApi, unitCaller, personFace, withDoorLink, withAgentPreface, browserFetch, withDraftUi, draftUiBoot, withReviewOverlay, reviewOverlayTag, derivedPage, deleteApi, dsOverlay, isEngineChrome, publishRefusalBody, splitDraftPath,
+  publishAuthDetailed, operatorForPeople, unitApi, unitCaller, personFace, withDoorLink, withAgentPreface, browserFetch, withDraftUi, draftUiBoot, withReviewOverlay, reviewOverlayTag, derivedPage, deleteApi, dsOverlay, isEngineChrome, publishRefusalBody, splitDraftPath,
   adminStorageApi,
   adminCustomDomainApi,
   isPrefixBacked, backedPublicPrefixes,

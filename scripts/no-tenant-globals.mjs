@@ -250,6 +250,7 @@ const ALLOWLIST = {
       "REKEY_FAMILIES",       // which of those families a re-key may be asked to move — the vocabulary of one route, identical for every workspace
       "REKEY_DEFAULT_FAMILIES", // and which it moves when asked for none
       "CAP_ROUTES",           // capability -> the routes it grants; deny-by-default, identical for every workspace
+      "OPERATOR_PEOPLE",      // the platform operator's identity at the members API; one constant, no state
       "PUBLISH_READ_OPS",     // which publish ops only READ a space, and by which method; a fact about the routes, the same on every deployment
       "RESERVED_UNIT_FOLDERS", // top-level folders a NEW unit may not be created under; a fact about how a site is laid out, the same for every workspace
       "FROZEN_WRITES",        // the paths a migration freeze closes; the same list for every workspace
