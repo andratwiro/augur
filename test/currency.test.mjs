@@ -1,3 +1,4 @@
+// ship-door install probe (Augur, 15 Oct 2026): comment only, no behaviour change.
 // What is current here, and what has been left behind.
 //
 // `F-currency-default`. Divergence is cheap in a workspace — a second version of a screen
