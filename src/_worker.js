@@ -116,6 +116,7 @@ import { composeFork, carriedLineage, assertedLineage } from "./publish-fork.mjs
 // (src/board-room.mjs). Two writers, one spelling — see the module header.
 import { BOARD_PREFIX, boardKvKey, RT_WORKSPACE_HEADER } from "./board-key.mjs";
 import { signRoomTicket } from "./room-ticket.mjs";
+import { vouchKey, signVouch, isOrigin } from "./vouch.mjs";
 import { nameFromEmail, initialsFor, colorFor } from "./roster-chip.mjs";
 import { isSeedSource, seedSource, SEED_ACTOR, mergeContributors } from "./provenance.mjs";
 import { welcomeUnitFor } from "./welcome-unit.mjs";
@@ -11232,6 +11233,63 @@ function ownPageOnly(request) {
   }
   return null;
 }
+// POST /__vouch {aud} → {ticket}. 401 signed out, 403 for an audience nobody declared, 400
+// without CF-Connecting-IP (the ticket is bound to it), 429
+// past VOUCH_PER_MIN for one member. Membership is read now, from the roster this request
+// resolved (at most ROSTER_TTL_MS old): a member removed a minute ago gets nothing.
+const VOUCH_PER_MIN = 30;
+async function vouchApi(tctx, request, url, env, me) {
+  if (request.method !== "POST") return jsonResponse({ error: "method-not-allowed" }, 405);
+  const refused = ownPageOnly(request);
+  if (refused) return refused;
+  // Origin is the half a page cannot forge; Sec-Fetch-Site also turns away a sibling
+  // workspace that is the same SITE but not the same origin, and anything not a browser.
+  if (request.headers.get("Sec-Fetch-Site") !== "same-origin") return jsonResponse({ error: "cross-origin" }, 403);
+  if (!me) return jsonResponse({ error: "signed-out" }, 401);
+  let op;
+  try { op = await request.json(); } catch (e) { return jsonResponse({ error: "bad-json" }, 400); }
+  const aud = op && op.aud;
+  if (!isOrigin(aud)) return jsonResponse({ error: "bad-input" }, 400);
+  const key = vouchKey(env, url.origin, aud);
+  if (!key) return jsonResponse({ error: "aud-not-declared" }, 403);
+  // Cloudflare sets this on every request it proxies and a client cannot; never mint unbound.
+  const ip = request.headers.get("CF-Connecting-IP");
+  if (!ip) return jsonResponse({ error: "no-client-ip" }, 400);
+  const by = personId(me.email);
+  // A soft ceiling (KV is eventually consistent): a page mints once per load, so 30 a minute
+  // is a loop, not a person. An unreadable store does not stop a member signing in.
+  const kv = kvFor(env, tctx);
+  if (kv) {
+    const rl = `vouch:rl:${by}:${Math.floor(Date.now() / 60000)}`;
+    try {
+      const n = Number(await kv.get(rl)) || 0;
+      if (n >= VOUCH_PER_MIN) {
+        console.log(JSON.stringify({ level: "warn", event: "vouch-rate-limited", tenant: tctx.tenantId || "-", aud, by }));
+        return jsonResponse({ error: "rate-limited" }, 429);
+      }
+      await kv.put(rl, String(n + 1), { expirationTtl: 120 });
+    } catch (e) {}
+  }
+  let ticket, claims;
+  try {
+    ({ ticket, claims } = await signVouch(key, { iss: url.origin, aud, sub: me.email, role: roleOf(me), ip }));
+  } catch (e) {
+    // A declared key whose halves do not pair: the deployment's mistake, said without the key.
+    console.log(JSON.stringify({ level: "error", event: "vouch-key-invalid", tenant: tctx.tenantId || "-", aud }));
+    return jsonResponse({ error: "vouch-unavailable" }, 503);
+  }
+  // The audit line names who, for whom and which jti; never the ticket or the email.
+  console.log(JSON.stringify({ level: "info", event: "vouch-minted", tenant: tctx.tenantId || "-", aud, by, role: claims.role, jti: claims.jti }));
+  return jsonResponse({ ticket });
+}
+// GET /__vouch/key?aud= → {iss, aud, alg, x}: the public key a receiver pins, 404 undeclared.
+function vouchPublicKey(url, env) {
+  const aud = url.searchParams.get("aud");
+  const key = vouchKey(env, url.origin, aud);
+  if (!key) return jsonResponse({ error: "aud-not-declared" }, 404);
+  return jsonResponse({ iss: url.origin, aud, alg: "Ed25519", x: key.x });
+}
+
 async function deleteApi(tctx, request, env, me) {
   if (request.method !== "POST") return jsonResponse({ error: "method-not-allowed" }, 405);
   const refused = ownPageOnly(request);
@@ -13056,6 +13114,15 @@ async function handleRequest(request, env, ctx, url, trace) {
         spaces: me ? meSpaces(me, tctx.SPACES) : [],
       });
     }
+
+    // Vouch for this member to a framed app on another origin (src/vouch.mjs). Only this
+    // workspace's own page may ask (exact Origin, Sec-Fetch-Site same-origin, a JSON body),
+    // only a signed-in member gets one, and only for an audience the deployment declared for
+    // this workspace. `me` here can only be the session cookie: the bearer reads above are
+    // confined to draft GETs, board routes and the members API.
+    // GET /__vouch/key?aud= is the public half, open to anyone: a receiver checks its pin.
+    if (url.pathname === "/__vouch") return vouchApi(tctx, request, url, env, me);
+    if (url.pathname === "/__vouch/key") return vouchPublicKey(url, env);
 
     // A workspace's icon. Serving is ungated like /__avatar/ (the rail renders it on
     // the login page too, and the allowlist check inside stops hash-guessing); setting

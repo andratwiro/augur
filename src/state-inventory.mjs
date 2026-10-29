@@ -166,6 +166,10 @@ export const STATE_INVENTORY = Object.freeze([
     why: "Mail send caps, per recipient and per actor. Transient for the same reason.",
   },
   {
+    id: "vouch:rl:", store: "kv", kind: "prefix", to: "drop",
+    why: "Lab sign-in ticket counters, per person per minute, gone after two minutes. Transient for the same reason: recreating one costs a member nothing.",
+  },
+  {
     id: "mail:suppressed", store: "kv", kind: "key", to: "workspace",
     why: "Addresses a provider has told us to stop mailing. NOT transient — it is a promise not to mail somebody again, and dropping it breaks that promise silently.",
   },
